@@ -26,7 +26,10 @@ export default function Home() {
 						</Link>
 					</Button>
 					<Button asChild>
-						<Link href="https://github.com/damianricobelli" target="_blank">
+						<Link
+							href="https://github.com/damianricobelli/shadcn-stepper"
+							target="_blank"
+						>
 							<Star className="mr-2 size-4" />
 							GitHub
 						</Link>
