@@ -1,0 +1,29 @@
+{
+	"$schema": "https://biomejs.dev/schemas/1.6.4/schema.json",
+	"organizeImports": {
+		"enabled": true
+	},
+	"linter": {
+		"enabled": true,
+		"rules": {
+			"recommended": true,
+			"a11y": {
+				"useKeyWithClickEvents": "off"
+			},
+			"nursery": {
+				"useSortedClasses": "off"
+			},
+			"style": {
+				"useBlockStatements": "error"
+			},
+			"suspicious": {
+				"noConsoleLog": "error",
+				"noExplicitAny": "off"
+			},
+			"correctness": {
+				"noUnusedVariables": "error",
+				"noUnusedImports": "error"
+			}
+		}
+	}
+}
