@@ -12,6 +12,11 @@ const fontSans = FontSans({
 export const metadata: Metadata = {
 	title: "Shadcn Stepper",
 	description: "Display content divided into a steps sequence",
+	openGraph: {
+		title: "Shadcn Stepper",
+		description: "Display content divided into a steps sequence",
+		url: "https://shadcn-stepper.vercel.app/",
+	},
 };
 
 export default function RootLayout({
