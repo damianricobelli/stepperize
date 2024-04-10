@@ -31,7 +31,7 @@ const StepButtons = () => {
 	const { nextStep, prevStep, isLastStep, isOptionalStep, isDisabledStep } =
 		useStepper();
 	return (
-		<div className="w-full flex gap-2">
+		<div className="w-full flex gap-2 mb-4">
 			<Button
 				disabled={isDisabledStep}
 				onClick={prevStep}
@@ -56,7 +56,7 @@ const FinalStep = () => {
 
 	return (
 		<>
-			<div className="h-40 flex items-center justify-center my-4 border bg-secondary text-primary rounded-md">
+			<div className="h-40 flex items-center justify-center border bg-secondary text-primary rounded-md">
 				<h1 className="text-xl">Woohoo! All steps completed! 🎉</h1>
 			</div>
 			<div className="w-full flex justify-end gap-2">

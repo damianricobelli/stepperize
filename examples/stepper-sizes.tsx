@@ -29,31 +29,31 @@ export default function StepperSizes() {
 			>
 				<Label
 					htmlFor="sm"
-					className="flex w-fit flex-col gap-3 rounded-md border-2 bg-background px-3 py-2 hover:bg-gray-3 [&:has([data-state=checked])]:border-primary"
+					className="flex w-fit flex-col gap-3 rounded-md border bg-background px-2 py-1 hover:bg-gray-3 [&:has([data-state=checked])]:border-primary"
 				>
 					<RadioGroupItem value="sm" id="sm" className="sr-only" />
-					<h2 className="font-semibold">Small</h2>
+					<h2 className="font-medium">sm</h2>
 				</Label>
 				<Label
 					htmlFor="md"
-					className="flex w-fit flex-col gap-3 rounded-md border-2 bg-background px-3 py-2 hover:bg-gray-3 [&:has([data-state=checked])]:border-primary"
+					className="flex w-fit flex-col gap-3 rounded-md border bg-background px-2 py-1 hover:bg-gray-3 [&:has([data-state=checked])]:border-primary"
 				>
 					<RadioGroupItem value="md" id="md" className="sr-only" />
-					<h2 className="font-semibold">Medium</h2>
+					<h2 className="font-medium">md</h2>
 				</Label>
 				<Label
 					htmlFor="lg"
-					className="flex w-fit flex-col gap-3 rounded-md border-2 bg-background px-3 py-2 hover:bg-gray-3 [&:has([data-state=checked])]:border-primary"
+					className="flex w-fit flex-col gap-3 rounded-md border bg-background px-2 py-1 hover:bg-gray-3 [&:has([data-state=checked])]:border-primary"
 				>
 					<RadioGroupItem value="lg" id="lg" className="sr-only" />
-					<h2 className="font-semibold">Large</h2>
+					<h2 className="font-medium">lg</h2>
 				</Label>
 			</RadioGroup>
 			<Stepper size={size} initialStep={0} steps={steps}>
 				{steps.map((stepProps, index) => {
 					return (
 						<Step key={stepProps.label} {...stepProps}>
-							<div className="h-40 flex items-center justify-center my-4 border bg-secondary text-primary rounded-md">
+							<div className="h-40 flex items-center justify-center my-2 border bg-secondary text-primary rounded-md">
 								<h1 className="text-xl">Step {index + 1}</h1>
 							</div>
 						</Step>
@@ -78,7 +78,7 @@ const Footer = () => {
 	return (
 		<>
 			{hasCompletedAllSteps && (
-				<div className="h-40 flex items-center justify-center my-4 border bg-secondary text-primary rounded-md">
+				<div className="h-40 flex items-center justify-center my-2 border bg-secondary text-primary rounded-md">
 					<h1 className="text-xl">Woohoo! All steps completed! 🎉</h1>
 				</div>
 			)}

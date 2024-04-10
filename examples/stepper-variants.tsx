@@ -30,35 +30,35 @@ export default function StepperVariants() {
 			>
 				<Label
 					htmlFor="circle"
-					className="flex w-fit flex-col gap-3 rounded-md border-2 bg-background px-3 py-2 hover:bg-gray-3 [&:has([data-state=checked])]:border-primary"
+					className="flex w-fit flex-col gap-3 rounded-md border bg-background px-2 py-1 hover:bg-gray-3 [&:has([data-state=checked])]:border-primary"
 				>
 					<RadioGroupItem value="circle" id="circle" className="sr-only" />
-					<h2 className="font-semibold">Circle</h2>
+					<h2 className="font-medium">circle</h2>
 				</Label>
 				<Label
 					htmlFor="circle-alt"
-					className="flex w-fit flex-col gap-3 rounded-md border-2 bg-background px-3 py-2 hover:bg-gray-3 [&:has([data-state=checked])]:border-primary"
+					className="flex w-fit flex-col gap-3 rounded-md border bg-background px-2 py-1 hover:bg-gray-3 [&:has([data-state=checked])]:border-primary"
 				>
 					<RadioGroupItem
 						value="circle-alt"
 						id="circle-alt"
 						className="sr-only"
 					/>
-					<h2 className="font-semibold">Circle Alt</h2>
+					<h2 className="font-medium">circle-alt</h2>
 				</Label>
 				<Label
 					htmlFor="line"
-					className="flex w-fit flex-col gap-3 rounded-md border-2 bg-background px-3 py-2 hover:bg-gray-3 [&:has([data-state=checked])]:border-primary"
+					className="flex w-fit flex-col gap-3 rounded-md border bg-background px-2 py-1 hover:bg-gray-3 [&:has([data-state=checked])]:border-primary"
 				>
 					<RadioGroupItem value="line" id="line" className="sr-only" />
-					<h2 className="font-semibold">Line</h2>
+					<h2 className="font-medium">line</h2>
 				</Label>
 			</RadioGroup>
 			<Stepper variant={variant} initialStep={0} steps={steps}>
 				{steps.map((stepProps, index) => {
 					return (
 						<Step key={stepProps.label} {...stepProps}>
-							<div className="h-40 flex items-center justify-center my-4 border bg-secondary text-primary rounded-md">
+							<div className="h-40 flex items-center justify-center my-2 border bg-secondary text-primary rounded-md">
 								<h1 className="text-xl">Step {index + 1}</h1>
 							</div>
 						</Step>
@@ -83,7 +83,7 @@ const Footer = () => {
 	return (
 		<>
 			{hasCompletedAllSteps && (
-				<div className="h-40 flex items-center justify-center my-4 border bg-secondary text-primary rounded-md">
+				<div className="h-40 flex items-center justify-center my-2 border bg-secondary text-primary rounded-md">
 					<h1 className="text-xl">Woohoo! All steps completed! 🎉</h1>
 				</div>
 			)}
