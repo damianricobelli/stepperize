@@ -5,6 +5,9 @@ import { ThemeProvider } from "next-themes";
 import { Inter as FontSans } from "next/font/google";
 import "./globals.css";
 
+import { Analytics } from "@vercel/analytics/react";
+import { SpeedInsights } from "@vercel/speed-insights/next";
+
 const fontSans = FontSans({
 	subsets: ["latin"],
 	variable: "--font-sans",
@@ -33,6 +36,8 @@ export default function RootLayout({
 					fontSans.variable,
 				)}
 			>
+				<Analytics />
+				<SpeedInsights />
 				<ThemeProvider attribute="class" enableSystem disableTransitionOnChange>
 					<Toaster />
 					{children}
