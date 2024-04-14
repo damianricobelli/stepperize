@@ -15,7 +15,7 @@ type VerticalStepProps = StepSharedProps & {
 const verticalStepVariants = cva(
 	[
 		"flex flex-col relative transition-all duration-200",
-		"data-[completed=true]:[&:not(:last-child)]:after:bg-blue-500",
+		"data-[completed=true]:[&:not(:last-child)]:after:bg-primary",
 		"data-[invalid=true]:[&:not(:last-child)]:after:bg-destructive",
 	],
 	{
@@ -67,6 +67,7 @@ const VerticalStep = React.forwardRef<HTMLDivElement, VerticalStepProps>(
 			orientation,
 			steps,
 			setStep,
+			isLastStep: isLastStepCurrentStep,
 		} = useStepper();
 
 		const opacity = hasVisited ? 1 : 0.8;
@@ -101,6 +102,7 @@ const VerticalStep = React.forwardRef<HTMLDivElement, VerticalStepProps>(
 					verticalStepVariants({
 						variant: variant?.includes("circle") ? "circle" : "line",
 					}),
+					isLastStepCurrentStep && "gap-[var(--step-gap)]",
 					styles?.["vertical-step"],
 				)}
 				data-optional={steps[index || 0]?.optional}
@@ -120,7 +122,7 @@ const VerticalStep = React.forwardRef<HTMLDivElement, VerticalStepProps>(
 						"stepper__vertical-step-container",
 						"flex items-center",
 						variant === "line" &&
-							"border-s-[3px] data-[active=true]:border-blue-500 py-2 ps-3",
+							"border-s-[3px] data-[active=true]:border-primary py-2 ps-3",
 						styles?.["vertical-step-container"],
 					)}
 				>

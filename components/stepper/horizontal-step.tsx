@@ -55,14 +55,14 @@ const HorizontalStep = React.forwardRef<HTMLDivElement, StepSharedProps>(
 					"[&:not(:last-child)]:flex-1",
 					"[&:not(:last-child)]:after:transition-all [&:not(:last-child)]:after:duration-200",
 					"[&:not(:last-child)]:after:content-[''] [&:not(:last-child)]:after:h-[2px] [&:not(:last-child)]:after:bg-border",
-					"data-[completed=true]:[&:not(:last-child)]:after:bg-blue-500",
+					"data-[completed=true]:[&:not(:last-child)]:after:bg-primary",
 					"data-[invalid=true]:[&:not(:last-child)]:after:bg-destructive",
 					variant === "circle-alt" &&
 						"justify-start flex-col flex-1 [&:not(:last-child)]:after:relative [&:not(:last-child)]:after:order-[-1] [&:not(:last-child)]:after:start-[50%] [&:not(:last-child)]:after:end-[50%] [&:not(:last-child)]:after:top-[calc(var(--step-icon-size)/2)] [&:not(:last-child)]:after:w-[calc((100%-var(--step-icon-size))-(var(--step-gap)))]",
 					variant === "circle" &&
 						"[&:not(:last-child)]:after:flex-1 [&:not(:last-child)]:after:ms-[var(--step-gap)] [&:not(:last-child)]:after:me-[var(--step-gap)]",
 					variant === "line" &&
-						"flex-col flex-1 border-t-[3px] data-[active=true]:border-blue-500",
+						"flex-col flex-1 border-t-[3px] data-[active=true]:border-primary",
 					styles?.["horizontal-step"],
 				)}
 				data-optional={steps[index || 0]?.optional}
