@@ -1,6 +1,16 @@
 import * as React from "react";
 import { StepperContext } from "./context";
 
+function usePrevious<T>(value: T): T | undefined {
+	const ref = React.useRef<T>();
+
+	React.useEffect(() => {
+		ref.current = value;
+	}, [value]);
+
+	return ref.current;
+}
+
 export function useStepper() {
 	const context = React.useContext(StepperContext);
 
@@ -12,6 +22,8 @@ export function useStepper() {
 
 	const isLastStep = context.activeStep === context.steps.length - 1;
 	const hasCompletedAllSteps = context.activeStep === context.steps.length;
+
+	const previousActiveStep = usePrevious(context.activeStep);
 
 	const currentStep = context.steps[context.activeStep];
 	const isOptionalStep = !!currentStep?.optional;
@@ -25,5 +37,6 @@ export function useStepper() {
 		isOptionalStep,
 		isDisabledStep,
 		currentStep,
+		previousActiveStep,
 	};
 }

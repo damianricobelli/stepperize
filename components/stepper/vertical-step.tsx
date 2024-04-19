@@ -68,6 +68,7 @@ const VerticalStep = React.forwardRef<HTMLDivElement, VerticalStepProps>(
 			steps,
 			setStep,
 			isLastStep: isLastStepCurrentStep,
+			previousActiveStep,
 		} = useStepper();
 
 		const opacity = hasVisited ? 1 : 0.8;
@@ -85,7 +86,27 @@ const VerticalStep = React.forwardRef<HTMLDivElement, VerticalStepProps>(
 			if (!expandVerticalSteps) {
 				return (
 					<Collapsible open={isCurrentStep}>
-						<CollapsibleContent className="overflow-hidden data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up">
+						<CollapsibleContent
+							ref={(node) => {
+								if (
+									// If the step is the first step and the previous step
+									// was the last step or if the step is not the first step
+									// This prevents initial scrolling when the stepper
+									// is located anywhere other than the top of the view.
+									scrollTracking &&
+									((index === 0 &&
+										previousActiveStep &&
+										previousActiveStep === steps.length) ||
+										(index && index > 0))
+								) {
+									node?.scrollIntoView({
+										behavior: "smooth",
+										block: "center",
+									});
+								}
+							}}
+							className="overflow-hidden data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up"
+						>
 							{children}
 						</CollapsibleContent>
 					</Collapsible>
@@ -149,14 +170,6 @@ const VerticalStep = React.forwardRef<HTMLDivElement, VerticalStepProps>(
 					/>
 				</div>
 				<div
-					ref={(node) => {
-						if (scrollTracking) {
-							node?.scrollIntoView({
-								behavior: "smooth",
-								block: "center",
-							});
-						}
-					}}
 					className={cn(
 						"stepper__vertical-step-content",
 						!isLastStep && "min-h-4",
