@@ -8,6 +8,7 @@ import StepperFooterInside from "@/examples/stepper-footer-inside";
 import StepperForm from "@/examples/stepper-form";
 import StepperOptionalSteps from "@/examples/stepper-optional-steps";
 import StepperOrientation from "@/examples/stepper-orientation";
+import StepperScrollTracking from "@/examples/stepper-scroll-tracking";
 import StepperSizes from "@/examples/stepper-sizes";
 import StepperState from "@/examples/stepper-state";
 import StepperVariants from "@/examples/stepper-variants";
@@ -105,7 +106,15 @@ export function StepperExamples() {
 						is not in view you can do so using the scrollTracking prop on the
 						Stepper component.
 					</p>
+					<p className="text-muted-foreground">
+						For scroll tracking to make sense, the content of each step should
+						ideally include the buttons that allow the user to move forward or
+						backward in the stepper, since the user should be able to see the
+						content of the active step and not need to scroll to the end of the
+						stepper in order to move forward or backward.
+					</p>
 				</div>
+				<StepperScrollTracking />
 			</div>
 			<div className="flex flex-col gap-4">
 				<div className="space-y-1">
