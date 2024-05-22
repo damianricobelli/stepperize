@@ -148,13 +148,12 @@ function StepperFormActions() {
 		isDisabledStep,
 		hasCompletedAllSteps,
 		isLastStep,
-		isOptionalStep,
 	} = useStepper();
 
 	return (
 		<div className="w-full flex justify-end gap-2">
 			{hasCompletedAllSteps ? (
-				<Button size="sm" onClick={resetSteps}>
+				<Button size="sm" type="button" onClick={resetSteps}>
 					Reset
 				</Button>
 			) : (
@@ -164,11 +163,12 @@ function StepperFormActions() {
 						onClick={prevStep}
 						size="sm"
 						variant="secondary"
+						type="button"
 					>
 						Prev
 					</Button>
-					<Button size="sm">
-						{isLastStep ? "Finish" : isOptionalStep ? "Skip" : "Next"}
+					<Button size="sm" type="submit">
+						{isLastStep ? "Finish" : "Next"}
 					</Button>
 				</>
 			)}

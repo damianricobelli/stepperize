@@ -1,3 +1,5 @@
+import * as React from "react";
+
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { StepSharedProps } from "./types";
@@ -33,6 +35,7 @@ const StepButtonContainer = ({
 	return (
 		<Button
 			variant="ghost"
+			type="button"
 			tabIndex={currentStepClickable ? 0 : -1}
 			className={cn(
 				"stepper__step-button-container",
