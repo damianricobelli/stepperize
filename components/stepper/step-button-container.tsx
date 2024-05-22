@@ -33,6 +33,7 @@ const StepButtonContainer = ({
 	return (
 		<Button
 			variant="ghost"
+			type="button"
 			tabIndex={currentStepClickable ? 0 : -1}
 			className={cn(
 				"stepper__step-button-container",
