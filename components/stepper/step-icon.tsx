@@ -20,7 +20,7 @@ interface StepIconProps {
 const iconVariants = cva("", {
 	variants: {
 		size: {
-			sm: "size-4",
+			sm: "size-3",
 			md: "size-4",
 			lg: "size-5",
 		},
