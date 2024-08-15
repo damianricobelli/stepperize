@@ -1,6 +1,6 @@
 # @stepperize/react
 
-A React library for creating stepper components.
+A React library for creating stepper components with a focus on accessibility and customization.
 
 ## Installation
 
