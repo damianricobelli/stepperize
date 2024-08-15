@@ -147,10 +147,6 @@ importers:
         version: 5.5.4
 
   packages/react:
-    dependencies:
-      react:
-        specifier: ^18.3.1
-        version: 18.3.1
     devDependencies:
       '@types/react':
         specifier: ^18.3.3
@@ -158,6 +154,9 @@ importers:
       '@types/react-dom':
         specifier: ^18.3.0
         version: 18.3.0
+      react:
+        specifier: ^18.3.1
+        version: 18.3.1
       tsup:
         specifier: ^8.2.4
         version: 8.2.4(jiti@1.21.6)(postcss@8.4.41)(typescript@5.5.4)(yaml@2.5.0)
