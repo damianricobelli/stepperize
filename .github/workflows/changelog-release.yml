@@ -50,7 +50,7 @@ jobs:
           git tag -a "v$(node -p -e "require('./package.json').version")" -m "Release version $(node -p -e "require('./package.json').version")"
           git push origin --tags
         env:
-          GITHUB_TOKEN: ${{ secrets.GH_ACTION_TOKEN }}
+          GH_ACTION_TOKEN: ${{ secrets.GH_ACTION_TOKEN }}
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
