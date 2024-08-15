@@ -2,6 +2,8 @@ name: Changelog and Release
 
 on:
   push:
+    branches:
+      - main
     tags:
       - 'v*.*.*' 
     paths:
