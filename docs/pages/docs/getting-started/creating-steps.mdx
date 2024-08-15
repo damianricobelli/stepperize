@@ -1,0 +1,59 @@
+import { Steps, Callout } from 'nextra/components'
+
+# Understanding the steps
+
+We call `Steps` each step of the Stepper. These steps require certain information in order to be identified and inferred by typescript.
+
+Each `Step` is only required to have a unique `id`. This `id` is used to identify the `Step` in the global and local state of each step.
+
+There are two ways in which steps can be created:
+
+1. By using the `createSteps` helper.
+2. Creating the steps manually
+
+<Callout type="info">
+You can view the `Step` Type [here](/docs/components-and-hooks/stepper#step-type)
+</Callout>
+
+
+## Using the `createSteps` helper
+ 
+<Steps>
+### Import the helper
+ 
+```tsx
+import { createSteps } from "@stepperize/react";
+```
+ 
+### Create the steps
+ 
+```tsx
+const steps = createSteps([
+  { id: "step-1", title: "Label 1", description: "Description 1" },
+  { id: "step-2", title: "Label 2", description: "Description 2" },
+  { id: "step-3", title: "Label 3", description: "Description 3" },
+  { id: "step-4", title: "Label 4", description: "Description 4" },
+] as const);
+```
+</Steps>
+
+<Callout >
+  Note the importance of adding the `as const` in the array of steps. This is necessary so that typescript can correctly infer the types of the steps.
+  If you don't add the `as const` everything will work the same, but you just won't get typescript's autocomplete when you want to access the steps.
+</Callout>
+
+## Creating the steps manually
+
+If you don't want to use the helper you can also do it manually in this way:
+
+```tsx
+
+import type { Step } from "@stepperize/react";
+
+const steps = [
+	{ id: "step-1", title: "Label 1", description: "Description 1" },
+	{ id: "step-2", title: "Label 2", description: "Description 2" },
+	{ id: "step-3", title: "Label 3", description: "Description 3" },
+	{ id: "step-4", title: "Label 4", description: "Description 4" },
+] as const satisfies readonly Step[];
+```

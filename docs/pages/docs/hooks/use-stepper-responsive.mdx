@@ -1,0 +1,33 @@
+---
+title: useStepperResponsive
+---
+
+import { PropsTable } from "../../../components/props-table";
+
+# useStepperResponsive Hook
+
+The `useStepperResponsive` hook allows you to dynamically adjust the stepper's layout based on the screen size.
+
+## Usage
+
+Here is an example of how to use the `useStepperResponsive` hook:
+
+```tsx
+import { Stepper, createSteps, useStepperResponsive } from '@stepperize/react';
+
+const steps = createSteps([
+  { id: 'step-1', title: 'Step 1', description: 'Description for step 1' },
+  { id: 'step-2', title: 'Step 2', description: 'Description for step 2' },
+  { id: 'step-3', title: 'Step 3', description: 'Description for step 3' },
+] as const);
+
+const MyStepperComponent = () => {
+  const isMobile = useStepperResponsive("(max-width: 768px)");
+
+  return (
+    <Stepper steps={steps} orientation={isMobile ? 'vertical' : 'horizontal'}>
+      {/* Stepper content */}
+    </Stepper>
+  );
+};
+```

@@ -1,0 +1,102 @@
+---
+title: useStepperConfig
+---
+
+import { PropsTable } from "../../../components/props-table";
+
+# useStepperConfig Hook
+
+The `useStepperConfig` hook provides access to the stepper configuration within a `Stepper`. It allows you to interact with the stepper's configuration props.
+
+We refer to values such as `orientation`, `expandable`, `searchParams`, etc.
+
+## Usage
+
+Here is an example of how to use the `useStepperConfig` hook:
+
+```tsx
+import { Stepper, StepperStep, createSteps, useStepper, useStepperConfig } from "@stepperize/react";
+
+const steps = createSteps([
+  { id: "step-1", title: "Step 1", description: "Description for step 1" },
+  { id: "step-2", title: "Step 2", description: "Description for step 2" },
+  { id: "step-3", title: "Step 3", description: "Description for step 3" },
+] as const);
+
+const MyStepperComponent = () => {
+  return (
+    <Stepper steps={steps}>
+      <StepperContent />
+    </Stepper>
+  );
+};
+
+const StepperContent = () => {
+  const { steps } = useStepper();
+  const { orientation } = useStepperConfig();
+
+  if(orientation === "horizontal") {
+    return null
+  }
+
+  return (
+    <div>
+      {steps.map((step, index) => (
+        <StepperStep key={step.id} index={index}>
+          {/* Step content */}
+        </StepperStep>
+      ))}
+    </div>
+  );
+};
+```
+
+## API Reference
+
+The `useStepperConfig` hook returns an object with the following properties:
+
+<PropsTable
+  data={[
+    {
+      name: "stepsCount",
+      typeSimple: "number",
+      description: "Number of steps in the stepper.",
+    },
+    {
+      name: "initialStep",
+      typeSimple: "string",
+      description: "ID of the initial step to display.",
+    },
+    {
+      name: "orientation",
+      type: `"horizontal" | "vertical"`,
+      typeSimple: "string",
+      description: "Orientation of the stepper. Can be 'horizontal' or 'vertical'.",
+    },
+    {
+      name: "expandable",
+      typeSimple: "boolean",
+      description: "Whether the stepper is expandable.",
+    },
+    {
+      name: "clickable",
+      typeSimple: "boolean",
+      description: "Whether steps are clickable.",
+    },
+    {
+      name: "loadingIcon",
+      typeSimple: "IconType",
+      description: "Icon to display when loading.",
+    },
+    {
+      name: "successIcon",
+      typeSimple: "IconType",
+      description: "Icon to display when a step is successful.",
+    },
+    {
+      name: "errorIcon",
+      typeSimple: "IconType",
+      description: "Icon to display when a step encounters an error.",
+    },
+  ]}
+/>

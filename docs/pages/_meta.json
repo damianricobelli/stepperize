@@ -1,0 +1,28 @@
+{
+	"index": {
+		"type": "page",
+		"title": "Stepperize",
+		"display": "hidden",
+		"theme": {
+			"layout": "raw"
+		}
+	},
+	"docs": {
+		"type": "page",
+		"title": "Documentation"
+	},
+	"about": {
+		"type": "page",
+		"title": "About",
+		"theme": {
+			"typesetting": "article"
+		}
+	},
+	"404": {
+		"type": "page",
+		"theme": {
+			"timestamp": false,
+			"typesetting": "article"
+		}
+	}
+}

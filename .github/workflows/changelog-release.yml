@@ -1,0 +1,49 @@
+name: Changelog and Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*' 
+    paths:
+      - 'packages/react/**'
+
+jobs:
+  changelog:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Cache pnpm modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            **/node_modules
+            **/.pnpm-store
+          key: pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            pnpm-
+
+      - name: Install pnpm
+        run: npm install -g pnpm
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Generate changelog and version
+        run: pnpm version-packages
+        env:
+          GH_ACTION_TOKEN: ${{ secrets.GH_ACTION_TOKEN }}
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          token: ${{ secrets.GH_ACTION_TOKEN }}
+          files: |
+            CHANGELOG.md
