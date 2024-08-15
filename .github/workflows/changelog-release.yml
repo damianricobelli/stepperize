@@ -43,6 +43,13 @@ jobs:
         env:
           GH_ACTION_TOKEN: ${{ secrets.GH_ACTION_TOKEN }}
 
+      - name: Create Git Tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "v$(node -p -e "require('./package.json').version")" -m "Release version $(node -p -e "require('./package.json').version")"
+          git push origin --tags
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
