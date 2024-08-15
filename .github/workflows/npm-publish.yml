@@ -9,6 +9,8 @@ on:
     paths:
       - 'packages/react/**'
 
+concurrency: ${{ github.workflow }}-${{ github.ref }}
+
 jobs:
   publish:
     runs-on: ubuntu-latest
@@ -42,7 +44,11 @@ jobs:
         run: pnpm build
         working-directory: packages/react
 
+      - name: Set up npm token
+        run: echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
+
       - name: Publish to npm
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: pnpm release
+        working-directory: packages/react

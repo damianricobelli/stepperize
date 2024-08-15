@@ -9,6 +9,8 @@ on:
     paths:
       - 'packages/react/**'
 
+concurrency: ${{ github.workflow }}-${{ github.ref }}
+
 jobs:
   changelog:
     runs-on: ubuntu-latest
