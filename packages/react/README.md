@@ -10,14 +10,6 @@ You can read the docs [here](https://stepperize.vercel.app).
 npm install @stepperize/react
 ```
 
-## Scripts
-
-- `build`: Builds the library using `tsup`.
-- `dev`: Starts the development mode with `tsup --watch`.
-- `lint`: Runs the linter using `turbo lint`.
-- `prepublishOnly`: Builds the library before publishing.
-- `clean`: Cleans the build artifacts and node modules.
-
 ## Usage
 
 Coming soon...
