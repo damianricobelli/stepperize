@@ -51,4 +51,3 @@ jobs:
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: pnpm release
-        working-directory: packages/react

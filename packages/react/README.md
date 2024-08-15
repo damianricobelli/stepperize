@@ -10,18 +10,6 @@ You can read the docs [here](https://stepperize.vercel.app).
 npm install @stepperize/react
 ```
 
-```bash
-pnpm install @stepperize/react
-```
-
-```bash
-yarn add @stepperize/react
-```
-
-```bash
-bun add @stepperize/react
-```
-
 ## Usage
 
 Coming soon...
