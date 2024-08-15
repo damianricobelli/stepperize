@@ -2,6 +2,9 @@
 	"name": "@stepperize/react",
 	"version": "0.1.0",
 	"private": false,
+	"publishConfig": {
+		"access": "public"
+	},
 	"main": "dist/index.js",
 	"module": "dist/index.mjs",
 	"types": "dist/index.d.ts",
