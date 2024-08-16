@@ -50,7 +50,7 @@ jobs:
           publish: pnpm release
           version: pnpm version
           commit: "chore: new release"
-          title: "chore: new release candidate"
+          title: "chore: new release"
         env:
           GITHUB_TOKEN: ${{ secrets.GH_ACTION_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
