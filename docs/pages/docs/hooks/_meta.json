@@ -1,5 +1,0 @@
-{
-	"use-stepper": "useStepper()",
-	"use-stepper-config": "useStepperConfig()",
-	"use-stepper-responsive": "useStepperResponsive()"
-}

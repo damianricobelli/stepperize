@@ -1,0 +1,80 @@
+---
+title: Stepper
+---
+
+import { PropsTable } from "../../../components/props-table";
+
+# Stepper Component
+
+The `Stepper` component is a versatile and customizable component that allows you to create step-based workflows in your React application
+
+Internally it works with the `Context` API so we can use the `useStepper` hook in any child component.
+
+## Usage
+
+Here is an example of how to use the `Stepper` component:
+
+```tsx
+import { Stepper, defineSteps } from '@stepperize/react';
+
+const steps = defineSteps(
+  { id: 'step-1', title: 'Step 1', description: 'Description for step 1' },
+  { id: 'step-2', title: 'Step 2', description: 'Description for step 2' },
+  { id: 'step-3', title: 'Step 3', description: 'Description for step 3' },
+);
+
+const MyStepperComponent = () => {
+  return (
+    <Stepper steps={steps}>
+      {/* Stepper content */}
+    </Stepper>
+  );
+};
+```
+
+## API Reference
+
+### Stepper Props
+
+These are the props that can be passed to the `Stepper` component:
+
+<PropsTable
+  data={[
+    {
+      name: "steps",
+      typeSimple: "Step[]",
+      description: "An array of step objects.",
+      required: true,
+    },
+    {
+      name: "initialStep",
+      type: "string",
+      typeSimple: "string",
+      description: "The ID of the initial step to display.",
+    },
+    {
+      name: "expandable",
+      typeSimple: "boolean",
+      description: "Whether the stepper is expandable.",
+      default: "false",
+    },
+    {
+      name: "metadata",
+      type: "Record<string, any>",
+      typeSimple: "object",
+      description: "Additional metadata for the stepper.",
+    },
+    {
+      name: "onChangeMetadata",
+      type: "(metadata: Record<string, any>) => void",
+      typeSimple: "function",
+      description: "Function to be called when metadata changes.",
+    },
+    {
+      name: "children",
+      typeSimple: "React.ReactNode",
+      description: "The content to be rendered inside the stepper.",
+      required: true,
+    },
+  ]}
+/>

@@ -30,7 +30,7 @@ const config: DocsThemeConfig = {
 		const { route } = useRouter();
 		const socialCard =
 			route === "/" || !title
-				? "https://stepperize.vercel.app/og.jpeg"
+				? "https://stepperize.vercel.app/og.png"
 				: `https://stepperize.vercel.app/api/og?title=${title}`;
 
 		return (
