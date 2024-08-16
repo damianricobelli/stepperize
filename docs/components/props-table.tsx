@@ -3,7 +3,7 @@ import type * as React from "react";
 import { DividerHorizontalIcon, InfoCircledIcon } from "@radix-ui/react-icons";
 import { Code } from "./ui/code";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
-import { ScrollArea } from "./ui/scroll-area";
+import { ScrollArea, ScrollBar } from "./ui/scroll-area";
 import {
 	Table,
 	TableBody,
@@ -94,18 +94,11 @@ export function PropsTable({
 												<PopoverContent
 													side="top"
 													align="center"
-													className="w-fit"
+													className="max-w-[300px] w-full"
 												>
-													<ScrollArea type="auto">
-														<Code
-															variant="unstyled"
-															style={{
-																whiteSpace: "pre",
-																display: "block",
-															}}
-														>
-															{type}
-														</Code>
+													<ScrollArea type="hover">
+														<Code>{type}</Code>
+														<ScrollBar orientation="horizontal" />
 													</ScrollArea>
 												</PopoverContent>
 											</Popover>

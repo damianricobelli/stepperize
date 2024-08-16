@@ -1,4 +1,7 @@
 {
 	"installation": "Installation",
-	"creating-steps": "Creating steps"
+	"creating-steps": "Creating steps",
+	"stepper": "Stepper",
+	"use-stepper": "useStepper()",
+	"our-first-stepper": "Our first stepper"
 }

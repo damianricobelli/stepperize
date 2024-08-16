@@ -1,10 +1,4 @@
 {
-	"basic": "Basic",
-	"custom-icons": "Custom icons",
-	"states": "States",
-	"responsive": "Responsive",
-	"scroll-tracking": "Scroll tracking",
-	"animated": "Animated",
 	"forms": "Forms",
 	"dialog": "Dialogs",
 	"query-params": "Query params",

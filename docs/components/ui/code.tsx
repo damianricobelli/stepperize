@@ -12,15 +12,17 @@ export function Code({
 	);
 }
 
-const classForCode = cva("rounded-sm px-1 py-0.5 text-xs", {
-	variants: {
-		variant: {
-			default: "bg-gray-3",
-			info: "bg-info-3",
-			unstyled: "text-gray-11",
+const classForCode = cva(
+	"rounded-sm px-1 py-0.5 text-xs whitespace-pre bg-transparent",
+	{
+		variants: {
+			variant: {
+				default: "bg-gray-3",
+				info: "bg-info-3",
+			},
+		},
+		defaultVariants: {
+			variant: "default",
 		},
 	},
-	defaultVariants: {
-		variant: "default",
-	},
-});
+);

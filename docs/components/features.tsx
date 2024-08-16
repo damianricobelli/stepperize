@@ -62,5 +62,7 @@ function Feature({
 }
 
 export function Features() {
-	return features.map((feature, index) => <Feature key={index} {...feature} />);
+	return features.map((feature, index) => (
+		<Feature key={`feature-${feature.title}-${index}`} {...feature} />
+	));
 }
