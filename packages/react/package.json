@@ -5,6 +5,8 @@
 	"publishConfig": {
 		"access": "public"
 	},
+	"sideEffects": false,
+	"files": ["dist"],
 	"main": "dist/index.js",
 	"module": "dist/index.mjs",
 	"types": "dist/index.d.ts",
@@ -15,8 +17,6 @@
 			"types": "./dist/index.d.ts"
 		}
 	},
-	"sideEffects": false,
-	"files": ["dist"],
 	"scripts": {
 		"build": "tsup",
 		"dev": "tsup --watch",
