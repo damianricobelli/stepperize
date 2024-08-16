@@ -10,36 +10,54 @@ The `useStepper` hook provides access to the stepper actions and state within a 
 
 ## Usage
 
-Here is an example of how to use the `useStepper` hook:
+Let's look at an example where we create the step actions using the `useStepper` hook.
 
 ```tsx
-import { Stepper, StepperStep, createSteps, useStepper } from "@stepperize/react";
+import * as React from "react";
 
-const steps = createSteps([
-  { id: "step-1", title: "Step 1", description: "Description for step 1" },
-  { id: "step-2", title: "Step 2", description: "Description for step 2" },
-  { id: "step-3", title: "Step 3", description: "Description for step 3" },
-] as const);
+import { useStepper } from "@stepperize/react";
+import { Button } from "@components/ui/button";
 
-const MyStepperComponent = () => {
-  return (
-    <Stepper steps={steps}>
-      <StepperContent />
-    </Stepper>
-  );
-};
-
-const StepperContent = () => {
-  const { steps, ...rest } = useStepper();
+export const StepperActions = () => {
+  const {
+    isLastStep,
+    isOptionalStep,
+    goToNextStep,
+    goToPrevStep,
+    canGoToNextStep,
+    canGoToPrevStep,
+    reset,
+    isStepperFinished,
+  } = useStepper();
 
   return (
-    <div>
-      {steps.map((step, index) => (
-        <StepperStep key={step.id} index={index}>
-          {/* Step content */}
-        </StepperStep>
-      ))}
-    </div>
+    <React.Fragment>
+      {isStepperFinished && (
+        <div className="h-40 w-full flex items-center justify-center border bg-secondary text-primary rounded-md">
+          <h1 className="text-xl">Woohoo! All steps completed! 🎉</h1>
+        </div>
+      )}
+      <div className="w-full flex justify-end gap-2">
+        {isStepperFinished ? (
+          <Button type="button" onClick={reset}>
+            Reset
+          </Button>
+        ) : (
+          <>
+            <Button
+              variant="ghost"
+              disabled={!canGoToPrevStep}
+              onClick={goToPrevStep}
+            >
+              Prev
+            </Button>
+            <Button disabled={!canGoToNextStep} onClick={goToNextStep}>
+              {isLastStep ? "Finish" : isOptionalStep ? "Skip" : "Next"}
+            </Button>
+          </>
+        )}
+      </div>
+    </React.Fragment>
   );
 };
 ```
@@ -58,6 +76,50 @@ type Steps = typeof steps;
 const { steps, ...rest } = useStepper<Steps>(); 
 ```
 
+In the case of useStepper, the `steps` array is of type `ExtendedStep[]` which extends `Step` with attributes `data-` and `aria-`. 
+These objects are very useful to get free keyboard navigation and accessibility and to implement them in buttons or anchor tags.
+
+For example:
+
+```tsx
+const StepperContent = () => {
+	const { steps } = useStepper<Steps>();
+
+	const lastStepIndex = steps.length - 1;
+
+	return (
+    <nav
+      role="tablist"
+      aria-orientation="vertical"
+      className="flex flex-col gap-4"
+    >
+      <ol className="w-full flex flex-col">
+        {steps.map((step, index) => (
+          <div key={step.id} {...step?.dataAttr} className="group">
+            <li className="flex gap-2 items-center">
+              <a {...step?.triggerProps} className={classForStepTrigger()}>
+                <span>Step {index + 1}</span>
+              </a>
+              <span>{step.title}</span>
+            </li>
+            <div className="flex group-data-[last=false]:my-2 group-data-[last=true]:group-data-[completed=false]:mt-4">
+              {index !== lastStepIndex && (
+                <div className="ms-5 min-h-4">
+                  <hr className="border border-border group-data-[completed=true]:border-primary h-full" />
+                </div>
+              )}
+              <StepperStep key={step.id} index={index}>
+                <h1 className="text-xl">{step.title}</h1>
+              </StepperStep>
+            </div>
+          </div>
+        ))}
+      </ol>
+    </nav>
+	);
+};
+```
+
 ## API Reference
 
 The `useStepper` hook returns an object with the following properties:
@@ -65,36 +127,88 @@ The `useStepper` hook returns an object with the following properties:
 <PropsTable
   data={[
     {
-      name: "steps",
-      typeSimple: "ExtendedStep[]",
-      description: "An array of extended step objects with additional properties for rendering and interaction.",
+      name: "goToNextStep",
+      typeSimple: "() => void",
+      description: "Allow to go to the next step",
+    },
+    {
+      name: "goToPrevStep",
+      typeSimple: "() => void",
+      description: "Allow to go to the previous step",
+    },
+    {
+      name: "reset",
+      typeSimple: "() => void",
+      description: "Reset the stepper to the first step or initial step",
+    },
+    {
+      name: "canGoToNextStep",
+      typeSimple: "boolean",
+      description: "Check if the stepper can go to the next step",
+    },
+    {
+      name: "canGoToPrevStep",
+      typeSimple: "boolean",
+      description: "Check if the stepper can go to the previous step",
     },
     {
       name: "setStep",
-      typeSimple: "(stepId: string) => void",
-      description: "Function to set the current active step by its ID.",
+      typeSimple: "(step: string) => void",
+      description: "Set the current active step",
+    },
+    {
+      name: "currentActiveStep",
+      typeSimple: "Step<string>",
+      description: "The current active step",
     },
     {
       name: "currentActiveStepIndex",
       typeSimple: "number",
-      description: "The index of the current active step.",
+      description: "The index of the current active step",
+    },
+    {
+      name: "steps",
+      typeSimple: "ExtendedStep[]",
+      description: "The array of steps",
     },
     {
       name: "isStepperFinished",
       typeSimple: "boolean",
-      description: "Indicates whether the stepper has completed all steps.",
+      description: "Check if the stepper is finished",
+    },
+    {
+      name: "isLastStep",
+      typeSimple: "boolean",
+      description: "Check if the current step is the last step",
+    },
+    {
+      name: "isOptionalStep",
+      typeSimple: "boolean",
+      description: "Check if the current step is an optional step",
     },
     {
       name: "state",
       typeSimple: `"loading" | "error" | "idle"`,
-      description: "The current state of the stepper.",
+      description: "The state of the stepper",
+    },
+    {
+      name: "setState",
+      typeSimple: "(state: 'loading' | 'error' | 'idle') => void",
+      description: "Set the state of the stepper",
+    },
+    {
+      name: "metadata",
+      typeSimple: "Record<string, any>",
+      description: "The metadata of the stepper. It can be used to store data between steps",
+    },
+    {
+      name: "onChangeMetadata",
+      typeSimple: "(data: Record<string, any>) => void",
+      description: "Callback to update the metadata",
     },
   ]}
 />
-
 ### ExtendedStep
-
-Each step in the `steps` array is an `ExtendedStep` object with the following properties:
 
 <PropsTable
   data={[

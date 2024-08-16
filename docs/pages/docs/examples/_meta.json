@@ -1,10 +1,5 @@
 {
 	"basic": "Basic",
-	"clickable": "Clickable step",
-	"orientation": "Orientation",
-	"optional": "Optional steps",
-	"expandable": "Expandable steps",
-	"initial-step": "Initial step",
 	"custom-icons": "Custom icons",
 	"states": "States",
 	"responsive": "Responsive",
