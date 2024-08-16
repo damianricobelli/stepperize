@@ -8,8 +8,8 @@
 		"clean": "turbo run clean && rm -rf node_modules .pnpm-store .turbo",
 		"format-and-lint": "biome check .",
 		"format-and-lint:fix": "biome check . --write",
-		"version-packages": "pnpm changeset version",
-		"release": "pnpm changeset publish"
+		"version": "changeset version",
+		"release": "changeset publish"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "1.8.3",

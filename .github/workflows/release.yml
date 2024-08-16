@@ -4,17 +4,17 @@ on:
   push:
     branches:
       - main
-    tags:
-      - 'v*.*.*'
-    paths:
-      - 'packages/react/**'
 
 concurrency: ${{ github.workflow }}-${{ github.ref }}
 
+permissions: {}
 jobs:
-  publish:
+  release:
+    permissions:
+      contents: write 
+      issues: write     
+      pull-requests: write  
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -44,21 +44,13 @@ jobs:
         run: pnpm build
         working-directory: packages/react
 
-      - name: Set up npm token
-        run: echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
-
-      - name: Bump version with Changesets
-        run: pnpm version-packages
-
-      - name: Commit the version bump
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add .
-          git commit -m "ci: bump version [skip ci]"
-          git push origin main
-
-      - name: Publish to npm
+      - name: Create Release Pull Request or Publish to npm
+        uses: changesets/action@v1
+        with:
+          publish: pnpm release
+          version: pnpm version
+          commit: "chore: new release"
+          title: "chore: new release candidate"
         env:
+          GH_ACTION_TOKEN: ${{ secrets.GH_ACTION_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: pnpm release
