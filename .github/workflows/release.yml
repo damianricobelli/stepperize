@@ -52,5 +52,5 @@ jobs:
           commit: "chore: new release"
           title: "chore: new release candidate"
         env:
-          GH_ACTION_TOKEN: ${{ secrets.GH_ACTION_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GH_ACTION_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
