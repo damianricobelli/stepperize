@@ -1,11 +1,16 @@
 {
-  "$schema": "https://unpkg.com/@changesets/config@3.0.2/schema.json",
-  "changelog": "@changesets/changelog-github",
-  "commit": false,
-  "fixed": [],
-  "linked": [],
-  "access": "restricted",
-  "baseBranch": "main",
-  "updateInternalDependencies": "patch",
-  "ignore": []
+	"$schema": "https://unpkg.com/@changesets/config@3.0.2/schema.json",
+	"changelog": [
+		"@changesets/changelog-github",
+		{
+			"repo": "damianricobelli/stepperize"
+		}
+	],
+	"commit": false,
+	"fixed": [],
+	"linked": [],
+	"access": "restricted",
+	"baseBranch": "main",
+	"updateInternalDependencies": "patch",
+	"ignore": []
 }
