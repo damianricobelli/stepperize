@@ -48,7 +48,6 @@ export type StepperContextType<
 	goToStep: (id: Steps[number]["id"]) => void;
 	getStepById: (id: Steps[number]["id"]) => Step;
 	reset: () => void;
-	stepsCount: number;
 	when: (id: Steps[number]["id"]) => {
 		render: (
 			fn: (step: StepWithAttr<Step>) => React.ReactNode,
@@ -65,5 +64,13 @@ export type StepperProps<
 	expandable?: boolean;
 	metadata?: Metadata;
 	onChangeMetadata?: (metadata: Metadata) => void;
+	onBeforeStepChange?: (
+		currentStep: Steps[number],
+		nextStep: Steps[number],
+	) => boolean;
+	onAfterStepChange?: (
+		currentStep: Steps[number],
+		nextStep: Steps[number],
+	) => void;
 	children: React.ReactNode;
 };

@@ -16,6 +16,8 @@ export const Stepper = <
 	expandable = false,
 	metadata,
 	onChangeMetadata,
+	onBeforeStepChange,
+	onAfterStepChange,
 	children,
 }: StepperProps<Steps, Metadata>) => {
 	const initialCounter = React.useMemo(
@@ -29,27 +31,42 @@ export const Stepper = <
 	const isLastStep = counter === steps.length - 1;
 	const isFirstStep = counter === 0;
 
-	const stepsCount = steps.length;
+	function changeStep(newCounter: number) {
+		const nextStep = steps[newCounter];
+
+		if (onBeforeStepChange) {
+			const result = onBeforeStepChange(currentStep, nextStep);
+			if (result === false) {
+				return;
+			}
+		}
+
+		setCounter(newCounter);
+
+		if (onAfterStepChange) {
+			onAfterStepChange(currentStep, nextStep);
+		}
+	}
 
 	function goToNextStep() {
 		if (!isLastStep) {
-			setCounter((counter) => counter + 1);
+			changeStep(counter + 1);
 		}
 	}
 
 	function goToPrevStep() {
 		if (!isFirstStep) {
-			setCounter((counter) => counter - 1);
+			changeStep(counter - 1);
 		}
 	}
 
 	function goToStep(id: Step["id"]) {
 		const index = steps.findIndex((step) => step.id === id);
-		setCounter(index);
+		changeStep(index);
 	}
 
 	function reset() {
-		setCounter(initialCounter);
+		changeStep(initialCounter);
 	}
 
 	function getStepById(id: Step["id"]) {
@@ -64,7 +81,7 @@ export const Stepper = <
 				"data-step": step.id,
 				"data-optional": step.isOptional ?? false,
 				"data-disabled": step.isDisabled ?? false,
-				"data-completed": counter > steps.findIndex(s => s.id === id),
+				"data-completed": counter > steps.findIndex((s) => s.id === id),
 				"data-active": isActive,
 				"data-last": isLastStep,
 			},
@@ -76,7 +93,7 @@ export const Stepper = <
 				"aria-label": step.title ?? step.id,
 				"aria-current": isActive ? "step" : undefined,
 				"aria-posinset": counter + 1,
-				"aria-setsize": stepsCount,
+				"aria-setsize": steps.length,
 				"aria-labelledby": `${step.id}-label`,
 				"aria-describedby": step.description ?? step.id,
 				"aria-expanded": expandable,
@@ -114,7 +131,6 @@ export const Stepper = <
 				goToStep,
 				getStepById,
 				reset,
-				stepsCount,
 				when,
 			}}
 		>

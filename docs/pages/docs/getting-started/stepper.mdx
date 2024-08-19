@@ -71,6 +71,18 @@ These are the props that can be passed to the `Stepper` component:
       description: "Function to be called when metadata changes.",
     },
     {
+      name: "onBeforeStepChange",
+      type: "(currentStep: Step, nextStep: Step) => boolean",
+      typeSimple: "function",
+      description: "Function to be called before the step changes.",
+    },
+    {
+      name: "onAfterStepChange",
+      type: "(currentStep: Step, nextStep: Step) => void",
+      typeSimple: "function",
+      description: "Function to be called after the step changes.",
+    },
+    {
       name: "children",
       typeSimple: "React.ReactNode",
       description: "The content to be rendered inside the stepper.",
