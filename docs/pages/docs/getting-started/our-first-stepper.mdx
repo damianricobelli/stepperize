@@ -2,8 +2,8 @@
 title: Our first stepper
 ---
 
-import { Steps } from 'nextra/components'
-import { MyFirstStepper } from '../../../examples/first-stepper'
+import { Steps } from 'nextra/components';
+import { MyFirstStepper } from '../../../examples/first-stepper';
 
 # Creating our first stepper
 
@@ -13,97 +13,51 @@ If you haven't read the previous sections, I recommend you to read them to bette
 
 - [Installation](./installation.mdx)
 - [Creating steps](./creating-steps.mdx)
-- [Stepper](./stepper.mdx)
 - [useStepper](./use-stepper.mdx)
+- [Scoped stepper](./scoped-stepper.mdx)
 
 ## Example 
 
-<Steps>
-### Create the steps
- 
 ```tsx
-import { defineSteps } from "@stepperize/react";
+import { defineStepper } from "@stepperize/react"
 
-const steps = defineSteps(
-  { id: "first" },
-  { id: "second" },
-  { id: "third" },
-  { id: "last" },
-);
-
-type Steps = typeof steps;
-```
- 
-### Pass the steps to the Stepper component
- 
-```tsx {5}
-import { Stepper } from "@stepperize/react";
+const { useStepper } = defineStepper(
+	{ id: "first" },
+	{ id: "second" },
+	{ id: "last" },
+)
 
 const MyFirstStepper = () => {
-  return (
-    <Stepper steps={steps}>
-      <MySteps />
-    </Stepper>
-  );
-};
-```
-
-### Render the steps
-
-```tsx
-import { useStepper } from "@stepperize/react";
-
-const MySteps = () => {
-	const {
-		when,
-		goToNextStep,
-		goToPrevStep,
-		isLastStep,
-		reset,
-		isFirstStep,
-		currentStep,
-	} = useStepper<Steps>();
+	const stepper = useStepper()
 
 	return (
-		<div className="flex flex-col gap-4 bg-gray-3 p-4 my-4 rounded-md">
-			{when("first").render((step) => (
-				<p>This is the {step.id}</p>
+		<main>
+			<h1>Steps</h1>
+
+			{stepper.when("first", (step) => (
+				<p>This is the {step.id} step. So it begins.</p>
 			))}
 
-			{when("second").render((step) => (
-				<p>This is the {step.id}</p>
+			{stepper.when("second", (step) => (
+				<p>This is the {step.id} step.</p>
 			))}
 
-			{when("third").render((step) => (
-				<p>This is the {step.id}</p>
+			{stepper.when("last", (step) => (
+				<p>This is the {step.id} step. So it ends.</p>
 			))}
 
-			{when("last").render(() => (
-				<p>You have reached the end of the stepper</p>
-			))}
+			<button type="button" onClick={stepper.goToNextStep}>
+				{stepper.when("last", () => "Start over", () => "Next")}
+			</button>
+		</main>
+	)
 
-			{!isLastStep ? (
-				<div className="flex items-center gap-2">
-					<Button onClick={goToPrevStep} disabled={isFirstStep}>
-						Previous
-					</Button>
-					<Button onClick={goToNextStep}>
-						{currentStep.id === "third" ? "Finish" : "Next"}
-					</Button>
-				</div>
-			) : (
-				<div className="flex items-center gap-2">
-					<Button onClick={reset}>Reset</Button>
-				</div>
-			)}
-		</div>
-	);
-};
+	return null
+}
 ``` 
 
 ### Result
+
 <div className="mt-6">
   <MyFirstStepper />
 </div>
-
-</Steps>

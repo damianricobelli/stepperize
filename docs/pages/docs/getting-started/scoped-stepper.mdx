@@ -1,0 +1,67 @@
+---
+title: Scoped Stepper
+---
+
+import { PropsTable } from "../../../components/props-table";
+
+# Scoped Stepper Component
+
+The `Scoped` component is a versatile and customizable component that allows you to create step-based workflows in your React application
+
+Internally it works with the `Context` API so we can use the `useStepper` hook in any child component.
+
+## Usage
+
+Here is an example of how to use the `Scoped` component:
+
+```tsx
+import { defineStepper } from '@stepperize/react'
+
+const Stepper = defineStepper(
+	{ id: 'step-1' },
+	{ id: 'step-2' },
+	{ id: 'step-3' },
+)
+
+const MyApp = () => {
+	return (
+		<Stepper.Scoped>
+			<MyHeader />
+			<MyContent />
+		</Stepper.Scoped>
+	)
+}
+
+const MyHeader = () => {
+	// synced with stepper from MyContent
+	const stepper = useStepper()
+}
+
+const MyContent = () => {
+	// synced with stepper from MyHeader
+	const stepper = useStepper()
+}
+```
+
+## API Reference
+
+### Stepper Scoped Props
+
+These are the props that can be passed to the `Stepper` component:
+
+<PropsTable
+	data={[
+		{
+			name: "initialStep",
+			type: "string",
+			typeSimple: "string",
+			description: "The ID of the initial step to display.",
+		},
+		{
+			name: "children",
+			typeSimple: "React.ReactNode",
+			description: "The content to be rendered inside the stepper.",
+			required: true,
+		},
+	]}
+/>

@@ -14,26 +14,20 @@ In order to create our steps we need to import the `defineSteps` helper from the
 ### Import the helper
  
 ```tsx
-import { defineSteps } from "@stepperize/react";
+import { defineStepper } from "@stepperize/react"
 ```
  
 ### Create the steps
  
 ```tsx {8}
-const steps = defineSteps(
+const Stepper = defineStepper(
   { id: "step-1", title: "Label 1", description: "Description 1" },
   { id: "step-2", title: "Label 2", description: "Description 2" },
   { id: "step-3", title: "Label 3", description: "Description 3" },
   { id: "step-4", title: "Label 4", description: "Description 4" },
-);
-
-type Steps = typeof steps;
+)
 ```
 </Steps>
 
 This value will be the one we will use to identify each step in the stepper and we will pass it to the 
 Stepper component to provide us with all the logic we need to build our Stepper.
-
-<Callout type="info">
-  If you notice, we are using the `typeof` operator to get the type of the steps. This type can be used with the `useStepper` hook to provide us with the correct type safety.
-</Callout>
