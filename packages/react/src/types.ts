@@ -34,7 +34,7 @@ export type StepWithAttr<T extends Step> = T & {
 };
 
 export type StepperContextType<
-	Steps extends readonly Step[],
+	Steps extends Step[],
 	Metadata extends Record<string, any>,
 > = {
 	steps: Steps;
@@ -46,17 +46,17 @@ export type StepperContextType<
 	goToNextStep: () => void;
 	goToPrevStep: () => void;
 	goToStep: (id: Steps[number]["id"]) => void;
-	getStepById: (id: Steps[number]["id"]) => Step;
+	getStepById: <Id extends Util.Ids<Steps>>(id: Id) => Util.StepById<Id, Steps>;
 	reset: () => void;
-	when: (id: Steps[number]["id"]) => {
+	when: <Id extends Util.Ids<Steps>>(id: Id) => {
 		render: (
-			fn: (step: StepWithAttr<Step>) => React.ReactNode,
-		) => React.ReactNode | null;
+			fn: (step: StepWithAttr<Util.StepById<Id, Steps>>) => React.ReactNode,
+		) => React.ReactNode;
 	};
 };
 
 export type StepperProps<
-	Steps extends readonly Step[],
+	Steps extends Step[],
 	Metadata extends Record<string, any>,
 > = {
 	steps: Steps;
@@ -75,3 +75,11 @@ export type StepperProps<
 	) => void | Promise<void>;
 	children: React.ReactNode;
 };
+
+export namespace Util {
+	/** Returns a union of possible IDs from the given Steps. */
+	export type Ids<Steps extends Step[]> = Steps[number]['id']
+
+	/** Returns a Step with the given Id from the given Steps. */
+	export type StepById<Id extends Steps[number]['id'], Steps extends Step[]> = Extract<Steps, { id: Id }>
+}
