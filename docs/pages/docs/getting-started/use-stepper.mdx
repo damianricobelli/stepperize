@@ -6,13 +6,12 @@ import { PropsTable } from "../../../components/props-table";
 
 # useStepper Hook
 
-The `useStepper` hook provides access to the stepper actions within a `Stepper` to be able to interact with the stepper and create our own custom logic.
+As we saw in the previous section, the `useStepper` hook provides access to the actions needed to interact with the stepper.
+It can be used with or without the [`Scoped`](./scoped-stepper.mdx) component, but in this case it will be used without Scoped.
 
-In the [API Reference](#api-reference) section you can find the full list of properties you can use.
+If you want to know how to use the stepper with the `Scoped` component, you can read the section [Scoped Stepper](./scoped-stepper.mdx).
 
-One of the most interesting properties of the hook is the `when` property that allows you to render a component when the stepper is in a specific step or when the stepper has finished.
-
-For example:
+## Usage
 
 ```tsx
 import { defineStepper } from "@stepperize/react"
@@ -34,9 +33,10 @@ const MyStepperComponent = () => {
 }
 ```
 
-As you can see, you can render a component when the stepper is in a specific step through the parameter that receives the `when` function followed by the `render` method.
+### When utility
 
-You can see a complete example [here](our-first-stepper.mdx).
+One of the most interesting properties of the hook is the `when` property that allows you to render a component when the stepper is in a specific step.
+Also, you can use the `when` with the third parameter to render a component when the step `is not` in a specific step.
 
 ## API Reference
 
@@ -85,7 +85,7 @@ The `useStepper` hook returns an object with the following properties:
     },
     {
       name: "when",
-      type: "(id: string, fn: (step: Step) => React.ReactNode): React.ReactNode",
+      type: "(id: string, whenFn: (step: Step) => React.ReactNode, elseFn: (step: Step) => React.ReactNode): React.ReactNode",
       typeSimple: "function",
       description: "If you want to render a step, you can use the `when` function. It takes a step ID and returns an object with a `render` method, allowing you to render the step when it matches the given ID.",
     },

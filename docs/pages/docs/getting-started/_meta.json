@@ -1,8 +1,7 @@
 {
 	"installation": "Installation",
-	"creating-steps": "Creating steps",
+	"define-stepper": "Define Stepper",
 	"use-stepper": "useStepper()",
 	"scoped-stepper": "Scoped stepper",
-	"our-first-stepper": "Our first stepper",
-	"our-scoped-stepper": "Our scoped stepper"
+	"our-first-stepper": "Our first stepper"
 }

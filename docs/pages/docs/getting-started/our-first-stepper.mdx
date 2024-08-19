@@ -2,8 +2,10 @@
 title: Our first stepper
 ---
 
-import { Steps } from 'nextra/components';
-import { MyFirstStepper } from '../../../examples/first-stepper';
+import { Steps } from "nextra/components";
+import { MyFirstStepper } from "../../../examples/first-stepper";
+import { MyScopedStepper } from "../../../examples/scoped-stepper";
+import { MyMultiScopedStepper } from "../../../examples/multi-scoped-stepper";
 
 # Creating our first stepper
 
@@ -12,64 +14,275 @@ Here you can see a simple example of how to create a stepper using everything yo
 If you haven't read the previous sections, I recommend you to read them to better understand this example:
 
 - [Installation](./installation.mdx)
-- [Creating steps](./creating-steps.mdx)
+- [Define Stepper](./define-stepper.mdx)
 - [useStepper](./use-stepper.mdx)
 - [Scoped stepper](./scoped-stepper.mdx)
 
-## Example 
-
-```tsx
-import { defineStepper } from "@stepperize/react"
-
-const { useStepper } = defineStepper(
-	{ id: "first" },
-	{ id: "second" },
-	{ id: "last" },
-)
-
-const MyFirstStepper = () => {
-	const stepper = useStepper()
-
-	return (
-		<main>
-			{stepper.when("first", (step) => (
-				<p>This is the {step.title} step.</p>
-			))}
-
-			{stepper.when("second", (step) => (
-				<p>This is the {step.title} step.</p>
-			))}
-
-			{stepper.when("third", (step) => (
-				<p>This is the {step.title} step.</p>
-			))}
-
-			{stepper.when("last", (step) => (
-				<p>You have reached the {step.title} step.</p>
-			))}
-
-			{!stepper.isLastStep ? (
-				<div className="flex items-center gap-2">
-					<Button onClick={stepper.goToPrevStep} disabled={stepper.isFirstStep}>
-						Previous
-					</Button>
-
-					<Button onClick={stepper.goToNextStep}>
-						{stepper.when("third", () => "Finish", () => "Next")}
-					</Button>
-				</div>
-			) : (
-				<div className="flex items-center gap-2">
-					<Button onClick={stepper.reset}>Reset</Button>
-				</div>
-			)}
-		</main>
-	)
-}
-``` 
+## Without Scoped
 
 ### Result
 
 <div className="mt-6">
   <MyFirstStepper />
 </div>
+
+### Code
+
+```tsx
+import { defineStepper } from "@stepperize/react";
+
+const { useStepper } = defineStepper(
+  { id: "first" },
+  { id: "second" },
+  { id: "last" }
+);
+
+const MyFirstStepper = () => {
+  const stepper = useStepper();
+
+  return (
+    <div className="flex flex-col gap-4 bg-gray-3 p-4 my-4 rounded-md">
+      {stepper.when("first", (step) => (
+        <p>This is the {step.title} step.</p>
+      ))}
+
+      {stepper.when("second", (step) => (
+        <p>This is the {step.title} step.</p>
+      ))}
+
+      {stepper.when("third", (step) => (
+        <p>This is the {step.title} step.</p>
+      ))}
+
+      {stepper.when("last", (step) => (
+        <p>You have reached the {step.title} step.</p>
+      ))}
+
+      {!stepper.isLastStep ? (
+        <div className="flex items-center gap-2">
+          <Button onClick={stepper.goToPrevStep} disabled={stepper.isFirstStep}>
+            Previous
+          </Button>
+
+          <Button onClick={stepper.goToNextStep}>
+            {stepper.when(
+              "third",
+              () => "Finish",
+              () => "Next"
+            )}
+          </Button>
+        </div>
+      ) : (
+        <div className="flex items-center gap-2">
+          <Button onClick={stepper.reset}>Reset</Button>
+        </div>
+      )}
+    </div>
+  );
+};
+```
+
+## With Scoped
+
+### Result
+
+<div className="mt-6">
+  <MyScopedStepper />
+</div>
+
+### Code
+
+```tsx
+import { defineStepper } from "@stepperize/react";
+
+const { useStepper, Scoped } = defineStepper(
+  { id: "first", title: "First" },
+  { id: "second", title: "Second" },
+  { id: "third", title: "Third" },
+  { id: "last", title: "Last" }
+);
+
+export const MyScopedStepper = () => {
+  return (
+    <Scoped>
+      <MySteps />
+      <MyActions />
+    </Scoped>
+  );
+};
+
+const MySteps = () => {
+  const stepper = useStepper();
+
+  return (
+    <div className="flex flex-col gap-4 bg-gray-3 p-4 my-4 rounded-md">
+      {stepper.when("first", (step) => (
+        <p>This is the {step.id} step. So it begins.</p>
+      ))}
+
+      {stepper.when("second", (step) => (
+        <p>This is the {step.id} step.</p>
+      ))}
+
+      {stepper.when("third", (step) => (
+        <p>This is the {step.title} step.</p>
+      ))}
+
+      {stepper.when("last", (step) => (
+        <p>This is the {step.id} step. So it ends.</p>
+      ))}
+    </div>
+  );
+};
+
+const MyActions = () => {
+  const stepper = useStepper();
+
+  return !stepper.isLastStep ? (
+    <div className="flex items-center gap-2">
+      <Button onClick={stepper.goToPrevStep} disabled={stepper.isFirstStep}>
+        Previous
+      </Button>
+
+      <Button onClick={stepper.goToNextStep}>
+        {stepper.when(
+          "third",
+          () => "Finish",
+          () => "Next"
+        )}
+      </Button>
+    </div>
+  ) : (
+    <div className="flex items-center gap-2">
+      <Button onClick={stepper.reset}>Reset</Button>
+    </div>
+  );
+};
+```
+
+## Multiple Scoped
+
+### Result
+
+<div className="mt-6">
+  <MyMultiScopedStepper />
+</div>
+
+### Code
+
+```tsx
+const GlobalStepper = defineStepper(
+	{ id: "first", title: "First" },
+	{ id: "second", title: "Second" },
+	{ id: "last", title: "Last" },
+);
+
+const LocalStepper = defineStepper(
+	{ id: "first", title: "First" },
+	{ id: "second", title: "Second" },
+	{ id: "last", title: "Last" },
+);
+
+export const MyMultiScopedStepper = () => {
+	return (
+		<GlobalStepper.Scoped>
+			<MySteps />
+			<MyActions />
+		</GlobalStepper.Scoped>
+	);
+};
+
+const MySteps = () => {
+	const stepper = GlobalStepper.useStepper();
+
+	return (
+		<div className="flex flex-col gap-4 bg-gray-3 p-4 my-4 rounded-md">
+			{stepper.when("first", (step) => (
+				<p>This is the global {step.id} step. So it begins.</p>
+			))}
+
+			<MyLocalStepper />
+
+			{stepper.when("last", (step) => (
+				<p>This is the {step.id} step. So it ends.</p>
+			))}
+		</div>
+	);
+};
+
+const MyLocalStepper = () => {
+	const globalStepper = GlobalStepper.useStepper();
+	const localStepper = LocalStepper.useStepper();
+
+	return (
+		<>
+			{globalStepper.when("second", (step) => (
+				<div className="flex flex-col gap-4">
+					<p>This is the global {step.id} step.</p>
+					<div className="flex flex-col gap-4 border p-4 rounded-md">
+						{localStepper.when("first", (step) => (
+							<p>This is the local {step.id} step.</p>
+						))}
+						{localStepper.when("second", (step) => (
+							<p>This is the local {step.id} step.</p>
+						))}
+						{localStepper.when("last", (step) => (
+							<p>This is the local {step.id} step.</p>
+						))}
+						<MyLocalActions />
+					</div>
+				</div>
+			))}
+		</>
+	);
+};
+
+const MyActions = () => {
+	const stepper = GlobalStepper.useStepper();
+
+	return !stepper.isLastStep ? (
+		<div className="flex items-center gap-2">
+			<Button onClick={stepper.goToPrevStep} disabled={stepper.isFirstStep}>
+				Previous
+			</Button>
+
+			<Button onClick={stepper.goToNextStep}>
+				{stepper.when(
+					"second",
+					() => "Finish",
+					() => "Next",
+				)}
+			</Button>
+		</div>
+	) : (
+		<div className="flex items-center gap-2">
+			<Button onClick={stepper.reset}>Reset</Button>
+		</div>
+	);
+};
+
+const MyLocalActions = () => {
+	const stepper = LocalStepper.useStepper();
+
+	return !stepper.isLastStep ? (
+		<div className="flex items-center gap-2">
+			<Button onClick={stepper.goToPrevStep} disabled={stepper.isFirstStep}>
+				Previous
+			</Button>
+
+			<Button onClick={stepper.goToNextStep}>
+				{stepper.when(
+					"second",
+					() => "Finish",
+					() => "Next",
+				)}
+			</Button>
+		</div>
+	) : (
+		<div className="flex items-center gap-2">
+			<Button onClick={stepper.reset}>Reset</Button>
+		</div>
+	);
+};
+
+```
