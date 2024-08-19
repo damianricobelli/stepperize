@@ -1,6 +1,6 @@
 {
 	"name": "@stepperize/react",
-	"version": "1.0.1",
+	"version": "1.0.2",
 	"private": false,
 	"publishConfig": {
 		"access": "public"
@@ -11,12 +11,12 @@
 	"module": "dist/index.mjs",
 	"types": "dist/index.d.ts",
 	"exports": {
-	    ".": {
-		  "import": "./dist/index.mjs",
-		  "require": "./dist/index.js",
-		  "types": "./dist/index.d.ts"
+		".": {
+			"import": "./dist/index.mjs",
+			"require": "./dist/index.js",
+			"types": "./dist/index.d.ts"
 		}
-    },
+	},
 	"scripts": {
 		"build": "tsup",
 		"dev": "tsup --watch",
