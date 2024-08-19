@@ -61,16 +61,17 @@ export type StepperProps<
 > = {
 	steps: Steps;
 	initialStep?: Steps[number]["id"];
+	initialState?: "";
 	expandable?: boolean;
 	metadata?: Metadata;
 	onChangeMetadata?: (metadata: Metadata) => void;
 	onBeforeStepChange?: (
 		currentStep: Steps[number],
 		nextStep: Steps[number],
-	) => boolean;
+	) => boolean | Promise<boolean>;
 	onAfterStepChange?: (
 		currentStep: Steps[number],
 		nextStep: Steps[number],
-	) => void;
+	) => void | Promise<void>;
 	children: React.ReactNode;
 };
