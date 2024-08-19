@@ -72,13 +72,13 @@ These are the props that can be passed to the `Stepper` component:
     },
     {
       name: "onBeforeStepChange",
-      type: "(currentStep: Step, nextStep: Step) => boolean",
+      type: "(currentStep: Step, nextStep: Step) => boolean | Promise<boolean>",
       typeSimple: "function",
       description: "Function to be called before the step changes.",
     },
     {
       name: "onAfterStepChange",
-      type: "(currentStep: Step, nextStep: Step) => void",
+      type: "(currentStep: Step, nextStep: Step) => void | Promise<void>",
       typeSimple: "function",
       description: "Function to be called after the step changes.",
     },

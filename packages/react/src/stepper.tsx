@@ -31,11 +31,11 @@ export const Stepper = <
 	const isLastStep = counter === steps.length - 1;
 	const isFirstStep = counter === 0;
 
-	function changeStep(newCounter: number) {
+	async function changeStep(newCounter: number) {
 		const nextStep = steps[newCounter];
 
 		if (onBeforeStepChange) {
-			const result = onBeforeStepChange(currentStep, nextStep);
+			const result = await onBeforeStepChange(currentStep, nextStep);
 			if (result === false) {
 				return;
 			}
@@ -44,7 +44,7 @@ export const Stepper = <
 		setCounter(newCounter);
 
 		if (onAfterStepChange) {
-			onAfterStepChange(currentStep, nextStep);
+			await onAfterStepChange(currentStep, nextStep);
 		}
 	}
 
