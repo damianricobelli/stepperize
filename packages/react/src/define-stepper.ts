@@ -10,12 +10,10 @@ export const defineStepper = <const Steps extends Step[]>(...steps: Steps) => {
 			() => Math.max(steps.findIndex((step) => step.id === initialStep), 0),
 			[initialStep],
 		)
-	
+
 		const [counter, setCounter] = React.useState(initialCounter)
-	
-		const value = React.useRef({}).current as Stepper<Steps>
-	
-		return React.useMemo(() => Object.assign(value, {
+
+		const stepper = React.useMemo(() => ({
 			currentStep: steps[counter],
 			isLastStep: counter === steps.length - 1,
 			isFirstStep: counter === 0,
@@ -25,12 +23,12 @@ export const defineStepper = <const Steps extends Step[]>(...steps: Steps) => {
 				setCounter(index)
 			},
 			goToNextStep() {
-				if (!value.isLastStep) {
+				if (!stepper.isLastStep) {
 					setCounter(counter + 1)
 				}
 			},
 			goToPrevStep() {
-				if (!value.isFirstStep) {
+				if (!stepper.isFirstStep) {
 					setCounter(counter - 1)
 				}
 			},
@@ -47,7 +45,9 @@ export const defineStepper = <const Steps extends Step[]>(...steps: Steps) => {
 						: elseFn?.(steps[counter] as any)
 				)
 			},
-		} as Stepper), [counter, initialCounter, steps])
+		}) as Stepper<Steps>, [counter])
+
+		return stepper
 	}
 
 	return {

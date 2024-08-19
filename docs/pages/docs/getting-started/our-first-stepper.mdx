@@ -32,27 +32,39 @@ const MyFirstStepper = () => {
 
 	return (
 		<main>
-			<h1>Steps</h1>
-
 			{stepper.when("first", (step) => (
-				<p>This is the {step.id} step. So it begins.</p>
+				<p>This is the {step.title} step.</p>
 			))}
 
 			{stepper.when("second", (step) => (
-				<p>This is the {step.id} step.</p>
+				<p>This is the {step.title} step.</p>
+			))}
+
+			{stepper.when("third", (step) => (
+				<p>This is the {step.title} step.</p>
 			))}
 
 			{stepper.when("last", (step) => (
-				<p>This is the {step.id} step. So it ends.</p>
+				<p>You have reached the {step.title} step.</p>
 			))}
 
-			<button type="button" onClick={stepper.goToNextStep}>
-				{stepper.when("last", () => "Start over", () => "Next")}
-			</button>
+			{!stepper.isLastStep ? (
+				<div className="flex items-center gap-2">
+					<Button onClick={stepper.goToPrevStep} disabled={stepper.isFirstStep}>
+						Previous
+					</Button>
+
+					<Button onClick={stepper.goToNextStep}>
+						{stepper.when("third", () => "Finish", () => "Next")}
+					</Button>
+				</div>
+			) : (
+				<div className="flex items-center gap-2">
+					<Button onClick={stepper.reset}>Reset</Button>
+				</div>
+			)}
 		</main>
 	)
-
-	return null
 }
 ``` 
 

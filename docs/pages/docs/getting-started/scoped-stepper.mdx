@@ -15,31 +15,51 @@ Internally it works with the `Context` API so we can use the `useStepper` hook i
 Here is an example of how to use the `Scoped` component:
 
 ```tsx
-import { defineStepper } from '@stepperize/react'
+import { defineStepper } from "@stepperize/react"
 
-const Stepper = defineStepper(
-	{ id: 'step-1' },
-	{ id: 'step-2' },
-	{ id: 'step-3' },
+const { useStepper, Scoped } = defineStepper(
+	{ id: "first", title: "First" },
+	{ id: "second", title: "Second" },
+	{ id: "last", title: "Last" },
 )
 
-const MyApp = () => {
+export const MyScopedStepper = () => {
 	return (
-		<Stepper.Scoped>
-			<MyHeader />
-			<MyContent />
-		</Stepper.Scoped>
+		<Scoped>
+			<MySteps />
+			<MyActions />
+		</Scoped>
 	)
 }
 
-const MyHeader = () => {
-	// synced with stepper from MyContent
+const MySteps = () => {
 	const stepper = useStepper()
+
+	return (
+		<>
+			{stepper.when("first", (step) => (
+				<p>This is the {step.id} step. So it begins.</p>
+			))}
+
+			{stepper.when("second", (step) => (
+				<p>This is the {step.id} step.</p>
+			))}
+
+			{stepper.when("last", (step) => (
+				<p>This is the {step.id} step. So it ends.</p>
+			))}
+		</>
+	)
 }
 
-const MyContent = () => {
-	// synced with stepper from MyHeader
+const MyActions = () => {
 	const stepper = useStepper()
+
+	return (
+		<button type="button" onClick={stepper.isLastStep ? stepper.reset : stepper.goToNextStep}>
+			{stepper.when("last", () => "Reset", () => "Next")}
+		</button>
+	)
 }
 ```
 
