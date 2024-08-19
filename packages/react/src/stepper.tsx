@@ -64,7 +64,7 @@ export const Stepper = <
 				"data-step": step.id,
 				"data-optional": step.isOptional ?? false,
 				"data-disabled": step.isDisabled ?? false,
-				"data-completed": currentStep.id > step.id,
+				"data-completed": counter > steps.findIndex(s => s.id === id),
 				"data-active": isActive,
 				"data-last": isLastStep,
 			},
