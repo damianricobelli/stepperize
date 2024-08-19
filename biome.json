@@ -6,7 +6,7 @@
 			"./.next",
 			"./.changeset",
 			"./.pnpm-store",
-			"./packages/react/dist"
+			"**/dist"
 		]
 	},
 	"organizeImports": {

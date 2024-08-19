@@ -1,13 +1,14 @@
-# Stepperize for React
 
-A React library for creating stepper components with a focus on accessibility and customization.
+# Stepperize for Vue
+
+A Vue library for creating stepper components with a focus on accessibility and customization.
 
 You can read the docs [here](https://stepperize.vercel.app).
 
 ## Installation
 
 ```bash
-npm install @stepperize/react
+npm install @stepperize/vue
 ```
 
 ## Usage

@@ -6,9 +6,7 @@
 		"access": "public"
 	},
 	"sideEffects": false,
-	"files": [
-		"dist"
-	],
+	"files": ["dist"],
 	"main": "dist/index.js",
 	"module": "dist/index.mjs",
 	"types": "dist/index.d.ts",
@@ -25,6 +23,9 @@
 		"lint": "turbo lint",
 		"prepublishOnly": "pnpm run build",
 		"clean": "rm -rf .turbo && rm -rf node_modules dist"
+	},
+	"dependencies": {
+		"@stepperize/core": "workspace:*"
 	},
 	"peerDependencies": {
 		"react": "^18.3.1"

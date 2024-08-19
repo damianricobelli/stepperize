@@ -17,6 +17,9 @@ importers:
       '@changesets/cli':
         specifier: ^2.27.7
         version: 2.27.7
+      tsup:
+        specifier: ^8.2.4
+        version: 8.2.4(jiti@1.21.6)(postcss@8.4.41)(typescript@5.5.4)(yaml@2.5.0)
       turbo:
         specifier: ^2.0.14
         version: 2.0.14
@@ -155,7 +158,13 @@ importers:
         specifier: ^5.5.4
         version: 5.5.4
 
+  packages/core: {}
+
   packages/react:
+    dependencies:
+      '@stepperize/core':
+        specifier: workspace:*
+        version: link:../core
     devDependencies:
       '@types/react':
         specifier: ^18.3.3

@@ -8,4 +8,4 @@ export { Stepper } from "./stepper";
 export { useStepper } from "./context";
 
 // Helpers
-export { defineSteps } from "./helpers";
+export { defineSteps } from "@stepperize/core";

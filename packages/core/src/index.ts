@@ -14,3 +14,5 @@ export const getStepById = <
 		{ id: T }
 	>;
 };
+
+export type * from "./types";

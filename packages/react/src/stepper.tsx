@@ -1,9 +1,9 @@
-import type { Step, StepWithAttr, StepperProps } from "./types";
-
 import * as React from "react";
 
+import type { Step, StepAttr, StepWithAttr } from "@stepperize/core";
+import { getStepById as getStepByIdHelper } from "@stepperize/core";
 import { StepperContext } from "./context";
-import { getStepById as getStepByIdHelper } from "./helpers";
+import type { StepperProps } from "./types";
 
 //#region Stepper
 
@@ -73,7 +73,7 @@ export const Stepper = <
 		return getStepByIdHelper(steps, id);
 	}
 
-	const getAttributesById = (id: Step["id"]) => {
+	const getAttributesById = (id: Step["id"]): StepAttr => {
 		const step = getStepById(id);
 		const isActive = step.id === currentStep.id;
 		return {
