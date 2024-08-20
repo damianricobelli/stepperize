@@ -1,5 +1,16 @@
 # docs
 
+## 1.0.0
+
+### Major Changes
+
+- [#35](https://github.com/damianricobelli/stepperize/pull/35) [`f8b7778`](https://github.com/damianricobelli/stepperize/commit/f8b77782a2a88ef1da46b2074eee0a04342f0624) Thanks [@jonathantneal](https://github.com/jonathantneal)! - Rewire API for maximum extendability
+
+### Patch Changes
+
+- Updated dependencies [[`f8b7778`](https://github.com/damianricobelli/stepperize/commit/f8b77782a2a88ef1da46b2074eee0a04342f0624)]:
+  - @stepperize/react@2.0.0
+
 ## 0.1.3
 
 ### Patch Changes
