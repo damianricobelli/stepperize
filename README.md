@@ -53,4 +53,4 @@ const { Scoped, useStepper, steps } = defineStepper(
 
 ### Next steps
 
-Visit the [documentation](http://localhost:3000/docs/getting-started/use-stepper) to see more details.
+Visit the [documentation](https://stepperize.vercel.app/docs/getting-started/use-stepper) to see more details.
