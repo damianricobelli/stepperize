@@ -1,5 +1,11 @@
 # docs
 
+## 1.0.1
+
+### Patch Changes
+
+- [#37](https://github.com/damianricobelli/stepperize/pull/37) [`75e64db`](https://github.com/damianricobelli/stepperize/commit/75e64db0277fa95e67976ece157bde2b1e0a53de) Thanks [@damianricobelli](https://github.com/damianricobelli)! - docs: improve readme
+
 ## 1.0.0
 
 ### Major Changes
