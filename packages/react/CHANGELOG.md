@@ -1,5 +1,11 @@
 # @stepperize/react
 
+## 3.0.0
+
+### Major Changes
+
+- [#49](https://github.com/damianricobelli/stepperize/pull/49) [`c5d2a2f`](https://github.com/damianricobelli/stepperize/commit/c5d2a2fdf84e0a4a22b44560d4cbd074c1141859) Thanks [@damianricobelli](https://github.com/damianricobelli)! - feature: v3
+
 ## 2.0.0
 
 ### Major Changes
