@@ -21,7 +21,7 @@ import { defineStepper } from "@stepperize/react";
 `defineStepper` is a function that allows us to get a Provider, a hook and the array of steps we are using.
 The only mandatory value for each step is the `id`. Then, we can add whatever we need and this will be typesafe when we use the hook.
 
-```tsx {8}
+```tsx
 const { Scoped, useStepper, steps } = defineStepper(
   { id: "step-1", title: "Label 1", description: "Description 1" },
   { id: "step-2", title: "Label 2", description: "Description 2" },
