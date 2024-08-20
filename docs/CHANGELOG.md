@@ -1,5 +1,11 @@
 # docs
 
+## 1.0.2
+
+### Patch Changes
+
+- [#41](https://github.com/damianricobelli/stepperize/pull/41) [`2ded5ec`](https://github.com/damianricobelli/stepperize/commit/2ded5ec0bd9df49bb0dcff1cdc6da575043fa3ce) Thanks [@none23](https://github.com/none23)! - docs: fix scoped-stepper link in define-stepper.mdx
+
 ## 1.0.1
 
 ### Patch Changes
