@@ -57,7 +57,7 @@ const MyActions = () => {
   return (
     <button
       type="button"
-      onClick={stepper.isLastStep ? stepper.reset : stepper.goToNextStep}
+      onClick={stepper.isLast ? stepper.reset : stepper.next}
     >
       {stepper.when(
         "last",

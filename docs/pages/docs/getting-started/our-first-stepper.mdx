@@ -2,7 +2,7 @@
 title: Our first stepper
 ---
 
-import { Steps } from "nextra/components";
+import { Steps, Callout } from "nextra/components";
 import { MyFirstStepper } from "../../../examples/first-stepper";
 import { MyScopedStepper } from "../../../examples/scoped-stepper";
 import { MyMultiScopedStepper } from "../../../examples/multi-scoped-stepper";
@@ -17,6 +17,10 @@ If you haven't read the previous sections, I recommend you to read them to bette
 - [Define Stepper](./define-stepper.mdx)
 - [useStepper](./use-stepper.mdx)
 - [Scoped stepper](./scoped-stepper.mdx)
+
+<Callout type="info">
+  All the examples below are developed using the `when` method, but you can recreate them without any problems using the `switch` method.
+</Callout>
 
 ## Without Scoped
 
@@ -58,13 +62,13 @@ const MyFirstStepper = () => {
         <p>You have reached the {step.title} step.</p>
       ))}
 
-      {!stepper.isLastStep ? (
+      {!stepper.isLast ? (
         <div className="flex items-center gap-2">
-          <Button onClick={stepper.goToPrevStep} disabled={stepper.isFirstStep}>
+          <Button onClick={stepper.prev} disabled={stepper.isFirst}>
             Previous
           </Button>
 
-          <Button onClick={stepper.goToNextStep}>
+          <Button onClick={stepper.next}>
             {stepper.when(
               "third",
               () => "Finish",
@@ -138,13 +142,13 @@ const MySteps = () => {
 const MyActions = () => {
   const stepper = useStepper();
 
-  return !stepper.isLastStep ? (
+  return !stepper.isLast ? (
     <div className="flex items-center gap-2">
-      <Button onClick={stepper.goToPrevStep} disabled={stepper.isFirstStep}>
+      <Button onClick={stepper.prev} disabled={stepper.isFirst}>
         Previous
       </Button>
 
-      <Button onClick={stepper.goToNextStep}>
+      <Button onClick={stepper.next}>
         {stepper.when(
           "third",
           () => "Finish",
@@ -240,13 +244,13 @@ const MyLocalStepper = () => {
 const MyActions = () => {
 	const stepper = GlobalStepper.useStepper();
 
-	return !stepper.isLastStep ? (
+	return !stepper.isLast ? (
 		<div className="flex items-center gap-2">
-			<Button onClick={stepper.goToPrevStep} disabled={stepper.isFirstStep}>
+			<Button onClick={stepper.prev} disabled={stepper.isFirst}>
 				Previous
 			</Button>
 
-			<Button onClick={stepper.goToNextStep}>
+			<Button onClick={stepper.next}>
 				{stepper.when(
 					"second",
 					() => "Finish",
@@ -264,13 +268,13 @@ const MyActions = () => {
 const MyLocalActions = () => {
 	const stepper = LocalStepper.useStepper();
 
-	return !stepper.isLastStep ? (
+	return !stepper.isLast ? (
 		<div className="flex items-center gap-2">
-			<Button onClick={stepper.goToPrevStep} disabled={stepper.isFirstStep}>
+			<Button onClick={stepper.prev} disabled={stepper.isFirst}>
 				Previous
 			</Button>
 
-			<Button onClick={stepper.goToNextStep}>
+			<Button onClick={stepper.next}>
 				{stepper.when(
 					"second",
 					() => "Finish",
