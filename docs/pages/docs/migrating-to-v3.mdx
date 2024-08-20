@@ -1,0 +1,50 @@
+---
+title: Migrating to v3
+---
+
+# Migrating to v3
+
+Stepperize v2 brings with it a number of naming changes to make the pattern. 
+It also adds a `switch` method that allows to render in a simpler way the components we want for each step.
+
+## Breaking Changes
+
+### Name changes in the values returned by the hook
+
+The values returned by the `useStepper` hook have been renamed to make the pattern more consistent.
+
+- `currentStep` is now `current`.
+- `isFirstStep` is now `isFirst`.
+- `isLastStep` is now `isLast`.
+- `getStepById` is now `get`.
+- `goToNextStep` is now `next`.
+- `goToPrevStep` is now `prev`.
+- `goToStep` is now `goTo`.
+
+## New Features
+
+### New `switch` method
+
+The `switch` method has been added to the `useStepper` hook. This method allows us to render the components we want for each step in a simpler way.
+
+```tsx
+const MySteps = () => {
+  const stepper = useStepper();
+
+  return (
+    <>
+      {stepper.switch({
+        "first": (step) => <p>This is the {step.title} step.</p>,
+        "second": (step) => <p>This is the {step.title} step.</p>,
+        "last": (step) => <p>You have reached the {step.title} step.</p>,
+      })}
+    </>
+  )
+}
+```
+
+### Add `all` property
+
+The `all` property has been added to the object returned by the `useStepper` hook. This property contains all the steps in the stepper.
+
+```tsx

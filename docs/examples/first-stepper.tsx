@@ -1,15 +1,15 @@
-import { Button } from "@/components/ui/button"
-import { defineStepper } from "@stepperize/react"
+import { Button } from "@/components/ui/button";
+import { defineStepper } from "@stepperize/react";
 
 const { useStepper } = defineStepper(
 	{ id: "first", title: "First" },
 	{ id: "second", title: "Second" },
 	{ id: "third", title: "Third" },
 	{ id: "last", title: "Last" },
-)
+);
 
 export const MyFirstStepper = () => {
-	const stepper = useStepper()
+	const stepper = useStepper();
 
 	return (
 		<div className="flex flex-col gap-4 bg-gray-3 p-4 my-4 rounded-md">
@@ -29,14 +29,18 @@ export const MyFirstStepper = () => {
 				<p>You have reached the {step.title} step.</p>
 			))}
 
-			{!stepper.isLastStep ? (
+			{!stepper.isLast ? (
 				<div className="flex items-center gap-2">
-					<Button onClick={stepper.goToPrevStep} disabled={stepper.isFirstStep}>
+					<Button onClick={stepper.prev} disabled={stepper.isFirst}>
 						Previous
 					</Button>
 
-					<Button onClick={stepper.goToNextStep}>
-						{stepper.when("third", () => "Finish", () => "Next")}
+					<Button onClick={stepper.next}>
+						{stepper.when(
+							"third",
+							() => "Finish",
+							() => "Next",
+						)}
 					</Button>
 				</div>
 			) : (
@@ -45,5 +49,5 @@ export const MyFirstStepper = () => {
 				</div>
 			)}
 		</div>
-	)
-}
+	);
+};

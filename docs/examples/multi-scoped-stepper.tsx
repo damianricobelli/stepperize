@@ -70,13 +70,13 @@ const MyLocalStepper = () => {
 const MyActions = () => {
 	const stepper = GlobalStepper.useStepper();
 
-	return !stepper.isLastStep ? (
+	return !stepper.isLast ? (
 		<div className="flex items-center gap-2">
-			<Button onClick={stepper.goToPrevStep} disabled={stepper.isFirstStep}>
+			<Button onClick={stepper.prev} disabled={stepper.isFirst}>
 				Previous
 			</Button>
 
-			<Button onClick={stepper.goToNextStep}>
+			<Button onClick={stepper.next}>
 				{stepper.when(
 					"second",
 					() => "Finish",
@@ -94,13 +94,13 @@ const MyActions = () => {
 const MyLocalActions = () => {
 	const stepper = LocalStepper.useStepper();
 
-	return !stepper.isLastStep ? (
+	return !stepper.isLast ? (
 		<div className="flex items-center gap-2">
-			<Button onClick={stepper.goToPrevStep} disabled={stepper.isFirstStep}>
+			<Button onClick={stepper.prev} disabled={stepper.isFirst}>
 				Previous
 			</Button>
 
-			<Button onClick={stepper.goToNextStep}>
+			<Button onClick={stepper.next}>
 				{stepper.when(
 					"second",
 					() => "Finish",

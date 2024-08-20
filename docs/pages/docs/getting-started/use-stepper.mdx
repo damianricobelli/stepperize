@@ -25,18 +25,99 @@ const { useStepper } = defineStepper(
 const MyStepperComponent = () => {
   const stepper = useStepper()
 
+  // Your component logic here
+}
+```
+
+## How to render content
+
+In Stepperize there are different patterns for rendering components or content within each step.
+
+### when
+
+The `when` function allows to render a component when the stepper is in a specific step.
+
+This function receives 3 parameters:
+
+- The first parameter is the step ID.
+- The second parameter is a function that returns the component to render when the step matches the given ID.
+- The third parameter is a function that returns the component to render when the step **does not** match the given ID.
+
+```ts
+when(id: string, whenFn: (step: Step) => React.ReactNode, elseFn: (step: Step) => React.ReactNode): React.ReactNode
+```
+
+For example:
+
+```tsx
+import { defineStepper } from "@stepperize/react"
+
+const { useStepper } = defineStepper(
+  { id: "first" },
+  { id: "second" },
+  { id: "last" },
+)
+
+const MyStepperComponent = () => {
+  const stepper = useStepper()
+
   return (
-    <p>{
-      stepper.when("last", "Finished!", "Not yet...") // "Finished!" | "Not yet..."
-    }</p>
+    <>
+      {stepper.when("first", (step) => (
+        <p>This is the {step.title} step.</p>
+      ))}
+
+      {stepper.when("second", (step) => (
+        <p>This is the {step.title} step.</p>
+      ))}
+
+      <p>{stepper.when("last", "Finished!", "Not yet...")}</p> // "Finished!" | "Not yet..."
+    </>
   )
 }
 ```
 
-### When utility
-
-One of the most interesting properties of the hook is the `when` property that allows you to render a component when the stepper is in a specific step.
 Also, you can use the `when` with the third parameter to render a component when the step `is not` in a specific step.
+
+### switch
+
+Like `when`, `switch` allows components to be rendered when the step id is matched, 
+but following the `switch` logical control structure.
+
+This function receives an object with the step ID as the key and a function that returns 
+the component to render when the step matches the given ID.
+
+```ts
+switch(steps: { [id: string]: (step: Step) => React.ReactNode }): React.ReactNode
+```
+
+For example:
+
+```tsx
+import { defineStepper } from "@stepperize/react"
+
+const { useStepper } = defineStepper(
+  { id: "first" },
+  { id: "second" },
+  { id: "last" },
+)
+
+const MyStepperComponent = () => {
+  const stepper = useStepper()
+
+  return (
+    <>
+      {stepper.switch({
+        "first": (step) => <p>This is the {step.title} step.</p>,
+        "second": (step) => <p>This is the {step.title} step.</p>,
+        "last": (step) => <p>Finished!</p>,
+      })}
+    </>
+  )
+}
+```
+
+### Through the steps
 
 ## API Reference
 
@@ -45,37 +126,50 @@ The `useStepper` hook returns an object with the following properties:
 <PropsTable
   data={[
     {
-      name: "isLastStep",
+      name: "all",
+      type: "Step[]",
+      typeSimple: "array",
+      description: "All steps in the stepper",
+    },
+    {
+      name: "current",
+      type: "Step",
+      typeSimple: "object",
+      description: "The current active step",
+    },
+    {
+      name: "isLast",
       typeSimple: "boolean",
       description: "Check if the current step is the last step",
     },
     {
-      name: "isFirstStep",
+      name: "isFirst",
       typeSimple: "boolean",
       description: "Check if the current step is the first step",
     },
     {
-      name: "goToNextStep",
+      name: "next",
       type: "() => void",
       typeSimple: "function",
       description: "Allow to go to the next step",
     },
     {
-      name: "goToPrevStep",
+      name: "prev",
       type: "() => void",
       typeSimple: "function",
       description: "Allow to go to the previous step",
     },
     {
-      name: "goToStep",
+      name: "get",
+      type: "(id: string) => Step",
+      typeSimple: "function",
+      description: "Get a step by its ID",
+    },
+    {
+      name: "goTo",
       type: "(id: string) => void",
       typeSimple: "function",
       description: "Set the current active step by ID",
-    },
-    {
-      name: "currentStep",
-      typeSimple: "Step",
-      description: "The current active step",
     },
     {
       name: "reset",
@@ -88,12 +182,6 @@ The `useStepper` hook returns an object with the following properties:
       type: "(id: string, whenFn: (step: Step) => React.ReactNode, elseFn: (step: Step) => React.ReactNode): React.ReactNode",
       typeSimple: "function",
       description: "If you want to render a step, you can use the `when` function. It takes a step ID and returns an object with a `render` method, allowing you to render the step when it matches the given ID.",
-    },
-    {
-      name: "getStepById",
-      type: "(id: string) => Step",
-      typeSimple: "function",
-      description: "Get a step by its ID",
     },
   ]}
 />

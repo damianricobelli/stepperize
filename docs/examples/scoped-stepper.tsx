@@ -46,13 +46,13 @@ const MySteps = () => {
 const MyActions = () => {
 	const stepper = useStepper();
 
-	return !stepper.isLastStep ? (
+	return !stepper.isLast ? (
 		<div className="flex items-center gap-2">
-			<Button onClick={stepper.goToPrevStep} disabled={stepper.isFirstStep}>
+			<Button onClick={stepper.prev} disabled={stepper.isFirst}>
 				Previous
 			</Button>
 
-			<Button onClick={stepper.goToNextStep}>
+			<Button onClick={stepper.next}>
 				{stepper.when(
 					"third",
 					() => "Finish",

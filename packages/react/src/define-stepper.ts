@@ -17,39 +17,46 @@ export const defineStepper = <const Steps extends Step[]>(...steps: Steps) => {
 
 		const [counter, setCounter] = React.useState(initialCounter);
 
-		const stepper = React.useMemo(
-			() =>
-				({
-					currentStep: steps[counter],
-					isLastStep: counter === steps.length - 1,
-					isFirstStep: counter === 0,
-					goToStep(id) {
-						const index = steps.findIndex((step) => step.id === id);
+		const stepper = React.useMemo(() => {
+			const current = steps[counter];
+			const isLast = counter === steps.length - 1;
+			const isFirst = counter === 0;
 
-						setCounter(index);
-					},
-					goToNextStep() {
-						if (!stepper.isLastStep) {
-							setCounter(counter + 1);
-						}
-					},
-					goToPrevStep() {
-						if (!stepper.isFirstStep) {
-							setCounter(counter - 1);
-						}
-					},
-					reset() {
-						setCounter(initialCounter);
-					},
-					getStepById(id) {
-						return steps.find((step) => step.id === id);
-					},
-					when(id, whenFn, elseFn) {
-						return steps[counter].id === id ? whenFn?.(steps[counter] as any) : elseFn?.(steps[counter] as any);
-					},
-				}) as Stepper<Steps>,
-			[counter],
-		);
+			return {
+				all: steps,
+				current,
+				isLast,
+				isFirst,
+				get(id) {
+					return steps.find((step) => step.id === id);
+				},
+				goTo(id) {
+					const index = steps.findIndex((step) => step.id === id);
+
+					setCounter(index);
+				},
+				next() {
+					if (!isLast) {
+						setCounter(counter + 1);
+					}
+				},
+				prev() {
+					if (!isFirst) {
+						setCounter(counter - 1);
+					}
+				},
+				reset() {
+					setCounter(initialCounter);
+				},
+				switch(when) {
+					const whenFn = when[current.id as keyof typeof when];
+					return whenFn?.(current as Get.StepById<typeof steps, (typeof current)["id"]>);
+				},
+				when(id, whenFn, elseFn) {
+					return steps[counter].id === id ? whenFn?.(steps[counter] as any) : elseFn?.(steps[counter] as any);
+				},
+			} as Stepper<Steps>;
+		}, [counter]);
 
 		return stepper;
 	};
