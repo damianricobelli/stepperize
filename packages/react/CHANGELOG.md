@@ -1,5 +1,11 @@
 # @stepperize/react
 
+## 3.0.1
+
+### Patch Changes
+
+- [#51](https://github.com/damianricobelli/stepperize/pull/51) [`1577bfe`](https://github.com/damianricobelli/stepperize/commit/1577bfeb3560e57b2d029d6b41e9ce592600f398) Thanks [@damianricobelli](https://github.com/damianricobelli)! - chore: update README.md
+
 ## 3.0.0
 
 ### Major Changes
