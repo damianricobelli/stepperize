@@ -6,23 +6,37 @@ import { PropsTable } from "../../../components/props-table";
 
 # useStepper Hook
 
-The `useStepper` hook provides access to the stepper actions within a `Stepper` to be able to interact with the stepper and create our own custom logic.
+As we saw in the previous section, the `useStepper` hook provides access to the actions needed to interact with the stepper.
+It can be used with or without the [`Scoped`](./scoped-stepper.mdx) component, but in this case it will be used without Scoped.
 
-In the [API Reference](#api-reference) section you can find the full list of properties you can use.
+If you want to know how to use the stepper with the `Scoped` component, you can read the section [Scoped Stepper](./scoped-stepper.mdx).
 
-One of the most interesting properties of the hook is the `when` property that allows you to render a component when the stepper is in a specific step or when the stepper has finished.
-
-For example:
+## Usage
 
 ```tsx
-const { when } = useStepper();
+import { defineStepper } from "@stepperize/react"
 
-when("first").render(() => <p>This is the first step</p>);
+const { useStepper } = defineStepper(
+  { id: "first" },
+  { id: "second" },
+  { id: "last" },
+)
+
+const MyStepperComponent = () => {
+  const stepper = useStepper()
+
+  return (
+    <p>{
+      stepper.when("last", "Finished!", "Not yet...") // "Finished!" | "Not yet..."
+    }</p>
+  )
+}
 ```
 
-As you can see, you can render a component when the stepper is in a specific step through the parameter that receives the `when` function followed by the `render` method.
+### When utility
 
-You can see a complete example [here](our-first-stepper.mdx).
+One of the most interesting properties of the hook is the `when` property that allows you to render a component when the stepper is in a specific step.
+Also, you can use the `when` with the third parameter to render a component when the step `is not` in a specific step.
 
 ## API Reference
 
@@ -30,11 +44,6 @@ The `useStepper` hook returns an object with the following properties:
 
 <PropsTable
   data={[
-    {
-      name: "steps",
-      typeSimple: "Step[]",
-      description: "The array of steps",
-    },
     {
       name: "isLastStep",
       typeSimple: "boolean",
@@ -75,13 +84,8 @@ The `useStepper` hook returns an object with the following properties:
       description: "Reset the stepper to the first step or initial step",
     },
     {
-      name: "stepsCount",
-      typeSimple: "number",
-      description: "The total number of steps",
-    },
-    {
       name: "when",
-      type: "(id: string) => { render: (fn: (step: StepWithAttr<Step>) => React.ReactNode) => React.ReactNode | null }",
+      type: "(id: string, whenFn: (step: Step) => React.ReactNode, elseFn: (step: Step) => React.ReactNode): React.ReactNode",
       typeSimple: "function",
       description: "If you want to render a step, you can use the `when` function. It takes a step ID and returns an object with a `render` method, allowing you to render the step when it matches the given ID.",
     },
@@ -90,16 +94,6 @@ The `useStepper` hook returns an object with the following properties:
       type: "(id: string) => Step",
       typeSimple: "function",
       description: "Get a step by its ID",
-    },
-    {
-      name: "metadata",
-      typeSimple: "Record<string, any>",
-      description: "The metadata of the stepper. It can be used to store data between steps",
-    },
-    {
-      name: "onChangeMetadata",
-      typeSimple: "(metadata: Record<string, any>) => void",
-      description: "Callback to update the metadata",
     },
   ]}
 />

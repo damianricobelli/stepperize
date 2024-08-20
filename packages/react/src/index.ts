@@ -1,11 +1,5 @@
 // Types
-export type { Step, StepperContextType, StepperProps } from "./types";
+export type { Step, Stepper } from "./types";
 
-// Components
-export { Stepper } from "./stepper";
-
-// Hooks
-export { useStepper } from "./context";
-
-// Helpers
-export { defineSteps } from "./helpers";
+// Define Stepper
+export * from "./define-stepper";

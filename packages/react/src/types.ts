@@ -1,77 +1,30 @@
-type IconType = React.ComponentType<any> | undefined;
+export type Step = { id: string } & Record<string, any>;
 
-export type Step = {
-	id: string;
-	title?: string;
-	description?: string;
-	isOptional?: boolean;
-	isDisabled?: boolean;
-	icon?: IconType;
-};
-
-export type StepWithAttr<T extends Step> = T & {
-	dataAttr: {
-		"data-step": string;
-		"data-disabled": boolean;
-		"data-optional": boolean;
-		"data-completed": boolean;
-		"data-active": boolean;
-		"data-last": boolean;
-	};
-	ariaAttr: {
-		role: string;
-		"aria-disabled": boolean;
-		"aria-selected": boolean;
-		"aria-controls": string;
-		"aria-label": string;
-		"aria-current": string | undefined;
-		"aria-posinset": number;
-		"aria-setsize": number;
-		"aria-labelledby": string;
-		"aria-describedby": string;
-		"aria-expanded": boolean;
-	};
-};
-
-export type StepperContextType<
-	Steps extends readonly Step[],
-	Metadata extends Record<string, any>,
-> = {
+export type Stepper<Steps extends Step[] = Step[]> = {
 	steps: Steps;
-	metadata?: Metadata;
-	onChangeMetadata?: (metadata: Metadata) => void;
 	currentStep: Steps[number];
 	isLastStep: boolean;
 	isFirstStep: boolean;
+
+	getStepById: <Id extends Get.Id<Steps>>(id: Id) => Get.StepById<Steps, Id>;
 	goToNextStep: () => void;
 	goToPrevStep: () => void;
-	goToStep: (id: Steps[number]["id"]) => void;
-	getStepById: (id: Steps[number]["id"]) => Step;
+	goToStep: (id: Get.Id<Steps>) => void;
 	reset: () => void;
-	when: (id: Steps[number]["id"]) => {
-		render: (
-			fn: (step: StepWithAttr<Step>) => React.ReactNode,
-		) => React.ReactNode | null;
-	};
+	when: <Id extends Get.Id<Steps>, R1, R2>(
+		id: Id,
+		whenFn: (step: Get.StepById<Steps, Id>) => R1,
+		elseFn?: (step: Get.StepSansId<Steps, Id>) => R2,
+	) => R1 | R2;
 };
 
-export type StepperProps<
-	Steps extends readonly Step[],
-	Metadata extends Record<string, any>,
-> = {
-	steps: Steps;
-	initialStep?: Steps[number]["id"];
-	initialState?: "";
-	expandable?: boolean;
-	metadata?: Metadata;
-	onChangeMetadata?: (metadata: Metadata) => void;
-	onBeforeStepChange?: (
-		currentStep: Steps[number],
-		nextStep: Steps[number],
-	) => boolean | Promise<boolean>;
-	onAfterStepChange?: (
-		currentStep: Steps[number],
-		nextStep: Steps[number],
-	) => void | Promise<void>;
-	children: React.ReactNode;
-};
+export namespace Get {
+	/** Returns a union of possible IDs from the given Steps. */
+	export type Id<Steps extends Step[] = Step[]> = Steps[number]["id"];
+
+	/** Returns a Step from the given Steps with the given Step Id. */
+	export type StepById<Steps extends Step[], Id extends Get.Id<Steps>> = Extract<Steps[number], { id: Id }>;
+
+	/** Returns any Steps from the given Steps without the given Step Id. */
+	export type StepSansId<Steps extends Step[], Id extends Get.Id<Steps>> = Exclude<Steps[number], { id: Id }>;
+}

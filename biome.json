@@ -12,6 +12,9 @@
 	"organizeImports": {
 		"enabled": true
 	},
+	"formatter": {
+		"lineWidth": 120
+	},
 	"linter": {
 		"enabled": true,
 		"rules": {
@@ -31,7 +34,8 @@
 			},
 			"correctness": {
 				"noUnusedVariables": "error",
-				"noUnusedImports": "error"
+				"noUnusedImports": "error",
+				"useExhaustiveDependencies": "off"
 			}
 		}
 	}

@@ -1,0 +1,128 @@
+---
+title: Scoped Stepper
+---
+
+import { PropsTable } from "../../../components/props-table";
+import { Callout } from "nextra/components";
+
+# Scoped Stepper Component
+
+The `Scoped` component works as a provider and allows us to synchronise the state of steps via useStepper between child components.
+
+## Usage
+
+```tsx
+const Stepper = defineStepper(
+  { id: "first", title: "First" },
+  { id: "second", title: "Second" },
+  { id: "last", title: "Last" }
+);
+
+export const MyScopedStepper = () => {
+  return (
+    <Stepper.Scoped>
+      <MySteps />
+      <MyActions />
+    </Stepper.Scoped>
+  );
+};
+```
+
+Then, in the child component, we can use the `useStepper` hook to get the steps and use them.
+
+```tsx
+const MySteps = () => {
+  const stepper = useStepper();
+
+  return (
+    <>
+      {stepper.when("first", (step) => (
+        <p>This is the {step.id} step. So it begins.</p>
+      ))}
+
+      {stepper.when("second", (step) => (
+        <p>This is the {step.id} step.</p>
+      ))}
+
+      {stepper.when("last", (step) => (
+        <p>This is the {step.id} step. So it ends.</p>
+      ))}
+    </>
+  );
+};
+
+const MyActions = () => {
+  const stepper = useStepper();
+
+  return (
+    <button
+      type="button"
+      onClick={stepper.isLastStep ? stepper.reset : stepper.goToNextStep}
+    >
+      {stepper.when(
+        "last",
+        () => "Reset",
+        () => "Next"
+      )}
+    </button>
+  );
+};
+```
+
+<Callout type="info">
+  The `Scoped` component is only necessary if we want a child component to have
+  access to the steps. Otherwise, we can use the hook directly at the same level
+  where we render our code.
+</Callout>
+
+## API Reference
+
+<PropsTable
+  data={[
+    {
+      name: "initialStep",
+      type: "string",
+      typeSimple: "string",
+      description: "The ID of the initial step to display.",
+    },
+    {
+      name: "children",
+      typeSimple: "React.ReactNode",
+      description: "The content to be rendered inside the stepper.",
+      required: true,
+    },
+  ]}
+/>
+
+## Multiple Scopes
+
+We can have multiple scopes in our application. For example, we can have a global scope and a local scope.
+
+```tsx
+const GlobalStepper = defineStepper(
+  { id: "first", title: "First" },
+  { id: "second", title: "Second" },
+  { id: "last", title: "Last" }
+);
+
+const LocalStepper = defineStepper(
+  { id: "first", title: "First" },
+  { id: "second", title: "Second" },
+  { id: "last", title: "Last" }
+);
+
+export const MyGlobalStepper = () => {
+  return (
+    <GlobalStepper.Scoped>
+      <MySteps />
+      <MyActions />
+      <LocalStepper.Scoped>
+        <MyLocalSteps />
+        <MyLocalActions />
+      </LocalStepper.Scoped>
+    </GlobalStepper.Scoped>
+  );
+};
+```
+
+Finally, we can use the `Global.useStepper` on all children of `GlobalStepper.Scoped` and `Local.useStepper` on all children of `LocalStepper.Scoped`.

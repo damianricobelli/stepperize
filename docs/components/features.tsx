@@ -11,7 +11,7 @@ import {
 const features = [
 	{
 		title: "Lightweight",
-		description: "It's only 5kb in size and has no dependencies.",
+		description: "It's only ~1kb in size and has no dependencies.",
 		icon: Expand,
 	},
 	{

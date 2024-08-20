@@ -1,66 +1,49 @@
-import { Button } from "@/components/ui/button";
-import { Stepper, defineSteps, useStepper } from "@stepperize/react";
+import { Button } from "@/components/ui/button"
+import { defineStepper } from "@stepperize/react"
 
-const steps = defineSteps(
-	{ id: "first" },
-	{ id: "second" },
-	{ id: "third" },
-	{ id: "last" },
-);
-
-type Steps = typeof steps;
+const { useStepper } = defineStepper(
+	{ id: "first", title: "First" },
+	{ id: "second", title: "Second" },
+	{ id: "third", title: "Third" },
+	{ id: "last", title: "Last" },
+)
 
 export const MyFirstStepper = () => {
-	return (
-		<Stepper steps={steps}>
-			<MySteps />
-		</Stepper>
-	);
-};
-
-const MySteps = () => {
-	const {
-		when,
-		goToNextStep,
-		goToPrevStep,
-		isLastStep,
-		reset,
-		isFirstStep,
-		currentStep,
-	} = useStepper<Steps>();
+	const stepper = useStepper()
 
 	return (
 		<div className="flex flex-col gap-4 bg-gray-3 p-4 my-4 rounded-md">
-			{when("first").render((step) => (
-				<p>This is the {step.id}</p>
+			{stepper.when("first", (step) => (
+				<p>This is the {step.title} step.</p>
 			))}
 
-			{when("second").render((step) => (
-				<p>This is the {step.id}</p>
+			{stepper.when("second", (step) => (
+				<p>This is the {step.title} step.</p>
 			))}
 
-			{when("third").render((step) => (
-				<p>This is the {step.id}</p>
+			{stepper.when("third", (step) => (
+				<p>This is the {step.title} step.</p>
 			))}
 
-			{when("last").render(() => (
-				<p>You have reached the end of the stepper</p>
+			{stepper.when("last", (step) => (
+				<p>You have reached the {step.title} step.</p>
 			))}
 
-			{!isLastStep ? (
+			{!stepper.isLastStep ? (
 				<div className="flex items-center gap-2">
-					<Button onClick={goToPrevStep} disabled={isFirstStep}>
+					<Button onClick={stepper.goToPrevStep} disabled={stepper.isFirstStep}>
 						Previous
 					</Button>
-					<Button onClick={goToNextStep}>
-						{currentStep.id === "third" ? "Finish" : "Next"}
+
+					<Button onClick={stepper.goToNextStep}>
+						{stepper.when("third", () => "Finish", () => "Next")}
 					</Button>
 				</div>
 			) : (
 				<div className="flex items-center gap-2">
-					<Button onClick={reset}>Reset</Button>
+					<Button onClick={stepper.reset}>Reset</Button>
 				</div>
 			)}
 		</div>
-	);
-};
+	)
+}
