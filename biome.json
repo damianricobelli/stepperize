@@ -12,6 +12,9 @@
 	"organizeImports": {
 		"enabled": true
 	},
+	"formatter": {
+		"lineWidth": 120
+	},
 	"linter": {
 		"enabled": true,
 		"rules": {
