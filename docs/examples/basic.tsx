@@ -9,10 +9,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { defineStepper } from "@stepperize/react";
 
 const { useStepper, steps } = defineStepper(
-	{ id: "shipping", label: "Shipping" },
-	{ id: "payment", label: "Payment" },
-	{ id: "review", label: "Review" },
-	{ id: "complete", label: "Complete" },
+	{ id: "shipping", title: "Shipping", description: "Enter your shipping details" },
+	{ id: "payment", title: "Payment", description: "Enter your payment details" },
+	{ id: "complete", title: "Complete", description: "Checkout complete" },
 );
 
 export function BasicHorizontalExample() {
@@ -47,7 +46,7 @@ export function BasicHorizontalExample() {
 								>
 									{index + 1}
 								</Button>
-								<span className="text-sm font-medium">{step.label}</span>
+								<span className="text-sm font-medium">{step.title}</span>
 							</li>
 							{index < array.length - 1 && (
 								<Separator className={`flex-1 ${index < stepper.current.index ? "bg-primary" : "bg-muted"}`} />
@@ -60,7 +59,6 @@ export function BasicHorizontalExample() {
 				{stepper.switch({
 					shipping: () => <ShippingComponent />,
 					payment: () => <PaymentComponent />,
-					review: () => <ReviewComponent />,
 					complete: () => <CompleteComponent />,
 				})}
 				{!stepper.isLast ? (
@@ -110,7 +108,7 @@ export function BasicVerticalExample() {
 								>
 									{index + 1}
 								</Button>
-								<span className="text-sm font-medium">{step.label}</span>
+								<span className="text-sm font-medium">{step.title}</span>
 							</li>
 							<div className="flex gap-4">
 								{index < array.length - 1 && (
@@ -131,7 +129,6 @@ export function BasicVerticalExample() {
 										stepper.switch({
 											shipping: () => <ShippingComponent />,
 											payment: () => <PaymentComponent />,
-											review: () => <ReviewComponent />,
 											complete: () => <CompleteComponent />,
 										})}
 								</div>
@@ -155,6 +152,87 @@ export function BasicVerticalExample() {
 		</div>
 	);
 }
+
+export const BasicCircleExample = () => {
+	const stepper = useStepper();
+
+	return (
+		<div className="space-y-6 p-6 border rounded-lg">
+			<div className="flex items-center gap-4">
+				<StepIndicator currentStep={stepper.current.index + 1} totalSteps={stepper.all.length} />
+				<div className="flex flex-col">
+					<h2 className="flex-1 text-lg font-medium">{stepper.current.title}</h2>
+					<p className="text-sm text-muted-foreground">{stepper.current.description}</p>
+				</div>
+			</div>
+			{stepper.switch({
+				shipping: () => <ShippingComponent />,
+				payment: () => <PaymentComponent />,
+				complete: () => <CompleteComponent />,
+			})}
+			<div className="space-y-4">
+				{!stepper.isLast ? (
+					<div className="flex justify-end gap-4">
+						<Button variant="secondary" onClick={stepper.prev} disabled={stepper.isFirst}>
+							Back
+						</Button>
+						<Button onClick={stepper.next}>{stepper.isLast ? "Complete" : "Next"}</Button>
+					</div>
+				) : (
+					<Button onClick={stepper.reset}>Reset</Button>
+				)}
+			</div>
+		</div>
+	);
+};
+
+interface StepIndicatorProps {
+	currentStep: number;
+	totalSteps: number;
+	size?: number;
+	strokeWidth?: number;
+}
+
+const StepIndicator = ({ currentStep, totalSteps, size = 80, strokeWidth = 6 }: StepIndicatorProps) => {
+	const radius = (size - strokeWidth) / 2;
+	const circumference = radius * 2 * Math.PI;
+	const fillPercentage = (currentStep / totalSteps) * 100;
+	const dashOffset = circumference - (circumference * fillPercentage) / 100;
+
+	return (
+		<div className="relative inline-flex items-center justify-center">
+			<svg width={size} height={size}>
+				<title>Step Indicator</title>
+				<circle
+					cx={size / 2}
+					cy={size / 2}
+					r={radius}
+					fill="none"
+					stroke="currentColor"
+					strokeWidth={strokeWidth}
+					className="text-muted-foreground"
+				/>
+				<circle
+					cx={size / 2}
+					cy={size / 2}
+					r={radius}
+					fill="none"
+					stroke="currentColor"
+					strokeWidth={strokeWidth}
+					strokeDasharray={circumference}
+					strokeDashoffset={dashOffset}
+					className="text-primary transition-all duration-300 ease-in-out"
+					transform={`rotate(-90 ${size / 2} ${size / 2})`}
+				/>
+			</svg>
+			<div className="absolute inset-0 flex items-center justify-center">
+				<span className="text-sm font-medium" aria-live="polite">
+					{currentStep} of {totalSteps}
+				</span>
+			</div>
+		</div>
+	);
+};
 
 const ShippingComponent = () => {
 	return (
@@ -197,19 +275,6 @@ const PaymentComponent = () => {
 					</label>
 					<Input id="cvc" placeholder="123" className="w-full" />
 				</div>
-			</div>
-		</div>
-	);
-};
-
-const ReviewComponent = () => {
-	return (
-		<div className="grid gap-4">
-			<div className="grid gap-2">
-				<label htmlFor="review" className="text-sm font-medium">
-					Review
-				</label>
-				<Textarea id="review" placeholder="Please review your order" className="w-full" />
 			</div>
 		</div>
 	);
