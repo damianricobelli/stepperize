@@ -24,7 +24,10 @@ export const defineStepper = <const Steps extends Step[]>(...steps: Steps) => {
 
 			return {
 				all: steps,
-				current,
+				current: {
+					...current,
+					index: counter,
+				},
 				isLast,
 				isFirst,
 				get(id) {

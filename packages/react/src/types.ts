@@ -2,7 +2,7 @@ export type Step = { id: string } & Record<string, any>;
 
 export type Stepper<Steps extends Step[] = Step[]> = {
 	all: Steps;
-	current: Steps[number];
+	current: Steps[number] & { index: number };
 	isLast: boolean;
 	isFirst: boolean;
 	get: <Id extends Get.Id<Steps>>(id: Id) => Get.StepById<Steps, Id>;
