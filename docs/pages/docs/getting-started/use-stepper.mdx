@@ -71,7 +71,7 @@ const MyStepperComponent = () => {
         <p>This is the {step.title} step.</p>
       ))}
 
-      <p>{stepper.when("last", "Finished!", "Not yet...")}</p> // "Finished!" | "Not yet..."
+      <p>{stepper.when("last", () => "Finished!", () => "Not yet...")}</p> // "Finished!" | "Not yet..."
     </>
   )
 }
