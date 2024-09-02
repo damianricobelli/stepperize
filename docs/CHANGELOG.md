@@ -1,5 +1,11 @@
 # docs
 
+## 2.0.2
+
+### Patch Changes
+
+- [#55](https://github.com/damianricobelli/stepperize/pull/55) [`bd2dd7f`](https://github.com/damianricobelli/stepperize/commit/bd2dd7f342692b763052248e7174660c2dfd51c9) Thanks [@Woofer21](https://github.com/Woofer21)! - Fix stepper.when usage in use-stepper.mdx
+
 ## 2.0.1
 
 ### Patch Changes
