@@ -1,0 +1,28 @@
+{
+	"name": "@stepperize/qwik",
+	"version": "0.1.0",
+	"private": true,
+	"main": "dist/index.js",
+	"module": "dist/index.mjs",
+	"types": "dist/index.d.ts",
+	"exports": {
+		".": {
+			"import": "./dist/index.mjs",
+			"require": "./dist/index.js",
+			"types": "./dist/index.d.ts"
+		}
+	},
+	"sideEffects": false,
+	"files": ["dist"],
+	"scripts": {
+		"build": "tsup",
+		"dev": "tsup --watch",
+		"lint": "turbo lint",
+		"prepublishOnly": "pnpm run build",
+		"clean": "rm -rf .turbo && rm -rf node_modules dist"
+	},
+	"devDependencies": {
+		"tsup": "^8.2.4",
+		"typescript": "^5.5.4"
+	}
+}

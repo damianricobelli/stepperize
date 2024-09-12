@@ -1,0 +1,82 @@
+---
+title: Introduction
+description: Introduction to @stepperize/react library
+icon: Album
+---
+ 
+Stepperize is a library that allows to create a Stepper component in a simple and fast way.
+
+The aim is to facilitate the creation of Steppers in web or mobile apps (React Native), allowing developers to focus on the business logic and not on the implementation of a Stepper.
+
+## Thinking in Steps
+
+When we talk about a Stepper, we usually think about a sequence of steps that the user must follow to complete a task. 
+This UI pattern guides users through a multi-step process, breaking down complex workflows into manageable chunks. 
+Steppers typically display progress, provide clear navigation between steps, and often include visual cues like numbers or icons to represent each stage.
+
+### Common Use Cases for Steppers
+
+Steppers are versatile components that can be applied to various scenarios:
+
+1. **User Onboarding**: Guide new users through account setup, feature introduction, or initial configuration.
+
+2. **Multi-page Forms**: Break long forms into logical sections, reducing cognitive load and improving completion rates.
+
+3. **Checkout Processes**: Streamline e-commerce transactions by clearly separating steps like shipping, billing, and confirmation.
+
+4. **Product Creation Wizards**: Assist users in creating complex items or configurations step-by-step.
+
+5. **Tutorial Walkthroughs**: Introduce new features or guide users through complex processes within an application.
+
+6. **Survey or Questionnaire Flow**: Present questions in a structured, sequential manner.
+
+7. **Booking Systems**: Guide users through selecting dates, options, and completing reservations.
+
+By implementing Steppers in these scenarios, you can enhance user experience, reduce errors, and make complex processes more manageable.
+
+## Thinking in Flows
+
+Stepperize isn't just limited to linear step-by-step processes. It can be extended to manage complex flows and conditional rendering based on various factors. This approach allows you to create dynamic, branching user experiences that adapt to user input or specific conditions.
+
+### Using Stepperize for Flow Management
+
+1. **Conditional Rendering**: Render different components or entire flows based on the current step or user choices.
+
+2. **Branching Paths**: Create decision trees where the next step depends on previous inputs or selections.
+
+3. **Dynamic Forms**: Adjust form fields or sections based on user responses in earlier steps.
+
+4. **Personalized Experiences**: Tailor the flow to user preferences, roles, or account types.
+
+5. **State-Dependent UI**: Change the interface based on the current state of the flow, such as showing different sidebars or navigation options.
+
+6. **Multi-Path Processes**: Handle complex workflows where users might need to complete different sets of steps based on their scenario.
+
+By leveraging Stepperize's flexibility, you can build sophisticated user interfaces that go beyond simple linear progressions, creating more responsive and user-centric applications.
+
+## Stepperize FAQ
+
+The Stepperize FAQ is a collection of useful questions and answers about the
+project. If you have a question that isn't answered here, please
+[open a discussion](https://github.com/damianricobelli/stepperize/discussions).
+
+<Accordions>
+ <Accordion title="Can I use Stepperize with React or React Framework?">
+  Yes, you can use Stepperize with React or any other React framework
+ </Accordion>
+ <Accordion title="Can I use Stepperize with Vue, Angular, Solid, Svelte, etc.?">
+  Not at the moment. Initially Stepperize has a library called `@stepperize/react`, but we hope that the 
+  community can contribute with different implementations for the other frameworks with `@stepperize/vue`, 
+  `@stepperize/solid`, etc.
+ </Accordion>
+ <Accordion title="Can I use Shadcn UI with Stepperize?">
+  Yes, even all the examples you will see in the documentation are made with Shadcn. 
+ </Accordion>
+ <Accordion title="Can I use Tailwind with Stepperize?">
+  Yes, as Stepperize is a headless component, you can use it as you wish and style it as you wish. 
+  Fun fact: this library was born as a PR for Shadcn UI.
+ </Accordion>
+ <Accordion title="Can I create my own logic?">
+  Yes, Stepperize is a headless component, so you can create your own logic and use the component as you wish.
+ </Accordion>
+</Accordions>

@@ -6,18 +6,29 @@ title: Stepperize
 import Link from 'next/link'
 import { Button, classForButton } from '@/components/ui/button'
 import { Features } from '@/components/features'
+import { Component } from '@/components/landing'
 import { PropsTable } from '@/components/props-table'
 import { Code } from '@/components/ui/code'
 
 <div className="max-w-[90rem] mx-auto px-4 py-20">
   <h1 className="text-[min(4.375rem,max(8vw,2.5rem))] leading-none font-bold bg-gradient-to-r from-gray-12 to-gray-10 inline-block text-transparent bg-clip-text tracking-tighter">Make beautiful Steppers <br className='sm:block hidden'/>without much effort</h1>
   <div className="space-y-4 mt-10 text-xl">
-    <p>Simple, typesafe, flexible and customizable stepper library</p>
+    <p>Powerful, type-safe steppers for React and React Native</p>
     <div className='flex items-center gap-4'>
       <Link className={classForButton({ variant: "secondary", className: 'w-40 !h-12 !text-lg !rounded-full border' })} href="/docs/introduction">Get started</Link>
       <Link className={classForButton({ variant: "secondary", className: 'w-40 !h-12 !text-lg !rounded-full border' })} target="_blank" href="https://github.com/damianricobelli/stepperize">Github</Link>
     </div>
-  </div>
+  </div> 
+  <Component       leftElements={[
+        <h1 className="text-3xl text-white bg-blue-500 p-4 rounded-lg">Left 1</h1>,
+        <h1 className="text-3xl text-white bg-blue-500 p-4 rounded-lg">Left 2</h1>,
+        <h1 className="text-3xl text-white bg-blue-500 p-4 rounded-lg">Left 3</h1>,
+      ]}
+      rightElements={[
+        <h1 className="text-3xl text-white bg-red-500 p-4 rounded-lg">Right 1</h1>,
+        <h1 className="text-3xl text-white bg-red-500 p-4 rounded-lg">Right 2</h1>,
+        <h1 className="text-3xl text-white bg-red-500 p-4 rounded-lg">Right 3</h1>,
+      ]} />
   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mt-16"> 
     <Features />
   </div>

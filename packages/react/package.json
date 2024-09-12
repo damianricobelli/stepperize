@@ -5,6 +5,15 @@
 	"publishConfig": {
 		"access": "public"
 	},
+	"description": "Powerful, type-safe steppers for React and React Native.",
+	"author": "damianricobelli",
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/damianricobelli/stepperize.git",
+		"directory": "packages/react-form"
+	},
+	"homepage": "https://stepperize.vercel.app",
 	"sideEffects": false,
 	"files": ["dist"],
 	"main": "dist/index.js",
@@ -28,7 +37,7 @@
 		"react": "^18.3.1"
 	},
 	"devDependencies": {
-		"@types/react": "^18.3.4",
+		"@types/react": "^18.3.5",
 		"@types/react-dom": "^18.3.0",
 		"react": "^18.3.1",
 		"tsup": "^8.2.4",

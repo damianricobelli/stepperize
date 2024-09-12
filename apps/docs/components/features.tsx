@@ -1,12 +1,4 @@
-import {
-	Boxes,
-	Expand,
-	type LucideIcon,
-	Paintbrush,
-	Palette,
-	ShieldCheck,
-	TreePine,
-} from "lucide-react";
+import { Boxes, Expand, type LucideIcon, MonitorSmartphone, Paintbrush, ShieldCheck, TreePine } from "lucide-react";
 
 const features = [
 	{
@@ -25,9 +17,9 @@ const features = [
 		icon: Paintbrush,
 	},
 	{
-		title: "Shadcn UI ready",
-		description: "The docs provide a Shadcn/UI ready example.",
-		icon: Palette,
+		title: "Ready for Web & Mobile",
+		description: "You can use it with React and React Native",
+		icon: MonitorSmartphone,
 	},
 	{
 		title: "Tree shakable",
@@ -36,17 +28,12 @@ const features = [
 	},
 	{
 		title: "Scalable",
-		description:
-			"Provides a set of primitives that you can use to build your own stepper component.",
+		description: "Provides a set of primitives that you can use to build your own stepper component.",
 		icon: Boxes,
 	},
 ];
 
-function Feature({
-	title,
-	description,
-	icon,
-}: { title: string; description: string; icon: LucideIcon }) {
+function Feature({ title, description, icon }: { title: string; description: string; icon: LucideIcon }) {
 	const Icon = icon;
 	return (
 		<div className="flex flex-col gap-4 bg-gray-3 rounded-lg p-5 transform transition duration-300 hover:scale-105">
@@ -62,7 +49,5 @@ function Feature({
 }
 
 export function Features() {
-	return features.map((feature, index) => (
-		<Feature key={`feature-${feature.title}-${index}`} {...feature} />
-	));
+	return features.map((feature, index) => <Feature key={`feature-${feature.title}-${index}`} {...feature} />);
 }

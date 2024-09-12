@@ -14,8 +14,7 @@ const config: DocsThemeConfig = {
 	project: {
 		link: "https://github.com/damianricobelli/stepperize",
 	},
-	docsRepositoryBase:
-		"https://github.com/damianricobelli/stepperize/tree/main/docs",
+	docsRepositoryBase: "https://github.com/damianricobelli/stepperize/tree/main/docs",
 	useNextSeoProps() {
 		const { asPath } = useRouter();
 		if (asPath !== "/") {
@@ -48,10 +47,7 @@ const config: DocsThemeConfig = {
 				<meta name="twitter:image" content={socialCard} />
 				<meta name="twitter:site:domain" content="stepperize.vercel.app" />
 				<meta name="twitter:url" content="https://stepperize.vercel.app" />
-				<meta
-					name="og:title"
-					content={title ? `${title} – Stepperize` : "Stepperize"}
-				/>
+				<meta name="og:title" content={title ? `${title} – Stepperize` : "Stepperize"} />
 				<meta name="og:image" content={socialCard} />
 				<meta name="apple-mobile-web-app-title" content="Stepperize" />
 				<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
@@ -66,16 +62,16 @@ const config: DocsThemeConfig = {
 		content: "Question? Give us feedback →",
 		labels: "feedback",
 	},
-	sidebar: {
-		titleComponent({ title, type }) {
-			if (type === "separator") {
-				return <span className="cursor-default">{title}</span>;
-			}
-			return <>{title}</>;
-		},
-		defaultMenuCollapseLevel: 2,
-		toggleButton: true,
-	},
+	// sidebar: {
+	// 	titleComponent({ title, type }) {
+	// 		if (type === "separator") {
+	// 			return <span className="cursor-default">{title}</span>;
+	// 		}
+	// 		return <>{title}</>;
+	// 	},
+	// 	defaultMenuCollapseLevel: 2,
+	// 	toggleButton: true,
+	// },
 	footer: {
 		text: (
 			<div className="flex w-full flex-col items-center sm:items-start">
@@ -97,9 +93,7 @@ const config: DocsThemeConfig = {
 						</svg>
 					</a>
 				</div>
-				<p className="mt-6 text-xs">
-					© {new Date().getFullYear()} Stepperize Project.
-				</p>
+				<p className="mt-6 text-xs">© {new Date().getFullYear()} Stepperize Project.</p>
 			</div>
 		),
 	},
