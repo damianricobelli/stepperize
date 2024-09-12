@@ -1,39 +1,29 @@
 {
-	"$schema": "https://json.schemastore.org/tsconfig",
-	"display": "Default",
 	"compilerOptions": {
-		"declaration": true,
-		"declarationMap": true,
-		"esModuleInterop": true,
-		"incremental": false,
-		"isolatedModules": true,
-		"lib": ["es2022", "DOM", "DOM.Iterable"],
-		"module": "ESNext",
-		"moduleDetection": "force",
-		"moduleResolution": "Node",
-		"noUncheckedIndexedAccess": true,
-		"resolveJsonModule": true,
+		"baseUrl": ".",
+		"target": "ESNext",
+		"lib": ["dom", "dom.iterable", "esnext"],
+		"allowJs": true,
 		"skipLibCheck": true,
 		"strict": true,
-		"target": "ES2022",
+		"forceConsistentCasingInFileNames": true,
+		"noEmit": true,
+		"esModuleInterop": true,
+		"module": "esnext",
+		"moduleResolution": "node",
+		"resolveJsonModule": true,
+		"isolatedModules": true,
+		"jsx": "preserve",
+		"incremental": true,
+		"paths": {
+			"@/*": ["./*"]
+		},
 		"plugins": [
 			{
 				"name": "next"
 			}
-		],
-		"paths": {
-			"@/*": ["./*"]
-		},
-		"allowJs": true,
-		"jsx": "preserve",
-		"noEmit": true
+		]
 	},
-	"include": [
-		"next-env.d.ts",
-		"next.config.mjs",
-		"**/*.ts",
-		"**/*.tsx",
-		".next/types/**/*.ts"
-	],
+	"include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
 	"exclude": ["node_modules"]
 }
