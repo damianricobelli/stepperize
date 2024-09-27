@@ -40,12 +40,6 @@ This function receives 3 parameters:
 - The second parameter is a function that returns the component to render when the step matches the given ID.
 - The third parameter is a function that returns the component to render when the step **does not** match the given ID.
 
-```ts
-when(id: string, whenFn: (step: Step) => React.ReactNode, elseFn: (step: Step) => React.ReactNode): React.ReactNode
-```
-
-For example:
-
 ```tsx
 import { defineStepper } from "@stepperize/react"
 
@@ -83,12 +77,6 @@ but following the `switch` logical control structure.
 
 This function receives an object with the step ID as the key and a function that returns 
 the component to render when the step matches the given ID.
-
-```ts
-switch(steps: { [id: string]: (step: Step) => React.ReactNode }): React.ReactNode
-```
-
-For example:
 
 ```tsx
 import { defineStepper } from "@stepperize/react"

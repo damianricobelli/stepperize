@@ -17,8 +17,6 @@ const { useStepper, steps } = defineStepper(
 export function BasicHorizontalExample() {
 	const stepper = useStepper();
 
-	const state = "complete" as (typeof steps)[number]["id"];
-
 	return (
 		<div className="space-y-6 p-6 border rounded-lg">
 			<div className="flex items-center">
@@ -30,13 +28,8 @@ export function BasicHorizontalExample() {
 					<div />
 				</div>
 			</div>
-			<nav aria-label="Checkout Steps" role="tablist" className="group my-4">
+			<nav aria-label="Checkout Steps" className="group my-4">
 				<ol className="flex items-center justify-between gap-2" aria-orientation="horizontal">
-					{stepper.match(state, {
-						complete: () => <div>Complete</div>,
-						shipping: () => <div>Shipping</div>,
-						payment: () => <div>Payment</div>,
-					})}
 					{stepper.all.map((step, index, array) => (
 						<React.Fragment key={step.id}>
 							<li className="flex items-center gap-4 flex-shrink-0">
@@ -97,7 +90,7 @@ export function BasicVerticalExample() {
 					<div />
 				</div>
 			</div>
-			<nav aria-label="Checkout Steps" role="tablist" className="group my-4">
+			<nav aria-label="Checkout Steps" className="group my-4">
 				<ol className="flex flex-col gap-2" aria-orientation="vertical">
 					{stepper.all.map((step, index, array) => (
 						<React.Fragment key={step.id}>

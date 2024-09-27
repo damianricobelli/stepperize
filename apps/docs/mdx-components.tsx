@@ -1,7 +1,7 @@
-import { Playground } from "@/components/playground";
 import { PropsTable } from "@/components/props-table";
 import { Accordion, Accordions } from "fumadocs-ui/components/accordion";
 import { Callout } from "fumadocs-ui/components/callout";
+import { CodeBlock, Pre } from "fumadocs-ui/components/codeblock";
 import { Step, Steps } from "fumadocs-ui/components/steps";
 import { Tab, Tabs } from "fumadocs-ui/components/tabs";
 import { TypeTable } from "fumadocs-ui/components/type-table";
@@ -23,7 +23,8 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
 		Accordion,
 		Accordions,
 		PropsTable,
-		Playground,
+		CodeBlock,
+		Pre,
 		blockquote: (props) => <Callout>{props.children}</Callout>,
 		...components,
 	};

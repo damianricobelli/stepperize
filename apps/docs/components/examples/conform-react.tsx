@@ -64,7 +64,7 @@ export function CheckoutFormWithConform() {
 					</span>
 				</div>
 			</div>
-			<nav aria-label="Checkout Steps" role="tablist" className="group my-4">
+			<nav aria-label="Checkout Steps" className="group my-4">
 				<ol className="flex items-center justify-between gap-2" aria-orientation="horizontal">
 					{stepper.all.map((step, index, array) => (
 						<React.Fragment key={step.id}>

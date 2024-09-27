@@ -8,7 +8,7 @@ const { useStepper, Scoped } = defineStepper(
 	{ id: "last", title: "Last" },
 );
 
-export const MyScopedStepper = () => {
+export function ScopedStepper() {
 	return (
 		<div className="flex flex-col gap-4 bg-gray-3 p-4 my-4 rounded-md">
 			<Scoped>
@@ -17,7 +17,7 @@ export const MyScopedStepper = () => {
 			</Scoped>
 		</div>
 	);
-};
+}
 
 const MySteps = () => {
 	const stepper = useStepper();
@@ -25,19 +25,19 @@ const MySteps = () => {
 	return (
 		<>
 			{stepper.when("first", (step) => (
-				<p>This is the {step.id} step. So it begins.</p>
+				<span>This is the {step.id} step. So it begins.</span>
 			))}
 
 			{stepper.when("second", (step) => (
-				<p>This is the {step.id} step.</p>
+				<span>This is the {step.id} step.</span>
 			))}
 
 			{stepper.when("third", (step) => (
-				<p>This is the {step.id} step.</p>
+				<span>This is the {step.id} step.</span>
 			))}
 
 			{stepper.when("last", (step) => (
-				<p>This is the {step.id} step. So it ends.</p>
+				<span>This is the {step.id} step. So it ends.</span>
 			))}
 		</>
 	);

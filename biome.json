@@ -1,5 +1,5 @@
 {
-	"$schema": "https://biomejs.dev/schemas/1.9.0/schema.json",
+	"$schema": "https://biomejs.dev/schemas/1.9.2/schema.json",
 	"files": {
 		"ignore": ["./.turbo", "./.next", "./.changeset", "./.pnpm-store", "./packages/react/dist"]
 	},
@@ -24,7 +24,8 @@
 			},
 			"suspicious": {
 				"noConsoleLog": "error",
-				"noExplicitAny": "off"
+				"noExplicitAny": "off",
+				"noArrayIndexKey": "off"
 			},
 			"correctness": {
 				"noUnusedVariables": "error",
