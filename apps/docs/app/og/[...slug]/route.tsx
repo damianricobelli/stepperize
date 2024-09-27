@@ -2,6 +2,8 @@ import { readFileSync } from "node:fs";
 import { metadataImage } from "@/utils/metadata";
 import { ImageResponse, type ImageResponse as ImageResponseType } from "next/og";
 
+export const runtime = "edge";
+
 const font = readFileSync("./app/og/[...slug]/Inter-SemiBold.otf");
 
 export const GET = metadataImage.createAPI((page): ImageResponseType => {
