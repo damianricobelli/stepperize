@@ -13,6 +13,7 @@ var source_config_default = defineConfig({
         light: "catppuccin-latte",
         dark: "catppuccin-mocha"
       },
+      //@ts-ignore
       transformers: [...rehypeCodeDefaultOptions.transformers ?? [], transformerTwoslash()]
     }
   }
