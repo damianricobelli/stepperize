@@ -5,10 +5,17 @@
 	"publishConfig": {
 		"access": "public"
 	},
+	"description": "The library for building step-by-step workflows for web and mobile apps",
+	"author": "damianricobelli",
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/damianricobelli/stepperize.git",
+		"directory": "packages/react"
+	},
+	"homepage": "https://stepperize.vercel.app",
 	"sideEffects": false,
-	"files": [
-		"dist"
-	],
+	"files": ["dist"],
 	"main": "dist/index.js",
 	"module": "dist/index.mjs",
 	"types": "dist/index.d.ts",
@@ -27,13 +34,13 @@
 		"clean": "rm -rf .turbo && rm -rf node_modules dist"
 	},
 	"peerDependencies": {
-		"react": "^18.3.1"
+		"react": ">=18.0.0"
 	},
 	"devDependencies": {
-		"@types/react": "^18.3.3",
-		"@types/react-dom": "^18.3.0",
-		"react": "^18.3.1",
-		"tsup": "^8.2.4",
-		"typescript": "^5.5.4"
+		"@types/react": ">=18.0.0",
+		"@types/react-dom": ">=18.0.0",
+		"react": ">=18.0.0",
+		"tsup": "^8.3.0",
+		"typescript": "^5.6.2"
 	}
 }

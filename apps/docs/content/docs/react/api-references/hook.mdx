@@ -1,0 +1,155 @@
+---
+title: Hook and Methods
+description: Access and control your stepper with the useStepper hook
+---
+
+The `useStepper` hook provides methods to interact with and render your stepper. It can be used with or without the [`Scoped`](./scoped) component.
+
+## Usage
+
+```tsx
+import { defineStepper } from "@stepperize/react"
+
+const { useStepper } = defineStepper(
+  { id: "first" },
+  { id: "second" },
+  { id: "last" },
+)
+
+const MyStepperComponent = () => {
+  const stepper = useStepper()
+  // Use stepper methods here
+}
+```
+
+## Rendering Methods
+
+### when
+
+Render content conditionally based on the current step:
+
+```tsx
+const MyStepperComponent = () => {
+  const stepper = useStepper()
+
+  return (
+    <>
+      {stepper.when("first", step => <p>First step: {step.title}</p>)}
+      {stepper.when("second", step => <p>Second step: {step.title}</p>)}
+      {stepper.when("last", "Finished!", "Not finished yet")}
+    </>
+  )
+}
+```
+
+### switch
+
+Render content using a switch-like structure:
+
+```tsx
+const MyStepperComponent = () => {
+  const stepper = useStepper()
+
+  return (
+    <>
+      {stepper.switch({
+        first: step => <p>First: {step.title}</p>,
+        second: step => <p>Second: {step.title}</p>,
+        last: () => <p>Finished!</p>,
+      })}
+    </>
+  )
+}
+```
+
+### match
+
+Render content based on an external state:
+
+```tsx
+const MyStepperComponent = () => {
+  const stepper = useStepper()
+  const state = "Value from server or client state"
+
+  return (
+    <>
+      {stepper.match(state, {
+        first: step => <p>First: {step.title}</p>,
+        second: step => <p>Second: {step.title}</p>,
+        last: () => <p>Finished!</p>,
+      })}
+    </>
+  )
+}
+```
+
+<Callout type="info">
+`match` allows state-based control from client or server, useful for frameworks like Remix with server-side state management.
+</Callout>
+
+## API Reference
+
+<PropsTable
+  data={[
+    {
+      name: "all",
+      type: "Step[]",
+      description: "Array of all steps",
+    },
+    {
+      name: "current",
+      type: "Step & { index: number }",
+      description: "Current active step",
+    },
+    {
+      name: "isLast",
+      type: "boolean",
+      description: "True if on last step",
+    },
+    {
+      name: "isFirst",
+      type: "boolean",
+      description: "True if on first step",
+    },
+    {
+      name: "next",
+      type: "() => void",
+      description: "Go to next step",
+    },
+    {
+      name: "prev",
+      type: "() => void",
+      description: "Go to previous step",
+    },
+    {
+      name: "get",
+      type: "(id: string) => Step",
+      description: "Get step by ID",
+    },
+    {
+      name: "goTo",
+      type: "(id: string) => void",
+      description: "Go to step by ID",
+    },
+    {
+      name: "reset",
+      type: "() => void",
+      description: "Reset to first/initial step",
+    },
+    {
+      name: "when",
+      type: "(id: string, whenFn: (step: Step) => React.ReactNode, elseFn?: (step: Step) => React.ReactNode) => React.ReactNode",
+      description: "Conditional rendering based on step ID",
+    },
+    {
+      name: "switch",
+      type: "(steps: { [id: string]: (step: Step) => React.ReactNode }) => React.ReactNode",
+      description: "Switch-like rendering based on step ID",
+    },
+    {
+      name: "match",
+      type: "(state: string, steps: { [id: string]: (step: Step) => React.ReactNode }) => React.ReactNode",
+      description: "Render based on external state",
+    },
+  ]}
+/>

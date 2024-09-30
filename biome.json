@@ -1,13 +1,7 @@
 {
-	"$schema": "https://biomejs.dev/schemas/1.8.3/schema.json",
+	"$schema": "https://biomejs.dev/schemas/1.9.2/schema.json",
 	"files": {
-		"ignore": [
-			"./.turbo",
-			"./.next",
-			"./.changeset",
-			"./.pnpm-store",
-			"./packages/react/dist"
-		]
+		"ignore": ["./.turbo", "./.next", "./.changeset", "./.pnpm-store", "./packages/react/dist"]
 	},
 	"organizeImports": {
 		"enabled": true
@@ -30,7 +24,8 @@
 			},
 			"suspicious": {
 				"noConsoleLog": "error",
-				"noExplicitAny": "off"
+				"noExplicitAny": "off",
+				"noArrayIndexKey": "off"
 			},
 			"correctness": {
 				"noUnusedVariables": "error",

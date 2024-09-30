@@ -1,4 +1,4 @@
-import type { Get, Step, Stepper } from "./types";
+import type { Get, ScopedProps, Step, Stepper } from "./types";
 
 import * as React from "react";
 
@@ -24,7 +24,10 @@ export const defineStepper = <const Steps extends Step[]>(...steps: Steps) => {
 
 			return {
 				all: steps,
-				current,
+				current: {
+					...current,
+					index: counter,
+				},
 				isLast,
 				isFirst,
 				get(id) {
@@ -55,6 +58,10 @@ export const defineStepper = <const Steps extends Step[]>(...steps: Steps) => {
 				when(id, whenFn, elseFn) {
 					return steps[counter].id === id ? whenFn?.(steps[counter] as any) : elseFn?.(steps[counter] as any);
 				},
+				match(state, matches) {
+					const matchFn = matches[state as keyof typeof matches];
+					return matchFn?.(state as any);
+				},
 			} as Stepper<Steps>;
 		}, [counter]);
 
@@ -74,7 +81,3 @@ export const defineStepper = <const Steps extends Step[]>(...steps: Steps) => {
 		useStepper: (initialStep?: Get.Id<Steps>) => React.useContext(Context) ?? useStepper(initialStep),
 	};
 };
-
-type ScopedProps<Steps extends Step[]> = React.PropsWithChildren<{
-	initialStep?: Get.Id<Steps>;
-}>;

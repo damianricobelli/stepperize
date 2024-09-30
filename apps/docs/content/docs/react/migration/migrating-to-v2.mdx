@@ -1,0 +1,60 @@
+---
+title: Migrating to v2
+description: Learn how to migrate from v1 to v2
+icon: CircleFadingArrowUp
+---
+
+Stepperize v2 is a complete rewrite of the original Stepperize library. It comes with a few breaking changes and new features.
+
+## Breaking Changes
+
+### defineSteps helper
+
+The `defineSteps` function has been removed. Use `defineStepper` instead.
+
+```tsx
+const Stepper = defineStepper(
+  { id: "step-1", title: "Label 1", description: "Description 1" },
+  { id: "step-2", title: "Label 2", description: "Description 2" },
+  { id: "step-3", title: "Label 3", description: "Description 3" },
+  { id: "step-4", title: "Label 4", description: "Description 4" }
+);
+```
+
+Also, `defineStepper` only requires one id for each step and the type `Step` no longer 
+has any other value, since you can send it anything else in favour of automatic inference.
+
+For more information, see the [Define](/docs/react/api-references/define) section.
+
+### Stepper Provider
+
+The `Stepper` component has been removed. Use `Scoped` from `defineStepper` object instead if you want to use with 1 or more Scopes of steps.
+
+- We don't need to pass the array of steps to the component anymore.
+- The `Stepper` component only accepts one prop, `initialStep`, which is the initial step to be active initially.
+
+```tsx
+const { Scoped } = defineStepper(
+  { id: "step-1", title: "Label 1", description: "Description 1" },
+  { id: "step-2", title: "Label 2", description: "Description 2" },
+  { id: "step-3", title: "Label 3", description: "Description 3" },
+  { id: "step-4", title: "Label 4", description: "Description 4" }
+);
+```
+
+For more information, see the [Scoped](/docs/react/api-references/scoped) section.
+
+### useStepper hook
+
+The `useStepper` hook has been removed. Use `useStepper` from `defineStepper` instead.
+
+```tsx
+const { useStepper } = defineStepper(
+  { id: "step-1", title: "Label 1", description: "Description 1" },
+  { id: "step-2", title: "Label 2", description: "Description 2" },
+  { id: "step-3", title: "Label 3", description: "Description 3" },
+  { id: "step-4", title: "Label 4", description: "Description 4" }
+);
+```
+
+For more information, see the [Hook](/docs/react/api-references/hook) section.

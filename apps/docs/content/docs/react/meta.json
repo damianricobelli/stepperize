@@ -1,0 +1,25 @@
+{
+	"title": "React",
+	"root": true,
+	"pages": [
+		"---Getting Started---",
+		"index",
+		"installation",
+		"---API References---",
+		"api-references/define",
+		"api-references/hook",
+		"api-references/scoped",
+		"---Examples---",
+		"examples/basic",
+		"examples/scoped",
+		"examples/multi-scoped",
+		"examples/conform-react",
+		"examples/react-hook-form",
+		"examples/query-params",
+		"examples/shareable-data",
+		"examples/dialog",
+		"---Migration---",
+		"migration/migrating-to-v2",
+		"migration/migrating-to-v3"
+	]
+}

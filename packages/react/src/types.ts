@@ -2,7 +2,7 @@ export type Step = { id: string } & Record<string, any>;
 
 export type Stepper<Steps extends Step[] = Step[]> = {
 	all: Steps;
-	current: Steps[number];
+	current: Steps[number] & { index: number };
 	isLast: boolean;
 	isFirst: boolean;
 	get: <Id extends Get.Id<Steps>>(id: Id) => Get.StepById<Steps, Id>;
@@ -16,7 +16,12 @@ export type Stepper<Steps extends Step[] = Step[]> = {
 		elseFn?: (step: Get.StepSansId<Steps, Id>) => R2,
 	) => R1 | R2;
 	switch: <R>(when: Get.Switch<Steps, R>) => R;
+	match: <State extends Get.Id<Steps>, R>(state: State, matches: Get.Switch<Steps, R>) => R | null;
 };
+
+export type ScopedProps<Steps extends Step[]> = React.PropsWithChildren<{
+	initialStep?: Get.Id<Steps>;
+}>;
 
 export namespace Get {
 	/** Returns a union of possible IDs from the given Steps. */
