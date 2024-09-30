@@ -1,5 +1,17 @@
 # docs
 
+## 2.0.3
+
+### Patch Changes
+
+- [#59](https://github.com/damianricobelli/stepperize/pull/59) [`fe81060`](https://github.com/damianricobelli/stepperize/commit/fe81060aad322ff6a1dab5458a2d7abee1e9275b) Thanks [@maximebonhomme](https://github.com/maximebonhomme)! - docs: add missing step in our-first-stepper section
+
+## 2.0.2
+
+### Patch Changes
+
+- [#55](https://github.com/damianricobelli/stepperize/pull/55) [`bd2dd7f`](https://github.com/damianricobelli/stepperize/commit/bd2dd7f342692b763052248e7174660c2dfd51c9) Thanks [@Woofer21](https://github.com/Woofer21)! - Fix stepper.when usage in use-stepper.mdx
+
 ## 2.0.1
 
 ### Patch Changes
