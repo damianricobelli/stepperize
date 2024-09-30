@@ -62,9 +62,9 @@ export default function HomePage() {
 					</div>
 				</div>
 			</section>
-			<footer className="mt-auto py-6 bg-gray-100">
+			<footer className="mt-auto py-6 bg-gray-100 dark:bg-transparent border-t border-gray-200 dark:border-gray-800">
 				<div className="container px-4 md:px-6">
-					<p className="text-sm text-gray-600 text-center">
+					<p className="text-sm text-gray-600 dark:text-gray-100 text-center">
 						© {new Date().getFullYear()} Stepperize. All rights reserved.
 					</p>
 				</div>
