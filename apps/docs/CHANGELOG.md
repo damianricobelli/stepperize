@@ -1,5 +1,19 @@
 # docs
 
+## 2.1.0
+
+### Minor Changes
+
+- [#53](https://github.com/damianricobelli/stepperize/pull/53) [`a43dd56`](https://github.com/damianricobelli/stepperize/commit/a43dd562af00430f96975b881ca0afb7d5c1500b) Thanks [@damianricobelli](https://github.com/damianricobelli)! - docs: improve docs with fumadocs and add examples with Stackblitz
+  react: add index to current value and new match method
+
+### Patch Changes
+
+- [#53](https://github.com/damianricobelli/stepperize/pull/53) [`2b821cf`](https://github.com/damianricobelli/stepperize/commit/2b821cf557589d5db47f6b92ebfecd9b6391343b) Thanks [@damianricobelli](https://github.com/damianricobelli)! - docs, react: add examples and index to current step
+
+- Updated dependencies [[`2b821cf`](https://github.com/damianricobelli/stepperize/commit/2b821cf557589d5db47f6b92ebfecd9b6391343b), [`a43dd56`](https://github.com/damianricobelli/stepperize/commit/a43dd562af00430f96975b881ca0afb7d5c1500b)]:
+  - @stepperize/react@3.1.0
+
 ## 2.0.3
 
 ### Patch Changes
