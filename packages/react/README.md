@@ -1,13 +1,16 @@
-
 <p align="center">
-  <img src="https://stepperize.vercel.app/og.png" />
+  <img src="https://stepperize.vercel.app/banner.png" alt="Stepperize Logo" />
 </p>
 
-A library for creating step-by-step workflows in your applications.
+# Stepperize
+
+A powerful, lightweight library for creating step-by-step workflows in React applications.
+
+## Features
 
 - 🚀 Fast
 - 🔥 Powerful
-- 📦 Lightweight, < 1kB (gzip)
+- 📦 Lightweight (< 1kB gzipped)
 - 🪄 Typesafe
 - 🔗 Composable
 - 🎨 Unstyled
@@ -18,43 +21,58 @@ A library for creating step-by-step workflows in your applications.
 npm i @stepperize/react
 ```
 
-## Understanding the steps
+## Quick Start
 
-The main idea is that we can define our IDs that will identify each step.
-When we define the steps, we get an object that contains everything we need to build our stepper.
-
-## Usage
-
-### Import the constructor
-
-In order to create our steps we need to import the `defineSteps` from the library.
+1. Import the constructor:
 
 ```tsx
 import { defineStepper } from "@stepperize/react";
 ```
 
-### Create the steps
-
-`defineStepper` is a function that allows us to get a Provider, a hook and the array of steps we are using.
-The only mandatory value for each step is the `id`. Then, we can add whatever we need and this will be typesafe when we use the hook.
+2. Define your steps:
 
 ```tsx
 const { Scoped, useStepper, steps } = defineStepper(
-  { id: "step-1", title: "Label 1", description: "Description 1" },
-  { id: "step-2", title: "Label 2", description: "Description 2" },
-  { id: "step-3", title: "Label 3", description: "Description 3" },
-  { id: "step-4", title: "Label 4", description: "Description 4" }
+  { id: "step-1", title: "Step 1", description: "Description 1" },
+  { id: "step-2", title: "Step 2", description: "Description 2" },
+  { id: "step-3", title: "Step 3", description: "Description 3" },
+  { id: "step-4", title: "Step 4", description: "Description 4" }
 );
 ```
 
-### Next steps
+3. Use the hook in your components:
 
-Visit the [documentation](https://stepperize.vercel.app/docs/getting-started/use-stepper) to see more details.
+```tsx
+function MyComponent() {
+  const { currentStep, nextStep, prevStep } = useStepper();
+  
+  return (
+    <div>
+      <h2>{currentStep.title}</h2>
+      <p>{currentStep.description}</p>
+      <button onClick={prevStep}>Previous</button>
+      <button onClick={nextStep}>Next</button>
+    </div>
+  );
+}
+```
+
+## How It Works
+
+Stepperize allows you to define a series of steps with unique IDs. The `defineStepper` function returns:
+
+- `Scoped`: A Provider component to wrap your stepper
+- `useStepper`: A hook to access and control the current step
+- `steps`: An array of the defined steps
+
+## Documentation
+
+For detailed usage instructions and API reference, visit our [documentation](https://stepperize.vercel.app/docs/getting-started/use-stepper).
 
 ## Contributing
 
-Contributions are welcome! Please open an issue or submit a pull request.
+We welcome contributions! Please open an issue or submit a pull request on our [GitHub repository](https://github.com/yourusername/stepperize).
 
 ## License
 
-This project is licensed under the MIT License.
+Stepperize is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
