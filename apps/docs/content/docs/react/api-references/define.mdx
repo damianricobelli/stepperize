@@ -1,43 +1,49 @@
 ---
 title: Define
-description: How to define a stepper
+description: How to define a stepper using defineStepper
 ---
 
-The main idea is that we can define our IDs that will identify each step.
-When we define the steps, we get an object that contains everything we need to build our stepper.
+`defineStepper` is the core function for creating a customizable stepper. It generates the necessary components and hooks for building your stepper UI and managing its state.
 
-## Creating our steps
+## Usage
 
 <Steps>
   <Step>
-    ### Import the constructor
-
-    In order to create our steps we need to import the `defineSteps` from the library.
+    ### Import
 
     ```tsx
     import { defineStepper } from "@stepperize/react";
     ```
   </Step>
   <Step>
-  ### Create the steps
+  ### Define steps
 
-  `defineStepper` is a function that allows us to get a Provider, a hook and the array of steps we are using.
-  The only mandatory value for each step is the `id`. Then, we can add whatever we need and this will be typesafe when we use the hook.
+  Call `defineStepper` with your step configurations:
 
   ```tsx
   const { Scoped, useStepper, steps } = defineStepper(
-    { id: "step-1", title: "Label 1", description: "Description 1" },
-    { id: "step-2", title: "Label 2", description: "Description 2" },
-    { id: "step-3", title: "Label 3", description: "Description 3" },
-    { id: "step-4", title: "Label 4", description: "Description 4" }
+    { id: "step-1", title: "Step 1", description: "First step" },
+    { id: "step-2", title: "Step 2", description: "Second step" },
+    { id: "step-3", title: "Step 3", description: "Third step" }
   );
   ```
+
+  - `id` (required): Unique identifier for each step
+  - Add any custom properties (e.g., `title`, `description`) for use in your UI
   </Step>
 </Steps>
 
-With this we have everything we need to be able to build our own Stepper with the styles and logic we want.
+## Return Value
 
-Read more about the use of the different parts here:
+`defineStepper` returns an object with:
 
-- [Hook](./hook)
-- [Scoped](./scoped)
+- `Scoped`: A Provider component for scoping stepper state
+- `useStepper`: A custom hook for accessing and controlling the stepper
+- `steps`: An array of the defined step objects
+
+## Next Steps
+
+Learn how to use the returned components and hooks:
+
+- [useStepper Hook](./hook)
+- [Scoped Component](./scoped)

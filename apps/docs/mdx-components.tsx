@@ -1,3 +1,4 @@
+import { DemoViewer } from "@/components/demo-viewer";
 import { PropsTable } from "@/components/props-table";
 import { Accordion, Accordions } from "fumadocs-ui/components/accordion";
 import { Callout } from "fumadocs-ui/components/callout";
@@ -12,6 +13,7 @@ import type { MDXComponents } from "mdx/types";
 export function useMDXComponents(components: MDXComponents): MDXComponents {
 	return {
 		...defaultComponents,
+		DemoViewer,
 		Popup,
 		PopupContent,
 		PopupTrigger,

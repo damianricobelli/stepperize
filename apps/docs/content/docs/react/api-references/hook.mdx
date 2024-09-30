@@ -1,12 +1,9 @@
 ---
-title: Hook
-description: How to get access to all the methods of our defineStepper to be able to build our own stepper
+title: Hook and Methods
+description: Access and control your stepper with the useStepper hook
 ---
 
-The `useStepper` hook provides access to the actions needed to interact with the stepper.
-It can be used with or without the [`Scoped`](./scoped) component, but in this case it will be used without Scoped.
-
-> If you want to know how to use the stepper with the `Scoped` component, you can read the [Scoped](./scoped) section.
+The `useStepper` hook provides methods to interact with and render your stepper. It can be used with or without the [`Scoped`](./scoped) component.
 
 ## Usage
 
@@ -21,81 +18,44 @@ const { useStepper } = defineStepper(
 
 const MyStepperComponent = () => {
   const stepper = useStepper()
-
-  // Your component logic here
+  // Use stepper methods here
 }
 ```
 
-## How to render content
-
-In Stepperize there are different patterns for rendering components or content within each step.
+## Rendering Methods
 
 ### when
 
-The `when` function allows to render a component when the stepper is in a specific step.
-
-This function receives 3 parameters:
-
-- The first parameter is the step ID.
-- The second parameter is a function that returns the component to render when the step matches the given ID.
-- The third parameter is a function that returns the component to render when the step **does not** match the given ID.
+Render content conditionally based on the current step:
 
 ```tsx
-import { defineStepper } from "@stepperize/react"
-
-const { useStepper } = defineStepper(
-  { id: "first" },
-  { id: "second" },
-  { id: "last" },
-)
-
 const MyStepperComponent = () => {
   const stepper = useStepper()
 
   return (
     <>
-      {stepper.when("first", (step) => (
-        <p>This is the {step.title} step.</p>
-      ))}
-
-      {stepper.when("second", (step) => (
-        <p>This is the {step.title} step.</p>
-      ))}
-
-      <p>{stepper.when("last", "Finished!", "Not yet...")}</p> // "Finished!" | "Not yet..."
+      {stepper.when("first", step => <p>First step: {step.title}</p>)}
+      {stepper.when("second", step => <p>Second step: {step.title}</p>)}
+      {stepper.when("last", "Finished!", "Not finished yet")}
     </>
   )
 }
 ```
 
-Also, you can use the `when` with the third parameter to render a component when the step `is not` in a specific step.
-
 ### switch
 
-Like `when`, `switch` allows components to be rendered when the step id is matched, 
-but following the `switch` logical control structure.
-
-This function receives an object with the step ID as the key and a function that returns 
-the component to render when the step matches the given ID.
+Render content using a switch-like structure:
 
 ```tsx
-import { defineStepper } from "@stepperize/react"
-
-const { useStepper } = defineStepper(
-  { id: "first" },
-  { id: "second" },
-  { id: "last" },
-)
-
 const MyStepperComponent = () => {
   const stepper = useStepper()
 
   return (
     <>
       {stepper.switch({
-        "first": (step) => <p>This is the {step.title} step.</p>,
-        "second": (step) => <p>This is the {step.title} step.</p>,
-        "last": (step) => <p>Finished!</p>,
+        first: step => <p>First: {step.title}</p>,
+        second: step => <p>Second: {step.title}</p>,
+        last: () => <p>Finished!</p>,
       })}
     </>
   )
@@ -104,123 +64,92 @@ const MyStepperComponent = () => {
 
 ### match
 
-The `match` function allows to render a component when the stepper is in a specific step.
-
-<Callout type="info">
-Unlike `when` and `switch`, `match` does not allow a component to be rendered when the stepper is in a specific step.
-Instead, it allows a component to be rendered when the stepper is in a specific state. 
-
-This allows us to have a state-based control that can come from either the client or the server side. 
-
-Think of frameworks like Remix where you can have state management from the server with loaders and actions.
-</Callout>
-
-This function receives 2 parameters:
-
-- The first parameter is the step ID.
-- The second parameter is a function that returns the component to render when the step matches the given ID.
+Render content based on an external state:
 
 ```tsx
-import { defineStepper } from "@stepperize/react"
-
-const { useStepper } = defineStepper(
-  { id: "first" },
-  { id: "second" },
-  { id: "last" },
-)
-
 const MyStepperComponent = () => {
   const stepper = useStepper()
-
-  const state = "Value obtained from the server side"
+  const state = "Value from server or client state"
 
   return (
     <>
       {stepper.match(state, {
-        "first": (step) => <p>This is the {step.title} step.</p>,
-        "second": (step) => <p>This is the {step.title} step.</p>,
-        "last": (step) => <p>Finished!</p>,
+        first: step => <p>First: {step.title}</p>,
+        second: step => <p>Second: {step.title}</p>,
+        last: () => <p>Finished!</p>,
       })}
     </>
   )
 }
 ```
 
-## API
+<Callout type="info">
+`match` allows state-based control from client or server, useful for frameworks like Remix with server-side state management.
+</Callout>
 
-The `useStepper` hook returns an object with the following properties:
+## API Reference
 
 <PropsTable
   data={[
     {
       name: "all",
       type: "Step[]",
-      typeSimple: "array",
-      description: "All steps in the stepper",
+      description: "Array of all steps",
     },
     {
       name: "current",
       type: "Step & { index: number }",
-      typeSimple: "object",
-      description: "The current active step",
+      description: "Current active step",
     },
     {
       name: "isLast",
-      typeSimple: "boolean",
-      description: "Check if the current step is the last step",
+      type: "boolean",
+      description: "True if on last step",
     },
     {
       name: "isFirst",
-      typeSimple: "boolean",
-      description: "Check if the current step is the first step",
+      type: "boolean",
+      description: "True if on first step",
     },
     {
       name: "next",
       type: "() => void",
-      typeSimple: "function",
-      description: "Allow to go to the next step",
+      description: "Go to next step",
     },
     {
       name: "prev",
       type: "() => void",
-      typeSimple: "function",
-      description: "Allow to go to the previous step",
+      description: "Go to previous step",
     },
     {
       name: "get",
       type: "(id: string) => Step",
-      typeSimple: "function",
-      description: "Get a step by its ID",
+      description: "Get step by ID",
     },
     {
       name: "goTo",
       type: "(id: string) => void",
-      typeSimple: "function",
-      description: "Set the current active step by ID",
+      description: "Go to step by ID",
     },
     {
       name: "reset",
       type: "() => void",
-      typeSimple: "function",
-      description: "Reset the stepper to the first step or initial step",
+      description: "Reset to first/initial step",
     },
     {
       name: "when",
-      type: "(id: string, whenFn: (step: Step) => React.ReactNode, elseFn: (step: Step) => React.ReactNode): React.ReactNode",
-      typeSimple: "function",
-      description: "If you want to render a step, you can use the `when` function. It takes a step ID and returns an object with a `render` method, allowing you to render the step when it matches the given ID.",
+      type: "(id: string, whenFn: (step: Step) => React.ReactNode, elseFn?: (step: Step) => React.ReactNode) => React.ReactNode",
+      description: "Conditional rendering based on step ID",
     },
     {
       name: "switch",
-      type: "(steps: { [id: string]: (step: Step) => React.ReactNode }): React.ReactNode",
-      typeSimple: "function",
-      description: "If you want to render a step, you can use the `switch` function. It takes an object with a step ID and returns an object with a `render` method, allowing you to render the step when it matches the given ID.",
+      type: "(steps: { [id: string]: (step: Step) => React.ReactNode }) => React.ReactNode",
+      description: "Switch-like rendering based on step ID",
     },
     {
       name: "match",
-      type: "(state: string, steps: { [id: string]: (step: Step) => React.ReactNode }): React.ReactNode",
-      typeSimple: "function",
-      description: "If you want to render a step, you can use the `match` function. It takes a state and returns an object with a `render` method, allowing you to render the step when it matches the given state.",
+      type: "(state: string, steps: { [id: string]: (step: Step) => React.ReactNode }) => React.ReactNode",
+      description: "Render based on external state",
     },
   ]}
 />

@@ -113,9 +113,6 @@ importers:
       next-themes:
         specifier: ^0.3.0
         version: 0.3.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      prism-react-renderer:
-        specifier: ^2.4.0
-        version: 2.4.0(react@18.3.1)
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -125,9 +122,6 @@ importers:
       react-hook-form:
         specifier: ^7.53.0
         version: 7.53.0(react@18.3.1)
-      react-live:
-        specifier: ^4.1.7
-        version: 4.1.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       sonner:
         specifier: ^1.5.0
         version: 1.5.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -172,43 +166,16 @@ importers:
         specifier: ^5.6.2
         version: 5.6.2
 
-  packages/angular:
-    devDependencies:
-      tsup:
-        specifier: ^8.2.4
-        version: 8.2.4(jiti@1.21.6)(postcss@8.4.47)(typescript@5.6.2)(yaml@2.5.0)
-      typescript:
-        specifier: ^5.6.2
-        version: 5.6.2
-
-  packages/lit:
-    devDependencies:
-      tsup:
-        specifier: ^8.2.4
-        version: 8.2.4(jiti@1.21.6)(postcss@8.4.47)(typescript@5.6.2)(yaml@2.5.0)
-      typescript:
-        specifier: ^5.6.2
-        version: 5.6.2
-
-  packages/qwik:
-    devDependencies:
-      tsup:
-        specifier: ^8.2.4
-        version: 8.2.4(jiti@1.21.6)(postcss@8.4.47)(typescript@5.6.2)(yaml@2.5.0)
-      typescript:
-        specifier: ^5.6.2
-        version: 5.6.2
-
   packages/react:
     devDependencies:
       '@types/react':
-        specifier: ^18.3.9
+        specifier: '>=18.0.0'
         version: 18.3.9
       '@types/react-dom':
-        specifier: ^18.3.0
+        specifier: '>=18.0.0'
         version: 18.3.0
       react:
-        specifier: ^18.3.1
+        specifier: '>=18.0.0'
         version: 18.3.1
       tsup:
         specifier: ^8.3.0
@@ -227,15 +194,6 @@ importers:
         version: 5.6.2
 
   packages/svelte:
-    devDependencies:
-      tsup:
-        specifier: ^8.2.4
-        version: 8.2.4(jiti@1.21.6)(postcss@8.4.47)(typescript@5.6.2)(yaml@2.5.0)
-      typescript:
-        specifier: ^5.6.2
-        version: 5.6.2
-
-  packages/vanilla:
     devDependencies:
       tsup:
         specifier: ^8.2.4
@@ -1528,9 +1486,6 @@ packages:
   '@types/node@22.7.3':
     resolution: {integrity: sha512-qXKfhXXqGTyBskvWEzJZPUxSslAiLaB6JGP1ic/XTH9ctGgzdgYguuLP1C601aRTSDNlLb0jbKqXjZ48GNraSA==}
 
-  '@types/prismjs@1.26.4':
-    resolution: {integrity: sha512-rlAnzkW2sZOjbqZ743IHUhFcvzaGbqijwOu8QZnZCjfQzBqFE3s4lOTJEsxikImav9uzz/42I+O7YUs1mWgMlg==}
-
   '@types/prop-types@15.7.12':
     resolution: {integrity: sha512-5zvhXYtRNRluoE/jAp4GVsSduVUzNWKkOZrCDBWYtE7biZywwdC2AcEzg+cSMLFRfVgeAFqpfNabiPjxFddV1Q==}
 
@@ -2620,11 +2575,6 @@ packages:
     engines: {node: '>=10.13.0'}
     hasBin: true
 
-  prism-react-renderer@2.4.0:
-    resolution: {integrity: sha512-327BsVCD/unU4CNLZTWVHyUHKnsqcvj2qbPlQ8MiBE2eq2rgctjigPA1Gp9HLF83kZ20zNN6jgizHJeEsyFYOw==}
-    peerDependencies:
-      react: '>=16.0.0'
-
   property-information@6.5.0:
     resolution: {integrity: sha512-PgTgs/BlvHxOu8QuEN7wi5A0OmXaBcHpmCSTehcs6Uuu9IkDIEo13Hy7n898RHfrQ49vKCoGeWZSaAK01nwVig==}
 
@@ -2651,13 +2601,6 @@ packages:
     engines: {node: '>=18.0.0'}
     peerDependencies:
       react: ^16.8.0 || ^17 || ^18 || ^19
-
-  react-live@4.1.7:
-    resolution: {integrity: sha512-NTzl0POOAW3dkp7+QL30duOrIu2Vzf2LHdx4TaQ0BqOAtQcSTKEXujfm9jR2VoCHko0oi35PYp38yKQBXz4mrg==}
-    engines: {node: '>= 0.12.0', npm: '>= 2.0.0'}
-    peerDependencies:
-      react: '>=18.0.0'
-      react-dom: '>=18.0.0'
 
   react-medium-image-zoom@5.2.9:
     resolution: {integrity: sha512-NtjuwWdvjyjIo+IBv2Ka/oQwYMDlPM0M1nHYM3Ga1QBnr/YwpjyrEWKQB2FlGCmgiBmgIMsb6Dij2RTWxKkY+w==}
@@ -3106,11 +3049,6 @@ packages:
     peerDependenciesMeta:
       '@types/react':
         optional: true
-
-  use-editable@2.3.3:
-    resolution: {integrity: sha512-7wVD2JbfAFJ3DK0vITvXBdpd9JAz5BcKAAolsnLBuBn6UDDwBGuCIAGvR3yA2BNKm578vAMVHFCWaOcA+BhhiA==}
-    peerDependencies:
-      react: '>= 16.8.0'
 
   use-sidecar@1.1.2:
     resolution: {integrity: sha512-epTbsLuzZ7lPClpz2TyryBfztm7m+28DlEv2ZCQ3MDr5ssiwyOwGH/e5F9CkfWjJ1t4clvI58yF822/GUkjjhw==}
@@ -4376,8 +4314,6 @@ snapshots:
   '@types/node@22.7.3':
     dependencies:
       undici-types: 6.19.8
-
-  '@types/prismjs@1.26.4': {}
 
   '@types/prop-types@15.7.12': {}
 
@@ -5769,12 +5705,6 @@ snapshots:
 
   prettier@2.8.8: {}
 
-  prism-react-renderer@2.4.0(react@18.3.1):
-    dependencies:
-      '@types/prismjs': 1.26.4
-      clsx: 2.1.1
-      react: 18.3.1
-
   property-information@6.5.0: {}
 
   pseudomap@1.0.2: {}
@@ -5796,14 +5726,6 @@ snapshots:
   react-hook-form@7.53.0(react@18.3.1):
     dependencies:
       react: 18.3.1
-
-  react-live@4.1.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
-    dependencies:
-      prism-react-renderer: 2.4.0(react@18.3.1)
-      react: 18.3.1
-      react-dom: 18.3.1(react@18.3.1)
-      sucrase: 3.35.0
-      use-editable: 2.3.3(react@18.3.1)
 
   react-medium-image-zoom@5.2.9(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
     dependencies:
@@ -6323,10 +6245,6 @@ snapshots:
       tslib: 2.7.0
     optionalDependencies:
       '@types/react': 18.3.9
-
-  use-editable@2.3.3(react@18.3.1):
-    dependencies:
-      react: 18.3.1
 
   use-sidecar@1.1.2(@types/react@18.3.9)(react@18.3.1):
     dependencies:

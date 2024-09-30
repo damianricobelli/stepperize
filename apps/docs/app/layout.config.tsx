@@ -5,15 +5,15 @@ import { NavChildren } from "@/app/layout.client";
 import { source } from "@/app/source";
 import { modes } from "@/lib/modes";
 import { RootToggle } from "fumadocs-ui/components/layout/root-toggle";
-import { BookIcon, Heart, Waypoints } from "lucide-react";
+import { BookIcon, Waypoints } from "lucide-react";
 
 export const baseOptions: HomeLayoutProps = {
 	githubUrl: "https://github.com/damianricobelli/stepperize",
 	nav: {
 		title: (
-			<div className="flex items-center gap-2 mb-2">
+			<div className="flex items-center gap-2">
 				<Waypoints className="size-6" fill="currentColor" />
-				<span className="font-medium text-xl">Stepperize</span>
+				<span className="font-medium text-xl hidden md:block">Stepperize</span>
 			</div>
 		),
 		transparentMode: "top",
@@ -26,11 +26,6 @@ export const baseOptions: HomeLayoutProps = {
 			url: "/blog",
 			active: "nested-url",
 		},
-		{
-			text: "Sponsors",
-			url: "/sponsors",
-			icon: <Heart />,
-		},
 	],
 };
 
@@ -40,7 +35,6 @@ export const docsOptions: DocsLayoutProps = {
 	nav: {
 		...baseOptions.nav,
 		transparentMode: "none",
-		children: undefined,
 	},
 	sidebar: {
 		banner: (

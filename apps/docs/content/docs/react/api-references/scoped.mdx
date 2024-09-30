@@ -1,11 +1,11 @@
 ---
 title: Scoped
-description: How to get access to the useStepper hook in a child component
+description: Using the Scoped component to share stepper state across child components
 ---
 
-The `Scoped` component works as a provider and allows us to synchronise the state of steps via `useStepper` between child components.
+The `Scoped` component acts as a provider, allowing you to synchronize stepper state via `useStepper` across child components.
 
-## Usage
+## Basic Usage
 
 ```tsx
 const Stepper = defineStepper(
@@ -14,61 +14,36 @@ const Stepper = defineStepper(
   { id: "last", title: "Last" }
 );
 
-export const MyScopedStepper = () => {
-  return (
-    <Stepper.Scoped>
-      <MySteps />
-      <MyActions />
-    </Stepper.Scoped>
-  );
-};
-```
+export const MyScopedStepper = () => (
+  <Stepper.Scoped>
+    <StepContent />
+    <StepNavigation />
+  </Stepper.Scoped>
+);
 
-Then, in the child component, we can use the `useStepper` hook to get the steps and use them.
-
-```tsx
-const MySteps = () => {
-  const stepper = useStepper();
-
+const StepContent = () => {
+  const { when } = useStepper();
   return (
     <>
-      {stepper.when("first", (step) => (
-        <p>This is the {step.id} step. So it begins.</p>
-      ))}
-
-      {stepper.when("second", (step) => (
-        <p>This is the {step.id} step.</p>
-      ))}
-
-      {stepper.when("last", (step) => (
-        <p>This is the {step.id} step. So it ends.</p>
-      ))}
+      {when("first", step => <p>Starting with {step.title}</p>)}
+      {when("second", step => <p>In the middle: {step.title}</p>)}
+      {when("last", step => <p>Ending with {step.title}</p>)}
     </>
   );
 };
 
-const MyActions = () => {
-  const stepper = useStepper();
-
+const StepNavigation = () => {
+  const { isLast, reset, next, when } = useStepper();
   return (
-    <button
-      type="button"
-      onClick={stepper.isLast ? stepper.reset : stepper.next}
-    >
-      {stepper.when(
-        "last",
-        () => "Reset",
-        () => "Next"
-      )}
+    <button onClick={isLast ? reset : next}>
+      {when("last", () => "Reset", () => "Next")}
     </button>
   );
 };
 ```
 
 <Callout type="info">
-  The `Scoped` component is only necessary if we want a child component to have
-  access to the steps. Otherwise, we can use the hook directly at the same level
-  where we render our code.
+  Use `Scoped` only when child components need access to stepper state. Otherwise, use the hook directly in your component.
 </Callout>
 
 ## API Reference
@@ -79,46 +54,46 @@ const MyActions = () => {
       name: "initialStep",
       type: "string",
       typeSimple: "string",
-      description: "The ID of the initial step to display.",
+      description: "ID of the initial step to display.",
     },
     {
       name: "children",
       typeSimple: "React.ReactNode",
-      description: "The content to be rendered inside the stepper.",
+      description: "Content to render inside the stepper.",
       required: true,
     },
   ]}
 />
 
-## Multiple Scopes
+## Nested Scopes
 
-We can have multiple scopes in our application. For example, we can have a global scope and a local scope.
+You can nest multiple scopes for more complex stepper hierarchies:
 
 ```tsx
 const GlobalStepper = defineStepper(
-  { id: "first", title: "First" },
-  { id: "second", title: "Second" },
-  { id: "last", title: "Last" }
+  { id: "start", title: "Start" },
+  { id: "middle", title: "Middle" },
+  { id: "end", title: "End" }
 );
 
 const LocalStepper = defineStepper(
-  { id: "first", title: "First" },
-  { id: "second", title: "Second" },
-  { id: "last", title: "Last" }
+  { id: "sub1", title: "Sub-step 1" },
+  { id: "sub2", title: "Sub-step 2" }
 );
 
-export const MyGlobalStepper = () => {
-  return (
-    <GlobalStepper.Scoped>
-      <MySteps />
-      <MyActions />
-      <LocalStepper.Scoped>
-        <MyLocalSteps />
-        <MyLocalActions />
-      </LocalStepper.Scoped>
-    </GlobalStepper.Scoped>
-  );
-};
+export const NestedSteppers = () => (
+  <GlobalStepper.Scoped>
+    <GlobalStepContent />
+    <GlobalNavigation />
+    <LocalStepper.Scoped>
+      <LocalStepContent />
+      <LocalNavigation />
+    </LocalStepper.Scoped>
+  </GlobalStepper.Scoped>
+);
+
+// Use GlobalStepper.useStepper() for global scope
+// Use LocalStepper.useStepper() for local scope
 ```
 
-Finally, we can use the `Global.useStepper` on all children of `GlobalStepper.Scoped` and `Local.useStepper` on all children of `LocalStepper.Scoped`.
+This structure allows for independent control of global and local stepper states.
