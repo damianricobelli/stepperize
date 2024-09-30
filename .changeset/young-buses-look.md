@@ -1,6 +1,6 @@
 ---
 "docs": minor
-"react": minor
+"@stepperize/react": minor
 ---
 
 docs: improve docs with fumadocs and add examples with Stackblitz
