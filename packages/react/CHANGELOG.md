@@ -1,5 +1,11 @@
 # @stepperize/react
 
+## 3.1.1
+
+### Patch Changes
+
+- [#69](https://github.com/damianricobelli/stepperize/pull/69) [`c40fd92`](https://github.com/damianricobelli/stepperize/commit/c40fd92e37ff4e743b11263e50560d97c52bf88e) Thanks [@damianricobelli](https://github.com/damianricobelli)! - chore: docs minnor fixes
+
 ## 3.1.0
 
 ### Minor Changes
