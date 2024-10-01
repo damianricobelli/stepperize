@@ -5,7 +5,7 @@ import { NavChildren } from "@/app/layout.client";
 import { source } from "@/app/source";
 import { modes } from "@/lib/modes";
 import { RootToggle } from "fumadocs-ui/components/layout/root-toggle";
-import { BookIcon, Waypoints } from "lucide-react";
+import { Waypoints } from "lucide-react";
 
 export const baseOptions: HomeLayoutProps = {
 	githubUrl: "https://github.com/damianricobelli/stepperize",
@@ -19,14 +19,14 @@ export const baseOptions: HomeLayoutProps = {
 		transparentMode: "top",
 		children: <NavChildren />,
 	},
-	links: [
-		{
-			icon: <BookIcon />,
-			text: "Blog",
-			url: "/blog",
-			active: "nested-url",
-		},
-	],
+	// links: [
+	// 	{
+	// 		icon: <BookIcon />,
+	// 		text: "Blog",
+	// 		url: "/blog",
+	// 		active: "nested-url",
+	// 	},
+	// ],
 };
 
 export const docsOptions: DocsLayoutProps = {

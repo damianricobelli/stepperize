@@ -1,0 +1,5 @@
+{
+	"title": "Vue",
+	"root": true,
+	"pages": ["---Getting Started---", "index"]
+}
