@@ -1,5 +1,11 @@
 # docs
 
+## 2.1.2
+
+### Patch Changes
+
+- [#72](https://github.com/damianricobelli/stepperize/pull/72) [`ec0901e`](https://github.com/damianricobelli/stepperize/commit/ec0901ee43df69208828115e9a1edf58710c7423) Thanks [@damianricobelli](https://github.com/damianricobelli)! - add circular docs
+
 ## 2.1.1
 
 ### Patch Changes
