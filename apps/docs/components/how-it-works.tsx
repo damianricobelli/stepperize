@@ -1,6 +1,5 @@
 "use client";
 
-import {} from "framer-motion";
 import { CheckCircle, Code, Layers, Zap } from "lucide-react";
 import * as React from "react";
 
