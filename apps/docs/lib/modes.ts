@@ -1,4 +1,4 @@
-import { ReactIcon, SolidIcon, SvelteIcon, VueIcon } from "@/components/icons";
+import { icons } from "@/components/icons";
 import react from "../../../packages/react/package.json";
 import solid from "../../../packages/solid/package.json";
 import svelte from "../../../packages/svelte/package.json";
@@ -20,7 +20,7 @@ export const modes: Mode[] = [
 		package: react.name,
 		description: "Stepperize for React",
 		version: react.version,
-		icon: ReactIcon,
+		icon: icons.ReactIcon,
 	},
 	{
 		param: "vue",
@@ -28,7 +28,7 @@ export const modes: Mode[] = [
 		package: vue.name,
 		description: "Stepperize for Vue",
 		version: vue.version,
-		icon: VueIcon,
+		icon: icons.VueIcon,
 	},
 	{
 		param: "solid",
@@ -36,7 +36,7 @@ export const modes: Mode[] = [
 		package: solid.name,
 		description: "Stepperize for Solid",
 		version: solid.version,
-		icon: SolidIcon,
+		icon: icons.SolidIcon,
 	},
 	{
 		param: "svelte",
@@ -44,6 +44,6 @@ export const modes: Mode[] = [
 		package: svelte.name,
 		description: "Stepperize for Svelte",
 		version: svelte.version,
-		icon: SvelteIcon,
+		icon: icons.SvelteIcon,
 	},
 ];

@@ -1,5 +1,6 @@
 {
 	"title": "Solid",
 	"root": true,
+	"description": "Stepperize for Solid",
 	"pages": ["---Getting Started---", "index"]
 }

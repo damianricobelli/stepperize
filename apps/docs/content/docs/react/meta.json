@@ -1,6 +1,7 @@
 {
 	"title": "React",
 	"root": true,
+	"description": "Stepperize for React",
 	"pages": [
 		"---Getting Started---",
 		"index",

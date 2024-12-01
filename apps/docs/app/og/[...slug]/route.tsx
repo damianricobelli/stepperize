@@ -120,8 +120,6 @@ export const GET = metadataImage.createAPI((page): ImageResponseType => {
 	);
 });
 
-export function generateStaticParams(): {
-	slug: string[];
-}[] {
+export function generateStaticParams() {
 	return metadataImage.generateParams();
 }

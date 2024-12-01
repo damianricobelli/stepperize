@@ -1,5 +1,6 @@
 {
 	"title": "Vue",
 	"root": true,
+	"description": "Stepperize for Vue",
 	"pages": ["---Getting Started---", "index"]
 }

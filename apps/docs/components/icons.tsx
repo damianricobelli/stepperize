@@ -1,7 +1,7 @@
 // biome-ignore lint/correctness/noUnusedImports: <explanation>
 import * as React from "react";
 
-export const ReactIcon = () => (
+const ReactIcon = () => (
 	<svg xmlns="http://www.w3.org/2000/svg" viewBox="-11.5 -10.23 23 20.46" width={36} height={36}>
 		<title> React Logo </title>
 		<circle r="2.05" fill="#61dafb" />
@@ -13,7 +13,7 @@ export const ReactIcon = () => (
 	</svg>
 );
 
-export const VueIcon = () => (
+const VueIcon = () => (
 	<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 261.76 226.69" width={36} height={36}>
 		<title>Vue Logo</title>
 		<g transform="matrix(1.3333 0 0 -1.3333 -76.311 313.34)">
@@ -27,7 +27,7 @@ export const VueIcon = () => (
 	</svg>
 );
 
-export const AngularIcon = () => (
+const AngularIcon = () => (
 	<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 261.76 226.69" width={36} height={36}>
 		<title>Angular Logo</title>
 		<g clip-path="url(#a)">
@@ -78,7 +78,7 @@ export const AngularIcon = () => (
 	</svg>
 );
 
-export const SolidIcon = () => (
+const SolidIcon = () => (
 	<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 166 155.3" width={36} height={36}>
 		<title>Solid Logo</title>
 		<defs>
@@ -118,7 +118,7 @@ export const SolidIcon = () => (
 	</svg>
 );
 
-export const SvelteIcon = () => (
+const SvelteIcon = () => (
 	<svg xmlns="http://www.w3.org/2000/svg" width={36} height={36} viewBox="0 0 107 128">
 		<title>Svelte Logo</title>
 		<path
@@ -132,7 +132,7 @@ export const SvelteIcon = () => (
 	</svg>
 );
 
-export const LitIcon = () => (
+const LitIcon = () => (
 	<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 768 960" width={36} height={36}>
 		<title>Lit Logo</title>
 		<path d="M192 576l96-288 432 432-144 240-192-192h-96" fill="#00e8ff" />
@@ -142,7 +142,7 @@ export const LitIcon = () => (
 	</svg>
 );
 
-export const VanillaIcon = () => (
+const VanillaIcon = () => (
 	<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 630 630" width={36} height={36}>
 		<title>Vanilla Logo</title>
 		<rect width="630" height="630" fill="#f7df1e" />
@@ -150,7 +150,7 @@ export const VanillaIcon = () => (
 	</svg>
 );
 
-export const QwikIcon = () => (
+const QwikIcon = () => (
 	<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 272" width={36} height={36}>
 		<title>Qwik Logo</title>
 		<g>
@@ -169,3 +169,14 @@ export const QwikIcon = () => (
 		</g>
 	</svg>
 );
+
+export const icons = {
+	ReactIcon,
+	VueIcon,
+	AngularIcon,
+	SolidIcon,
+	SvelteIcon,
+	LitIcon,
+	VanillaIcon,
+	QwikIcon,
+};
