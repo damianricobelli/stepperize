@@ -1,5 +1,11 @@
 # @stepperize/react
 
+## 4.0.0
+
+### Major Changes
+
+- [#78](https://github.com/damianricobelli/stepperize/pull/78) [`d59a33d`](https://github.com/damianricobelli/stepperize/commit/d59a33d4dcddb9cce66e2c76cc06df222e4bd08b) Thanks [@ericklugoj](https://github.com/ericklugoj)! - Fix react version to work with v19
+
 ## 3.1.1
 
 ### Patch Changes
