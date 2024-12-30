@@ -2,7 +2,7 @@ import type { Get, ScopedProps, Step, Stepper } from "./types";
 
 import * as React from "react";
 
-export const defineStepper = <const Steps extends Step[]>(...steps: Steps) => {
+export const defineStepper = <Steps extends Step[]>(...steps: Steps) => {
 	const Context = React.createContext(null as any as Stepper<Steps>);
 
 	const useStepper = (initialStep?: Get.Id<Steps>) => {
