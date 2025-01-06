@@ -1,5 +1,16 @@
 # docs
 
+## 2.2.0
+
+### Minor Changes
+
+- [#83](https://github.com/damianricobelli/stepperize/pull/83) [`913bc75`](https://github.com/damianricobelli/stepperize/commit/913bc75e9b7cfa8e3b0a969ff5073a20f7deb798) Thanks [@damianricobelli](https://github.com/damianricobelli)! - Improve docs and add utils feature
+
+### Patch Changes
+
+- Updated dependencies [[`913bc75`](https://github.com/damianricobelli/stepperize/commit/913bc75e9b7cfa8e3b0a969ff5073a20f7deb798)]:
+  - @stepperize/react@4.1.0
+
 ## 2.1.4
 
 ### Patch Changes
