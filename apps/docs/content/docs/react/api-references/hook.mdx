@@ -26,7 +26,10 @@ const MyStepperComponent = () => {
 
 ### when
 
-Render content conditionally based on the current step:
+The when method allows rendering content conditionally based on the current step. 
+It can take an id of a step (either a string or an array of a step ID followed by booleans) 
+and a whenFn (the function to execute if the step matches). Additionally, you can provide 
+an optional elseFn (the function to execute if the step does not match).
 
 ```tsx
 const MyStepperComponent = () => {
@@ -42,9 +45,37 @@ const MyStepperComponent = () => {
 }
 ```
 
+You can define more complex conditions that not only depend on the current step's ID 
+but also on additional boolean values. This allows for multi-condition logic where each 
+boolean must evaluate to true for the step to match. The boolean values can represent 
+different state conditions or external factors that affect the step's visibility or behavior.
+
+> The first element of the array is the step ID, the following elements are the boolean values.
+
+```tsx
+const MyStepperComponent = () => {
+  const stepper = useStepper()
+
+  const condition1 = ... // boolean
+  const condition2 = ... // boolean
+  
+  return (
+    <>
+      {stepper.when(["first", condition1, condition2], step => <p>First step: {step.title}</p>)}
+      {stepper.when("second", step => <p>Second step: {step.title}</p>)}
+      {stepper.when("last", "Finished!", "Not finished yet")}
+    </>
+  )
+}
+```
+
 ### switch
 
-Render content using a switch-like structure:
+The switch method allows you to render content based on the current step's ID, 
+similar to a switch-case structure. This method provides a cleaner and more scalable 
+way to handle different step-specific rendering logic, making it ideal for scenarios 
+where you need to differentiate the UI depending on the current step without writing 
+multiple when conditions.
 
 ```tsx
 const MyStepperComponent = () => {
@@ -64,7 +95,11 @@ const MyStepperComponent = () => {
 
 ### match
 
-Render content based on an external state:
+The match method allows you to render content based on an external state, 
+such as a value fetched from a server or any dynamic state in your application. 
+This provides flexibility for rendering content that is tied not only to the 
+current step in the stepper but also to any other state outside the stepper's 
+context, such as user actions, data from an API, or global application state.
 
 ```tsx
 const MyStepperComponent = () => {
