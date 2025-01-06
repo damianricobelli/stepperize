@@ -10,6 +10,7 @@
 		"api-references/define",
 		"api-references/hook",
 		"api-references/scoped",
+		"api-references/utils",
 		"---Examples---",
 		"examples/basic",
 		"examples/scoped",
