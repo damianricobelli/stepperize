@@ -1,5 +1,5 @@
 ---
-title: Hook and Methods
+title: Hook
 description: Access and control your stepper with the useStepper hook
 ---
 
@@ -89,67 +89,17 @@ const MyStepperComponent = () => {
 
 ## API Reference
 
-<PropsTable
-  data={[
-    {
-      name: "all",
-      type: "Step[]",
-      description: "Array of all steps",
-    },
-    {
-      name: "current",
-      type: "Step & { index: number }",
-      description: "Current active step",
-    },
-    {
-      name: "isLast",
-      type: "boolean",
-      description: "True if on last step",
-    },
-    {
-      name: "isFirst",
-      type: "boolean",
-      description: "True if on first step",
-    },
-    {
-      name: "next",
-      type: "() => void",
-      description: "Go to next step",
-    },
-    {
-      name: "prev",
-      type: "() => void",
-      description: "Go to previous step",
-    },
-    {
-      name: "get",
-      type: "(id: string) => Step",
-      description: "Get step by ID",
-    },
-    {
-      name: "goTo",
-      type: "(id: string) => void",
-      description: "Go to step by ID",
-    },
-    {
-      name: "reset",
-      type: "() => void",
-      description: "Reset to first/initial step",
-    },
-    {
-      name: "when",
-      type: "(id: string, whenFn: (step: Step) => React.ReactNode, elseFn?: (step: Step) => React.ReactNode) => React.ReactNode",
-      description: "Conditional rendering based on step ID",
-    },
-    {
-      name: "switch",
-      type: "(steps: { [id: string]: (step: Step) => React.ReactNode }) => React.ReactNode",
-      description: "Switch-like rendering based on step ID",
-    },
-    {
-      name: "match",
-      type: "(state: string, steps: { [id: string]: (step: Step) => React.ReactNode }) => React.ReactNode",
-      description: "Render based on external state",
-    },
-  ]}
-/>
+| Name | Type | Description |
+| --- | --- | --- |
+| all | `Step[]` | Returns all steps |
+| current | `Step` | Returns the current step |
+| isLast | `boolean` | Returns true if the current step is the last step |
+| isFirst | `boolean` | Returns true if the current step is the first step |
+| next | `() => void` | Advances to the next step |
+| prev | `() => void` | Returns to the previous step |
+| get | `(id: string) => Step` | Returns a step by its ID |
+| goTo | `(id: string) => void` | Navigates to a specific step by its ID |
+| reset | `() => void` | Resets the stepper to its initial state |
+| when | `(id: string, whenFn: (step: Step) => React.ReactNode, elseFn?: (step: Step) => React.ReactNode) => React.ReactNode` | Executes a function based on the current step ID |
+| switch | `(steps: { [id: string]: (step: Step) => React.ReactNode }) => React.ReactNode` | Executes a function based on a switch-case-like structure for steps |
+| match | `(state: string, steps: { [id: string]: (step: Step) => React.ReactNode }) => React.ReactNode` | Matches the current state with a set of possible states and executes the corresponding function |
