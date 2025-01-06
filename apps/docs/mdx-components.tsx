@@ -1,5 +1,4 @@
 import { DemoViewer } from "@/components/demo-viewer";
-import { PropsTable } from "@/components/props-table";
 import { Accordion, Accordions } from "fumadocs-ui/components/accordion";
 import { Callout } from "fumadocs-ui/components/callout";
 import { CodeBlock, Pre } from "fumadocs-ui/components/codeblock";
@@ -20,7 +19,6 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
 		TypeTable,
 		Accordion,
 		Accordions,
-		PropsTable,
 		CodeBlock,
 		Pre,
 		blockquote: (props) => <Callout>{props.children}</Callout>,
