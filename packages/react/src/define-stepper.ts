@@ -1,48 +1,16 @@
-import type { Get, ScopedProps, Step, Stepper, StepperReturn, Utils } from "./types";
+import { generateCommonStepperUseFns, generateStepperUtils, getInitialStepIndex, Step, Stepper, StepperGet } from "@stepperize/core";
+import type { ScopedProps, StepperReturn } from "./types";
 
 import * as React from "react";
 
 export const defineStepper = <const Steps extends Step[]>(...steps: Steps): StepperReturn<Steps> => {
 	const Context = React.createContext<Stepper<Steps> | null>(null);
 
-	const utils = {
-		getAll() {
-			return steps;
-		},
-		get: (id) => {
-			const step = steps.find((step) => step.id === id);
-			return step as Get.StepById<Steps, typeof id>;
-		},
-		getIndex: (id) => steps.findIndex((step) => step.id === id),
-		getByIndex: (index) => steps[index],
-		getFirst() {
-			return steps[0];
-		},
-		getLast() {
-			return steps[steps.length - 1];
-		},
-		getNext(id) {
-			return steps[steps.findIndex((step) => step.id === id) + 1];
-		},
-		getPrev(id) {
-			return steps[steps.findIndex((step) => step.id === id) - 1];
-		},
-		getNeighbors(id) {
-			const index = steps.findIndex((step) => step.id === id);
-			return {
-				prev: index > 0 ? steps[index - 1] : null,
-				next: index < steps.length - 1 ? steps[index + 1] : null,
-			};
-		},
-	} satisfies Utils<Steps>;
+	const utils = generateStepperUtils(...steps);
 
-	const useStepper = (initialStep?: Get.Id<Steps>) => {
+	const useStepper = (initialStep?: StepperGet.Id<Steps>) => {
 		const initialStepIndex = React.useMemo(
-			() =>
-				Math.max(
-					steps.findIndex((step) => step.id === initialStep),
-					0,
-				),
+			() => getInitialStepIndex(steps, initialStep),
 			[initialStep],
 		);
 
@@ -78,22 +46,7 @@ export const defineStepper = <const Steps extends Step[]>(...steps: Steps): Step
 				reset() {
 					setStepIndex(initialStepIndex);
 				},
-				switch(when) {
-					const whenFn = when[current.id as keyof typeof when];
-					return whenFn?.(current as Get.StepById<typeof steps, (typeof current)["id"]>);
-				},
-				when(id, whenFn, elseFn) {
-					const currentStep = steps[stepIndex];
-					const matchesId = Array.isArray(id)
-						? currentStep.id === id[0] && id.slice(1).every(Boolean)
-						: currentStep.id === id;
-
-					return matchesId ? whenFn?.(currentStep as any) : elseFn?.(currentStep as any);
-				},
-				match(state, matches) {
-					const matchFn = matches[state as keyof typeof matches];
-					return matchFn?.(state as any);
-				},
+				...generateCommonStepperUseFns(steps, current, stepIndex),
 			} as Stepper<Steps>;
 		}, [stepIndex]);
 
@@ -111,6 +64,6 @@ export const defineStepper = <const Steps extends Step[]>(...steps: Steps): Step
 				},
 				children,
 			),
-		useStepper: (initialStep?: Get.Id<Steps>) => React.useContext(Context) ?? useStepper(initialStep),
+		useStepper: (initialStep?: StepperGet.Id<Steps>) => React.useContext(Context) ?? useStepper(initialStep),
 	};
 };

@@ -1,0 +1,42 @@
+{
+    "name": "@stepperize/core",
+    "version": "4.1.0",
+    "private": false,
+    "publishConfig": {
+        "access": "public"
+    },
+    "description": "The library for building step-by-step workflows for web and mobile apps",
+    "author": "damianricobelli",
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/damianricobelli/stepperize.git",
+        "directory": "packages/core"
+    },
+    "homepage": "https://stepperize.vercel.app",
+    "sideEffects": false,
+    "files": [
+        "dist"
+    ],
+    "main": "dist/index.js",
+    "module": "dist/index.mjs",
+    "types": "dist/index.d.ts",
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "import": "./dist/index.mjs",
+            "require": "./dist/index.js"
+        }
+    },
+    "scripts": {
+        "build": "tsup",
+        "dev": "tsup --watch",
+        "lint": "turbo lint",
+        "prepublishOnly": "pnpm run build",
+        "clean": "rm -rf .turbo && rm -rf node_modules dist"
+    },
+    "devDependencies": {
+        "tsup": "^8.3.5",
+        "typescript": "^5.7.2"
+    }
+}

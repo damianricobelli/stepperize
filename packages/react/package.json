@@ -35,6 +35,9 @@
 		"prepublishOnly": "pnpm run build",
 		"clean": "rm -rf .turbo && rm -rf node_modules dist"
 	},
+	"dependencies": {
+		"@stepperize/core": "workspace:*"
+	},
 	"peerDependencies": {
 		"react": "^17.0.0 || ^18.0.0 || ^19.0.0"
 	},
