@@ -1,5 +1,11 @@
 # @stepperize/solid
 
+## 0.1.2
+
+### Patch Changes
+
+- [#85](https://github.com/damianricobelli/stepperize/pull/85) [`752f9a6`](https://github.com/damianricobelli/stepperize/commit/752f9a6907cc5e7e623a66350c82eeba9559fea7) Thanks [@damianricobelli](https://github.com/damianricobelli)! - chore: lint and fix ci
+
 ## 0.1.1
 
 ### Patch Changes

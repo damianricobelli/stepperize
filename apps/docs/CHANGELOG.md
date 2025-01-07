@@ -1,5 +1,12 @@
 # docs
 
+## 2.2.1
+
+### Patch Changes
+
+- Updated dependencies [[`f1ce841`](https://github.com/damianricobelli/stepperize/commit/f1ce841411844be787339e269de1a9003ebe715b), [`752f9a6`](https://github.com/damianricobelli/stepperize/commit/752f9a6907cc5e7e623a66350c82eeba9559fea7)]:
+  - @stepperize/react@4.1.1
+
 ## 2.2.0
 
 ### Minor Changes
