@@ -1,5 +1,12 @@
 # docs
 
+## 2.2.2
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @stepperize/react@4.1.2
+
 ## 2.2.1
 
 ### Patch Changes
