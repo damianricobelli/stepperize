@@ -5,7 +5,6 @@
 		"declarationMap": true,
 		"sourceMap": true,
 		"removeComments": false,
-		"jsx": "react-jsx",
 		"module": "esnext",
 		"target": "esnext",
 		"moduleResolution": "bundler",
@@ -13,11 +12,6 @@
 		"skipLibCheck": true,
 		"strict": true
 	},
-	"include": [
-		"."
-	],
-	"exclude": [
-		"node_modules",
-		"dist"
-	]
+	"include": ["."],
+	"exclude": ["node_modules", "dist"]
 }

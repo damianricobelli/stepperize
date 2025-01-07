@@ -8,11 +8,16 @@
 		"jsx": "react-jsx",
 		"module": "esnext",
 		"target": "esnext",
-		"moduleResolution": "node",
+		"moduleResolution": "bundler",
 		"esModuleInterop": true,
 		"skipLibCheck": true,
 		"strict": true
 	},
-	"include": ["."],
-	"exclude": ["node_modules", "dist"]
+	"include": [
+		"."
+	],
+	"exclude": [
+		"node_modules",
+		"dist"
+	]
 }
