@@ -1,11 +1,21 @@
 {
 	"name": "@stepperize/core",
-	"version": "1.0.0",
+	"version": "0.0.1",
 	"private": false,
+	"publishConfig": {
+		"access": "public"
+	},
+	"description": "Core utilities and TypeScript types for building step-based workflows with stepperize",
+	"author": "damianricobelli",
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/damianricobelli/stepperize.git",
+		"directory": "packages/core"
+	},
+	"homepage": "https://stepperize.vercel.app",
 	"sideEffects": false,
-	"files": [
-		"dist"
-	],
+	"files": ["dist"],
 	"main": "dist/index.js",
 	"module": "dist/index.mjs",
 	"types": "dist/index.d.ts",
@@ -20,6 +30,7 @@
 		"build": "tsup",
 		"dev": "tsup --watch",
 		"lint": "turbo lint",
+		"prepublishOnly": "pnpm run build",
 		"clean": "rm -rf .turbo && rm -rf node_modules dist"
 	},
 	"devDependencies": {
