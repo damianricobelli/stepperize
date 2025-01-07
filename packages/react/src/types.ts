@@ -1,8 +1,8 @@
-import type { Step, Stepper, StepperGet, StepperUtils } from "@stepperize/core";
+import type { Step, Stepper, Get, Utils } from "@stepperize/core";
 
 export type ScopedProps<Steps extends Step[]> = React.PropsWithChildren<{
   /** The initial step to display. */
-  initialStep?: StepperGet.Id<Steps>;
+  initialStep?: Get.Id<Steps>;
 }>;
 
 export type StepperReturn<Steps extends Step[]> = {
@@ -15,7 +15,7 @@ export type StepperReturn<Steps extends Step[]> = {
    *
    * @returns An object containing utility methods to interact with the steps
    */
-  utils: StepperUtils<Steps>;
+  utils: Utils<Steps>;
   /**
    * `Scoped` component is a wrapper that provides the stepper context to its children.
    * It uses the `Context` to pass the stepper instance to the children.
@@ -34,5 +34,5 @@ export type StepperReturn<Steps extends Step[]> = {
    * @param initialStep - The ID of the step to start with (optional).
    * @returns An object containing properties and methods to interact with the stepper.
    */
-  useStepper: (initialStep?: StepperGet.Id<Steps>) => Stepper<Steps>;
+  useStepper: (initialStep?: Get.Id<Steps>) => Stepper<Steps>;
 };

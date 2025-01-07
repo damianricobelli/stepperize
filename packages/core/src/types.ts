@@ -14,9 +14,9 @@ export type Stepper<Steps extends Step[] = Step[]> = {
 	/** Returns to the previous step. */
 	prev: () => void;
 	/** Returns a step by its ID. */
-	get: <Id extends StepperGet.Id<Steps>>(id: Id) => StepperGet.StepById<Steps, Id>;
+	get: <Id extends Get.Id<Steps>>(id: Id) => Get.StepById<Steps, Id>;
 	/** Navigates to a specific step by its ID. */
-	goTo: (id: StepperGet.Id<Steps>) => void;
+	goTo: (id: Get.Id<Steps>) => void;
 	/** Resets the stepper to its initial state. */
 	reset: () => void;
 	/**
@@ -26,27 +26,27 @@ export type Stepper<Steps extends Step[] = Step[]> = {
 	 * @param elseFn - Optional function to execute if the current step does not match the ID.
 	 * @returns The result of whenFn or elseFn.
 	 */
-	when: <Id extends StepperGet.Id<Steps>, R1, R2>(
+	when: <Id extends Get.Id<Steps>, R1, R2>(
 		id: Id | [Id, ...boolean[]],
-		whenFn: (step: StepperGet.StepById<Steps, Id>) => R1,
-		elseFn?: (step: StepperGet.StepSansId<Steps, Id>) => R2,
+		whenFn: (step: Get.StepById<Steps, Id>) => R1,
+		elseFn?: (step: Get.StepSansId<Steps, Id>) => R2,
 	) => R1 | R2;
 	/**
 	 * Executes a function based on a switch-case-like structure for steps.
 	 * @param when - An object mapping step IDs to functions.
 	 * @returns The result of the function corresponding to the current step ID.
 	 */
-	switch: <R>(when: StepperGet.Switch<Steps, R>) => R;
+	switch: <R>(when: Get.Switch<Steps, R>) => R;
 	/**
 	 * Matches the current state with a set of possible states and executes the corresponding function.
 	 * @param state - The current state ID.
 	 * @param matches - An object mapping state IDs to functions.
 	 * @returns The result of the matched function or null if no match is found.
 	 */
-	match: <State extends StepperGet.Id<Steps>, R>(state: State, matches: StepperGet.Switch<Steps, R>) => R | null;
+	match: <State extends Get.Id<Steps>, R>(state: State, matches: Get.Switch<Steps, R>) => R | null;
 };
 
-export type StepperUtils<Steps extends Step[] = Step[]> = {
+export type Utils<Steps extends Step[] = Step[]> = {
 	/**
 	 * Retrieves all steps.
 	 * @returns An array of all steps.
@@ -57,13 +57,13 @@ export type StepperUtils<Steps extends Step[] = Step[]> = {
 	 * @param id - The ID of the step to retrieve.
 	 * @returns The step with the specified ID.
 	 */
-	get: <Id extends StepperGet.Id<Steps>>(id: Id) => StepperGet.StepById<Steps, Id>;
+	get: <Id extends Get.Id<Steps>>(id: Id) => Get.StepById<Steps, Id>;
 	/**
 	 * Retrieves the index of a step by its ID.
 	 * @param id - The ID of the step to retrieve the index for.
 	 * @returns The index of the step.
 	 */
-	getIndex: <Id extends StepperGet.Id<Steps>>(id: Id) => number;
+	getIndex: <Id extends Get.Id<Steps>>(id: Id) => number;
 	/**
 	 * Retrieves a step by its index.
 	 * @param index - The index of the step to retrieve.
@@ -85,33 +85,33 @@ export type StepperUtils<Steps extends Step[] = Step[]> = {
 	 * @param id - The ID of the current step.
 	 * @returns The next step.
 	 */
-	getNext: <Id extends StepperGet.Id<Steps>>(id: Id) => Steps[number];
+	getNext: <Id extends Get.Id<Steps>>(id: Id) => Steps[number];
 	/**
 	 * Retrieves the previous step before the specified ID.
 	 * @param id - The ID of the current step.
 	 * @returns The previous step.
 	 */
-	getPrev: <Id extends StepperGet.Id<Steps>>(id: Id) => Steps[number];
+	getPrev: <Id extends Get.Id<Steps>>(id: Id) => Steps[number];
 	/**
 	 * Retrieves the neighboring steps (previous and next) of the specified step.
 	 * @param id - The ID of the current step.
 	 * @returns An object containing the previous and next steps.
 	 */
-	getNeighbors: <Id extends StepperGet.Id<Steps>>(id: Id) => { prev: Steps[number] | null; next: Steps[number] | null };
+	getNeighbors: <Id extends Get.Id<Steps>>(id: Id) => { prev: Steps[number] | null; next: Steps[number] | null };
 };
 
-export namespace StepperGet {
+export namespace Get {
 	/** Returns a union of possible IDs from the given Steps. */
 	export type Id<Steps extends Step[] = Step[]> = Steps[number]["id"];
 
 	/** Returns a Step from the given Steps with the given Step Id. */
-	export type StepById<Steps extends Step[], Id extends StepperGet.Id<Steps>> = Extract<Steps[number], { id: Id }>;
+	export type StepById<Steps extends Step[], Id extends Get.Id<Steps>> = Extract<Steps[number], { id: Id }>;
 
 	/** Returns any Steps from the given Steps without the given Step Id. */
-	export type StepSansId<Steps extends Step[], Id extends StepperGet.Id<Steps>> = Exclude<Steps[number], { id: Id }>;
+	export type StepSansId<Steps extends Step[], Id extends Get.Id<Steps>> = Exclude<Steps[number], { id: Id }>;
 
 	/** Returns any Steps from the given Steps without the given Step Id. */
 	export type Switch<Steps extends Step[], R> = {
-		[Id in StepperGet.Id<Steps>]?: (step: StepperGet.StepById<Steps, Id>) => R;
+		[Id in Get.Id<Steps>]?: (step: Get.StepById<Steps, Id>) => R;
 	};
 }
