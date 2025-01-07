@@ -1,7 +1,9 @@
-import { generateCommonStepperUseFns, generateStepperUtils, getInitialStepIndex, Step, Stepper, Get } from "@stepperize/core";
+import type { Get, Step, Stepper } from "@stepperize/core";
 import type { ScopedProps, StepperReturn } from "./types";
 
 import * as React from "react";
+
+import { generateCommonStepperUseFns, generateStepperUtils, getInitialStepIndex } from "@stepperize/core";
 
 export const defineStepper = <const Steps extends Step[]>(...steps: Steps): StepperReturn<Steps> => {
 	const Context = React.createContext<Stepper<Steps> | null>(null);
@@ -9,10 +11,7 @@ export const defineStepper = <const Steps extends Step[]>(...steps: Steps): Step
 	const utils = generateStepperUtils(...steps);
 
 	const useStepper = (initialStep?: Get.Id<Steps>) => {
-		const initialStepIndex = React.useMemo(
-			() => getInitialStepIndex(steps, initialStep),
-			[initialStep],
-		);
+		const initialStepIndex = React.useMemo(() => getInitialStepIndex(steps, initialStep), [initialStep]);
 
 		const [stepIndex, setStepIndex] = React.useState(initialStepIndex);
 
