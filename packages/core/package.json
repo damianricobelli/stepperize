@@ -1,9 +1,11 @@
 {
 	"name": "@stepperize/core",
-	"version": "0.0.1",
+	"version": "1.0.0",
 	"private": false,
 	"sideEffects": false,
-	"files": ["dist"],
+	"files": [
+		"dist"
+	],
 	"main": "dist/index.js",
 	"module": "dist/index.mjs",
 	"types": "dist/index.d.ts",
