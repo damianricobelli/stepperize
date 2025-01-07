@@ -35,9 +35,8 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build the Package
-        run: pnpm build
-        working-directory: packages/react
+      - name: Build @stepperize/react
+        run: pnpm turbo run build --filter=packages/react
 
       - name: Create Release Pull Request or Publish to npm
         uses: changesets/action@v1
