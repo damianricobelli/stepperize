@@ -1,5 +1,12 @@
 # @stepperize/react
 
+## 4.1.2
+
+### Patch Changes
+
+- Updated dependencies [[`46591cc`](https://github.com/damianricobelli/stepperize/commit/46591cc7aabf6d2730cf8296166792a4c33c2d2b)]:
+  - @stepperize/core@1.0.0
+
 ## 4.1.1
 
 ### Patch Changes
