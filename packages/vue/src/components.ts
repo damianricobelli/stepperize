@@ -44,7 +44,7 @@ export const StepperSwitch = defineComponent(
 		return () => props.stepper.switch(slots as Get.Switch<Steps, any>);
 	},
 	{
-		name: "StepperWhen",
+		name: "StepperSwitch",
 		props: ["stepper"] as any, // fix vue typing issue,
 	},
 );
@@ -62,7 +62,7 @@ export const StepperMatch = defineComponent(
 		return () => props.stepper.match(props.state, slots as Get.Switch<Steps, any>);
 	},
 	{
-		name: "StepperWhen",
+		name: "StepperMatch",
 		props: ["stepper", "state"] as any, // fix vue typing issue,
 	},
 );
