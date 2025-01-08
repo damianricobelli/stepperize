@@ -2,5 +2,14 @@
 	"title": "Vue",
 	"root": true,
 	"description": "Stepperize for Vue",
-	"pages": ["---Getting Started---", "index"]
+	"pages": [
+		"---Getting Started---",
+		"index",
+		"installation",
+		"---API References---",
+		"api-references/define",
+		"api-references/composable",
+		"api-references/scoped",
+		"api-references/utils"
+	]
 }

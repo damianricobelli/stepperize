@@ -8,6 +8,6 @@ export default defineConfig({
 	clean: true,
 	minify: true,
 	treeshake: true,
-	external: ["react", "react-dom"],
+	external: ["vue"],
 	tsconfig: "tsconfig.json",
 });
