@@ -1,20 +1,31 @@
 {
 	"name": "@stepperize/vue",
-	"version": "1.0.0",
+	"version": "0.1.2",
+	"private": false,
+	"publishConfig": {
+		"access": "public"
+	},
+	"description": "The library for building step-by-step workflows for Vue apps",
+	"author": "damianricobelli",
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/damianricobelli/stepperize.git",
+		"directory": "packages/vue"
+	},
+	"homepage": "https://stepperize.vercel.app",
+	"sideEffects": false,
+	"files": ["dist"],
 	"main": "dist/index.js",
 	"module": "dist/index.mjs",
 	"types": "dist/index.d.ts",
 	"exports": {
 		".": {
+			"types": "./dist/index.d.ts",
 			"import": "./dist/index.mjs",
-			"require": "./dist/index.js",
-			"types": "./dist/index.d.ts"
+			"require": "./dist/index.js"
 		}
 	},
-	"sideEffects": false,
-	"files": [
-		"dist"
-	],
 	"scripts": {
 		"build": "tsup",
 		"dev": "tsup --watch",

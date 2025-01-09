@@ -5,7 +5,7 @@
 	"publishConfig": {
 		"access": "public"
 	},
-	"description": "The library for building step-by-step workflows for web and mobile apps",
+	"description": "The library for building step-by-step workflows for React and React Native apps",
 	"author": "damianricobelli",
 	"license": "MIT",
 	"repository": {
@@ -15,9 +15,7 @@
 	},
 	"homepage": "https://stepperize.vercel.app",
 	"sideEffects": false,
-	"files": [
-		"dist"
-	],
+	"files": ["dist"],
 	"main": "dist/index.js",
 	"module": "dist/index.mjs",
 	"types": "dist/index.d.ts",
