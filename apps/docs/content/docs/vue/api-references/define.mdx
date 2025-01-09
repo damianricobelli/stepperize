@@ -1,0 +1,49 @@
+---
+title: Define
+description: How to define a stepper using defineStepper
+---
+
+`defineStepper` is the core function for creating a customizable stepper. It generates the necessary components and composables for building your stepper UI and managing its state.
+
+## Usage
+
+<Steps>
+  <Step>
+    ### Import
+
+    ```tsx
+    import { defineStepper } from "@stepperize/vue";
+    ```
+  </Step>
+  <Step>
+  ### Define steps
+
+  Call `defineStepper` with your step configurations:
+
+  ```tsx
+  const { Scoped, useStepper, steps } = defineStepper(
+    { id: "step-1", title: "Step 1", description: "First step" },
+    { id: "step-2", title: "Step 2", description: "Second step" },
+    { id: "step-3", title: "Step 3", description: "Third step" }
+  );
+  ```
+
+  - `id` (required): Unique identifier for each step
+  - Add any custom properties (e.g., `title`, `description`) for use in your UI
+  </Step>
+</Steps>
+
+## Return Value
+
+`defineStepper` returns an object with:
+
+- `Scoped`: A Provider component for scoping stepper state
+- `useStepper`: A custom composable for accessing and controlling the stepper
+- `steps`: An array of the defined step objects
+
+## Next Steps
+
+Learn how to use the returned components and composables:
+
+- [useStepper Composable](./composable)
+- [Scoped Component](./scoped)

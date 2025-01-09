@@ -1,7 +1,6 @@
 {
 	"name": "@stepperize/vue",
 	"version": "0.1.2",
-	"private": true,
 	"main": "dist/index.js",
 	"module": "dist/index.mjs",
 	"types": "dist/index.d.ts",
@@ -13,15 +12,19 @@
 		}
 	},
 	"sideEffects": false,
-	"files": [
-		"dist"
-	],
+	"files": ["dist"],
 	"scripts": {
 		"build": "tsup",
 		"dev": "tsup --watch",
 		"lint": "turbo lint",
 		"prepublishOnly": "pnpm run build",
 		"clean": "rm -rf .turbo && rm -rf node_modules dist"
+	},
+	"dependencies": {
+		"@stepperize/core": "workspace:*"
+	},
+	"peerDependencies": {
+		"vue": ">=3.3.0"
 	},
 	"devDependencies": {
 		"tsup": "^8.3.5",
