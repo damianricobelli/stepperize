@@ -1,5 +1,14 @@
 # docs
 
+## 2.2.3
+
+### Patch Changes
+
+- [#94](https://github.com/damianricobelli/stepperize/pull/94) [`1fa5efb`](https://github.com/damianricobelli/stepperize/commit/1fa5efb5f54a453dd535fb7c5c86a1375a90ed34) Thanks [@damianricobelli](https://github.com/damianricobelli)! - chore: update package json
+
+- Updated dependencies [[`1fa5efb`](https://github.com/damianricobelli/stepperize/commit/1fa5efb5f54a453dd535fb7c5c86a1375a90ed34)]:
+  - @stepperize/react@4.1.3
+
 ## 2.2.2
 
 ### Patch Changes
