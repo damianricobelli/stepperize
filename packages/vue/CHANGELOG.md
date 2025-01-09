@@ -1,5 +1,11 @@
 # @stepperize/vue
 
+## 1.0.0
+
+### Major Changes
+
+- [#90](https://github.com/damianricobelli/stepperize/pull/90) [`26b5924`](https://github.com/damianricobelli/stepperize/commit/26b5924f686508250cf74d01fb59c124f913e8e6) Thanks [@alexzhang1030](https://github.com/alexzhang1030)! - feat: add vue binding of Stepperize
+
 ## 0.1.2
 
 ### Patch Changes

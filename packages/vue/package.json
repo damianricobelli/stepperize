@@ -1,6 +1,6 @@
 {
 	"name": "@stepperize/vue",
-	"version": "0.1.2",
+	"version": "1.0.0",
 	"main": "dist/index.js",
 	"module": "dist/index.mjs",
 	"types": "dist/index.d.ts",
@@ -12,7 +12,9 @@
 		}
 	},
 	"sideEffects": false,
-	"files": ["dist"],
+	"files": [
+		"dist"
+	],
 	"scripts": {
 		"build": "tsup",
 		"dev": "tsup --watch",
