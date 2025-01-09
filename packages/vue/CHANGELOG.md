@@ -4,6 +4,12 @@
 
 ### Major Changes
 
+- [#94](https://github.com/damianricobelli/stepperize/pull/94) [`1fa5efb`](https://github.com/damianricobelli/stepperize/commit/1fa5efb5f54a453dd535fb7c5c86a1375a90ed34) Thanks [@damianricobelli](https://github.com/damianricobelli)! - chore: update package json
+
+## 1.0.0
+
+### Major Changes
+
 - [#90](https://github.com/damianricobelli/stepperize/pull/90) [`26b5924`](https://github.com/damianricobelli/stepperize/commit/26b5924f686508250cf74d01fb59c124f913e8e6) Thanks [@alexzhang1030](https://github.com/alexzhang1030)! - feat: add vue binding of Stepperize
 
 ## 0.1.2
