@@ -15,9 +15,7 @@
 	},
 	"homepage": "https://stepperize.vercel.app",
 	"sideEffects": false,
-	"files": [
-		"dist"
-	],
+	"files": ["dist"],
 	"main": "dist/index.js",
 	"module": "dist/index.mjs",
 	"types": "dist/index.d.ts",
@@ -42,7 +40,7 @@
 		"vue": ">=3.3.0"
 	},
 	"devDependencies": {
-		"tsup": "^8.3.5",
-		"typescript": "^5.7.2"
+		"tsup": "^8.3.6",
+		"typescript": "^5.7.3"
 	}
 }

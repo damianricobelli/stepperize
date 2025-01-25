@@ -1,5 +1,10 @@
 import type { Get, Step, Stepper } from "@stepperize/core";
-import { generateCommonStepperUseFns, generateStepperUtils, getInitialStepIndex } from "@stepperize/core";
+import {
+	executeStepCallback,
+	generateCommonStepperUseFns,
+	generateStepperUtils,
+	getInitialStepIndex,
+} from "@stepperize/core";
 import {
 	type ComputedRef,
 	type InjectionKey,
@@ -42,15 +47,46 @@ export const defineStepper = <const Steps extends Step[]>(...steps: Steps): Step
 				current: currentStep,
 				isLast,
 				isFirst,
-				next() {
-					if (!isLast) {
-						stepIndex.value += 1;
+				async beforeNext(callback) {
+					if (isLast) {
+						throw new Error("Cannot navigate to the next step because it is the last step.");
+					}
+					const shouldProceed = await executeStepCallback(callback, true);
+					if (shouldProceed) {
+						this.next();
 					}
 				},
-				prev() {
-					if (!isFirst) {
-						stepIndex.value -= 1;
+				async afterNext(callback) {
+					this.next();
+					await executeStepCallback(callback, false);
+				},
+				async beforePrev(callback) {
+					if (isFirst) {
+						throw new Error("Cannot navigate to the previous step because it is the first step.");
 					}
+					const shouldProceed = await executeStepCallback(callback, true);
+					if (shouldProceed) {
+						this.prev();
+					}
+				},
+				async afterPrev(callback) {
+					if (isFirst) {
+						throw new Error("Cannot navigate to the previous step because it is the first step.");
+					}
+					this.prev();
+					await executeStepCallback(callback, false);
+				},
+				next() {
+					if (isLast) {
+						throw new Error("Cannot navigate to the next step because it is the last step.");
+					}
+					stepIndex.value += 1;
+				},
+				prev() {
+					if (isFirst) {
+						throw new Error("Cannot navigate to the previous step because it is the first step.");
+					}
+					stepIndex.value -= 1;
 				},
 				get(id) {
 					return steps.find((step) => step.id === id);

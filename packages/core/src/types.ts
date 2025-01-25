@@ -19,6 +19,14 @@ export type Stepper<Steps extends Step[] = Step[]> = {
 	goTo: (id: Get.Id<Steps>) => void;
 	/** Resets the stepper to its initial state. */
 	reset: () => void;
+	/** Executes a function before navigating to the next step. */
+	beforeNext: (callback: () => Promise<boolean> | boolean) => Promise<void> | void;
+	/** Executes a function after navigating to the next step. */
+	afterNext: (callback: () => Promise<void> | void) => Promise<void> | void;
+	/** Executes a function before navigating to the previous step. */
+	beforePrev: (callback: () => Promise<boolean> | boolean) => Promise<void> | void;
+	/** Executes a function after navigating to the previous step. */
+	afterPrev: (callback: () => Promise<void> | void) => Promise<void> | void;
 	/**
 	 * Executes a function based on the current step ID.
 	 * @param id - The ID of the step to check.
