@@ -64,3 +64,11 @@ export function generateCommonStepperUseFns<const Steps extends Step[]>(
 		},
 	} as Pick<Stepper<Steps>, "switch" | "when" | "match">;
 }
+
+export async function executeStepCallback(
+	callback: (() => Promise<boolean> | boolean) | (() => Promise<void> | void),
+	isBefore: boolean,
+): Promise<boolean> {
+	const result = await callback();
+	return isBefore ? result === true : true;
+}

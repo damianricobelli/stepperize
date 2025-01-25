@@ -3,7 +3,12 @@ import type { ScopedProps, StepperReturn } from "./types";
 
 import * as React from "react";
 
-import { generateCommonStepperUseFns, generateStepperUtils, getInitialStepIndex } from "@stepperize/core";
+import {
+	executeStepCallback,
+	generateCommonStepperUseFns,
+	generateStepperUtils,
+	getInitialStepIndex,
+} from "@stepperize/core";
 
 export const defineStepper = <const Steps extends Step[]>(...steps: Steps): StepperReturn<Steps> => {
 	const Context = React.createContext<Stepper<Steps> | null>(null);
@@ -25,15 +30,46 @@ export const defineStepper = <const Steps extends Step[]>(...steps: Steps): Step
 				current,
 				isLast,
 				isFirst,
-				next() {
-					if (!isLast) {
-						setStepIndex(stepIndex + 1);
+				async beforeNext(callback) {
+					if (isLast) {
+						throw new Error("Cannot navigate to the next step because it is the last step.");
+					}
+					const shouldProceed = await executeStepCallback(callback, true);
+					if (shouldProceed) {
+						this.next();
 					}
 				},
-				prev() {
-					if (!isFirst) {
-						setStepIndex(stepIndex - 1);
+				async afterNext(callback) {
+					this.next();
+					await executeStepCallback(callback, false);
+				},
+				async beforePrev(callback) {
+					if (isFirst) {
+						throw new Error("Cannot navigate to the previous step because it is the first step.");
 					}
+					const shouldProceed = await executeStepCallback(callback, true);
+					if (shouldProceed) {
+						this.prev();
+					}
+				},
+				async afterPrev(callback) {
+					if (isFirst) {
+						throw new Error("Cannot navigate to the previous step because it is the first step.");
+					}
+					this.prev();
+					await executeStepCallback(callback, false);
+				},
+				next() {
+					if (isLast) {
+						throw new Error("Cannot navigate to the next step because it is the last step.");
+					}
+					setStepIndex(stepIndex + 1);
+				},
+				prev() {
+					if (isFirst) {
+						throw new Error("Cannot navigate to the previous step because it is the first step.");
+					}
+					setStepIndex(stepIndex - 1);
 				},
 				get(id) {
 					return steps.find((step) => step.id === id);
