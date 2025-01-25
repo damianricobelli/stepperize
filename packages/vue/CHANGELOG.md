@@ -1,5 +1,16 @@
 # @stepperize/vue
 
+## 1.1.0
+
+### Minor Changes
+
+- [#98](https://github.com/damianricobelli/stepperize/pull/98) [`086e074`](https://github.com/damianricobelli/stepperize/commit/086e074ad39c731229910daa26e6ed099ddb923a) Thanks [@damianricobelli](https://github.com/damianricobelli)! - feat: new before/next functions
+
+### Patch Changes
+
+- Updated dependencies [[`086e074`](https://github.com/damianricobelli/stepperize/commit/086e074ad39c731229910daa26e6ed099ddb923a)]:
+  - @stepperize/core@1.1.0
+
 ## 1.0.0
 
 ### Major Changes
