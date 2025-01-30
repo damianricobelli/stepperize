@@ -1,5 +1,11 @@
 # @stepperize/core
 
+## 1.1.1
+
+### Patch Changes
+
+- [#101](https://github.com/damianricobelli/stepperize/pull/101) [`ac936a5`](https://github.com/damianricobelli/stepperize/commit/ac936a5eecfc3eed959ce83ab45045868ed2e197) Thanks [@damianricobelli](https://github.com/damianricobelli)! - stepperize/react v5
+
 ## 1.1.0
 
 ### Minor Changes
