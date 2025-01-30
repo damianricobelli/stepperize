@@ -37,18 +37,7 @@ export function HeroStepper() {
       <div className="flex justify-between">
         {!stepper.isLast ? (
           <>
-            <Button
-              onClick={() => {
-                stepper.beforePrev(() => {
-                  return new Promise((resolve) => {
-                    setTimeout(() => {
-                      resolve(true);
-                    }, 1000);
-                  });
-                });
-              }}
-              disabled={stepper.isFirst}
-            >
+            <Button onClick={stepper.prev} disabled={stepper.isFirst}>
               Previous
             </Button>
 
