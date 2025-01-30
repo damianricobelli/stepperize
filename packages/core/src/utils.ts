@@ -1,5 +1,10 @@
-import type { Get, Step, Stepper, Utils } from "./types";
+import type { Get, Metadata, Step, Stepper, Utils } from "./types";
 
+/**
+ * Generate stepper utils.
+ * @param steps - The steps to generate the utils for.
+ * @returns The stepper utils.
+ */
 export function generateStepperUtils<const Steps extends Step[]>(...steps: Steps) {
 	return {
 		getAll() {
@@ -33,6 +38,12 @@ export function generateStepperUtils<const Steps extends Step[]>(...steps: Steps
 	} satisfies Utils<Steps>;
 }
 
+/**
+ * Get the initial step index for the stepper.
+ * @param steps - The steps to get the initial step index for.
+ * @param initialStep - The initial step to use.
+ * @returns The initial step index for the stepper.
+ */
 export function getInitialStepIndex<Steps extends Step[]>(steps: Steps, initialStep?: Get.Id<Steps>) {
 	return Math.max(
 		steps.findIndex((step) => step.id === initialStep),
@@ -40,6 +51,32 @@ export function getInitialStepIndex<Steps extends Step[]>(steps: Steps, initialS
 	);
 }
 
+/**
+ * Get the initial metadata for the stepper.
+ * @param steps - The steps to get the initial metadata for.
+ * @param initialMetadata - The initial metadata to use.
+ * @returns The initial metadata for the stepper.
+ */
+export function getInitialMetadata<Steps extends Step[]>(
+	steps: Steps,
+	initialMetadata?: Partial<Record<Get.Id<Steps>, Metadata>>,
+) {
+	return steps.reduce(
+		(acc, step) => {
+			acc[step.id as Get.Id<Steps>] = initialMetadata?.[step.id as Get.Id<Steps>] ?? null;
+			return acc;
+		},
+		{} as Record<Get.Id<Steps>, Metadata>,
+	);
+}
+
+/**
+ * Generate common stepper use functions.
+ * @param steps - The steps to generate the functions for.
+ * @param currentStep - The current step.
+ * @param stepIndex - The index of the current step.
+ * @returns The common stepper use functions.
+ */
 export function generateCommonStepperUseFns<const Steps extends Step[]>(
 	steps: Steps,
 	currentStep: Steps[number],

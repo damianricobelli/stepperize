@@ -1,8 +1,10 @@
-import type { Get, Step, Stepper, Utils } from "@stepperize/core";
+import type { Get, Metadata, Step, Stepper, Utils } from "@stepperize/core";
 
 export type ScopedProps<Steps extends Step[]> = React.PropsWithChildren<{
 	/** The initial step to display. */
 	initialStep?: Get.Id<Steps>;
+	/** The initial metadata. */
+	initialMetadata?: Record<Get.Id<Steps>, Metadata>;
 }>;
 
 export type StepperReturn<Steps extends Step[]> = {
@@ -22,6 +24,7 @@ export type StepperReturn<Steps extends Step[]> = {
 	 *
 	 * @param props - The props object containing `initialStep` and `children`.
 	 * @param props.initialStep - The ID of the step to start with (optional).
+	 * @param props.initialMetadata - The initial metadata (optional).
 	 * @param props.children - The child elements to be wrapped by the `Scoped` component.
 	 * @returns A React element that wraps the children with the stepper context.
 	 */
@@ -32,7 +35,11 @@ export type StepperReturn<Steps extends Step[]> = {
 	 * and reset the stepper to the initial state.
 	 *
 	 * @param initialStep - The ID of the step to start with (optional).
+	 * @param initialMetadata - The initial metadata (optional).
 	 * @returns An object containing properties and methods to interact with the stepper.
 	 */
-	useStepper: (initialStep?: Get.Id<Steps>) => Stepper<Steps>;
+	useStepper: (props?: {
+		initialStep?: Get.Id<Steps>;
+		initialMetadata?: Partial<Record<Get.Id<Steps>, Metadata>>;
+	}) => Stepper<Steps>;
 };

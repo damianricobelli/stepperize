@@ -1,5 +1,5 @@
-import type { Get, Step, Stepper } from "@stepperize/core";
-import type { ScopedProps, StepperReturn } from "./types";
+import type { Get, Metadata, Step, Stepper } from "@stepperize/core";
+import type { StepperReturn } from "./types";
 
 import * as React from "react";
 
@@ -7,6 +7,7 @@ import {
 	executeStepCallback,
 	generateCommonStepperUseFns,
 	generateStepperUtils,
+	getInitialMetadata,
 	getInitialStepIndex,
 } from "@stepperize/core";
 
@@ -15,10 +16,15 @@ export const defineStepper = <const Steps extends Step[]>(...steps: Steps): Step
 
 	const utils = generateStepperUtils(...steps);
 
-	const useStepper = (initialStep?: Get.Id<Steps>) => {
+	const useStepper = (config?: {
+		initialStep?: Get.Id<Steps>;
+		initialMetadata?: Partial<Record<Get.Id<Steps>, Metadata>>;
+	}) => {
+		const { initialStep, initialMetadata } = config ?? {};
 		const initialStepIndex = React.useMemo(() => getInitialStepIndex(steps, initialStep), [initialStep]);
 
 		const [stepIndex, setStepIndex] = React.useState(initialStepIndex);
+		const [metadata, setMetadata] = React.useState(() => getInitialMetadata(steps, initialMetadata));
 
 		const stepper = React.useMemo(() => {
 			const current = steps[stepIndex];
@@ -30,45 +36,44 @@ export const defineStepper = <const Steps extends Step[]>(...steps: Steps): Step
 				current,
 				isLast,
 				isFirst,
+				metadata,
+				setMetadata(id, data) {
+					setMetadata((prev) => {
+						if (prev[id] === data) return prev;
+						return { ...prev, [id]: data };
+					});
+				},
+				getMetadata(id) {
+					return metadata[id];
+				},
+				resetMetadata(keepInitialMetadata) {
+					setMetadata(getInitialMetadata(steps, keepInitialMetadata ? initialMetadata : undefined));
+				},
 				async beforeNext(callback) {
-					if (isLast) {
-						throw new Error("Cannot navigate to the next step because it is the last step.");
-					}
+					if (isLast) throw new Error("Cannot navigate to the next step because it is the last step.");
 					const shouldProceed = await executeStepCallback(callback, true);
-					if (shouldProceed) {
-						this.next();
-					}
+					if (shouldProceed) this.next();
 				},
 				async afterNext(callback) {
 					this.next();
 					await executeStepCallback(callback, false);
 				},
 				async beforePrev(callback) {
-					if (isFirst) {
-						throw new Error("Cannot navigate to the previous step because it is the first step.");
-					}
+					if (isFirst) throw new Error("Cannot navigate to the previous step because it is the first step.");
 					const shouldProceed = await executeStepCallback(callback, true);
-					if (shouldProceed) {
-						this.prev();
-					}
+					if (shouldProceed) this.prev();
 				},
 				async afterPrev(callback) {
-					if (isFirst) {
-						throw new Error("Cannot navigate to the previous step because it is the first step.");
-					}
+					if (isFirst) throw new Error("Cannot navigate to the previous step because it is the first step.");
 					this.prev();
 					await executeStepCallback(callback, false);
 				},
 				next() {
-					if (isLast) {
-						throw new Error("Cannot navigate to the next step because it is the last step.");
-					}
+					if (isLast) throw new Error("Cannot navigate to the next step because it is the last step.");
 					setStepIndex(stepIndex + 1);
 				},
 				prev() {
-					if (isFirst) {
-						throw new Error("Cannot navigate to the previous step because it is the first step.");
-					}
+					if (isFirst) throw new Error("Cannot navigate to the previous step because it is the first step.");
 					setStepIndex(stepIndex - 1);
 				},
 				get(id) {
@@ -83,7 +88,7 @@ export const defineStepper = <const Steps extends Step[]>(...steps: Steps): Step
 				},
 				...generateCommonStepperUseFns(steps, current, stepIndex),
 			} as Stepper<Steps>;
-		}, [stepIndex]);
+		}, [stepIndex, metadata]);
 
 		return stepper;
 	};
@@ -91,14 +96,14 @@ export const defineStepper = <const Steps extends Step[]>(...steps: Steps): Step
 	return {
 		steps,
 		utils,
-		Scoped: ({ initialStep, children }: ScopedProps<Steps>) =>
+		Scoped: ({ initialStep, initialMetadata, children }) =>
 			React.createElement(
 				Context.Provider,
 				{
-					value: useStepper(initialStep),
+					value: useStepper({ initialStep, initialMetadata }),
 				},
 				children,
 			),
-		useStepper: (initialStep?: Get.Id<Steps>) => React.useContext(Context) ?? useStepper(initialStep),
+		useStepper: (props = {}) => React.useContext(Context) ?? useStepper(props),
 	};
 };
