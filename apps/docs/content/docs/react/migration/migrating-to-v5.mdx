@@ -1,0 +1,22 @@
+---
+title: Migrating to v5
+description: Learn how to migrate from v4 to v5
+icon: CircleFadingArrowUp
+---
+
+Stepperize v5 adds a new `metadata` API to the `useStepper` hook
+
+## Breaking Changes
+
+### Name changes in the values returned by the hook
+
+Now the parameters of useStepper are not a string indicating the initial step, but rather an object with the following values:
+
+- `initialStep` The ID of the initial step to display
+- `initialMetadata` The initial metadata to set for the steps
+
+## New Features
+
+### New `metadata` API
+
+The `metadata` API allows you to set dynamic metadata for each step.

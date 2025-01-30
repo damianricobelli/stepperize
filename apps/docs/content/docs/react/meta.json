@@ -18,7 +18,8 @@
 		"examples/conform-react",
 		"examples/react-hook-form",
 		"---Migration---",
-		"migration/migrating-to-v2",
-		"migration/migrating-to-v3"
+		"migration/migrating-to-v5",
+		"migration/migrating-to-v3",
+		"migration/migrating-to-v2"
 	]
 }
