@@ -17,11 +17,9 @@
 		"examples/multi-scoped",
 		"examples/conform-react",
 		"examples/react-hook-form",
-		"examples/query-params",
-		"examples/shareable-data",
-		"examples/dialog",
 		"---Migration---",
-		"migration/migrating-to-v2",
-		"migration/migrating-to-v3"
+		"migration/migrating-to-v5",
+		"migration/migrating-to-v3",
+		"migration/migrating-to-v2"
 	]
 }

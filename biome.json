@@ -20,7 +20,7 @@
 				"useSortedClasses": "off"
 			},
 			"style": {
-				"useBlockStatements": "error"
+				"useBlockStatements": "off"
 			},
 			"suspicious": {
 				"noConsoleLog": "error",

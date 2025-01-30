@@ -1,4 +1,5 @@
 export type Step = { id: string } & Record<string, any>;
+export type Metadata = Record<string, any> | null;
 
 export type Stepper<Steps extends Step[] = Step[]> = {
 	/** Returns all steps. */
@@ -52,6 +53,28 @@ export type Stepper<Steps extends Step[] = Step[]> = {
 	 * @returns The result of the matched function or null if no match is found.
 	 */
 	match: <State extends Get.Id<Steps>, R>(state: State, matches: Get.Switch<Steps, R>) => R | null;
+	/**
+	 * Retrieves the metadata for the current step.
+	 * @returns The metadata for the current step.
+	 */
+	metadata: Record<Get.Id<Steps>, Metadata>;
+	/**
+	 * Sets the metadata for a step.
+	 * @param id - The ID of the step to set the metadata for.
+	 * @param values - The values to set for the metadata.
+	 */
+	setMetadata: <M extends Metadata>(id: Get.Id<Steps>, values: M) => void;
+	/**
+	 * Get the metadata for a step.
+	 * @param id - The ID of the step to get the metadata for.
+	 * @returns The metadata for the step.
+	 */
+	getMetadata: <M extends Metadata>(id: Get.Id<Steps>) => M;
+	/**
+	 * Resets the metadata to the initial state.
+	 * @param keepInitialMetadata - If true, the initial metadata defined in the useStepper hook will be kept.
+	 */
+	resetMetadata: (keepInitialMetadata?: boolean) => void;
 };
 
 export type Utils<Steps extends Step[] = Step[]> = {

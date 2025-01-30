@@ -169,11 +169,11 @@ importers:
   packages/core:
     devDependencies:
       tsup:
-        specifier: ^8.3.5
-        version: 8.3.5(jiti@2.4.2)(postcss@8.4.49)(typescript@5.7.2)(yaml@2.5.0)
+        specifier: ^8.3.6
+        version: 8.3.6(jiti@2.4.2)(postcss@8.4.49)(typescript@5.7.3)(yaml@2.5.0)
       typescript:
-        specifier: ^5.7.2
-        version: 5.7.2
+        specifier: ^5.7.3
+        version: 5.7.3
 
   packages/react:
     dependencies:
