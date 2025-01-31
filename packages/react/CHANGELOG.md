@@ -1,5 +1,11 @@
 # @stepperize/react
 
+## 5.0.1
+
+### Patch Changes
+
+- [#104](https://github.com/damianricobelli/stepperize/pull/104) [`d014e9e`](https://github.com/damianricobelli/stepperize/commit/d014e9e8d73c6ae658d897bd47740ee636d8c3d1) Thanks [@damianricobelli](https://github.com/damianricobelli)! - feat: export types
+
 ## 5.0.0
 
 ### Major Changes
