@@ -10,6 +10,8 @@
 		"api-references/define",
 		"api-references/composable",
 		"api-references/scoped",
-		"api-references/utils"
+		"api-references/utils",
+		"---Migration---",
+		"migration/migrating-to-v2"
 	]
 }

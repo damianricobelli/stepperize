@@ -25,15 +25,15 @@ export const defineStepper = <const Steps extends Step[]>(...steps: Steps): Step
 
 	const utils = generateStepperUtils(...steps);
 
-	const useStepper = (
-		initialStep?: MaybeRefOrGetter<Get.Id<Steps>>,
-		initialMetadata?: Partial<Record<Get.Id<Steps>, Metadata>>
-	) => {
-		const stepIndex = ref(getInitialStepIndex(steps, toValue(initialStep)));
-		const metadata = ref(getInitialMetadata(steps, initialMetadata));
+	const useStepper = (config?: {
+		initialStep?: MaybeRefOrGetter<Get.Id<Steps>>;
+		initialMetadata?: Partial<Record<Get.Id<Steps>, Metadata>>;
+	}) => {
+		const stepIndex = ref(getInitialStepIndex(steps, toValue(config?.initialStep)));
+		const metadata = ref(getInitialMetadata(steps, toValue(config?.initialMetadata)));
 
 		watch(
-			() => toValue(initialStep),
+			() => toValue(config?.initialStep),
 			(value) => {
 				stepIndex.value = getInitialStepIndex(steps, value);
 			},
@@ -62,7 +62,7 @@ export const defineStepper = <const Steps extends Step[]>(...steps: Steps): Step
 					return metadata.value[id];
 				},
 				resetMetadata(keepInitialMetadata) {
-					metadata.value = getInitialMetadata(steps, keepInitialMetadata ? initialMetadata : undefined);
+					metadata.value = getInitialMetadata(steps, keepInitialMetadata ? config?.initialMetadata : undefined);
 				},
 				async beforeNext(callback) {
 					if (isLast) {
@@ -121,7 +121,7 @@ export const defineStepper = <const Steps extends Step[]>(...steps: Steps): Step
 					stepIndex.value = index;
 				},
 				reset() {
-					stepIndex.value = getInitialStepIndex(steps, toValue(initialStep));
+					stepIndex.value = getInitialStepIndex(steps, toValue(config?.initialStep));
 				},
 				...generateCommonStepperUseFns(steps, currentStep, currentStepIndex),
 			} as Stepper<Steps>;
@@ -134,11 +134,11 @@ export const defineStepper = <const Steps extends Step[]>(...steps: Steps): Step
 		steps,
 		utils,
 		Scoped: defineComponent<ScopedProps<Steps>>((props, { slots }) => {
-			provide(contextKey, useStepper(props.initialStep));
+			provide(contextKey, useStepper(props));
 			return () => slots.default?.();
 		}),
-		useStepper(initialStep) {
-			return inject(contextKey) ?? useStepper(initialStep);
+		useStepper(props = {}) {
+			return inject(contextKey) ?? useStepper(props);
 		},
 	};
 };
