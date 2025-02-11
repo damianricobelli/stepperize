@@ -142,6 +142,8 @@ That is why there are the following functions:
 - `afterNext`
 - `beforePrev`
 - `afterPrev`
+- `beforeGoTo`
+- `afterGoTo`
 
 ### beforeNext
 
@@ -244,6 +246,55 @@ const MyStepperComponent = () => {
       }
     >
       Previous
+    </button>
+  );
+};
+```
+
+### beforeGoTo
+
+The `beforeGoTo` function allows you to execute a function before moving to a specific step.
+It returns a promise that resolves to a boolean value. If the promise resolves to true,
+the stepper will move to the specific step. If the promise resolves to false, the stepper
+will not move to the specific step.
+
+```tsx
+const MyStepperComponent = () => {
+  const stepper = useStepper();
+
+  return (
+    <button
+      onClick={() =>
+        stepper.beforeGoTo("first", () => {
+          // Your logic here
+          return true; // or false
+        })
+      }
+    >
+      Go to first step
+    </button>
+  );
+};
+```
+
+### afterGoTo
+
+The `afterGoTo` function allows you to execute a function after moving to a specific step.
+It returns a promise that resolves to a void value.
+
+```tsx
+const MyStepperComponent = () => {
+  const stepper = useStepper();
+
+  return (
+    <button
+      onClick={() =>
+        stepper.afterGoTo("first", () => {
+          // Your logic here
+        })
+      }
+    >
+      Go to first step
     </button>
   );
 };
