@@ -79,6 +79,14 @@ export const defineStepper = <const Steps extends Step[]>(...steps: Steps): Step
 				get(id) {
 					return steps.find((step) => step.id === id);
 				},
+				async beforeGoTo(id, callback) {
+					const shouldProceed = await executeStepCallback(callback, true);
+					if (shouldProceed) this.goTo(id);
+				},
+				async afterGoTo(id, callback) {
+					this.goTo(id);
+					await executeStepCallback(callback, false);
+				},
 				goTo(id) {
 					const index = steps.findIndex((s) => s.id === id);
 					setStepIndex(index);
