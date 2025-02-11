@@ -1,5 +1,16 @@
 # @stepperize/react
 
+## 5.1.0
+
+### Minor Changes
+
+- [#107](https://github.com/damianricobelli/stepperize/pull/107) [`8360286`](https://github.com/damianricobelli/stepperize/commit/83602861e8b21ef7c9943356ed93e37044e5b145) Thanks [@damianricobelli](https://github.com/damianricobelli)! - Add before and after go to feature
+
+### Patch Changes
+
+- Updated dependencies [[`8360286`](https://github.com/damianricobelli/stepperize/commit/83602861e8b21ef7c9943356ed93e37044e5b145)]:
+  - @stepperize/core@1.2.0
+
 ## 5.0.1
 
 ### Patch Changes
