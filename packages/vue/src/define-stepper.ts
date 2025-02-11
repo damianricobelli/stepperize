@@ -1,8 +1,9 @@
-import type { Get, Step, Stepper } from "@stepperize/core";
+import type { Get, Metadata, Step, Stepper } from "@stepperize/core";
 import {
 	executeStepCallback,
 	generateCommonStepperUseFns,
 	generateStepperUtils,
+	getInitialMetadata,
 	getInitialStepIndex,
 } from "@stepperize/core";
 import {
@@ -24,8 +25,13 @@ export const defineStepper = <const Steps extends Step[]>(...steps: Steps): Step
 
 	const utils = generateStepperUtils(...steps);
 
-	const useStepper = (initialStep?: MaybeRefOrGetter<Get.Id<Steps>>) => {
+	const useStepper = (
+		initialStep?: MaybeRefOrGetter<Get.Id<Steps>>,
+		initialMetadata?: Partial<Record<Get.Id<Steps>, Metadata>>
+	) => {
 		const stepIndex = ref(getInitialStepIndex(steps, toValue(initialStep)));
+		const metadata = ref(getInitialMetadata(steps, initialMetadata));
+
 		watch(
 			() => toValue(initialStep),
 			(value) => {
@@ -47,6 +53,17 @@ export const defineStepper = <const Steps extends Step[]>(...steps: Steps): Step
 				current: currentStep,
 				isLast,
 				isFirst,
+				metadata: metadata.value,
+				setMetadata(id, data) {
+					if (metadata.value[id] === data) return
+					metadata.value[id] = data
+				},
+				getMetadata(id) {
+					return metadata.value[id];
+				},
+				resetMetadata(keepInitialMetadata) {
+					metadata.value = getInitialMetadata(steps, keepInitialMetadata ? initialMetadata : undefined);
+				},
 				async beforeNext(callback) {
 					if (isLast) {
 						throw new Error("Cannot navigate to the next step because it is the last step.");
@@ -90,6 +107,14 @@ export const defineStepper = <const Steps extends Step[]>(...steps: Steps): Step
 				},
 				get(id) {
 					return steps.find((step) => step.id === id);
+				},
+		        async beforeGoTo(id, callback) {
+					const shouldProceed = await executeStepCallback(callback, true);
+					if (shouldProceed) this.goTo(id);
+				},
+				async afterGoTo(id, callback) {
+					this.goTo(id);
+					await executeStepCallback(callback, false);
 				},
 				goTo(id) {
 					const index = steps.findIndex((s) => s.id === id);
