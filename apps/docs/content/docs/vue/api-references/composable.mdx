@@ -376,7 +376,7 @@ This metadata will be available in the `metadata` property of the `useStepper` c
 Allows you to set the metadata for a step.
 
 ```tsx
-stepper.setMetadata("first", {
+stepper.value.setMetadata("first", {
   value: "1",
 });
 ```
@@ -386,7 +386,7 @@ stepper.setMetadata("first", {
 The `getMetadata` method allows you to get the metadata for a step.
 
 ```tsx
-const metadata = stepper.getMetadata("first");
+const metadata = stepper.value.getMetadata("first");
 ```
 
 ### resetMetadata
@@ -394,7 +394,7 @@ const metadata = stepper.getMetadata("first");
 The `resetMetadata` method allows you to reset the metadata for a step. You can also pass a boolean value to keep the initial metadata defined in the `useStepper` composable.
 
 ```tsx
-stepper.resetMetadata(true | false);
+stepper.value.resetMetadata(true | false);
 ```
 
 ## API Reference
