@@ -1,5 +1,12 @@
 # @stepperize/vue
 
+## 1.1.2
+
+### Patch Changes
+
+- Updated dependencies [[`8360286`](https://github.com/damianricobelli/stepperize/commit/83602861e8b21ef7c9943356ed93e37044e5b145)]:
+  - @stepperize/core@1.2.0
+
 ## 1.1.1
 
 ### Patch Changes
