@@ -1,5 +1,11 @@
 # @stepperize/vue
 
+## 2.0.0
+
+### Major Changes
+
+- [#109](https://github.com/damianricobelli/stepperize/pull/109) [`c6d1c0b`](https://github.com/damianricobelli/stepperize/commit/c6d1c0b88a24ea735bddf47bc837fd71deafabfb) Thanks [@alexzhang1030](https://github.com/alexzhang1030)! - feat: add metadata api to vue binding
+
 ## 1.1.2
 
 ### Patch Changes
