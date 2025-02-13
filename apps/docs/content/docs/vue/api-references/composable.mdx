@@ -306,24 +306,120 @@ It returns a promise that resolves to a void value.
 
 In case you don't need a promise, you can use the `afterPrev` returning a void value.
 
+### beforeGoTo
+
+The `beforeGoTo` function allows you to execute a function before moving to a specific step.
+It returns a promise that resolves to a boolean value. If the promise resolves to true,
+the stepper will move to the specific step. If the promise resolves to false, the stepper
+will not move to the specific step.
+
+```vue
+<script setup lang="ts">
+const stepper = useStepper();
+</script>
+<template>
+  <button
+    @click="() =>
+      stepper.beforeGoTo('first', () => {
+        // Your logic here
+        return true; // or false
+      })
+    "
+  >
+    Go to first step
+  </button>  
+</template>
+```
+
+### afterGoTo
+
+The `afterGoTo` function allows you to execute a function after moving to a specific step.
+It returns a promise that resolves to a void value.
+
+```vue
+<script setup lang="ts">
+const stepper = useStepper();
+</script>
+<template>
+  <button
+    @click="() =>
+      stepper.afterGoTo('first', () => {
+        // Your logic here
+      })
+    "
+  >
+    Go to first step
+  </button>
+</template>
+```
+
+## Metadata
+
+The metadata is a way to add custom data to a step. It is useful for adding dynamic values to a step, such as a value fetched from a server or any dynamic state in your application.
+
+In order to add metadata to your stepper, you can add initial metadata in the `useStepper` composable.
+
+```tsx
+const stepper = useStepper({
+  initialMetadata: {
+    first: {
+      value: "1",
+    },
+  },
+});
+```
+
+This metadata will be available in the `metadata` property of the `useStepper` composable and you can also use methods to set, get and reset the metadata.
+
+### setMetadata
+
+Allows you to set the metadata for a step.
+
+```tsx
+stepper.value.setMetadata("first", {
+  value: "1",
+});
+```
+
+### getMetadata
+
+The `getMetadata` method allows you to get the metadata for a step.
+
+```tsx
+const metadata = stepper.value.getMetadata("first");
+```
+
+### resetMetadata
+
+The `resetMetadata` method allows you to reset the metadata for a step. You can also pass a boolean value to keep the initial metadata defined in the `useStepper` composable.
+
+```tsx
+stepper.value.resetMetadata(true | false);
+```
+
 ## API Reference
 
-| Name       | Type                                                                                                                 | Description                                                                                     |
-| ---------- | -------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| all        | `Step[]`                                                                                                             | Returns all steps                                                                               |
-| current    | `Step`                                                                                                               | Returns the current step                                                                        |
-| isLast     | `boolean`                                                                                                            | Returns true if the current step is the last step                                               |
-| isFirst    | `boolean`                                                                                                            | Returns true if the current step is the first step                                              |
-| beforeNext | `(callback: () => Promise<boolean> \| boolean) => void`                                                              | Executes a function before moving to the next step                                              |
-| afterNext  | `(callback: () => Promise<void> \| void) => void`                                                                    | Executes a function after moving to the next step                                               |
-| beforePrev | `(callback: () => Promise<boolean> \| boolean) => void`                                                              | Executes a function before moving to the previous step                                          |
-| afterPrev  | `(callback: () => Promise<void> \| void) => void`                                                                    | Executes a function after moving to the previous step                                           |
-| next       | `() => void`                                                                                                         | Advances to the next step                                                                       |
-| prev       | `() => void`                                                                                                         | Returns to the previous step                                                                    |
-| get        | `(id: string) => Step`                                                                                               | Returns a step by its ID                                                                        |
-| goTo       | `(id: string) => void`                                                                                               | Navigates to a specific step by its ID                                                          |
-| reset      | `() => void`                                                                                                         | Resets the stepper to its initial state                                                         |
-| when       | `(id: string, whenFn: (step: Step) => React.ReactNode, elseFn?: (step: Step) => React.ReactNode) => React.ReactNode` | Executes a function based on the current step ID                                                |
-| switch     | `(steps: { [id: string]: (step: Step) => React.ReactNode }) => React.ReactNode`                                      | Executes a function based on a switch-case-like structure for steps                             |
-| match      | `(state: string, steps: { [id: string]: (step: Step) => React.ReactNode }) => React.ReactNode`                       | Matches the current state with a set of possible states and executes the corresponding function |
-```
+| Name          | Type                                                                                                                 | Description                                                                                                            |
+| ------------- | -------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| all           | `Step[]`                                                                                                             | Returns all steps                                                                                                      |
+| current       | `Step`                                                                                                               | Returns the current step                                                                                               |
+| isLast        | `boolean`                                                                                                            | Returns true if the current step is the last step                                                                      |
+| isFirst       | `boolean`                                                                                                            | Returns true if the current step is the first step                                                                     |
+| metadata      | `Record<string, Metadata>`                                                                                           | Returns the metadata for the current step                                                                              |
+| setMetadata   | `(id: string, values: Metadata) => void`                                                                             | Sets the metadata for a step                                                                                           |
+| getMetadata   | `(id: string) => Metadata`                                                                                           | Returns the metadata for a step                                                                                        |
+| resetMetadata | `(keepInitialMetadata?: boolean) => void`                                                                            | Resets the metadata. If keepInitialMetadata is true, the initial metadata defined in the useStepper composable will be kept. |
+| beforeNext    | `(callback: () => Promise<boolean> \| boolean) => void`                                                              | Executes a function before moving to the next step                                                                     |
+| afterNext     | `(callback: () => Promise<void> \| void) => void`                                                                    | Executes a function after moving to the next step                                                                      |
+| beforePrev    | `(callback: () => Promise<boolean> \| boolean) => void`                                                              | Executes a function before moving to the previous step                                                                 |
+| afterPrev     | `(callback: () => Promise<void> \| void) => void`                                                                    | Executes a function after moving to the previous step                                                                  |
+| beforeGoTo    | `(id: string, callback: () => Promise<boolean> \| boolean) => void`                                                  | Executes a function before moving to a specific step                                                                   |
+| afterGoTo     | `(id: string, callback: () => Promise<void> \| void) => void`                                                        | Executes a function after moving to a specific step                                                                    |
+| next          | `() => void`                                                                                                         | Advances to the next step                                                                                              |
+| prev          | `() => void`                                                                                                         | Returns to the previous step                                                                                           |
+| get           | `(id: string) => Step`                                                                                               | Returns a step by its ID                                                                                               |
+| goTo          | `(id: string) => void`                                                                                               | Navigates to a specific step by its ID                                                                                 |
+| reset         | `() => void`                                                                                                         | Resets the stepper to its initial state                                                                                |
+| when          | `(id: string, whenFn: (step: Step) => React.ReactNode, elseFn?: (step: Step) => React.ReactNode) => React.ReactNode` | Executes a function based on the current step ID                                                                       |
+| switch        | `(steps: { [id: string]: (step: Step) => React.ReactNode }) => React.ReactNode`                                      | Executes a function based on a switch-case-like structure for steps                                                    |
+| match         | `(state: string, steps: { [id: string]: (step: Step) => React.ReactNode }) => React.ReactNode`                       | Matches the current state with a set of possible states and executes the corresponding function                        |
