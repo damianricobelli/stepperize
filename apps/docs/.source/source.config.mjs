@@ -2,7 +2,9 @@
 import { rehypeCodeDefaultOptions } from "fumadocs-core/mdx-plugins";
 import { defineConfig, defineDocs } from "fumadocs-mdx/config";
 import { transformerTwoslash } from "fumadocs-twoslash";
-var { docs, meta } = defineDocs();
+var { docs, meta } = defineDocs({
+  dir: ["content/docs"]
+});
 var source_config_default = defineConfig({
   generateManifest: true,
   lastModifiedTime: "git",
