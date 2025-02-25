@@ -1,20 +1,18 @@
-@import "@radix-ui/colors/black-alpha.css";
-@import "@radix-ui/colors/white-alpha.css";
+@import '@radix-ui/colors/black-alpha.css' layer(base);
+@import '@radix-ui/colors/white-alpha.css' layer(base);
 
-@import "@radix-ui/colors/slate.css";
-@import "@radix-ui/colors/slate-dark.css";
-@import "@radix-ui/colors/green.css";
-@import "@radix-ui/colors/green-dark.css";
-@import "@radix-ui/colors/yellow.css";
-@import "@radix-ui/colors/yellow-dark.css";
-@import "@radix-ui/colors/red.css";
-@import "@radix-ui/colors/red-dark.css";
-@import "@radix-ui/colors/blue.css";
-@import "@radix-ui/colors/blue-dark.css";
+@import '@radix-ui/colors/slate.css' layer(base);
+@import '@radix-ui/colors/slate-dark.css' layer(base);
+@import '@radix-ui/colors/green.css' layer(base);
+@import '@radix-ui/colors/green-dark.css' layer(base);
+@import '@radix-ui/colors/yellow.css' layer(base);
+@import '@radix-ui/colors/yellow-dark.css' layer(base);
+@import '@radix-ui/colors/red.css' layer(base);
+@import '@radix-ui/colors/red-dark.css' layer(base);
+@import '@radix-ui/colors/blue.css' layer(base);
+@import '@radix-ui/colors/blue-dark.css' layer(base);
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
 
 @layer base {
 	:root {
