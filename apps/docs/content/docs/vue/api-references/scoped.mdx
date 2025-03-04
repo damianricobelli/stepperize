@@ -11,131 +11,134 @@ The `Scoped` component acts as a provider, allowing you to synchronize stepper s
   <Tab value="sfc">
     <Tabs groupId="components" items={['state.ts', 'MyScopedStepper.vue', 'StepContent.vue', 'StepNavigation.vue']} defaultValue="state.ts">
       <Tab value="state.ts">
-      ```ts
-      import { defineStepper } from "@stepperize/vue";
+        ```ts
+        import { defineStepper } from "@stepperize/vue";
 
-      export const Stepper = defineStepper(
-        { id: "first", title: "First" },
-        { id: "second", title: "Second" },
-        { id: "last", title: "Last" }
-      );
-      ```
+        export const Stepper = defineStepper(
+          { id: "first", title: "First" },
+          { id: "second", title: "Second" },
+          { id: "last", title: "Last" }
+        );
+        ```
       </Tab>
       <Tab value="MyScopedStepper.vue">
-      ```vue
-      <script setup lang="ts">
-      import { Stepper } from './state.ts'
-      import StepContent from './StepContent.vue'
-      import StepNavigation from './StepNavigation.vue'
+        ```vue
+        <script setup lang="ts">
+        import { Stepper } from './state.ts'
+        import StepContent from './StepContent.vue'
+        import StepNavigation from './StepNavigation.vue'
 
-      </script>
+        </script>
 
-      <template>
-        <Stepper.Scope>
-          <StepContent />
-          <StepNavigation />
-        </Stepper.Scope> 
-      </template>
-      ```
+        <template>
+          <Stepper.Scope>
+            <StepContent />
+            <StepNavigation />
+          </Stepper.Scope>
+        </template>
+        ```
       </Tab>
       <Tab value="StepContent.vue">
-      ```vue
-      <script setup lang="ts">
-      import { Stepper } from './state.ts'
-      import { StepperWhen } from '@stepperize/vue'
+        ```vue
+        <script setup lang="ts">
+        import { Stepper } from './state.ts'
+        import { StepperWhen } from '@stepperize/vue'
 
-      const stepper = Stepper.useStepper()
-      </script>
+        const stepper = Stepper.useStepper()
+        </script>
 
-      <template>
-        <StepperWhen :stepper when="first">
-          <template #default="step">
-            <p>Starting with: {{ step.title }}</p>
-          </template>
-        </StepperWhen>
-        <StepperWhen :stepper when="second">
-          <template #default="step">
-            <p>In the middle: {{ step.title }}</p>
-          </template>
-        </StepperWhen>
-        <StepperWhen :stepper when="last">
-          <template #default="step">
-            <p>Ending with: {{ step.title }}</p>
-          </template>
-        </StepperWhen>
-      </template>
-      ```
+        <template>
+          <StepperWhen :stepper when="first">
+            <template #default="step">
+              <p>Starting with: {{ step.title }}</p>
+            </template>
+          </StepperWhen>
+          <StepperWhen :stepper when="second">
+            <template #default="step">
+              <p>In the middle: {{ step.title }}</p>
+            </template>
+          </StepperWhen>
+          <StepperWhen :stepper when="last">
+            <template #default="step">
+              <p>Ending with: {{ step.title }}</p>
+            </template>
+          </StepperWhen>
+        </template>
+        ```
       </Tab>
       <Tab value="StepNavigation.vue">
-      ```vue
-      <script setup lang="ts">
-      import { Stepper } from './state.ts'
-      import { StepperWhen } from '@stepperize/vue'
+        ```vue
+        <script setup lang="ts">
+        import { Stepper } from './state.ts'
+        import { StepperWhen } from '@stepperize/vue'
 
-      const stepper = Stepper.useStepper()
-      </script>
+        const stepper = Stepper.useStepper()
+        </script>
 
-      <template>
-        <button @click="stepper.isLast ? stepper.reset() : stepper.next()">
-          <StepperWhen :stepper when="last">
-            <template #default>Reset</template>
-            <template #else>Next</template>
-          </StepperWhen>
-        </button>         
-      </template>
-      ```
+        <template>
+          <button @click="stepper.isLast ? stepper.reset() : stepper.next()">
+            <StepperWhen :stepper when="last">
+              <template #default>Reset</template>
+              <template #else>Next</template>
+            </StepperWhen>
+          </button>
+        </template>
+        ```
       </Tab>
     </Tabs>
+
   </Tab>
   <Tab value="jsx">
-  ```tsx
-  import { defineComponent } from 'vue'
+    ```tsx
+    import { defineComponent } from 'vue'
 
-  const Stepper = defineStepper(
-    { id: "first", title: "First" },
-    { id: "second", title: "Second" },
-    { id: "last", title: "Last" }
-  );
-
-  export const MyScopedStepper = defineComponent(() => () => (
-    <Stepper.Scoped>
-      <StepContent />
-      <StepNavigation />
-    </Stepper.Scoped>
-  ));
-
-  const StepContent = defineComponent(() => {
-    const stepper = useStepper();
-    return () => (
-      <>
-        { stepper.value.when("first", step => <p>Starting with {step.title}</p>) }
-        { stepper.value.when("second", step => <p>In the middle: {step.title}</p>) }
-        { stepper.value.when("last", step => <p>Ending with {step.title}</p>) }
-      </>
+    const Stepper = defineStepper(
+      { id: "first", title: "First" },
+      { id: "second", title: "Second" },
+      { id: "last", title: "Last" }
     );
-  });
 
-  const StepNavigation = defineComponent(() => {
-    const stepper = useStepper();
-    return () => (
-      <button onClick={stepper.value.isLast ? stepper.value.reset : stepper.value.next}>
-        { stepper.value.when("last", () => "Reset", () => "Next") }
-      </button>
-    );
-  });
-  ```
+    export const MyScopedStepper = defineComponent(() => () => (
+      <Stepper.Scoped>
+        <StepContent />
+        <StepNavigation />
+      </Stepper.Scoped>
+    ));
+
+    const StepContent = defineComponent(() => {
+      const stepper = useStepper();
+      return () => (
+        <>
+          { stepper.value.when("first", step => <p>Starting with {step.title}</p>) }
+          { stepper.value.when("second", step => <p>In the middle: {step.title}</p>) }
+          { stepper.value.when("last", step => <p>Ending with {step.title}</p>) }
+        </>
+      );
+    });
+
+    const StepNavigation = defineComponent(() => {
+      const stepper = useStepper();
+      return () => (
+        <button onClick={stepper.value.isLast ? stepper.value.reset : stepper.value.next}>
+          { stepper.value.when("last", () => "Reset", () => "Next") }
+        </button>
+      );
+    });
+    ```
+
   </Tab>
 </Tabs>
 
 <Callout type="info">
-  Use `Scoped` only when child components need access to stepper state. Otherwise, use the composable directly in your component.
+  Use `Scoped` only when child components need access to stepper state.
+  Otherwise, use the composable directly in your component.
 </Callout>
 
 ## API Reference
 
-| Name | Type | Description | Required |
-| --- | --- | --- | --- |
-| initialStep | `string` | ID of the initial step to display. | No |
+| Name        | Type     | Description                        | Required |
+| ----------- | -------- | ---------------------------------- | -------- |
+| initialStep | `string` | ID of the initial step to display. | No       |
 
 ## Nested Scopes
 
@@ -143,67 +146,69 @@ You can nest multiple scopes for more complex stepper hierarchies:
 
 <Tabs groupId="components" items={['SFC', 'JSX']} defaultValue="sfc">
   <Tab value="sfc">
-  ```vue
-  <script setup lang="ts">
-  const GlobalStepper = defineStepper(
-    { id: "start", title: "Start" },
-    { id: "middle", title: "Middle" },
-    { id: "end", title: "End" }
-  );
+    ```vue
+    <script setup lang="ts">
+      const GlobalStepper = defineStepper(
+        { id: "start", title: "Start" },
+        { id: "middle", title: "Middle" },
+        { id: "end", title: "End" }
+      );
 
-  const LocalStepper = defineStepper(
-    { id: "sub1", title: "Sub-step 1" },
-    { id: "sub2", title: "Sub-step 2" }
+      const LocalStepper = defineStepper(
+      { id: "sub1", title: "Sub-step 1" },
+      { id: "sub2", title: "Sub-step 2" }
 
-  );
+      );
 
-  // Use GlobalStepper.useStepper() for global scope
-  // Use LocalStepper.useStepper() for local scope
-  </script>
+      // Use GlobalStepper.useStepper() for global scope
+      // Use LocalStepper.useStepper() for local scope
+    </script>
 
-  <template>
+    <template>
 
-    <GlobalStepper.Scoped>
-      <GlobalStepContent />
-      <GlobalNavigation />
-      <LocalStepper.Scoped>
-        <LocalStepContent />
-        <LocalNavigation />
-      </LocalStepper.Scoped>
-    </GlobalStepper.Scoped>
+      <GlobalStepper.Scoped>
+        <GlobalStepContent />
+        <GlobalNavigation />
+        <LocalStepper.Scoped>
+          <LocalStepContent />
+          <LocalNavigation />
+        </LocalStepper.Scoped>
+      </GlobalStepper.Scoped>
 
-  </template>
-  ```
+    </template>
+    ```
+
   </Tab>
   <Tab value="jsx">
-  ```tsx
-  import { defineComponent } from 'vue'
+    ```tsx
+    import { defineComponent } from 'vue'
 
-  const GlobalStepper = defineStepper(
+    const GlobalStepper = defineStepper(
     { id: "start", title: "Start" },
     { id: "middle", title: "Middle" },
     { id: "end", title: "End" }
-  );
+    );
 
-  const LocalStepper = defineStepper(
+    const LocalStepper = defineStepper(
     { id: "sub1", title: "Sub-step 1" },
     { id: "sub2", title: "Sub-step 2" }
-  );
+    );
 
-  export const NestedSteppers = defineComponent(() => () => (
-    <GlobalStepper.Scoped>
-      <GlobalStepContent />
-      <GlobalNavigation />
-      <LocalStepper.Scoped>
-        <LocalStepContent />
-        <LocalNavigation />
-      </LocalStepper.Scoped>
-    </GlobalStepper.Scoped>
-  ));
+    export const NestedSteppers = defineComponent(() => () => (
+      <GlobalStepper.Scoped>
+        <GlobalStepContent />
+        <GlobalNavigation />
+        <LocalStepper.Scoped>
+          <LocalStepContent />
+          <LocalNavigation />
+        </LocalStepper.Scoped>
+      </GlobalStepper.Scoped>
+    ));
 
-  // Use GlobalStepper.useStepper() for global scope
-  // Use LocalStepper.useStepper() for local scope
-  ```
+    // Use GlobalStepper.useStepper() for global scope
+    // Use LocalStepper.useStepper() for local scope
+    ```
+
   </Tab>
 </Tabs>
 

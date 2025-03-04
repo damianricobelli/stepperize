@@ -11,7 +11,7 @@ A library for creating step-by-step workflows in your apps
 - 🚀 Fast and efficient
 - 🔥 Powerful and flexible
 - 📦 Lightweight (< 1kB gzipped)
-- 🪄 Fully typesafe
+- 🪄 Fully type-safe
 - 🔗 Composable architecture
 - 🎨 Unstyled for maximum customization
 
@@ -66,7 +66,7 @@ Stepperize allows you to define a series of steps with unique IDs. When you crea
 - An array of `steps` for rendering
 - An `utils` object with useful functions
 
-The only required field for each step is the `id`. You can add any additional properties you need, and they'll be fully typesafe when using the hook.
+The only required field for each step is the `id`. You can add any additional properties you need, and they'll be fully type-safe when using the hook.
 
 ## Documentation
 

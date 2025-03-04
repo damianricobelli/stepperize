@@ -1,75 +1,89 @@
-import { source } from "@/app/source";
-import { useMDXComponents } from "@/mdx-components";
-import { createMetadata, metadataImage } from "@/utils/metadata";
+import { DemoViewer } from "@/components/demo-viewer";
+import { metadataImage } from "@/lib/metadata";
+import { source } from "@/lib/source";
+import { Popup, PopupContent, PopupTrigger } from "fumadocs-twoslash/ui";
+import { createTypeTable } from "fumadocs-typescript/ui";
+import { CodeBlock } from "fumadocs-ui/components/codeblock";
+import { Pre } from "fumadocs-ui/components/codeblock";
+import { Step, Steps } from "fumadocs-ui/components/steps";
+import { Tab, Tabs } from "fumadocs-ui/components/tabs";
 import defaultMdxComponents from "fumadocs-ui/mdx";
-import { DocsBody, DocsDescription, DocsPage, DocsTitle } from "fumadocs-ui/page";
+import {
+  DocsBody,
+  DocsCategory,
+  DocsDescription,
+  DocsPage,
+  DocsTitle,
+} from "fumadocs-ui/page";
+
 import { notFound } from "next/navigation";
 
+const { AutoTypeTable } = createTypeTable();
+
 export default async function Page(props: {
-	params: Promise<{ slug?: string[] }>;
+  params: Promise<{ slug?: string[] }>;
 }) {
-	const params = await props.params;
-	const page = source.getPage(params.slug);
-	if (!page) {
-		notFound();
-	}
+  const params = await props.params;
+  const page = source.getPage(params.slug);
+  if (!page) notFound();
 
-	const MDX = page.data.body;
+  const MDX = page.data.body;
 
-	const components = useMDXComponents(defaultMdxComponents);
+  const path = `apps/docs/content/docs/${page.file.path}`;
 
-	const path = `apps/docs/content/docs/${page.file.path}`;
-
-	return (
-		<DocsPage
-			toc={page.data.toc}
-			lastUpdate={page.data.lastModified}
-			full={page.data.full}
-			tableOfContent={{
-				style: "clerk",
-				single: false,
-			}}
-			editOnGithub={{
-				repo: "stepperize",
-				owner: "damianricobelli",
-				sha: "main",
-				path,
-			}}
-		>
-			<DocsTitle>{page.data.title}</DocsTitle>
-			<DocsDescription>{page.data.description}</DocsDescription>
-			<DocsBody>
-				<MDX components={{ ...components }} />
-			</DocsBody>
-		</DocsPage>
-	);
+  return (
+    <DocsPage
+      toc={page.data.toc}
+      full={page.data.full}
+      lastUpdate={page.data.lastModified}
+      editOnGithub={{
+        repo: "stepperize",
+        owner: "damianricobelli",
+        sha: "main",
+        path,
+      }}
+    >
+      <DocsTitle>{page.data.title}</DocsTitle>
+      <DocsDescription>{page.data.description}</DocsDescription>
+      <DocsBody>
+        <MDX
+          components={{
+            ...defaultMdxComponents,
+            pre: ({ ref: _ref, ...props }) => (
+              <CodeBlock keepBackground {...props}>
+                <Pre>{props.children}</Pre>
+              </CodeBlock>
+            ),
+            Popup,
+            PopupContent,
+            PopupTrigger,
+            AutoTypeTable,
+            Tabs,
+            Tab,
+            Steps,
+            Step,
+            DemoViewer,
+            DocsCategory: () => <DocsCategory page={page} from={source} />,
+          }}
+        />
+      </DocsBody>
+    </DocsPage>
+  );
 }
 
 export async function generateStaticParams() {
-	return source.generateParams();
+  return source.generateParams();
 }
 
 export async function generateMetadata(props: {
-	params: Promise<{ slug?: string[] }>;
+  params: Promise<{ slug?: string[] }>;
 }) {
-	const params = await props.params;
-	const page = source.getPage(params.slug);
-	if (!page) {
-		notFound();
-	}
+  const params = await props.params;
+  const page = source.getPage(params.slug);
+  if (!page) notFound();
 
-	const description = page.data.description ?? "The library for building step-by-step workflows.";
-
-	return createMetadata(
-		metadataImage.withImage(page.slugs, {
-			title: page.data.title,
-			description,
-			openGraph: {
-				url: `/docs/${page.slugs.join("/")}`,
-			},
-			icons: {
-				icon: "/icon.png",
-			},
-		}),
-	);
+  return metadataImage.withImage(page.slugs, {
+    title: page.data.title,
+    description: page.data.description,
+  });
 }

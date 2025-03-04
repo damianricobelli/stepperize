@@ -2,18 +2,17 @@
 import { rehypeCodeDefaultOptions } from "fumadocs-core/mdx-plugins";
 import { defineConfig, defineDocs } from "fumadocs-mdx/config";
 import { transformerTwoslash } from "fumadocs-twoslash";
-var { docs, meta } = defineDocs({
-  dir: ["content/docs"]
+var docs = defineDocs({
+  dir: "content/docs"
 });
 var source_config_default = defineConfig({
   generateManifest: true,
   lastModifiedTime: "git",
   mdxOptions: {
     rehypeCodeOptions: {
-      inline: "tailing-curly-colon",
       themes: {
-        light: "catppuccin-latte",
-        dark: "catppuccin-mocha"
+        light: "github-light",
+        dark: "github-dark"
       },
       transformers: [...rehypeCodeDefaultOptions.transformers ?? [], transformerTwoslash()]
     }
@@ -21,6 +20,5 @@ var source_config_default = defineConfig({
 });
 export {
   source_config_default as default,
-  docs,
-  meta
+  docs
 };

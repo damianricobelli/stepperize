@@ -7,7 +7,10 @@ The `Scoped` component acts as a provider, allowing you to synchronize stepper s
 
 ## Basic Usage
 
-```tsx
+```tsx twoslash
+import * as React from "react";
+import { defineStepper } from "@stepperize/react";
+
 const Stepper = defineStepper(
   { id: "first", title: "First" },
   { id: "second", title: "Second" },
@@ -22,42 +25,54 @@ export const MyScopedStepper = () => (
 );
 
 const StepContent = () => {
-  const { when } = useStepper();
+  const { when } = Stepper.useStepper();
   return (
-    <>
-      {when("first", step => <p>Starting with {step.title}</p>)}
-      {when("second", step => <p>In the middle: {step.title}</p>)}
-      {when("last", step => <p>Ending with {step.title}</p>)}
-    </>
+    <React.Fragment>
+      {when("first", (step) => (
+        <p>Starting with {step.title}</p>
+      ))}
+      {when("second", (step) => (
+        <p>In the middle: {step.title}</p>
+      ))}
+    </React.Fragment>
   );
 };
 
 const StepNavigation = () => {
-  const { isLast, reset, next, when } = useStepper();
+  const { isLast, reset, next, when } = Stepper.useStepper();
   return (
     <button onClick={isLast ? reset : next}>
-      {when("last", () => "Reset", () => "Next")}
+      {when(
+        "last",
+        () => "Reset",
+        () => "Next"
+      )}
     </button>
   );
 };
 ```
 
-<Callout type="info">
-  Use `Scoped` only when child components need access to stepper state. Otherwise, use the hook directly in your component.
+<Callout title="When to use Scoped">
+  Use `Scoped` only when child components need access to stepper state.
+  Otherwise, use the hook directly in your component.
 </Callout>
 
 ## API Reference
 
-| Name | Type | Description | Required |
-| --- | --- | --- | --- |
-| initialStep | `string` | ID of the initial step to display. | No |
-| children | `React.ReactNode` | Content to render inside the stepper. | Yes |
+| Name            | Type                       | Description                           | Required |
+| --------------- | -------------------------- | ------------------------------------- | -------- |
+| initialStep     | `string`                   | ID of the initial step to display.    | No       |
+| initialMetadata | `Record<string, Metadata>` | Initial metadata for the stepper.     | No       |
+| children        | `React.ReactNode`          | Content to render inside the stepper. | Yes      |
 
 ## Nested Scopes
 
 You can nest multiple scopes for more complex stepper hierarchies:
 
 ```tsx
+import * as React from "react";
+import { defineStepper } from "@stepperize/react";
+// ---cut-before---
 const GlobalStepper = defineStepper(
   { id: "start", title: "Start" },
   { id: "middle", title: "Middle" },

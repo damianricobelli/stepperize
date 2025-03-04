@@ -32,59 +32,58 @@ an optional elseFn (the function to execute if the step does not match).
 
 <Tabs groupId="components" items={['SFC', 'JSX']} defaultValue="sfc">
   <Tab value="sfc">
-  ```vue
-  <script setup lang="ts">
-  import { defineStepper, StepperWhen } from '@stepperize/vue'
+    ```vue
+    <script setup lang="ts">
+      import { defineStepper, StepperWhen } from '@stepperize/vue'
+      const stepper = useStepper()
+    </script>
 
-const stepper = useStepper()
+    <template>
 
-  </script>
+      <StepperWhen :stepper when="first">
+        <template #default="step">
+          <p>First step: {{ step.title }}</p>
+        </template>
+      </StepperWhen>
 
-  <template>
+      <StepperWhen :stepper when="second">
+        <template #default="step">
+          <p>Second step: {{ step.title }}</p>
+        </template>
+      </StepperWhen>
 
-    <StepperWhen :stepper when="first">
-      <template #default="step">
-        <p>First step: {{ step.title }}</p>
-      </template>
-    </StepperWhen>
+      <StepperWhen :stepper when="last">
+        <template #default>
+          Finished!
+        </template>
+        <template #else>
+          Not finished yet
+        </template>
+      </StepperWhen>
 
-    <StepperWhen :stepper when="second">
-      <template #default="step">
-        <p>Second step: {{ step.title }}</p>
-      </template>
-    </StepperWhen>
+    </template>
+    ```
 
-    <StepperWhen :stepper when="last">
-      <template #default>
-        Finished!
-      </template>
-      <template #else>
-        Not finished yet
-      </template>
-    </StepperWhen>
-
-  </template>
-  ```
   </Tab>
   <Tab value="jsx">
-  ```tsx
-  import { defineComponent } from 'vue'
+    ```tsx
+    import { defineComponent } from 'vue'
 
-const MyStepperComponent = defineComponent(() => {
-const stepper = useStepper()
+    const MyStepperComponent = defineComponent(() => {
+    const stepper = useStepper()
 
-    return () => (
-      <>
-        { stepper.value.when("first", step => <p>First step: {step.title}</p>) }
-        { stepper.value.when("second", step => <p>Second step: {step.title}</p>) }
-        { stepper.value.when("last", "Finished!", "Not finished yet") }
-      </>
-    )
+        return () => (
+          <>
+            { stepper.value.when("first", step => <p>First step: {step.title}</p>) }
+            { stepper.value.when("second", step => <p>Second step: {step.title}</p>) }
+            { stepper.value.when("last", "Finished!", "Not finished yet") }
+          </>
+        )
 
-})
+    })
+    ```
 
-````
-</Tab>
+  </Tab>
 </Tabs>
 
 You can define more complex conditions that not only depend on the current step's ID
@@ -95,47 +94,47 @@ different state conditions or external factors that affect the step's visibility
 > The first element of the array is the step ID, the following elements are the boolean values.
 
 <Tabs groupId="components" items={['SFC', 'JSX']} defaultValue="sfc">
-<Tab value="sfc">
-```vue
-<script setup lang="ts">
-import { defineStepper, StepperWhen } from '@stepperize/vue'
+  <Tab value="sfc">
+    ```vue
+    <script setup lang="ts">
+    import { defineStepper, StepperWhen } from '@stepperize/vue'
 
-const stepper = useStepper()
+    const stepper = useStepper()
 
-const condition1 = ... // boolean
-const condition2 = ... // boolean
+    const condition1 = true; // or false
+    const condition2 = true; // or false
 
-</script>
+    </script>
 
-<template>
+    <template>
 
-  <StepperWhen :stepper :when="['first', condition1, condition2]">
-    <template #default="step">
-      <p>First step: {{ step.title }}</p>
+      <StepperWhen :stepper :when="['first', condition1, condition2]">
+        <template #default="step">
+          <p>First step: {{ step.title }}</p>
+        </template>
+      </StepperWhen>
+
     </template>
-  </StepperWhen>
-
-</template>
-````
+    ```
 
   </Tab>
   <Tab value="jsx">
-  ```tsx
-  import { defineComponent } from 'vue'
+    ```tsx
+    import { defineComponent } from 'vue'
 
-const MyStepperComponent = defineComponent(() => {
-const stepper = useStepper()
+    const MyStepperComponent = defineComponent(() => {
+    const stepper = useStepper()
 
-    return () => (
-      <>
-        { stepper.when(["first", condition1, condition2], step => <p>First step: {step.title}</p>) }
-      </>
-    )
+        return () => (
+          <>
+            { stepper.when(["first", condition1, condition2], step => <p>First step: {step.title}</p>) }
+          </>
+        )
 
-})
+    })
+    ```
 
-````
-</Tab>
+  </Tab>
 </Tabs>
 
 ### switch
@@ -147,54 +146,55 @@ where you need to differentiate the UI depending on the current step without wri
 multiple when conditions.
 
 <Tabs groupId="components" items={['SFC', 'JSX']} defaultValue="sfc">
-<Tab value="sfc">
-```vue
-<script setup lang="ts">
-import { defineStepper, StepperSwitch } from '@stepperize/vue'
+  <Tab value="sfc">
+    ```vue
+    <script setup lang="ts">
+    import { defineStepper, StepperSwitch } from '@stepperize/vue'
 
-const stepper = useStepper()
+    const stepper = useStepper()
 
-</script>
+    </script>
 
-<template>
+    <template>
 
-  <StepperSwitch :stepper>
-    <template #first="step">
-      <p>First: {{ step.title }}</p>
+      <StepperSwitch :stepper>
+        <template #first="step">
+          <p>First: {{ step.title }}</p>
+        </template>
+        <template #second="step">
+          <p>Second: {{ step.title }}</p>
+        </template>
+        <template #last>
+          Finished!
+        </template>
+      </StepperSwitch>
+
     </template>
-    <template #second="step">
-      <p>Second: {{ step.title }}</p>
-    </template>
-    <template #last>
-      Finished!
-    </template>
-  </StepperSwitch>
-
-</template>
-````
+    ```
 
   </Tab>
   <Tab value="jsx">
-  ```tsx
-  import { defineComponent } from 'vue'
+    ```tsx
+    import { defineComponent } from 'vue'
 
-const MyStepperComponent = defineComponent(() => {
-const stepper = useStepper()
+    const MyStepperComponent = defineComponent(() => {
+      const stepper = useStepper()
 
-    return () => (
-      <>
-        { stepper.value.switch({
-          first: step => <p>First: {step.title}</p>,
-          second: step => <p>Second: {step.title}</p>,
-          last: () => <p>Finished!</p>,
-        }) }
-      </>
-    )
+      return () => (
+        <>
+          { stepper.value.switch({
+            first: step => <p>First: {step.title}</p>,
+            second: step => <p>Second: {step.title}</p>,
+            last: () => <p>Finished!</p>,
+          }) }
+        </>
+      )
 
-})
+    })
 
-````
-</Tab>
+    ```
+
+  </Tab>
 </Tabs>
 
 ### match
@@ -206,61 +206,61 @@ current step in the stepper but also to any other state outside the stepper's
 context, such as user actions, data from an API, or global application state.
 
 <Tabs groupId="components" items={['SFC', 'JSX']} defaultValue="sfc">
-<Tab value="sfc">
-```vue
-<script setup lang="ts">
-import { defineStepper, StepperMatch } from '@stepperize/vue'
+  <Tab value="sfc">
+    ```vue
+    <script setup lang="ts">
+    import { defineStepper, StepperMatch } from '@stepperize/vue'
 
-const stepper = useStepper()
+    const stepper = useStepper()
 
-const state = "Value from server or client state"
+    const state = "Value from server or client state"
 
-</script>
+    </script>
 
-<template>
+    <template>
 
-  <StepperMatch :stepper :state>
-    <template #first="step">
-      <p>First: {{ step.title }}</p>
+      <StepperMatch :stepper :state>
+        <template #first="step">
+          <p>First: {{ step.title }}</p>
+        </template>
+        <template #second="step">
+          <p>Second: {{ step.title }}</p>
+        </template>
+        <template #last>
+          Finished!
+        </template>
+      </StepperMatch>
+
     </template>
-    <template #second="step">
-      <p>Second: {{ step.title }}</p>
-    </template>
-    <template #last>
-      Finished!
-    </template>
-  </StepperMatch>
-
-</template>
-````
+    ```
 
   </Tab>
   <Tab value="jsx">
-  ```tsx
-  import { defineComponent } from 'vue'
+    ```tsx
+    import { defineComponent } from 'vue'
 
-const MyStepperComponent = defineComponent(() => {
-const stepper = useStepper()
-const state = "Value from server or client state"
+    const MyStepperComponent = defineComponent(() => {
+      const stepper = useStepper()
+      const state = "Value from server or client state"
 
-    return () => (
-      <>
-        { stepper.value.match(state, {
-          first: step => <p>First: {step.title}</p>,
-          second: step => <p>Second: {step.title}</p>,
-          last: () => <p>Finished!</p>,
-        }) }
-      </>
-    )
+      return () => (
+        <>
+          { stepper.value.match(state, {
+            first: step => <p>First: {step.title}</p>,
+            second: step => <p>Second: {step.title}</p>,
+            last: () => <p>Finished!</p>,
+          }) }
+        </>
+      )
+    })
+    ```
 
-})
-
-```
-</Tab>
+  </Tab>
 </Tabs>
 
 <Callout type="info">
-`match` allows state-based control from client or server, useful for frameworks like Nuxt with server-side state management.
+  `match` allows state-based control from client or server, useful for
+  frameworks like Nuxt with server-side state management.
 </Callout>
 
 ## Before/after functions
@@ -319,15 +319,16 @@ const stepper = useStepper();
 </script>
 <template>
   <button
-    @click="() =>
-      stepper.beforeGoTo('first', () => {
-        // Your logic here
-        return true; // or false
-      })
+    @click="
+      () =>
+        stepper.beforeGoTo('first', () => {
+          // Your logic here
+          return true; // or false
+        })
     "
   >
     Go to first step
-  </button>  
+  </button>
 </template>
 ```
 
@@ -342,10 +343,11 @@ const stepper = useStepper();
 </script>
 <template>
   <button
-    @click="() =>
-      stepper.afterGoTo('first', () => {
-        // Your logic here
-      })
+    @click="
+      () =>
+        stepper.afterGoTo('first', () => {
+          // Your logic here
+        })
     "
   >
     Go to first step
@@ -399,27 +401,27 @@ stepper.value.resetMetadata(true | false);
 
 ## API Reference
 
-| Name          | Type                                                                                                                 | Description                                                                                                            |
-| ------------- | -------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| all           | `Step[]`                                                                                                             | Returns all steps                                                                                                      |
-| current       | `Step`                                                                                                               | Returns the current step                                                                                               |
-| isLast        | `boolean`                                                                                                            | Returns true if the current step is the last step                                                                      |
-| isFirst       | `boolean`                                                                                                            | Returns true if the current step is the first step                                                                     |
-| metadata      | `Record<string, Metadata>`                                                                                           | Returns the metadata for the current step                                                                              |
-| setMetadata   | `(id: string, values: Metadata) => void`                                                                             | Sets the metadata for a step                                                                                           |
-| getMetadata   | `(id: string) => Metadata`                                                                                           | Returns the metadata for a step                                                                                        |
+| Name          | Type                                                                                                                 | Description                                                                                                                  |
+| ------------- | -------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| all           | `Step[]`                                                                                                             | Returns all steps                                                                                                            |
+| current       | `Step`                                                                                                               | Returns the current step                                                                                                     |
+| isLast        | `boolean`                                                                                                            | Returns true if the current step is the last step                                                                            |
+| isFirst       | `boolean`                                                                                                            | Returns true if the current step is the first step                                                                           |
+| metadata      | `Record<string, Metadata>`                                                                                           | Returns the metadata for the current step                                                                                    |
+| setMetadata   | `(id: string, values: Metadata) => void`                                                                             | Sets the metadata for a step                                                                                                 |
+| getMetadata   | `(id: string) => Metadata`                                                                                           | Returns the metadata for a step                                                                                              |
 | resetMetadata | `(keepInitialMetadata?: boolean) => void`                                                                            | Resets the metadata. If keepInitialMetadata is true, the initial metadata defined in the useStepper composable will be kept. |
-| beforeNext    | `(callback: () => Promise<boolean> \| boolean) => void`                                                              | Executes a function before moving to the next step                                                                     |
-| afterNext     | `(callback: () => Promise<void> \| void) => void`                                                                    | Executes a function after moving to the next step                                                                      |
-| beforePrev    | `(callback: () => Promise<boolean> \| boolean) => void`                                                              | Executes a function before moving to the previous step                                                                 |
-| afterPrev     | `(callback: () => Promise<void> \| void) => void`                                                                    | Executes a function after moving to the previous step                                                                  |
-| beforeGoTo    | `(id: string, callback: () => Promise<boolean> \| boolean) => void`                                                  | Executes a function before moving to a specific step                                                                   |
-| afterGoTo     | `(id: string, callback: () => Promise<void> \| void) => void`                                                        | Executes a function after moving to a specific step                                                                    |
-| next          | `() => void`                                                                                                         | Advances to the next step                                                                                              |
-| prev          | `() => void`                                                                                                         | Returns to the previous step                                                                                           |
-| get           | `(id: string) => Step`                                                                                               | Returns a step by its ID                                                                                               |
-| goTo          | `(id: string) => void`                                                                                               | Navigates to a specific step by its ID                                                                                 |
-| reset         | `() => void`                                                                                                         | Resets the stepper to its initial state                                                                                |
-| when          | `(id: string, whenFn: (step: Step) => React.ReactNode, elseFn?: (step: Step) => React.ReactNode) => React.ReactNode` | Executes a function based on the current step ID                                                                       |
-| switch        | `(steps: { [id: string]: (step: Step) => React.ReactNode }) => React.ReactNode`                                      | Executes a function based on a switch-case-like structure for steps                                                    |
-| match         | `(state: string, steps: { [id: string]: (step: Step) => React.ReactNode }) => React.ReactNode`                       | Matches the current state with a set of possible states and executes the corresponding function                        |
+| beforeNext    | `(callback: () => Promise<boolean> \| boolean) => void`                                                              | Executes a function before moving to the next step                                                                           |
+| afterNext     | `(callback: () => Promise<void> \| void) => void`                                                                    | Executes a function after moving to the next step                                                                            |
+| beforePrev    | `(callback: () => Promise<boolean> \| boolean) => void`                                                              | Executes a function before moving to the previous step                                                                       |
+| afterPrev     | `(callback: () => Promise<void> \| void) => void`                                                                    | Executes a function after moving to the previous step                                                                        |
+| beforeGoTo    | `(id: string, callback: () => Promise<boolean> \| boolean) => void`                                                  | Executes a function before moving to a specific step                                                                         |
+| afterGoTo     | `(id: string, callback: () => Promise<void> \| void) => void`                                                        | Executes a function after moving to a specific step                                                                          |
+| next          | `() => void`                                                                                                         | Advances to the next step                                                                                                    |
+| prev          | `() => void`                                                                                                         | Returns to the previous step                                                                                                 |
+| get           | `(id: string) => Step`                                                                                               | Returns a step by its ID                                                                                                     |
+| goTo          | `(id: string) => void`                                                                                               | Navigates to a specific step by its ID                                                                                       |
+| reset         | `() => void`                                                                                                         | Resets the stepper to its initial state                                                                                      |
+| when          | `(id: string, whenFn: (step: Step) => React.ReactNode, elseFn?: (step: Step) => React.ReactNode) => React.ReactNode` | Executes a function based on the current step ID                                                                             |
+| switch        | `(steps: { [id: string]: (step: Step) => React.ReactNode }) => React.ReactNode`                                      | Executes a function based on a switch-case-like structure for steps                                                          |
+| match         | `(state: string, steps: { [id: string]: (step: Step) => React.ReactNode }) => React.ReactNode`                       | Matches the current state with a set of possible states and executes the corresponding function                              |
