@@ -1,6 +1,6 @@
 {
 	"name": "@stepperize/react",
-	"version": "5.1.0",
+	"version": "5.1.1",
 	"private": false,
 	"publishConfig": {
 		"access": "public"
@@ -15,7 +15,9 @@
 	},
 	"homepage": "https://stepperize.vercel.app",
 	"sideEffects": false,
-	"files": ["dist"],
+	"files": [
+		"dist"
+	],
 	"main": "dist/index.js",
 	"module": "dist/index.mjs",
 	"types": "dist/index.d.ts",
