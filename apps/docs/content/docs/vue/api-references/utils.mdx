@@ -7,31 +7,31 @@ The `Utils` object provides a set of pure functions for working with steps. Thes
 
 ## Functions
 
-| Function | Description | Parameters | Returns |
-| --- | --- | --- | --- |
-| `getAll` | Retrieves all steps in the stepper. | None | An array of all steps |
-| `get` | Retrieves a step by its ID. | `id`: The ID of the step to retrieve | The step with the specified ID |
-| `getIndex` | Retrieves the index of a step by its ID. | `id`: The ID of the step to retrieve the index for | The index of the step |
-| `getByIndex` | Retrieves a step by its index. | `index`: The index of the step to retrieve | The step at the specified index |
-| `getFirst` | Retrieves the first step in the stepper. | None | The first step |
-| `getLast` | Retrieves the last step in the stepper. | None | The last step |
-| `getNext` | Retrieves the next step after the specified ID. | `id`: The ID of the current step | The next step |
-| `getPrev` | Retrieves the previous step before the specified ID. | `id`: The ID of the current step | The previous step |
-| `getNeighbors` | Retrieves the neighboring steps (previous and next) of the specified step. | `id`: The ID of the current step | An object containing the previous and next steps, or `null` if they do not exist |
+| Function       | Description                                                                | Parameters                                         | Returns                                                                          |
+| -------------- | -------------------------------------------------------------------------- | -------------------------------------------------- | -------------------------------------------------------------------------------- |
+| `getAll`       | Retrieves all steps in the stepper.                                        | None                                               | An array of all steps                                                            |
+| `get`          | Retrieves a step by its ID.                                                | `id`: The ID of the step to retrieve               | The step with the specified ID                                                   |
+| `getIndex`     | Retrieves the index of a step by its ID.                                   | `id`: The ID of the step to retrieve the index for | The index of the step                                                            |
+| `getByIndex`   | Retrieves a step by its index.                                             | `index`: The index of the step to retrieve         | The step at the specified index                                                  |
+| `getFirst`     | Retrieves the first step in the stepper.                                   | None                                               | The first step                                                                   |
+| `getLast`      | Retrieves the last step in the stepper.                                    | None                                               | The last step                                                                    |
+| `getNext`      | Retrieves the next step after the specified ID.                            | `id`: The ID of the current step                   | The next step                                                                    |
+| `getPrev`      | Retrieves the previous step before the specified ID.                       | `id`: The ID of the current step                   | The previous step                                                                |
+| `getNeighbors` | Retrieves the neighboring steps (previous and next) of the specified step. | `id`: The ID of the current step                   | An object containing the previous and next steps, or `null` if they do not exist |
 
 ## Usage Example
 
 Here's a quick example of how you might use the `Utils` object in a Vue component:
 
 ```tsx
-import { defineStepper } from '@stepperize/vue';
+import { defineStepper } from "@stepperize/vue";
 
 // Step definitions
 const steps = [
-  { id: 'step1', name: 'Step 1' },
-  { id: 'step2', name: 'Step 2' },
-  { id: 'step3', name: 'Step 3' },
-  { id: 'step4', name: 'Step 4' },
+  { id: "step1", name: "Step 1" },
+  { id: "step2", name: "Step 2" },
+  { id: "step3", name: "Step 3" },
+  { id: "step4", name: "Step 4" },
 ];
 
 // Define the stepper with the steps
@@ -43,24 +43,23 @@ export function StepNavigator() {
 
   // Fetch the first and last steps
   const firstStep = utils.getFirst(); // Result: { id: 'step1', name: 'Step 1' }
-  const lastStep = utils.getLast();   // Result: { id: 'step4', name: 'Step 4' }
+  const lastStep = utils.getLast(); // Result: { id: 'step4', name: 'Step 4' }
 
   // Get a step by ID
-  const stepById = utils.get('step3'); // Result: { id: 'step3', name: 'Step 3' }
+  const stepById = utils.get("step3"); // Result: { id: 'step3', name: 'Step 3' }
 
   // Get the index of a step by ID
-  const indexOfStep2 = utils.getIndex('step2'); // Result: 1
+  const indexOfStep2 = utils.getIndex("step2"); // Result: 1
 
   // Get a step by its index
   const stepAtIndex2 = utils.getByIndex(2); // Result: { id: 'step3', name: 'Step 3' }
 
   // Get the next and previous steps
-  const nextStepAfter1 = utils.getNext('step1'); // Result: { id: 'step2', name: 'Step 2' }
-  const prevStepBefore3 = utils.getPrev('step3'); // Result: { id: 'step2', name: 'Step 2' }
+  const nextStepAfter1 = utils.getNext("step1"); // Result: { id: 'step2', name: 'Step 2' }
+  const prevStepBefore3 = utils.getPrev("step3"); // Result: { id: 'step2', name: 'Step 2' }
 
   // Get neighbors of a step
-  const neighborsOfStep2 = utils.getNeighbors('step2'); 
+  const neighborsOfStep2 = utils.getNeighbors("step2");
   // Result: { prev: { id: 'step1', name: 'Step 1' }, next: { id: 'step3', name: 'Step 3' } }
 }
 ```
-

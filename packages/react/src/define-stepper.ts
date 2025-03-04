@@ -11,6 +11,12 @@ import {
 	getInitialStepIndex,
 } from "@stepperize/core";
 
+/**
+ * Creates a stepper context and utility functions for managing stepper state.
+ *
+ * @param steps - The steps to be included in the stepper.
+ * @returns An object containing the stepper context and utility functions.
+ */
 export const defineStepper = <const Steps extends Step[]>(...steps: Steps): StepperReturn<Steps> => {
 	const Context = React.createContext<Stepper<Steps> | null>(null);
 

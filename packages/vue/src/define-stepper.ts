@@ -20,6 +20,12 @@ import {
 } from "vue";
 import type { ScopedProps, StepperReturn } from "./types";
 
+/**
+ * Creates a stepper context and utility functions for managing stepper state.
+ *
+ * @param steps - The steps to be included in the stepper.
+ * @returns An object containing the stepper context and utility functions.
+ */
 export const defineStepper = <const Steps extends Step[]>(...steps: Steps): StepperReturn<Steps> => {
 	const contextKey = Symbol("StepperizeContext") as InjectionKey<ComputedRef<Stepper<Steps>>>;
 
@@ -55,8 +61,8 @@ export const defineStepper = <const Steps extends Step[]>(...steps: Steps): Step
 				isFirst,
 				metadata: metadata.value,
 				setMetadata(id, data) {
-					if (metadata.value[id] === data) return
-					metadata.value[id] = data
+					if (metadata.value[id] === data) return;
+					metadata.value[id] = data;
 				},
 				getMetadata(id) {
 					return metadata.value[id];
@@ -108,7 +114,7 @@ export const defineStepper = <const Steps extends Step[]>(...steps: Steps): Step
 				get(id) {
 					return steps.find((step) => step.id === id);
 				},
-		        async beforeGoTo(id, callback) {
+				async beforeGoTo(id, callback) {
 					const shouldProceed = await executeStepCallback(callback, true);
 					if (shouldProceed) this.goTo(id);
 				},

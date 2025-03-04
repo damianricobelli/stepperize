@@ -1,5 +1,5 @@
-import { source } from "@/app/source";
-import { baseUrl } from "@/utils/metadata";
+import { baseUrl } from "@/lib/metadata";
+import { source } from "@/lib/source";
 import type { MetadataRoute } from "next";
 
 export default function sitemap(): MetadataRoute.Sitemap {
