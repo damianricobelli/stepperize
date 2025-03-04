@@ -1,5 +1,14 @@
 # @stepperize/react
 
+## 5.1.1
+
+### Patch Changes
+
+- [#111](https://github.com/damianricobelli/stepperize/pull/111) [`5acc49b`](https://github.com/damianricobelli/stepperize/commit/5acc49b4387d38d3cf0d8c7d192f36ae44860f66) Thanks [@damianricobelli](https://github.com/damianricobelli)! - Update docs
+
+- Updated dependencies [[`5acc49b`](https://github.com/damianricobelli/stepperize/commit/5acc49b4387d38d3cf0d8c7d192f36ae44860f66)]:
+  - @stepperize/core@1.2.1
+
 ## 5.1.0
 
 ### Minor Changes
