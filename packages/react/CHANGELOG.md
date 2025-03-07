@@ -1,5 +1,14 @@
 # @stepperize/react
 
+## 5.1.2
+
+### Patch Changes
+
+- [#113](https://github.com/damianricobelli/stepperize/pull/113) [`788ee09`](https://github.com/damianricobelli/stepperize/commit/788ee0956b3dda7965f37e1483b29b2c7a9b8fc4) Thanks [@damianricobelli](https://github.com/damianricobelli)! - feat: add solid js support, improve package configurations and fix match method
+
+- Updated dependencies [[`788ee09`](https://github.com/damianricobelli/stepperize/commit/788ee0956b3dda7965f37e1483b29b2c7a9b8fc4)]:
+  - @stepperize/core@1.2.2
+
 ## 5.1.1
 
 ### Patch Changes
