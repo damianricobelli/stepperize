@@ -36,7 +36,8 @@ const Hero = () => {
 
       <div className="max-w-7xl mx-auto relative z-10">
         <div className="text-center">
-          {/* <motion.div
+          <motion.a
+            href="/docs/solid"
             initial={{ opacity: 0, y: 20, scale: 0.8 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             transition={{
@@ -62,9 +63,9 @@ const Hero = () => {
                   ease: "easeInOut",
                 }}
               />
-              Introducing @stepperize/react
+              Introducing @stepperize/solid
             </motion.span>
-          </motion.div> */}
+          </motion.a>
 
           <motion.h1
             className="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight mb-6"
