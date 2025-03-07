@@ -2,15 +2,15 @@
   <img src="https://stepperize.vercel.app/banner.png" alt="Stepperize Logo" />
 </p>
 
-[![Build Size](https://img.shields.io/bundlephobia/minzip/@stepperize/react@latest?label=bundle%20size&style=flat&colorA=000000&colorB=000000)](https://bundlephobia.com/result?p=@stepperize/react@latest)
-[![Version](https://img.shields.io/npm/v/@stepperize/react?style=flat&colorA=000000&colorB=000000)](https://www.npmjs.com/package/@stepperize/react)
-[![Downloads](https://img.shields.io/npm/dt/@stepperize/react.svg?style=flat&colorA=000000&colorB=000000)](https://www.npmjs.com/package/@stepperize/react)
+[![Build Size](https://img.shields.io/bundlephobia/minzip/@stepperize/solid@latest?label=bundle%20size&style=flat&colorA=000000&colorB=000000)](https://bundlephobia.com/result?p=@stepperize/solid@latest)
+[![Version](https://img.shields.io/npm/v/@stepperize/solid?style=flat&colorA=000000&colorB=000000)](https://www.npmjs.com/package/@stepperize/solid)
+[![Downloads](https://img.shields.io/npm/dt/@stepperize/solid.svg?style=flat&colorA=000000&colorB=000000)](https://www.npmjs.com/package/@stepperize/solid)
 
 A library for creating step-by-step workflows in your apps
 
 - 🚀 Fast and efficient
 - 🔥 Powerful and flexible
-- 📦 Lightweight
+- 📦 Lightweight (1.4kB gzipped)
 - 🪄 Fully type-safe
 - 🔗 Composable architecture
 - 🎨 Unstyled for maximum customization
@@ -18,7 +18,7 @@ A library for creating step-by-step workflows in your apps
 ## Installation
 
 ```bash
-npm install @stepperize/react
+npm install @stepperize/solid
 ```
 
 ## Quick Start
@@ -26,13 +26,13 @@ npm install @stepperize/react
 1. Import the constructor:
 
 ```tsx
-import { defineStepper } from "@stepperize/react";
+import { defineStepper } from "@stepperize/solid";
 ```
 
 2. Define your steps:
 
 ```tsx
-const { Scoped, useStepper, steps, utils } = defineStepper(
+const { Scoped, useStepper, steps } = defineStepper(
   { id: "step-1", title: "Step 1", description: "Description for step 1" },
   { id: "step-2", title: "Step 2", description: "Description for step 2" },
   { id: "step-3", title: "Step 3", description: "Description for step 3" },
@@ -61,7 +61,6 @@ function StepperComponent() {
 
 Stepperize allows you to define a series of steps with unique IDs. When you create your steps using `defineStepper`, you get:
 
-- A `Scoped` component for context management
 - A `useStepper` hook for step control
 - An array of `steps` for rendering
 - An `utils` object with useful functions

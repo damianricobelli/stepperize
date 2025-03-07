@@ -1,19 +1,31 @@
 {
 	"name": "@stepperize/solid",
 	"version": "0.1.2",
-	"private": true,
+	"private": false,
+	"publishConfig": {
+		"access": "public"
+	},
+	"description": "The library for building step-by-step workflows for Solid JS apps",
+	"author": "damianricobelli",
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/damianricobelli/stepperize.git",
+		"directory": "packages/solid"
+	},
+	"homepage": "https://stepperize.vercel.app",
+	"sideEffects": false,
+	"files": ["dist"],
 	"main": "dist/index.js",
 	"module": "dist/index.mjs",
 	"types": "dist/index.d.ts",
 	"exports": {
 		".": {
+			"types": "./dist/index.d.ts",
 			"import": "./dist/index.mjs",
-			"require": "./dist/index.js",
-			"types": "./dist/index.d.ts"
+			"require": "./dist/index.js"
 		}
 	},
-	"sideEffects": false,
-	"files": ["dist"],
 	"scripts": {
 		"build": "tsup",
 		"dev": "tsup --watch",
@@ -21,8 +33,17 @@
 		"prepublishOnly": "pnpm run build",
 		"clean": "rm -rf .turbo && rm -rf node_modules dist"
 	},
+	"dependencies": {
+		"@stepperize/core": "workspace:*"
+	},
+	"peerDependencies": {
+		"solid-js": "^1.0.0",
+		"typescript": "^5.0.2"
+	},
 	"devDependencies": {
-		"tsup": "^8.4.0",
-		"typescript": "^5.8.2"
+		"solid-js": "^1.9.5",
+		"tsup": "catalog:",
+		"terser": "catalog:",
+		"typescript": "catalog:"
 	}
 }

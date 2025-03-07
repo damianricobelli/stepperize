@@ -1,6 +1,14 @@
 {
-	"title": "Solid",
+	"title": "React",
 	"root": true,
-	"description": "Stepperize for Solid",
-	"pages": ["---Getting Started---", "index"]
+	"description": "Stepperize for React",
+	"pages": [
+		"---Getting Started---",
+		"index",
+		"installation",
+		"---API References---",
+		"api-references/define",
+		"api-references/hook",
+		"api-references/utils"
+	]
 }

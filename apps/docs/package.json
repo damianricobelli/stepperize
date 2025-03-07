@@ -17,6 +17,7 @@
 		"@radix-ui/react-scroll-area": "^1.2.3",
 		"@radix-ui/react-tabs": "^1.1.3",
 		"@stepperize/react": "workspace:*",
+		"@stepperize/solid": "workspace:*",
 		"@stepperize/vue": "workspace:*",
 		"class-variance-authority": "^0.7.1",
 		"fumadocs-core": "15.0.15",
@@ -32,6 +33,7 @@
 		"react": "^19.0.0",
 		"react-dom": "^19.0.0",
 		"shiki": "3.1.0",
+		"solid-js": "^1.9.5",
 		"tailwind-merge": "^3.0.2",
 		"ts-morph": "25.0.1",
 		"twoslash": "^0.3.1"

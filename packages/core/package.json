@@ -15,9 +15,7 @@
 	},
 	"homepage": "https://stepperize.vercel.app",
 	"sideEffects": false,
-	"files": [
-		"dist"
-	],
+	"files": ["dist"],
 	"main": "dist/index.js",
 	"module": "dist/index.mjs",
 	"types": "dist/index.d.ts",
@@ -35,8 +33,12 @@
 		"prepublishOnly": "pnpm run build",
 		"clean": "rm -rf .turbo && rm -rf node_modules dist"
 	},
+	"peerDependencies": {
+		"typescript": "^5.0.2"
+	},
 	"devDependencies": {
-		"tsup": "^8.4.0",
-		"typescript": "^5.8.2"
+		"tsup": "catalog:",
+		"terser": "catalog:",
+		"typescript": "catalog:"
 	}
 }
