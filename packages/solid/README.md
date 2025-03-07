@@ -2,9 +2,9 @@
   <img src="https://stepperize.vercel.app/banner.png" alt="Stepperize Logo" />
 </p>
 
-[![Build Size](https://img.shields.io/bundlephobia/minzip/@stepperize/vue@latest?label=bundle%20size&style=flat&colorA=000000&colorB=000000)](https://bundlephobia.com/result?p=@stepperize/vue@latest)
-[![Version](https://img.shields.io/npm/v/@stepperize/vue?style=flat&colorA=000000&colorB=000000)](https://www.npmjs.com/package/@stepperize/vue)
-[![Downloads](https://img.shields.io/npm/dt/@stepperize/vue.svg?style=flat&colorA=000000&colorB=000000)](https://www.npmjs.com/package/@stepperize/vue)
+[![Build Size](https://img.shields.io/bundlephobia/minzip/@stepperize/solid@latest?label=bundle%20size&style=flat&colorA=000000&colorB=000000)](https://bundlephobia.com/result?p=@stepperize/solid@latest)
+[![Version](https://img.shields.io/npm/v/@stepperize/solid?style=flat&colorA=000000&colorB=000000)](https://www.npmjs.com/package/@stepperize/solid)
+[![Downloads](https://img.shields.io/npm/dt/@stepperize/solid.svg?style=flat&colorA=000000&colorB=000000)](https://www.npmjs.com/package/@stepperize/solid)
 
 A library for creating step-by-step workflows in your apps
 
@@ -18,7 +18,7 @@ A library for creating step-by-step workflows in your apps
 ## Installation
 
 ```bash
-npm install @stepperize/vue
+npm install @stepperize/solid
 ```
 
 ## Quick Start
@@ -26,7 +26,7 @@ npm install @stepperize/vue
 1. Import the constructor:
 
 ```tsx
-import { defineStepper } from "@stepperize/vue";
+import { defineStepper } from "@stepperize/solid";
 ```
 
 2. Define your steps:
@@ -61,7 +61,6 @@ function StepperComponent() {
 
 Stepperize allows you to define a series of steps with unique IDs. When you create your steps using `defineStepper`, you get:
 
-- A `Scoped` component for context management
 - A `useStepper` hook for step control
 - An array of `steps` for rendering
 - An `utils` object with useful functions

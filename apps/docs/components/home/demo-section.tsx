@@ -67,6 +67,12 @@ const DemoContent = () => {
 
   return (
     <div className="max-w-5xl mx-auto relative z-10">
+      {methods.match("address", {
+        "personal-info": (step) => <div>Personal Info {step.label}</div>,
+        address: (step) => <div>Address {step.label}</div>,
+        payment: () => <div>Payment</div>,
+        success: () => <div>Success</div>,
+      })}
       <motion.div
         className="text-center mb-12"
         initial={{ opacity: 0, y: 20 }}

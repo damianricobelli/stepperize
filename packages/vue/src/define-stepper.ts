@@ -1,10 +1,11 @@
 import type { Get, Metadata, Step, Stepper } from "@stepperize/core";
 import {
-	executeStepCallback,
+	executeTransition,
 	generateCommonStepperUseFns,
 	generateStepperUtils,
 	getInitialMetadata,
 	getInitialStepIndex,
+	updateStepIndex,
 } from "@stepperize/core";
 import {
 	type ComputedRef,
@@ -70,64 +71,49 @@ export const defineStepper = <const Steps extends Step[]>(...steps: Steps): Step
 				resetMetadata(keepInitialMetadata) {
 					metadata.value = getInitialMetadata(steps, keepInitialMetadata ? config?.initialMetadata : undefined);
 				},
-				async beforeNext(callback) {
-					if (isLast) {
-						throw new Error("Cannot navigate to the next step because it is the last step.");
-					}
-					const shouldProceed = await executeStepCallback(callback, true);
-					if (shouldProceed) {
-						this.next();
-					}
-				},
-				async afterNext(callback) {
-					this.next();
-					await executeStepCallback(callback, false);
-				},
-				async beforePrev(callback) {
-					if (isFirst) {
-						throw new Error("Cannot navigate to the previous step because it is the first step.");
-					}
-					const shouldProceed = await executeStepCallback(callback, true);
-					if (shouldProceed) {
-						this.prev();
-					}
-				},
-				async afterPrev(callback) {
-					if (isFirst) {
-						throw new Error("Cannot navigate to the previous step because it is the first step.");
-					}
-					this.prev();
-					await executeStepCallback(callback, false);
-				},
 				next() {
-					if (isLast) {
-						throw new Error("Cannot navigate to the next step because it is the last step.");
-					}
-					stepIndex.value += 1;
+					updateStepIndex(steps, stepIndex.value + 1, (newIndex) => {
+						stepIndex.value = newIndex;
+					});
 				},
 				prev() {
-					if (isFirst) {
-						throw new Error("Cannot navigate to the previous step because it is the first step.");
-					}
-					stepIndex.value -= 1;
+					updateStepIndex(steps, stepIndex.value - 1, (newIndex) => {
+						stepIndex.value = newIndex;
+					});
 				},
 				get(id) {
 					return steps.find((step) => step.id === id);
 				},
-				async beforeGoTo(id, callback) {
-					const shouldProceed = await executeStepCallback(callback, true);
-					if (shouldProceed) this.goTo(id);
-				},
-				async afterGoTo(id, callback) {
-					this.goTo(id);
-					await executeStepCallback(callback, false);
-				},
 				goTo(id) {
 					const index = steps.findIndex((s) => s.id === id);
-					stepIndex.value = index;
+					if (index === -1) throw new Error(`Step with id "${id}" not found.`);
+					updateStepIndex(steps, index, (newIndex) => {
+						stepIndex.value = newIndex;
+					});
 				},
 				reset() {
 					stepIndex.value = getInitialStepIndex(steps, toValue(config?.initialStep));
+				},
+				async beforeNext(callback) {
+					await executeTransition({ stepper: stepper.value, direction: "next", callback, before: true });
+				},
+				async afterNext(callback) {
+					this.next();
+					await executeTransition({ stepper: stepper.value, direction: "next", callback, before: false });
+				},
+				async beforePrev(callback) {
+					await executeTransition({ stepper: stepper.value, direction: "prev", callback, before: true });
+				},
+				async afterPrev(callback) {
+					this.prev();
+					await executeTransition({ stepper: stepper.value, direction: "prev", callback, before: false });
+				},
+				async beforeGoTo(id, callback) {
+					await executeTransition({ stepper: stepper.value, direction: "goTo", callback, before: true, targetId: id });
+				},
+				async afterGoTo(id, callback) {
+					this.goTo(id);
+					await executeTransition({ stepper: stepper.value, direction: "goTo", callback, before: false, targetId: id });
 				},
 				...generateCommonStepperUseFns(steps, currentStep, currentStepIndex),
 			} as Stepper<Steps>;

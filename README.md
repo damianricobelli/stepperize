@@ -10,7 +10,7 @@ A library for creating step-by-step workflows in your apps
 
 - 🚀 Fast and efficient
 - 🔥 Powerful and flexible
-- 📦 Lightweight (< 1kB gzipped)
+- 📦 Lightweight (1.2kB gzipped)
 - 🪄 Fully type-safe
 - 🔗 Composable architecture
 - 🎨 Unstyled for maximum customization
