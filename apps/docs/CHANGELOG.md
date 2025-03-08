@@ -1,5 +1,14 @@
 # docs
 
+## 2.4.3
+
+### Patch Changes
+
+- Updated dependencies [[`a51614f`](https://github.com/damianricobelli/stepperize/commit/a51614f802b5d0f9e1a0d4936166d3d56b01692b)]:
+  - @stepperize/react@5.1.3
+  - @stepperize/solid@1.0.1
+  - @stepperize/vue@2.0.3
+
 ## 2.4.2
 
 ### Patch Changes
