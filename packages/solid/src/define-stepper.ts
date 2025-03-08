@@ -11,6 +11,12 @@ import { createMemo } from "solid-js";
 import { createStore, produce } from "solid-js/store";
 import type { StepperReturn } from "./types";
 
+/**
+ * Creates a stepper context and utility functions for managing stepper state.
+ *
+ * @param steps - The steps to be included in the stepper.
+ * @returns An object containing the stepper context and utility functions.
+ */
 export const defineStepper = <const Steps extends Step[]>(...steps: Steps): StepperReturn<Steps> => {
 	const utils = generateStepperUtils(...steps);
 
@@ -147,6 +153,6 @@ export const defineStepper = <const Steps extends Step[]>(...steps: Steps): Step
 	return {
 		steps,
 		utils,
-		useStepper: (props = {}) => useStepper(props),
+		useStepper,
 	};
 };
