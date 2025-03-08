@@ -15,9 +15,7 @@
 	},
 	"homepage": "https://stepperize.vercel.app",
 	"sideEffects": false,
-	"files": [
-		"dist"
-	],
+	"files": ["dist"],
 	"main": "dist/index.js",
 	"module": "dist/index.mjs",
 	"types": "dist/index.d.ts",
@@ -39,8 +37,7 @@
 		"@stepperize/core": "workspace:*"
 	},
 	"peerDependencies": {
-		"react": "^17.0.0 || ^18.0.0 || ^19.0.0",
-		"typescript": "^5.0.2"
+		"react": "^17.0.0 || ^18.0.0 || ^19.0.0"
 	},
 	"devDependencies": {
 		"@types/react": "^18.3.18",

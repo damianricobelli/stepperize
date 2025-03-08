@@ -15,9 +15,7 @@
 	},
 	"homepage": "https://stepperize.vercel.app",
 	"sideEffects": false,
-	"files": [
-		"dist"
-	],
+	"files": ["dist"],
 	"main": "dist/index.js",
 	"module": "dist/index.mjs",
 	"types": "dist/index.d.ts",
@@ -39,8 +37,7 @@
 		"@stepperize/core": "workspace:*"
 	},
 	"peerDependencies": {
-		"solid-js": "^1.0.0",
-		"typescript": "^5.0.2"
+		"solid-js": ">=1.0.0"
 	},
 	"devDependencies": {
 		"solid-js": "^1.9.5",
