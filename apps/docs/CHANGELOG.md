@@ -1,5 +1,12 @@
 # docs
 
+## 2.4.4
+
+### Patch Changes
+
+- Updated dependencies [[`c636688`](https://github.com/damianricobelli/stepperize/commit/c6366889d593b0b89b794309f5a530df7596089d)]:
+  - @stepperize/solid@1.0.2
+
 ## 2.4.3
 
 ### Patch Changes

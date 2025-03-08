@@ -1,5 +1,11 @@
 # @stepperize/solid
 
+## 1.0.2
+
+### Patch Changes
+
+- [`c636688`](https://github.com/damianricobelli/stepperize/commit/c6366889d593b0b89b794309f5a530df7596089d) Thanks [@damianricobelli](https://github.com/damianricobelli)! - chore: add defineStepper jsdoc
+
 ## 1.0.1
 
 ### Patch Changes
