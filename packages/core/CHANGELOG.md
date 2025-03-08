@@ -1,5 +1,11 @@
 # @stepperize/core
 
+## 1.2.3
+
+### Patch Changes
+
+- [#115](https://github.com/damianricobelli/stepperize/pull/115) [`a51614f`](https://github.com/damianricobelli/stepperize/commit/a51614f802b5d0f9e1a0d4936166d3d56b01692b) Thanks [@damianricobelli](https://github.com/damianricobelli)! - fix: peer deps
+
 ## 1.2.2
 
 ### Patch Changes
