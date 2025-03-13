@@ -18,9 +18,7 @@
 	"files": [
 		"dist"
 	],
-	"main": "dist/index.js",
-	"module": "dist/index.mjs",
-	"types": "dist/index.d.mts",
+	"type": "module",
 	"exports": {
 		".": {
 			"types": "./dist/index.d.mts",
