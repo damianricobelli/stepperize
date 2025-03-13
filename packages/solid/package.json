@@ -20,10 +20,10 @@
 	],
 	"main": "dist/index.js",
 	"module": "dist/index.mjs",
-	"types": "dist/index.d.ts",
+	"types": "dist/index.d.mts",
 	"exports": {
 		".": {
-			"types": "./dist/index.d.ts",
+			"types": "./dist/index.d.mts",
 			"import": "./dist/index.mjs",
 			"require": "./dist/index.js"
 		}
