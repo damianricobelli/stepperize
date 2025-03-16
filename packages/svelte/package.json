@@ -4,9 +4,7 @@
 	"private": true,
 	"type": "module",
 	"exports": {
-		".": {
-			"import": "./dist/index.mjs"
-		}
+		".": "./dist/index.mjs"
 	},
 	"sideEffects": false,
 	"files": ["dist"],

@@ -20,9 +20,7 @@
 	],
 	"type": "module",
 	"exports": {
-		".": {
-			"import": "./dist/index.mjs"
-		}
+		".": "./dist/index.mjs"
 	},
 	"scripts": {
 		"build": "tsup",
