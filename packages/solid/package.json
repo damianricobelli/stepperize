@@ -18,15 +18,9 @@
 	"files": [
 		"dist"
 	],
-	"main": "dist/index.js",
-	"module": "dist/index.mjs",
-	"types": "dist/index.d.ts",
+	"type": "module",
 	"exports": {
-		".": {
-			"types": "./dist/index.d.ts",
-			"import": "./dist/index.mjs",
-			"require": "./dist/index.js"
-		}
+		".": "./dist/index.js"
 	},
 	"scripts": {
 		"build": "tsup",

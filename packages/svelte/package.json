@@ -2,15 +2,9 @@
 	"name": "@stepperize/svelte",
 	"version": "0.1.2",
 	"private": true,
-	"main": "dist/index.js",
-	"module": "dist/index.mjs",
-	"types": "dist/index.d.ts",
+	"type": "module",
 	"exports": {
-		".": {
-			"import": "./dist/index.mjs",
-			"require": "./dist/index.js",
-			"types": "./dist/index.d.ts"
-		}
+		".": "./dist/index.js"
 	},
 	"sideEffects": false,
 	"files": ["dist"],
