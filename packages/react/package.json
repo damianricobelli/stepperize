@@ -15,10 +15,10 @@
 	},
 	"homepage": "https://stepperize.vercel.app",
 	"sideEffects": false,
-	"files": [
-		"dist"
-	],
+	"files": ["dist"],
 	"type": "module",
+	"main": "./dist/index.js",
+	"module": "./dist/index.js",
 	"exports": {
 		".": "./dist/index.js"
 	},

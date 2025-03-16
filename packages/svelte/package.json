@@ -3,13 +3,13 @@
 	"version": "0.1.3",
 	"private": true,
 	"type": "module",
+	"main": "./dist/index.js",
+	"module": "./dist/index.js",
 	"exports": {
 		".": "./dist/index.js"
 	},
 	"sideEffects": false,
-	"files": [
-		"dist"
-	],
+	"files": ["dist"],
 	"scripts": {
 		"build": "tsup",
 		"dev": "tsup --watch",
