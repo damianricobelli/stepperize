@@ -1,13 +1,15 @@
 {
 	"name": "@stepperize/svelte",
-	"version": "0.1.2",
+	"version": "0.1.3",
 	"private": true,
 	"type": "module",
 	"exports": {
 		".": "./dist/index.js"
 	},
 	"sideEffects": false,
-	"files": ["dist"],
+	"files": [
+		"dist"
+	],
 	"scripts": {
 		"build": "tsup",
 		"dev": "tsup --watch",

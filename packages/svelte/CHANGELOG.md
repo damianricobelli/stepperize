@@ -1,5 +1,11 @@
 # @stepperize/svelte
 
+## 0.1.3
+
+### Patch Changes
+
+- [#119](https://github.com/damianricobelli/stepperize/pull/119) [`921bb62`](https://github.com/damianricobelli/stepperize/commit/921bb6297a0f370fbe5cbf4689b5a698207ee62c) Thanks [@longzheng](https://github.com/longzheng)! - Update package.json `types` to match filename
+
 ## 0.1.2
 
 ### Patch Changes
