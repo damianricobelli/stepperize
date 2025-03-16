@@ -1,6 +1,6 @@
 {
 	"name": "@stepperize/solid",
-	"version": "1.0.3",
+	"version": "1.0.4",
 	"private": false,
 	"publishConfig": {
 		"access": "public"
@@ -15,7 +15,9 @@
 	},
 	"homepage": "https://stepperize.vercel.app",
 	"sideEffects": false,
-	"files": ["dist"],
+	"files": [
+		"dist"
+	],
 	"type": "module",
 	"main": "./dist/index.js",
 	"module": "./dist/index.js",
