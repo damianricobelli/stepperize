@@ -1,5 +1,11 @@
 # @stepperize/svelte
 
+## 0.1.4
+
+### Patch Changes
+
+- [`5fdf934`](https://github.com/damianricobelli/stepperize/commit/5fdf9344f38a8673220adbc57f8ea55489883563) Thanks [@damianricobelli](https://github.com/damianricobelli)! - Add main entry point
+
 ## 0.1.3
 
 ### Patch Changes

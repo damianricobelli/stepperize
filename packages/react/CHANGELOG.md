@@ -1,5 +1,14 @@
 # @stepperize/react
 
+## 5.1.5
+
+### Patch Changes
+
+- [`5fdf934`](https://github.com/damianricobelli/stepperize/commit/5fdf9344f38a8673220adbc57f8ea55489883563) Thanks [@damianricobelli](https://github.com/damianricobelli)! - Add main entry point
+
+- Updated dependencies [[`5fdf934`](https://github.com/damianricobelli/stepperize/commit/5fdf9344f38a8673220adbc57f8ea55489883563)]:
+  - @stepperize/core@1.2.5
+
 ## 5.1.4
 
 ### Patch Changes
