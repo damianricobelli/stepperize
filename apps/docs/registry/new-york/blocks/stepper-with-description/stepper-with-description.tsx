@@ -67,7 +67,7 @@ export default function StepperWithDescription() {
 
 const Content = ({ id }: { id: string }) => {
   return (
-    <Stepper.Panel className="h-[200px] content-center rounded border bg-slate-50 p-8">
+    <Stepper.Panel className="h-[200px] content-center rounded border bg-secondary text-secondary-foreground p-8">
       <p className="text-xl font-normal">Content for {id}</p>
     </Stepper.Panel>
   );

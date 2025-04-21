@@ -68,7 +68,7 @@ export default function StepperWithTracking() {
                   <Stepper.Title>{step.title}</Stepper.Title>
                   {methods.when(step.id, () => (
                     <Stepper.Panel className="space-y-4">
-                      <div className="h-[200px] content-center rounded border bg-slate-50 p-8">
+                      <div className="h-[200px] content-center rounded border bg-secondary text-secondary-foreground p-8">
                         <p className="text-xl font-normal">
                           Content for {step.id}
                         </p>

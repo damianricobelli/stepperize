@@ -95,7 +95,7 @@ const HorizontalStepper = () => {
 
 const Content = ({ id }: { id: string }) => {
   return (
-    <Stepper.Panel className="h-[200px] content-center rounded border bg-slate-50 p-8">
+    <Stepper.Panel className="h-[200px] content-center rounded border bg-secondary text-secondary-foreground p-8">
       <p className="text-xl font-normal">Content for {id}</p>
     </Stepper.Panel>
   );
@@ -115,7 +115,7 @@ const VerticalStepper = () => {
               >
                 <Stepper.Title>{step.title}</Stepper.Title>
                 {methods.when(step.id, () => (
-                  <Stepper.Panel className="h-[200px] content-center rounded border bg-slate-50 p-8">
+                  <Stepper.Panel className="h-[200px] content-center rounded border bg-secondary text-secondary-foreground p-8">
                     <p className="text-xl font-normal">Content for {step.id}</p>
                   </Stepper.Panel>
                 ))}
@@ -153,7 +153,7 @@ const CircleStepper = () => {
             </Stepper.Step>
           </Stepper.Navigation>
           {methods.when(methods.current.id, () => (
-            <Stepper.Panel className="h-[200px] content-center rounded border bg-slate-50 p-8">
+            <Stepper.Panel className="h-[200px] content-center rounded border bg-secondary text-secondary-foreground p-8">
               <p className="text-xl font-normal">
                 Content for {methods.current.id}
               </p>
