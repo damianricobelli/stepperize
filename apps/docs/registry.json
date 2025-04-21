@@ -4,6 +4,20 @@
 	"homepage": "https://stepperize.vercel.app/",
 	"items": [
 		{
+			"name": "stepper",
+			"type": "registry:component",
+			"title": "Stepper",
+			"description": "Stepper component",
+			"dependencies": ["@stepperize/react"],
+			"registryDependencies": ["button"],
+			"files": [
+				{
+					"path": "registry/new-york/ui/stepper.tsx",
+					"type": "registry:component"
+				}
+			]
+		},
+		{
 			"name": "stepper-demo",
 			"type": "registry:component",
 			"title": "Stepper demo",
