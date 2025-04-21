@@ -117,8 +117,10 @@ export async function generateMetadata(props: {
   const description =
     page.data.description ?? "The library for building stepper components";
 
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
+
   const image = {
-    url: ["/og", ...slug, "image.png"].join("/"),
+    url: `${baseUrl}/og/${slug.join("/")}/image.png`,
     width: 1200,
     height: 630,
   };
@@ -127,7 +129,7 @@ export async function generateMetadata(props: {
     title: page.data.title,
     description,
     openGraph: {
-      url: `/docs/${page.slugs.join("/")}`,
+      url: `${baseUrl}/docs/${page.slugs.join("/")}`,
       images: [image],
     },
     twitter: {
