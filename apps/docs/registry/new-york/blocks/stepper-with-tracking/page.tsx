@@ -1,4 +1,4 @@
-import { StepperWithTracking } from "./components/stepper-with-tracking";
+import { StepperWithTracking } from "@/registry/new-york/blocks/stepper-with-tracking/components/stepper-with-tracking";
 
 export default async function Page() {
   return (

@@ -1,4 +1,4 @@
-import { StepperWithIcon } from "./components/stepper-with-icon";
+import { StepperWithIcon } from "@/registry/new-york/blocks/stepper-with-icon/components/stepper-with-icon";
 
 export default async function Page() {
   return (

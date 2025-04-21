@@ -1,4 +1,4 @@
-import { StepperWithForm } from "./components/stepper-with-form";
+import { StepperWithForm } from "@/registry/new-york/blocks/stepper-with-form/components/stepper-with-form";
 
 export default async function Page() {
   return (

@@ -1,4 +1,4 @@
-import { StepperWithResponsiveVariant } from "./components/stepper-with-responsive-variant";
+import { StepperWithResponsiveVariant } from "@/registry/new-york/blocks/stepper-with-responsive-variant/components/stepper-with-responsive-variant";
 
 export default async function Page() {
   return (

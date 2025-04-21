@@ -1,4 +1,4 @@
-import { StepperWithDescription } from "./components/stepper-with-description";
+import { StepperWithDescription } from "@/registry/new-york/blocks/stepper-with-description/components/stepper-with-description";
 
 export default async function Page() {
   return (

@@ -1,4 +1,4 @@
-import { StepperDemo } from "./components/stepper-demo";
+import { StepperDemo } from "@/registry/new-york/blocks/stepper-demo/components/stepper-demo";
 
 export default async function Page() {
   return (

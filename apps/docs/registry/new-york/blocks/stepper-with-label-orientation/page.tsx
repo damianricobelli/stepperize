@@ -1,4 +1,4 @@
-import { StepperWithLabelOrientation } from "./components/stepper-with-label-orientation";
+import { StepperWithLabelOrientation } from "@/registry/new-york/blocks/stepper-with-label-orientation/components/stepper-with-label-orientation";
 
 export default async function Page() {
   return (

@@ -13,7 +13,7 @@
 			"files": [
 				{
 					"path": "registry/new-york/ui/stepper.tsx",
-					"type": "registry:component"
+					"type": "registry:ui"
 				}
 			]
 		},
@@ -36,7 +36,7 @@
 				},
 				{
 					"path": "registry/new-york/ui/stepper.tsx",
-					"type": "registry:component"
+					"type": "registry:ui"
 				}
 			]
 		},
@@ -59,7 +59,7 @@
 				},
 				{
 					"path": "registry/new-york/ui/stepper.tsx",
-					"type": "registry:component"
+					"type": "registry:ui"
 				}
 			]
 		},
@@ -82,7 +82,7 @@
 				},
 				{
 					"path": "registry/new-york/ui/stepper.tsx",
-					"type": "registry:component"
+					"type": "registry:ui"
 				}
 			]
 		},
@@ -105,7 +105,7 @@
 				},
 				{
 					"path": "registry/new-york/ui/stepper.tsx",
-					"type": "registry:component"
+					"type": "registry:ui"
 				}
 			]
 		},
@@ -128,7 +128,7 @@
 				},
 				{
 					"path": "registry/new-york/ui/stepper.tsx",
-					"type": "registry:component"
+					"type": "registry:ui"
 				}
 			]
 		},
@@ -155,7 +155,7 @@
 				},
 				{
 					"path": "registry/new-york/ui/stepper.tsx",
-					"type": "registry:component"
+					"type": "registry:ui"
 				}
 			]
 		},
@@ -178,7 +178,7 @@
 				},
 				{
 					"path": "registry/new-york/ui/stepper.tsx",
-					"type": "registry:component"
+					"type": "registry:ui"
 				}
 			]
 		},
@@ -201,7 +201,7 @@
 				},
 				{
 					"path": "registry/new-york/ui/stepper.tsx",
-					"type": "registry:component"
+					"type": "registry:ui"
 				}
 			]
 		}

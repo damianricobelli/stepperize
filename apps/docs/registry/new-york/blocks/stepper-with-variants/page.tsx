@@ -1,4 +1,4 @@
-import { StepperWithVariants } from "./components/stepper-with-variants";
+import { StepperWithVariants } from "@/registry/new-york/blocks/stepper-with-variants/components/stepper-with-variants";
 
 export default async function Page() {
   return (
