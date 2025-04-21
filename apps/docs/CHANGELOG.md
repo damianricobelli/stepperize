@@ -1,5 +1,11 @@
 # docs
 
+## 2.5.0
+
+### Minor Changes
+
+- [#123](https://github.com/damianricobelli/stepperize/pull/123) [`8ec8f49`](https://github.com/damianricobelli/stepperize/commit/8ec8f4928987b53bcbbce6a48c161ec926ff9f27) Thanks [@damianricobelli](https://github.com/damianricobelli)! - feat: update deps and add shadcn integration
+
 ## 2.4.6
 
 ### Patch Changes
