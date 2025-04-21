@@ -6,7 +6,6 @@ var docs = defineDocs({
   dir: "content/docs"
 });
 var source_config_default = defineConfig({
-  generateManifest: true,
   lastModifiedTime: "git",
   mdxOptions: {
     rehypeCodeOptions: {
