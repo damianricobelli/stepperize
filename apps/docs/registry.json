@@ -50,7 +50,7 @@
 			"type": "registry:component",
 			"title": "Stepper with form",
 			"description": "A stepper with a form using zod for validation",
-			"dependencies": ["zod"],
+			"dependencies": ["zod", "@stepperize/react"],
 			"registryDependencies": ["button", "input", "label", "form"],
 			"files": [
 				{
@@ -92,6 +92,7 @@
 			"type": "registry:component",
 			"title": "Stepper with responsive variant",
 			"description": "A stepper with a responsive variant",
+			"dependencies": ["@stepperize/react"],
 			"registryDependencies": ["button", "label", "radio-group"],
 			"files": [
 				{
