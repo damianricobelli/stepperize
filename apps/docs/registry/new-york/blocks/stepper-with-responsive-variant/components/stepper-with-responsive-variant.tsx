@@ -21,7 +21,7 @@ const { Stepper } = defineStepper(
   }
 );
 
-export default function StepperWithResponsiveVariant() {
+export function StepperWithResponsiveVariant() {
   const isMobile = useMediaQuery("(max-width: 768px)");
   return (
     <Stepper.Provider

@@ -24,7 +24,7 @@ const { Stepper } = defineStepper(
   }
 );
 
-export default function StepperWithLabelOrientation() {
+export function StepperWithLabelOrientation() {
   const [labelOrientation, setLabelOrientation] =
     React.useState<LabelOrientation>("horizontal");
   return (

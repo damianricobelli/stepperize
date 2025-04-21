@@ -34,7 +34,7 @@ const { Stepper } = defineStepper(
   }
 );
 
-export default function StepperWithTracking() {
+export function StepperWithTracking() {
   const [tracking, setTracking] = React.useState(false);
   return (
     <div className="flex w-full flex-col gap-8">

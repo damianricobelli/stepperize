@@ -1,5 +1,6 @@
 "use client";
 
+import { HomeIcon, SettingsIcon, UserIcon } from "lucide-react";
 import * as React from "react";
 
 import { Button } from "@/registry/new-york/ui/button";
@@ -9,18 +10,21 @@ const { Stepper } = defineStepper(
   {
     id: "step-1",
     title: "Step 1",
+    icon: <HomeIcon />,
   },
   {
     id: "step-2",
     title: "Step 2",
+    icon: <SettingsIcon />,
   },
   {
     id: "step-3",
     title: "Step 3",
+    icon: <UserIcon />,
   }
 );
 
-export default function StepperDemo() {
+export function StepperWithIcon() {
   return (
     <Stepper.Provider className="space-y-4" variant="horizontal">
       {({ methods }) => (
@@ -31,6 +35,7 @@ export default function StepperDemo() {
                 key={step.id}
                 of={step.id}
                 onClick={() => methods.goTo(step.id)}
+                icon={step.icon}
               >
                 <Stepper.Title>{step.title}</Stepper.Title>
               </Stepper.Step>

@@ -9,21 +9,18 @@ const { Stepper } = defineStepper(
   {
     id: "step-1",
     title: "Step 1",
-    description: "This is the first step",
   },
   {
     id: "step-2",
     title: "Step 2",
-    description: "This is the second step",
   },
   {
     id: "step-3",
     title: "Step 3",
-    description: "This is the third step",
   }
 );
 
-export default function StepperWithDescription() {
+export function StepperDemo() {
   return (
     <Stepper.Provider className="space-y-4" variant="horizontal">
       {({ methods }) => (
@@ -36,7 +33,6 @@ export default function StepperWithDescription() {
                 onClick={() => methods.goTo(step.id)}
               >
                 <Stepper.Title>{step.title}</Stepper.Title>
-                <Stepper.Description>{step.description}</Stepper.Description>
               </Stepper.Step>
             ))}
           </Stepper.Navigation>

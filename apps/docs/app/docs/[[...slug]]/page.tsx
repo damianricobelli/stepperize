@@ -17,14 +17,14 @@ import {
   DocsTitle,
 } from "fumadocs-ui/page";
 
-import StepperDemo from "@/registry/new-york/blocks/stepper-demo/stepper-demo";
-import StepperWithDescription from "@/registry/new-york/blocks/stepper-with-description/stepper-with-description";
-import StepperWithForm from "@/registry/new-york/blocks/stepper-with-form/stepper-with-form";
-import StepperWithIcon from "@/registry/new-york/blocks/stepper-with-icon/stepper-with-icon";
-import StepperWithLabelOrientation from "@/registry/new-york/blocks/stepper-with-label-orientation/stepper-with-label-orientation";
-import StepperWithResponsiveVariant from "@/registry/new-york/blocks/stepper-with-responsive-variant/components/stepper-with-responsive-variant";
-import StepperWithTracking from "@/registry/new-york/blocks/stepper-with-tracking/stepper-with-tracking";
-import StepperWithVariants from "@/registry/new-york/blocks/stepper-with-variants/stepper-with-variants";
+import { StepperDemo } from "@/registry/new-york/blocks/stepper-demo/components/stepper-demo";
+import { StepperWithDescription } from "@/registry/new-york/blocks/stepper-with-description/components/stepper-with-description";
+import { StepperWithForm } from "@/registry/new-york/blocks/stepper-with-form/components/stepper-with-form";
+import { StepperWithIcon } from "@/registry/new-york/blocks/stepper-with-icon/components/stepper-with-icon";
+import { StepperWithLabelOrientation } from "@/registry/new-york/blocks/stepper-with-label-orientation/components/stepper-with-label-orientation";
+import { StepperWithResponsiveVariant } from "@/registry/new-york/blocks/stepper-with-responsive-variant/components/stepper-with-responsive-variant";
+import { StepperWithTracking } from "@/registry/new-york/blocks/stepper-with-tracking/components/stepper-with-tracking";
+import { StepperWithVariants } from "@/registry/new-york/blocks/stepper-with-variants/components/stepper-with-variants";
 
 import { OpenInV0 } from "@/components/open-in-v0";
 

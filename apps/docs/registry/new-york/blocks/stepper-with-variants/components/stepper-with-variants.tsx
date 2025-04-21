@@ -24,7 +24,7 @@ const { Stepper } = defineStepper(
   }
 );
 
-export default function StepperWithVariants() {
+export function StepperWithVariants() {
   const [variant, setVariant] = React.useState<Variant>("horizontal");
   return (
     <div className="flex w-full flex-col gap-8">

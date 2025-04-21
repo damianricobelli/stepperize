@@ -178,7 +178,7 @@ const { Stepper, useStepper } = defineStepper(
   }
 );
 
-export default function StepperWithForm() {
+export function StepperWithForm() {
   return (
     <Stepper.Provider>
       <FormStepperComponent />
