@@ -9,7 +9,7 @@
 			"title": "Stepper",
 			"description": "Stepper component",
 			"dependencies": ["@stepperize/react"],
-			"registryDependencies": ["button"],
+			"registryDependencies": ["button", "stepper"],
 			"files": [
 				{
 					"path": "registry/new-york/ui/stepper.tsx",
@@ -23,7 +23,7 @@
 			"title": "Stepper demo",
 			"description": "Simple stepper demo",
 			"dependencies": ["@stepperize/react"],
-			"registryDependencies": ["button"],
+			"registryDependencies": ["button", "stepper"],
 			"files": [
 				{
 					"path": "registry/new-york/blocks/stepper-demo/stepper-demo.tsx",
@@ -37,7 +37,7 @@
 			"title": "Stepper with description",
 			"description": "A stepper with a description",
 			"dependencies": ["@stepperize/react"],
-			"registryDependencies": ["button"],
+			"registryDependencies": ["button", "stepper"],
 			"files": [
 				{
 					"path": "registry/new-york/blocks/stepper-with-description/stepper-with-description.tsx",
@@ -51,7 +51,7 @@
 			"title": "Stepper with form",
 			"description": "A stepper with a form using zod for validation",
 			"dependencies": ["zod", "@stepperize/react"],
-			"registryDependencies": ["button", "input", "label", "form"],
+			"registryDependencies": ["button", "input", "label", "form", "stepper"],
 			"files": [
 				{
 					"path": "registry/new-york/blocks/stepper-with-form/stepper-with-form.tsx",
@@ -65,7 +65,7 @@
 			"title": "Stepper with icon",
 			"description": "A stepper with an icon",
 			"dependencies": ["@stepperize/react"],
-			"registryDependencies": ["button"],
+			"registryDependencies": ["button", "stepper"],
 			"files": [
 				{
 					"path": "registry/new-york/blocks/stepper-with-icon/stepper-with-icon.tsx",
@@ -79,7 +79,7 @@
 			"title": "Stepper with label orientation",
 			"description": "A stepper with a label orientation",
 			"dependencies": ["@stepperize/react"],
-			"registryDependencies": ["button", "label", "radio-group"],
+			"registryDependencies": ["button", "label", "radio-group", "stepper"],
 			"files": [
 				{
 					"path": "registry/new-york/blocks/stepper-with-label-orientation/stepper-with-label-orientation.tsx",
@@ -93,7 +93,7 @@
 			"title": "Stepper with responsive variant",
 			"description": "A stepper with a responsive variant",
 			"dependencies": ["@stepperize/react"],
-			"registryDependencies": ["button", "label", "radio-group"],
+			"registryDependencies": ["button", "label", "radio-group", "stepper"],
 			"files": [
 				{
 					"path": "registry/new-york/blocks/stepper-with-responsive-variant/page.tsx",
@@ -116,7 +116,7 @@
 			"title": "Stepper with scroll tracking",
 			"description": "A stepper with scroll tracking",
 			"dependencies": ["@stepperize/react"],
-			"registryDependencies": ["button", "label", "radio-group"],
+			"registryDependencies": ["button", "label", "radio-group", "stepper"],
 			"files": [
 				{
 					"path": "registry/new-york/blocks/stepper-with-tracking/stepper-with-tracking.tsx",
@@ -130,7 +130,7 @@
 			"title": "Stepper with variants",
 			"description": "A stepper with variants",
 			"dependencies": ["@stepperize/react"],
-			"registryDependencies": ["button", "label", "radio-group"],
+			"registryDependencies": ["button", "label", "radio-group", "stepper"],
 			"files": [
 				{
 					"path": "registry/new-york/blocks/stepper-with-variants/stepper-with-variants.tsx",
