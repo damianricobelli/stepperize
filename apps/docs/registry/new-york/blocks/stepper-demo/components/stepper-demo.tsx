@@ -2,8 +2,8 @@
 
 import * as React from "react";
 
+import { defineStepper } from "@/registry/new-york/blocks/stepper-demo/components/ui/stepper";
 import { Button } from "@/registry/new-york/ui/button";
-import { defineStepper } from "@/registry/new-york/ui/stepper";
 
 const { Stepper } = defineStepper(
   {

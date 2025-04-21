@@ -2,10 +2,10 @@
 
 import * as React from "react";
 
+import { defineStepper } from "@/registry/new-york/blocks/stepper-with-variants/components/ui/stepper";
 import { Button } from "@/registry/new-york/ui/button";
 import { Label } from "@/registry/new-york/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/registry/new-york/ui/radio-group";
-import { defineStepper } from "@/registry/new-york/ui/stepper";
 
 type Variant = "horizontal" | "vertical" | "circle";
 

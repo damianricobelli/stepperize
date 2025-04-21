@@ -35,7 +35,7 @@
 					"type": "registry:component"
 				},
 				{
-					"path": "registry/new-york/ui/stepper.tsx",
+					"path": "registry/new-york/blocks/stepper-demo/components/ui/stepper.tsx",
 					"type": "registry:component"
 				}
 			]
@@ -58,7 +58,7 @@
 					"type": "registry:component"
 				},
 				{
-					"path": "registry/new-york/ui/stepper.tsx",
+					"path": "registry/new-york/blocks/stepper-with-description/components/ui/stepper.tsx",
 					"type": "registry:component"
 				}
 			]
@@ -81,7 +81,7 @@
 					"type": "registry:component"
 				},
 				{
-					"path": "registry/new-york/ui/stepper.tsx",
+					"path": "registry/new-york/blocks/stepper-with-form/components/ui/stepper.tsx",
 					"type": "registry:component"
 				}
 			]
@@ -104,7 +104,7 @@
 					"type": "registry:component"
 				},
 				{
-					"path": "registry/new-york/ui/stepper.tsx",
+					"path": "registry/new-york/blocks/stepper-with-icon/components/ui/stepper.tsx",
 					"type": "registry:component"
 				}
 			]
@@ -127,7 +127,7 @@
 					"type": "registry:component"
 				},
 				{
-					"path": "registry/new-york/ui/stepper.tsx",
+					"path": "registry/new-york/blocks/stepper-with-label-orientation/components/ui/stepper.tsx",
 					"type": "registry:component"
 				}
 			]
@@ -154,7 +154,7 @@
 					"type": "registry:hook"
 				},
 				{
-					"path": "registry/new-york/ui/stepper.tsx",
+					"path": "registry/new-york/blocks/stepper-with-responsive-variant/components/ui/stepper.tsx",
 					"type": "registry:component"
 				}
 			]
@@ -177,7 +177,7 @@
 					"type": "registry:component"
 				},
 				{
-					"path": "registry/new-york/ui/stepper.tsx",
+					"path": "registry/new-york/blocks/stepper-with-tracking/components/ui/stepper.tsx",
 					"type": "registry:component"
 				}
 			]
@@ -200,7 +200,7 @@
 					"type": "registry:component"
 				},
 				{
-					"path": "registry/new-york/ui/stepper.tsx",
+					"path": "registry/new-york/blocks/stepper-with-variants/components/ui/stepper.tsx",
 					"type": "registry:component"
 				}
 			]

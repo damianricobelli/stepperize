@@ -2,9 +2,9 @@
 
 import * as React from "react";
 
+import { defineStepper } from "@/registry/new-york/blocks/stepper-with-responsive-variant/components/ui/stepper";
 import { useMediaQuery } from "@/registry/new-york/blocks/stepper-with-responsive-variant/hooks/use-media-query";
 import { Button } from "@/registry/new-york/ui/button";
-import { defineStepper } from "@/registry/new-york/ui/stepper";
 
 const { Stepper } = defineStepper(
   {

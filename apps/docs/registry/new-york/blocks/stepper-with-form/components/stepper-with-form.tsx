@@ -1,9 +1,9 @@
 "use client";
 
+import { defineStepper } from "@/registry/new-york/blocks/stepper-with-form/components/ui/stepper";
 import { Button } from "@/registry/new-york/ui/button";
 import { Form } from "@/registry/new-york/ui/form";
 import { Input } from "@/registry/new-york/ui/input";
-import { defineStepper } from "@/registry/new-york/ui/stepper";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useFormContext } from "react-hook-form";
 import { z } from "zod";
