@@ -138,7 +138,7 @@
 			"title": "Stepper with responsive variant",
 			"description": "A stepper with a responsive variant",
 			"dependencies": ["@stepperize/react"],
-			"registryDependencies": ["button", "label", "radio-group", "stepper"],
+			"registryDependencies": ["button", "label", "radio-group"],
 			"files": [
 				{
 					"path": "registry/new-york/blocks/stepper-with-responsive-variant/page.tsx",

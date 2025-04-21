@@ -10,8 +10,7 @@
   "registryDependencies": [
     "button",
     "label",
-    "radio-group",
-    "stepper"
+    "radio-group"
   ],
   "files": [
     {
