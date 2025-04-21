@@ -1,4 +1,3 @@
-import { createStyleTransformer } from "fumadocs-core/server";
 import { transformerTwoslash } from "fumadocs-twoslash";
 import { Popup, PopupContent, PopupTrigger } from "fumadocs-twoslash/ui";
 import { CodeBlock, Pre } from "fumadocs-ui/components/codeblock";
@@ -26,7 +25,6 @@ export async function Code({
     },
     defaultColor: false,
     transformers: [
-      createStyleTransformer(),
       transformerTwoslash({
         explicitTrigger: false,
       }),
