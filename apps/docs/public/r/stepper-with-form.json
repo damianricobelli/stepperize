@@ -5,13 +5,15 @@
   "title": "Stepper with form",
   "description": "A stepper with a form using zod for validation",
   "dependencies": [
-    "zod"
+    "zod",
+    "@stepperize/react"
   ],
   "registryDependencies": [
     "button",
     "input",
     "label",
-    "form"
+    "form",
+    "stepper"
   ],
   "files": [
     {
