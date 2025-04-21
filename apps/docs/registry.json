@@ -9,7 +9,7 @@
 			"title": "Stepper",
 			"description": "Stepper component",
 			"dependencies": ["@stepperize/react"],
-			"registryDependencies": ["button", "stepper"],
+			"registryDependencies": ["button"],
 			"files": [
 				{
 					"path": "registry/new-york/ui/stepper.tsx",
