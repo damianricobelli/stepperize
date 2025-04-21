@@ -8,8 +8,7 @@
     "@stepperize/react"
   ],
   "registryDependencies": [
-    "button",
-    "stepper"
+    "button"
   ],
   "files": [
     {
