@@ -6,8 +6,6 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/registry/new-york/ui/button";
 
-//#region Context
-
 const StepperContext = React.createContext<Stepper.ConfigProps | null>(null);
 
 const useStepperProvider = (): Stepper.ConfigProps => {
@@ -17,10 +15,6 @@ const useStepperProvider = (): Stepper.ConfigProps => {
   }
   return context;
 };
-
-//#endregion Context
-
-//#region Define Stepper
 
 const defineStepper = <const Steps extends Stepperize.Step[]>(
   ...steps: Steps
@@ -261,10 +255,6 @@ const defineStepper = <const Steps extends Stepperize.Step[]>(
   };
 };
 
-//#endregion Define Stepper
-
-//#region Stepper Title
-
 const Title = ({
   children,
   className,
@@ -284,10 +274,6 @@ const Title = ({
   );
 };
 
-//#endregion Stepper Title
-
-//#region Stepper Description
-
 const Description = ({
   children,
   className,
@@ -306,10 +292,6 @@ const Description = ({
     </Comp>
   );
 };
-
-//#endregion Stepper Description
-
-//#region Stepper Separator
 
 const StepperSeparator = ({
   orientation,
@@ -337,10 +319,6 @@ const StepperSeparator = ({
     />
   );
 };
-
-//#endregion Stepper Separator
-
-//#region Circle Indicator
 
 const CircleStepIndicator = ({
   currentStep,
@@ -395,10 +373,6 @@ const CircleStepIndicator = ({
   );
 };
 
-//#endregion Circle Indicator
-
-//#region Styles
-
 const classForNavigationList = cva("flex gap-2", {
   variants: {
     variant: {
@@ -428,10 +402,6 @@ const classForSeparator = cva(
     },
   }
 );
-
-//#endregion Styles
-
-//#region Utils
 
 function scrollIntoStepperPanel(
   node: HTMLDivElement | null,
@@ -507,10 +477,6 @@ const getStepState = (currentIndex: number, stepIndex: number) => {
   return "inactive";
 };
 
-//#endregion Utils
-
-//#region Types
-
 namespace Stepper {
   export type StepperVariant = "horizontal" | "vertical" | "circle";
   export type StepperLabelOrientation = "horizontal" | "vertical";
@@ -562,7 +528,5 @@ namespace Stepper {
 type AsChildProps<T extends React.ElementType> = React.ComponentProps<T> & {
   asChild?: boolean;
 };
-
-//#endregion Types
 
 export { defineStepper };
