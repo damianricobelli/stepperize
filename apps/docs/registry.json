@@ -1,0 +1,141 @@
+{
+	"$schema": "https://ui.shadcn.com/schema/registry.json",
+	"name": "shadcn-stepper",
+	"homepage": "https://stepperize.vercel.app/",
+	"items": [
+		{
+			"name": "stepper",
+			"type": "registry:component",
+			"title": "Stepper",
+			"description": "Stepper component",
+			"dependencies": ["@stepperize/react"],
+			"registryDependencies": ["button"],
+			"files": [
+				{
+					"path": "registry/new-york/ui/stepper.tsx",
+					"type": "registry:component"
+				}
+			]
+		},
+		{
+			"name": "stepper-demo",
+			"type": "registry:component",
+			"title": "Stepper demo",
+			"description": "Simple stepper demo",
+			"dependencies": ["@stepperize/react"],
+			"registryDependencies": ["button"],
+			"files": [
+				{
+					"path": "registry/new-york/blocks/stepper-demo/stepper-demo.tsx",
+					"type": "registry:component"
+				}
+			]
+		},
+		{
+			"name": "stepper-with-description",
+			"type": "registry:component",
+			"title": "Stepper with description",
+			"description": "A stepper with a description",
+			"dependencies": ["@stepperize/react"],
+			"registryDependencies": ["button"],
+			"files": [
+				{
+					"path": "registry/new-york/blocks/stepper-with-description/stepper-with-description.tsx",
+					"type": "registry:component"
+				}
+			]
+		},
+		{
+			"name": "stepper-with-form",
+			"type": "registry:component",
+			"title": "Stepper with form",
+			"description": "A stepper with a form using zod for validation",
+			"dependencies": ["zod"],
+			"registryDependencies": ["button", "input", "label", "form"],
+			"files": [
+				{
+					"path": "registry/new-york/blocks/stepper-with-form/stepper-with-form.tsx",
+					"type": "registry:component"
+				}
+			]
+		},
+		{
+			"name": "stepper-with-icon",
+			"type": "registry:component",
+			"title": "Stepper with icon",
+			"description": "A stepper with an icon",
+			"dependencies": ["@stepperize/react"],
+			"registryDependencies": ["button"],
+			"files": [
+				{
+					"path": "registry/new-york/blocks/stepper-with-icon/stepper-with-icon.tsx",
+					"type": "registry:component"
+				}
+			]
+		},
+		{
+			"name": "stepper-with-label-orientation",
+			"type": "registry:component",
+			"title": "Stepper with label orientation",
+			"description": "A stepper with a label orientation",
+			"dependencies": ["@stepperize/react"],
+			"registryDependencies": ["button", "label", "radio-group"],
+			"files": [
+				{
+					"path": "registry/new-york/blocks/stepper-with-label-orientation/stepper-with-label-orientation.tsx",
+					"type": "registry:component"
+				}
+			]
+		},
+		{
+			"name": "stepper-with-responsive-variant",
+			"type": "registry:component",
+			"title": "Stepper with responsive variant",
+			"description": "A stepper with a responsive variant",
+			"registryDependencies": ["button", "label", "radio-group"],
+			"files": [
+				{
+					"path": "registry/new-york/blocks/stepper-with-responsive-variant/page.tsx",
+					"type": "registry:page",
+					"target": "app/stepper-with-responsive-variant/page.tsx"
+				},
+				{
+					"path": "registry/new-york/blocks/stepper-with-responsive-variant/components/stepper-with-responsive-variant.tsx",
+					"type": "registry:component"
+				},
+				{
+					"path": "registry/new-york/blocks/stepper-with-responsive-variant/hooks/use-media-query.ts",
+					"type": "registry:hook"
+				}
+			]
+		},
+		{
+			"name": "stepper-with-tracking",
+			"type": "registry:component",
+			"title": "Stepper with scroll tracking",
+			"description": "A stepper with scroll tracking",
+			"dependencies": ["@stepperize/react"],
+			"registryDependencies": ["button", "label", "radio-group"],
+			"files": [
+				{
+					"path": "registry/new-york/blocks/stepper-with-tracking/stepper-with-tracking.tsx",
+					"type": "registry:component"
+				}
+			]
+		},
+		{
+			"name": "stepper-with-variants",
+			"type": "registry:component",
+			"title": "Stepper with variants",
+			"description": "A stepper with variants",
+			"dependencies": ["@stepperize/react"],
+			"registryDependencies": ["button", "label", "radio-group"],
+			"files": [
+				{
+					"path": "registry/new-york/blocks/stepper-with-variants/stepper-with-variants.tsx",
+					"type": "registry:component"
+				}
+			]
+		}
+	]
+}

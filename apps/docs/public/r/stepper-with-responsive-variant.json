@@ -1,0 +1,30 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "stepper-with-responsive-variant",
+  "type": "registry:component",
+  "title": "Stepper with responsive variant",
+  "description": "A stepper with a responsive variant",
+  "registryDependencies": [
+    "button",
+    "label",
+    "radio-group"
+  ],
+  "files": [
+    {
+      "path": "registry/new-york/blocks/stepper-with-responsive-variant/page.tsx",
+      "content": "import StepperResponsiveVariant from \"./components/stepper-with-responsive-variant\";\n\nexport default async function Page() {\n  return (\n    <div className=\"mx-auto w-full max-w-2xl px-4\">\n      <StepperResponsiveVariant />\n    </div>\n  );\n}\n",
+      "type": "registry:page",
+      "target": "app/stepper-with-responsive-variant/page.tsx"
+    },
+    {
+      "path": "registry/new-york/blocks/stepper-with-responsive-variant/components/stepper-with-responsive-variant.tsx",
+      "content": "\"use client\";\n\nimport * as React from \"react\";\n\nimport { useMediaQuery } from \"@/registry/new-york/blocks/stepper-with-responsive-variant/hooks/use-media-query\";\nimport { Button } from \"@/registry/new-york/ui/button\";\nimport { defineStepper } from \"@/registry/new-york/ui/stepper\";\n\nconst { Stepper } = defineStepper(\n  {\n    id: \"step-1\",\n    title: \"Step 1\",\n  },\n  {\n    id: \"step-2\",\n    title: \"Step 2\",\n  },\n  {\n    id: \"step-3\",\n    title: \"Step 3\",\n  }\n);\n\nexport default function StepperWithResponsiveVariant() {\n  const isMobile = useMediaQuery(\"(max-width: 768px)\");\n  return (\n    <Stepper.Provider\n      className=\"space-y-4\"\n      variant={isMobile ? \"vertical\" : \"horizontal\"}\n    >\n      {({ methods }) => (\n        <React.Fragment>\n          <Stepper.Navigation>\n            {methods.all.map((step) => (\n              <Stepper.Step\n                key={step.id}\n                of={step.id}\n                onClick={() => methods.goTo(step.id)}\n              >\n                <Stepper.Title>{step.title}</Stepper.Title>\n                {isMobile &&\n                  methods.when(step.id, (step) => (\n                    <Stepper.Panel className=\"h-[200px] content-center rounded border bg-slate-50 p-8\">\n                      <p className=\"text-xl font-normal\">\n                        Content for {step.id}\n                      </p>\n                    </Stepper.Panel>\n                  ))}\n              </Stepper.Step>\n            ))}\n          </Stepper.Navigation>\n          {!isMobile &&\n            methods.switch({\n              \"step-1\": (step) => <Content id={step.id} />,\n              \"step-2\": (step) => <Content id={step.id} />,\n              \"step-3\": (step) => <Content id={step.id} />,\n            })}\n          <Stepper.Controls>\n            {!methods.isLast && (\n              <Button\n                variant=\"secondary\"\n                onClick={methods.prev}\n                disabled={methods.isFirst}\n              >\n                Previous\n              </Button>\n            )}\n            <Button onClick={methods.isLast ? methods.reset : methods.next}>\n              {methods.isLast ? \"Reset\" : \"Next\"}\n            </Button>\n          </Stepper.Controls>\n        </React.Fragment>\n      )}\n    </Stepper.Provider>\n  );\n}\n\nconst Content = ({ id }: { id: string }) => {\n  return (\n    <Stepper.Panel className=\"h-[200px] content-center rounded border bg-slate-50 p-8\">\n      <p className=\"text-xl font-normal\">Content for {id}</p>\n    </Stepper.Panel>\n  );\n};\n",
+      "type": "registry:component"
+    },
+    {
+      "path": "registry/new-york/blocks/stepper-with-responsive-variant/hooks/use-media-query.ts",
+      "content": "import * as React from \"react\"\n\nexport function useMediaQuery(query: string) {\n  const [value, setValue] = React.useState(false)\n\n  React.useEffect(() => {\n    function onChange(event: MediaQueryListEvent) {\n      setValue(event.matches)\n    }\n\n    const result = matchMedia(query)\n    result.addEventListener(\"change\", onChange)\n    setValue(result.matches)\n\n    return () => result.removeEventListener(\"change\", onChange)\n  }, [query])\n\n  return value\n}\n",
+      "type": "registry:hook"
+    }
+  ]
+}

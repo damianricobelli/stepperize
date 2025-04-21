@@ -13,6 +13,13 @@ export const linkItems: LinkItemType[] = [
     description: "Stepperize for React",
   },
   {
+    icon: <icons.ShadcnIcon />,
+    text: "Shadcn",
+    url: "/docs/react/shadcn/introduction",
+    active: "nested-url",
+    description: "Stepperize for Shadcn",
+  },
+  {
     icon: <icons.VueIcon />,
     text: "Vue",
     url: "/docs/vue",

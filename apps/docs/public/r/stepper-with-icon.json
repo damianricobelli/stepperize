@@ -1,0 +1,20 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "stepper-with-icon",
+  "type": "registry:component",
+  "title": "Stepper with icon",
+  "description": "A stepper with an icon",
+  "dependencies": [
+    "@stepperize/react"
+  ],
+  "registryDependencies": [
+    "button"
+  ],
+  "files": [
+    {
+      "path": "registry/new-york/blocks/stepper-with-icon/stepper-with-icon.tsx",
+      "content": "\"use client\";\n\nimport { HomeIcon, SettingsIcon, UserIcon } from \"lucide-react\";\nimport * as React from \"react\";\n\nimport { Button } from \"@/registry/new-york/ui/button\";\nimport { defineStepper } from \"@/registry/new-york/ui/stepper\";\n\nconst { Stepper } = defineStepper(\n  {\n    id: \"step-1\",\n    title: \"Step 1\",\n    icon: <HomeIcon />,\n  },\n  {\n    id: \"step-2\",\n    title: \"Step 2\",\n    icon: <SettingsIcon />,\n  },\n  {\n    id: \"step-3\",\n    title: \"Step 3\",\n    icon: <UserIcon />,\n  }\n);\n\nexport default function StepperWithIcon() {\n  return (\n    <Stepper.Provider className=\"space-y-4\" variant=\"horizontal\">\n      {({ methods }) => (\n        <React.Fragment>\n          <Stepper.Navigation>\n            {methods.all.map((step) => (\n              <Stepper.Step\n                key={step.id}\n                of={step.id}\n                onClick={() => methods.goTo(step.id)}\n                icon={step.icon}\n              >\n                <Stepper.Title>{step.title}</Stepper.Title>\n              </Stepper.Step>\n            ))}\n          </Stepper.Navigation>\n          {methods.switch({\n            \"step-1\": (step) => <Content id={step.id} />,\n            \"step-2\": (step) => <Content id={step.id} />,\n            \"step-3\": (step) => <Content id={step.id} />,\n          })}\n          <Stepper.Controls>\n            {!methods.isLast && (\n              <Button\n                variant=\"secondary\"\n                onClick={methods.prev}\n                disabled={methods.isFirst}\n              >\n                Previous\n              </Button>\n            )}\n            <Button onClick={methods.isLast ? methods.reset : methods.next}>\n              {methods.isLast ? \"Reset\" : \"Next\"}\n            </Button>\n          </Stepper.Controls>\n        </React.Fragment>\n      )}\n    </Stepper.Provider>\n  );\n}\n\nconst Content = ({ id }: { id: string }) => {\n  return (\n    <Stepper.Panel className=\"h-[200px] content-center rounded border bg-slate-50 p-8\">\n      <p className=\"text-xl font-normal\">Content for {id}</p>\n    </Stepper.Panel>\n  );\n};\n",
+      "type": "registry:component"
+    }
+  ]
+}
