@@ -2,8 +2,10 @@ import { StepperWithResponsiveVariant } from "@/registry/new-york/blocks/stepper
 
 export default async function Page() {
   return (
-    <div className="mx-auto w-full max-w-2xl px-4">
-      <StepperWithResponsiveVariant />
+    <div className="flex min-h-screen items-center justify-center">
+      <div className="w-full max-w-2xl px-4">
+        <StepperWithResponsiveVariant />
+      </div>
     </div>
   );
 }
