@@ -1,5 +1,4 @@
 import { DemoViewer } from "@/components/demo-viewer";
-import { metadataImage } from "@/lib/metadata";
 import { source } from "@/lib/source";
 import { getPageTreePeers } from "fumadocs-core/server";
 import { Popup, PopupContent, PopupTrigger } from "fumadocs-twoslash/ui";
@@ -28,6 +27,8 @@ import { StepperWithVariants } from "@/registry/new-york/blocks/stepper-with-var
 
 import { OpenInV0 } from "@/components/open-in-v0";
 
+import { createMetadata } from "@/lib/metadata";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 export default async function Page(props: {
@@ -106,19 +107,35 @@ function DocsCategory({ url }: { url: string }) {
   );
 }
 
-export async function generateStaticParams() {
-  return source.generateParams();
-}
-
 export async function generateMetadata(props: {
-  params: Promise<{ slug?: string[] }>;
-}) {
-  const params = await props.params;
-  const page = source.getPage(params.slug);
+  params: Promise<{ slug: string[] }>;
+}): Promise<Metadata> {
+  const { slug = [] } = await props.params;
+  const page = source.getPage(slug);
   if (!page) notFound();
 
-  return metadataImage.withImage(page.slugs, {
+  const description =
+    page.data.description ?? "The library for building stepper components";
+
+  const image = {
+    url: ["/og", ...slug, "image.png"].join("/"),
+    width: 1200,
+    height: 630,
+  };
+
+  return createMetadata({
     title: page.data.title,
-    description: page.data.description,
+    description,
+    openGraph: {
+      url: `/docs/${page.slugs.join("/")}`,
+      images: [image],
+    },
+    twitter: {
+      images: [image],
+    },
   });
+}
+
+export function generateStaticParams() {
+  return source.generateParams();
 }
