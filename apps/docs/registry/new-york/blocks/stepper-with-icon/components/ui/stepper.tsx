@@ -208,7 +208,7 @@ const defineStepper = <const Steps extends Stepperize.Step[]>(
             {variant === "vertical" && (
               <div className="flex gap-4">
                 {!isLast && (
-                  <div className="flex justify-center ps-4.5">
+                  <div className="flex justify-center ps-[calc(var(--spacing)_*_4.5_-_1px)]">
                     <StepperSeparator
                       orientation="vertical"
                       isLast={isLast}
