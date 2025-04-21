@@ -15,7 +15,7 @@ export const linkItems: LinkItemType[] = [
   {
     icon: <icons.ShadcnIcon />,
     text: "Shadcn",
-    url: "/docs/react/shadcn-stepper",
+    url: "/docs/react/shadcn/introduction",
     active: "nested-url",
     description: "Stepperize for Shadcn",
   },
