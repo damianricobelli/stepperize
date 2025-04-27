@@ -41,5 +41,10 @@ export type StepperReturn<Steps extends Step[]> = {
 	useStepper: (props?: {
 		initialStep?: Get.Id<Steps>;
 		initialMetadata?: Partial<Record<Get.Id<Steps>, Metadata>>;
+		/**
+		 * Optional callback that returns the list of step IDs to include at runtime.
+		 * Only steps whose IDs are returned here will be part of the stepper.
+		 */
+		stepFilter?: () => Get.Id<Steps>[];
 	}) => Stepper<Steps>;
 };
