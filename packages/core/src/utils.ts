@@ -96,14 +96,10 @@ export function generateCommonStepperUseFns<const Steps extends Step[]>(
 			return matchesId ? whenFn?.(currentStep as any) : elseFn?.(currentStep as any);
 		},
 		match(state, matches) {
-			const currentStep = steps[stepIndex];
 			const step = steps.find((s) => s.id === state);
-			const matchesId = step?.id === currentStep.id;
-			if (matchesId) {
-				const matchFn = matches[state as keyof typeof matches];
-				return matchFn?.(step as any);
-			}
-			return null;
+			if (!step) return null;
+			const matchFn = matches[state as keyof typeof matches];
+			return matchFn?.(step as any) ?? null;
 		},
 	} as Pick<Stepper<Steps>, "switch" | "when" | "match">;
 }
