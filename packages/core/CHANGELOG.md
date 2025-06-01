@@ -1,5 +1,11 @@
 # @stepperize/core
 
+## 1.2.6
+
+### Patch Changes
+
+- [#131](https://github.com/damianricobelli/stepperize/pull/131) [`095f052`](https://github.com/damianricobelli/stepperize/commit/095f0525140b239f149478c548ea3f534ec014f2) Thanks [@damianricobelli](https://github.com/damianricobelli)! - core: fix match issue
+
 ## 1.2.5
 
 ### Patch Changes
