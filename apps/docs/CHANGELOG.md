@@ -1,5 +1,11 @@
 # docs
 
+## 2.5.2
+
+### Patch Changes
+
+- [#133](https://github.com/damianricobelli/stepperize/pull/133) [`86b2afb`](https://github.com/damianricobelli/stepperize/commit/86b2afb82f5d6b1b9615385e25569ba72134ad11) Thanks [@m7ez1n](https://github.com/m7ez1n)! - fix: update import path for Button component in installation documentation
+
 ## 2.5.1
 
 ### Patch Changes
