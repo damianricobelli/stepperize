@@ -178,7 +178,7 @@ export function MyFirstStepper() {
         <>
           <Stepper.Navigation>
             {methods.all.map((step) => (
-              <Stepper.Step of={step} onClick={() => methods.goTo(step.id)}>
+              <Stepper.Step of={step.id} onClick={() => methods.goTo(step.id)}>
                 <Stepper.Title>{step.title}</Stepper.Title>
               </Stepper.Step>
             ))}
