@@ -1,5 +1,11 @@
 # docs
 
+## 2.5.3
+
+### Patch Changes
+
+- [#136](https://github.com/damianricobelli/stepperize/pull/136) [`82bca92`](https://github.com/damianricobelli/stepperize/commit/82bca9210909143eda5cd4e0f705a3680f514dbc) Thanks [@ivantsepp](https://github.com/ivantsepp)! - fix: docs using Stepper.Step `of` property
+
 ## 2.5.2
 
 ### Patch Changes
