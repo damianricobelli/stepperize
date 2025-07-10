@@ -15,7 +15,7 @@ import {
 /**
  * Creates a stepper context and utility functions for managing stepper state.
  *
- * @param steps - The steps to be included in the stepper.
+ * @param steps - The full list of steps.
  * @returns An object containing the stepper context and utility functions.
  */
 export const defineStepper = <const Steps extends Step[]>(...steps: Steps): StepperReturn<Steps> => {
@@ -26,20 +26,44 @@ export const defineStepper = <const Steps extends Step[]>(...steps: Steps): Step
 	const useStepper = (config?: {
 		initialStep?: Get.Id<Steps>;
 		initialMetadata?: Partial<Record<Get.Id<Steps>, Metadata>>;
+		/**
+		 * Optional callback that returns the list of step IDs to include at runtime.
+		 * Only steps whose IDs are returned here will be part of the stepper.
+		 */
+		stepFilter?: () => Get.Id<Steps>[];
 	}) => {
-		const { initialStep, initialMetadata } = config ?? {};
-		const initialStepIndex = React.useMemo(() => getInitialStepIndex(steps, initialStep), [initialStep]);
+		const { initialStep, initialMetadata, stepFilter } = config ?? {};
 
-		const [stepIndex, setStepIndex] = React.useState(initialStepIndex);
-		const [metadata, setMetadata] = React.useState(() => getInitialMetadata(steps, initialMetadata));
+		// Determine allowed IDs (dynamic or all)
+		const allowedIds = React.useMemo(
+			() => (stepFilter ? stepFilter() : steps.map((s) => s.id as Get.Id<Steps>)),
+			[stepFilter],
+		);
 
+		// Filter the full steps list according to allowed IDs
+		const filteredSteps = React.useMemo(
+			() => steps.filter((s) => allowedIds.includes(s.id as Get.Id<Steps>)),
+			[allowedIds],
+		) as Steps;
+
+		// Compute initial index within filtered steps
+		const initialIndex = React.useMemo(
+			() => getInitialStepIndex(filteredSteps, initialStep),
+			[filteredSteps, initialStep],
+		);
+
+		const [stepIndex, setStepIndex] = React.useState(initialIndex);
+		const [metadata, setMetadata] = React.useState(() => getInitialMetadata(filteredSteps, initialMetadata));
+
+		
+		// Build the stepper object
 		const stepper = React.useMemo(() => {
-			const current = steps[stepIndex];
-			const isLast = stepIndex === steps.length - 1;
+			const current = filteredSteps[stepIndex];
+			const isLast = stepIndex === filteredSteps.length - 1;
 			const isFirst = stepIndex === 0;
 
 			return {
-				all: steps,
+				all: filteredSteps,
 				current,
 				isLast,
 				isFirst,
@@ -53,58 +77,62 @@ export const defineStepper = <const Steps extends Step[]>(...steps: Steps): Step
 				getMetadata(id) {
 					return metadata[id];
 				},
-				resetMetadata(keepInitialMetadata) {
-					setMetadata(getInitialMetadata(steps, keepInitialMetadata ? initialMetadata : undefined));
+				resetMetadata(keepInitial) {
+					setMetadata(getInitialMetadata(filteredSteps, keepInitial ? initialMetadata : undefined));
 				},
 				next() {
-					updateStepIndex(steps, stepIndex + 1, (newIndex) => {
-						setStepIndex(newIndex);
-					});
+					updateStepIndex(filteredSteps, stepIndex + 1, setStepIndex);
 				},
 				prev() {
-					updateStepIndex(steps, stepIndex - 1, (newIndex) => {
-						setStepIndex(newIndex);
-					});
+					updateStepIndex(filteredSteps, stepIndex - 1, setStepIndex);
 				},
 				get(id) {
-					return steps.find((step) => step.id === id);
+					return utils.get(id);
 				},
 				goTo(id) {
-					const index = steps.findIndex((s) => s.id === id);
-					if (index === -1) throw new Error(`Step with id "${id}" not found.`);
-					updateStepIndex(steps, index, (newIndex) => {
-						setStepIndex(newIndex);
-					});
+					const idx = filteredSteps.findIndex((s) => s.id === id);
+					if (idx === -1) throw new Error(`Step with id \"${id}\" not found in filtered steps.`);
+					updateStepIndex(filteredSteps, idx, setStepIndex);
 				},
 				reset() {
-					updateStepIndex(steps, getInitialStepIndex(steps, initialStep), (newIndex) => {
-						setStepIndex(newIndex);
+					updateStepIndex(filteredSteps, getInitialStepIndex(filteredSteps, initialStep), setStepIndex);
+				},
+				async beforeNext(cb) {
+					await executeTransition({ stepper: this as any, direction: "next", callback: cb, before: true });
+				},
+				async afterNext(cb) {
+					this.next();
+					await executeTransition({ stepper: this as any, direction: "next", callback: cb, before: false });
+				},
+				async beforePrev(cb) {
+					await executeTransition({ stepper: this as any, direction: "prev", callback: cb, before: true });
+				},
+				async afterPrev(cb) {
+					this.prev();
+					await executeTransition({ stepper: this as any, direction: "prev", callback: cb, before: false });
+				},
+				async beforeGoTo(id, cb) {
+					await executeTransition({
+						stepper: this as any,
+						direction: "goTo",
+						callback: cb,
+						before: true,
+						targetId: id,
 					});
 				},
-				async beforeNext(callback) {
-					await executeTransition({ stepper, direction: "next", callback, before: true });
-				},
-				async afterNext(callback) {
-					this.next();
-					await executeTransition({ stepper, direction: "next", callback, before: false });
-				},
-				async beforePrev(callback) {
-					await executeTransition({ stepper, direction: "prev", callback, before: true });
-				},
-				async afterPrev(callback) {
-					this.prev();
-					await executeTransition({ stepper, direction: "prev", callback, before: false });
-				},
-				async beforeGoTo(id, callback) {
-					await executeTransition({ stepper, direction: "goTo", callback, before: true, targetId: id });
-				},
-				async afterGoTo(id, callback) {
+				async afterGoTo(id, cb) {
 					this.goTo(id);
-					await executeTransition({ stepper, direction: "goTo", callback, before: false, targetId: id });
+					await executeTransition({
+						stepper: this as any,
+						direction: "goTo",
+						callback: cb,
+						before: false,
+						targetId: id,
+					});
 				},
-				...generateCommonStepperUseFns(steps, current, stepIndex),
+				...generateCommonStepperUseFns(filteredSteps, current, stepIndex),
 			} as Stepper<Steps>;
-		}, [stepIndex, metadata]);
+		}, [stepIndex, metadata, filteredSteps]);
 
 		return stepper;
 	};
@@ -113,13 +141,7 @@ export const defineStepper = <const Steps extends Step[]>(...steps: Steps): Step
 		steps,
 		utils,
 		Scoped: ({ initialStep, initialMetadata, children }) =>
-			React.createElement(
-				Context.Provider,
-				{
-					value: useStepper({ initialStep, initialMetadata }),
-				},
-				children,
-			),
+			React.createElement(Context.Provider, { value: useStepper({ initialStep, initialMetadata }) }, children),
 		useStepper: (props = {}) => React.useContext(Context) ?? useStepper(props),
 	};
 };
