@@ -20,7 +20,7 @@
 		"clean": "rm -rf .turbo && rm -rf node_modules dist"
 	},
 	"devDependencies": {
-		"tsup": "^8.4.0",
-		"typescript": "^5.8.2"
+		"tsup": "catalog:",
+		"typescript": "catalog:"
 	}
 }

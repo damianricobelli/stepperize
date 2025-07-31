@@ -38,7 +38,7 @@
 		"solid-js": ">=1.0.0"
 	},
 	"devDependencies": {
-		"solid-js": "^1.9.5",
+		"solid-js": "^1.9.7",
 		"tsup": "catalog:",
 		"terser": "catalog:",
 		"typescript": "catalog:"

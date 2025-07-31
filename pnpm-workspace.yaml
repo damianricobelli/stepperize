@@ -2,6 +2,6 @@ packages:
   - "apps/*"
   - "packages/*"
 catalog:
-  tsup: ^8.4.0
-  terser: ^5.39.0
-  typescript: ^5.8.2
+  tsup: ^8.5.0
+  terser: ^5.43.1
+  typescript: ^5.8.3
