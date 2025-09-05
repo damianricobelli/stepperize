@@ -92,7 +92,7 @@ const container = {
       delayChildren: 0.3,
     },
   },
-};
+} as const;
 
 const item = {
   hidden: { opacity: 0 },
@@ -104,7 +104,7 @@ const item = {
       damping: 10,
     },
   },
-};
+} as const;
 
 const features = [
   {
