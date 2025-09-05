@@ -167,7 +167,7 @@ const titleVariants = {
       damping: 10,
     },
   },
-};
+} as const;
 
 const buttonVariants = {
   hover: {
@@ -180,7 +180,7 @@ const buttonVariants = {
     },
   },
   tap: { scale: 0.95 },
-};
+} as const;
 
 const glowAnimation: TargetAndTransition = {
   opacity: [0.5, 0.8, 0.5],

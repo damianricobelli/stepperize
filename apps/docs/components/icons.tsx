@@ -1,9 +1,10 @@
-const ReactIcon = () => (
+const ReactIcon = ({ className }: Icon.Props) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     viewBox="-11.5 -10.23 23 20.46"
     width={36}
     height={36}
+    className={className}
   >
     <title> React Logo </title>
     <circle r="2.05" fill="#61dafb" />
@@ -15,12 +16,13 @@ const ReactIcon = () => (
   </svg>
 );
 
-const ShadcnIcon = () => (
+const ShadcnIcon = ({ className }: Icon.Props) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     viewBox="0 0 256 256"
     width={36}
     height={36}
+    className={className}
   >
     <title>Shadcn Logo</title>
     <rect width="256" height="256" fill="none" />
@@ -49,12 +51,13 @@ const ShadcnIcon = () => (
   </svg>
 );
 
-const VueIcon = () => (
+const VueIcon = ({ className }: Icon.Props) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     viewBox="0 0 261.76 226.69"
     width={36}
     height={36}
+    className={className}
   >
     <title>Vue Logo</title>
     <g transform="matrix(1.3333 0 0 -1.3333 -76.311 313.34)">
@@ -74,12 +77,13 @@ const VueIcon = () => (
   </svg>
 );
 
-const AngularIcon = () => (
+const AngularIcon = ({ className }: Icon.Props) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     viewBox="0 0 261.76 226.69"
     width={36}
     height={36}
+    className={className}
   >
     <title>Angular Logo</title>
     <g clip-path="url(#a)">
@@ -135,12 +139,13 @@ const AngularIcon = () => (
   </svg>
 );
 
-const SolidIcon = () => (
+const SolidIcon = ({ className }: Icon.Props) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     viewBox="0 0 166 155.3"
     width={36}
     height={36}
+    className={className}
   >
     <title>Solid Logo</title>
     <defs>
@@ -224,12 +229,13 @@ const SolidIcon = () => (
   </svg>
 );
 
-const SvelteIcon = () => (
+const SvelteIcon = ({ className }: Icon.Props) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     width={36}
     height={36}
     viewBox="0 0 107 128"
+    className={className}
   >
     <title>Svelte Logo</title>
     <path
@@ -243,12 +249,13 @@ const SvelteIcon = () => (
   </svg>
 );
 
-const LitIcon = () => (
+const LitIcon = ({ className }: Icon.Props) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     viewBox="0 0 768 960"
     width={36}
     height={36}
+    className={className}
   >
     <title>Lit Logo</title>
     <path d="M192 576l96-288 432 432-144 240-192-192h-96" fill="#00e8ff" />
@@ -265,12 +272,13 @@ const LitIcon = () => (
   </svg>
 );
 
-const VanillaIcon = () => (
+const VanillaIcon = ({ className }: Icon.Props) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     viewBox="0 0 630 630"
     width={36}
     height={36}
+    className={className}
   >
     <title>Vanilla Logo</title>
     <rect width="630" height="630" fill="#f7df1e" />
@@ -278,12 +286,13 @@ const VanillaIcon = () => (
   </svg>
 );
 
-const QwikIcon = () => (
+const QwikIcon = ({ className }: Icon.Props) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     viewBox="0 0 256 272"
     width={36}
     height={36}
+    className={className}
   >
     <title>Qwik Logo</title>
     <g>
@@ -302,6 +311,12 @@ const QwikIcon = () => (
     </g>
   </svg>
 );
+
+namespace Icon {
+  export type Props = {
+    className?: string;
+  };
+}
 
 export const icons = {
   ReactIcon,
