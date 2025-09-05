@@ -1,5 +1,11 @@
 # @stepperize/vue
 
+## 2.0.7
+
+### Patch Changes
+
+- [#140](https://github.com/damianricobelli/stepperize/pull/140) [`df6fe81`](https://github.com/damianricobelli/stepperize/commit/df6fe81274ce618cb28469c23db73a8f376b542a) Thanks [@damianricobelli](https://github.com/damianricobelli)! - chore: update package versions and fix icon component props
+
 ## 2.0.6
 
 ### Patch Changes

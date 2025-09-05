@@ -1,5 +1,16 @@
 # docs
 
+## 2.5.4
+
+### Patch Changes
+
+- [#140](https://github.com/damianricobelli/stepperize/pull/140) [`df6fe81`](https://github.com/damianricobelli/stepperize/commit/df6fe81274ce618cb28469c23db73a8f376b542a) Thanks [@damianricobelli](https://github.com/damianricobelli)! - chore: update package versions and fix icon component props
+
+- Updated dependencies [[`df6fe81`](https://github.com/damianricobelli/stepperize/commit/df6fe81274ce618cb28469c23db73a8f376b542a)]:
+  - @stepperize/react@5.1.7
+  - @stepperize/solid@1.0.6
+  - @stepperize/vue@2.0.7
+
 ## 2.5.3
 
 ### Patch Changes
