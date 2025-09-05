@@ -52,7 +52,7 @@ export default function Layout({ children }: { children: ReactNode }) {
             className="flex flex-row items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-fd-accent/50 hover:text-fd-accent-foreground -mx-2"
             options={modes.map((mode) => ({
               url: `/docs/${mode.param}`,
-              icon: <mode.icon className="shrink-0 rounded-md p-1.5" />,
+              icon: <mode.icon className="shrink-0 rounded-md size-full" />,
               title: mode.name,
               description: mode.description,
             }))}
