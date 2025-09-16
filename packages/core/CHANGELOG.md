@@ -1,5 +1,11 @@
 # @stepperize/core
 
+## 1.2.7
+
+### Patch Changes
+
+- [#147](https://github.com/damianricobelli/stepperize/pull/147) [`9c01f9e`](https://github.com/damianricobelli/stepperize/commit/9c01f9ebe38fea2ea69bf7216977327503945a81) Thanks [@damianricobelli](https://github.com/damianricobelli)! - chore: add tests for core and react packages
+
 ## 1.2.6
 
 ### Patch Changes

@@ -1,5 +1,16 @@
 # docs
 
+## 2.5.6
+
+### Patch Changes
+
+- [#147](https://github.com/damianricobelli/stepperize/pull/147) [`9c01f9e`](https://github.com/damianricobelli/stepperize/commit/9c01f9ebe38fea2ea69bf7216977327503945a81) Thanks [@damianricobelli](https://github.com/damianricobelli)! - chore: add tests for core and react packages
+
+- Updated dependencies [[`9c01f9e`](https://github.com/damianricobelli/stepperize/commit/9c01f9ebe38fea2ea69bf7216977327503945a81)]:
+  - @stepperize/react@5.1.8
+  - @stepperize/solid@1.0.7
+  - @stepperize/vue@2.0.8
+
 ## 2.5.5
 
 ### Patch Changes
