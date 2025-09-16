@@ -76,6 +76,7 @@ const HorizontalStepper = () => {
           <Stepper.Controls>
             {!methods.isLast && (
               <Button
+                type="button"
                 variant="secondary"
                 onClick={methods.prev}
                 disabled={methods.isFirst}
@@ -125,6 +126,7 @@ const VerticalStepper = () => {
           <Stepper.Controls>
             {!methods.isLast && (
               <Button
+                type="button"
                 variant="secondary"
                 onClick={methods.prev}
                 disabled={methods.isFirst}
@@ -162,6 +164,7 @@ const CircleStepper = () => {
           <Stepper.Controls>
             {!methods.isLast && (
               <Button
+                type="button"
                 variant="secondary"
                 onClick={methods.prev}
                 disabled={methods.isFirst}
