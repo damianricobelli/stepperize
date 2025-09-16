@@ -29,14 +29,19 @@
 		"dev": "tsup --watch",
 		"lint": "turbo lint",
 		"prepublishOnly": "pnpm run build",
-		"clean": "rm -rf .turbo && rm -rf node_modules dist"
+		"clean": "rm -rf .turbo && rm -rf node_modules dist",
+		"test": "vitest"
 	},
 	"peerDependencies": {
 		"typescript": ">=5.0.2"
 	},
 	"devDependencies": {
+		"@testing-library/jest-dom": "catalog:",
+		"@testing-library/react": "catalog:",
+		"jsdom": "catalog:",
 		"tsup": "catalog:",
 		"terser": "catalog:",
-		"typescript": "catalog:"
+		"typescript": "catalog:",
+		"vitest": "catalog:"
 	}
 }
