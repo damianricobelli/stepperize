@@ -1,8 +1,4 @@
 import type { Get, Metadata, Step, Stepper } from "@stepperize/core";
-import type { StepperReturn } from "./types";
-
-import * as React from "react";
-
 import {
 	executeTransition,
 	generateCommonStepperUseFns,
@@ -11,6 +7,8 @@ import {
 	getInitialStepIndex,
 	updateStepIndex,
 } from "@stepperize/core";
+import * as React from "react";
+import type { StepperReturn } from "./types";
 
 /**
  * Creates a stepper context and utility functions for managing stepper state.

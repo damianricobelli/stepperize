@@ -109,7 +109,10 @@ async function executeStepCallback(
 	isBefore: boolean,
 ): Promise<boolean> {
 	const result = await callback();
-	return isBefore ? result === true : true;
+	if (isBefore) {
+		return result !== false;
+	}
+	return true;
 }
 
 /**
@@ -170,5 +173,6 @@ const throwNavigationError = ({
 	direction: "next" | "prev";
 	reason: string;
 }) => {
-	throw new Error(`Cannot navigate ${direction} from step "${steps[newIndex].id}": ${reason}`);
+	const stepId = steps[newIndex]?.id ?? `index ${newIndex}`;
+	throw new Error(`Cannot navigate ${direction} from step "${stepId}": ${reason}`);
 };
