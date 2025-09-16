@@ -1,5 +1,11 @@
 # docs
 
+## 2.5.5
+
+### Patch Changes
+
+- [#145](https://github.com/damianricobelli/stepperize/pull/145) [`29edb34`](https://github.com/damianricobelli/stepperize/commit/29edb34bf364f28667dfa6e460200115a0d6b739) Thanks [@damianricobelli](https://github.com/damianricobelli)! - chore: update dependencies and fix button props in stepper components
+
 ## 2.5.4
 
 ### Patch Changes
