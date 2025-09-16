@@ -70,6 +70,7 @@ export function StepperWithLabelOrientation() {
             <Stepper.Controls>
               {!methods.isLast && (
                 <Button
+                  type="button"
                   variant="secondary"
                   onClick={methods.prev}
                   disabled={methods.isFirst}

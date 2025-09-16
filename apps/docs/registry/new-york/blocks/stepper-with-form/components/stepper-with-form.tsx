@@ -1,12 +1,12 @@
 "use client";
 
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm, useFormContext } from "react-hook-form";
+import { z } from "zod";
 import { defineStepper } from "@/registry/new-york/blocks/stepper-with-form/components/ui/stepper";
 import { Button } from "@/registry/new-york/ui/button";
 import { Form } from "@/registry/new-york/ui/form";
 import { Input } from "@/registry/new-york/ui/input";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm, useFormContext } from "react-hook-form";
-import { z } from "zod";
 
 const shippingSchema = z.object({
   address: z.string().min(1, "Address is required"),
@@ -227,6 +227,7 @@ const FormStepperComponent = () => {
         <Stepper.Controls>
           {!methods.isLast && (
             <Button
+              type="button"
               variant="secondary"
               onClick={methods.prev}
               disabled={methods.isFirst}
