@@ -1,5 +1,15 @@
 # docs
 
+## 2.5.7
+
+### Patch Changes
+
+- [#151](https://github.com/damianricobelli/stepperize/pull/151) [`ec569ac`](https://github.com/damianricobelli/stepperize/commit/ec569ac0a0b7674d855377d7cbb6a067618ce40c) Thanks [@damianricobelli](https://github.com/damianricobelli)! - Add schema examples
+
+- Updated dependencies [[`ec569ac`](https://github.com/damianricobelli/stepperize/commit/ec569ac0a0b7674d855377d7cbb6a067618ce40c)]:
+  - @stepperize/react@5.1.9
+  - @stepperize/vue@2.0.9
+
 ## 2.5.6
 
 ### Patch Changes
