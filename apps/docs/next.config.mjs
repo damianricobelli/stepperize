@@ -6,6 +6,9 @@ const withMDX = createMDX();
 const config = {
 	reactStrictMode: true,
 	serverExternalPackages: ["twoslash", "typescript"],
+	experimental: {
+		turbopackScopeHoisting: false
+	}
 };
 
 export default withMDX(config);
