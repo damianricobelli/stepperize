@@ -11,6 +11,7 @@
 		"api-references/hook",
 		"api-references/scoped",
 		"api-references/utils",
+		"api-references/schema-validation",
 		"---Shadcn integration---",
 		"shadcn/introduction",
 		"shadcn/installation",

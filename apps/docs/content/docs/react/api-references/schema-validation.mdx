@@ -1,0 +1,117 @@
+---
+title: Schema Validation
+description: Learn how to validate your stepper with any schema library
+---
+
+Stepperize provides a way to validate your steps with any schema library.
+
+Let's see how we can create our validation schemas and have them within our stepper.
+
+## Zod
+
+```tsx twoslash
+import { z } from "zod";
+import { defineStepper } from "@stepperize/react";
+
+const Schema = z.object({
+  email: z.string().email(),
+  password: z.string().min(8),
+});
+
+type MyFormValues = z.infer<typeof Schema>;
+
+const stepperInstance = defineStepper({
+  id: "personal",
+  label: "Personal Information",
+  schema: Schema,
+});
+```
+
+## ValiBot
+
+```tsx twoslash
+import * as v from "valibot";
+import { defineStepper } from "@stepperize/react";
+
+const Schema = v.object({
+  email: v.pipe(v.string(), v.email()),
+  password: v.pipe(v.string(), v.minLength(8)),
+});
+
+type MyFormValues = v.InferInput<typeof Schema>;
+
+const stepperInstance = defineStepper({
+  id: "personal",
+  label: "Personal Information",
+  schema: Schema,
+});
+```
+
+## ArkType
+
+```tsx twoslash
+import { type } from "arktype";
+import { defineStepper } from "@stepperize/react";
+
+const Schema = type({
+  email: "string.email",
+  password: "string >= 8",
+});
+
+type MyFormValues = typeof Schema.infer;
+
+const stepperInstance = defineStepper({
+  id: "personal",
+  label: "Personal Information",
+  schema: Schema,
+});
+```
+
+## Working with multiple schemas and steps
+
+Let's say we have a series of steps in the form of forms, each of which has a validation schema. All you have to do is add the schemas with the key of your choice, and that's it.
+
+Let's see how it works in a practical example with Zod.
+
+```tsx twoslash
+import { z } from "zod";
+import { defineStepper } from "@stepperize/react";
+
+const FirstStepSchema = z.object({
+  name: z.string().min(1),
+  lastName: z.string().min(1),
+});
+
+const SecondStepSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(8),
+});
+
+const ThirdStepSchema = z.object({});
+
+const stepperInstance = defineStepper(
+  {
+    id: "personal-info",
+    label: "Personal Information",
+    schema: FirstStepSchema,
+  },
+  {
+    id: "account",
+    label: "Account Information",
+    schema: SecondStepSchema,
+  },
+  {
+    id: "complete",
+    label: "Complete",
+    schema: ThirdStepSchema,
+  }
+);
+```
+
+<Callout type="info">
+  You've probably noticed that the last step has an empty schema. This is
+  because stepperize infers all the steps, and when you want to send your
+  `currentStep.schema`, one of them could be undefined. To avoid this, you can
+  simply add an empty schema. Or, if you prefer, you can choose not to do this
+  and validate for yourself whether the schema exists.
+</Callout>
