@@ -17,6 +17,7 @@ import {
 } from "fumadocs-ui/page";
 
 import { StepperDemo } from "@/registry/new-york/blocks/stepper-demo/components/stepper-demo";
+import { StepperWithActivity } from "@/registry/new-york/blocks/stepper-with-activity/components/stepper-with-activity";
 import { StepperWithDescription } from "@/registry/new-york/blocks/stepper-with-description/components/stepper-with-description";
 import { StepperWithForm } from "@/registry/new-york/blocks/stepper-with-form/components/stepper-with-form";
 import { StepperWithIcon } from "@/registry/new-york/blocks/stepper-with-icon/components/stepper-with-icon";
@@ -77,6 +78,7 @@ export default async function Page(props: {
             Step,
             DemoViewer,
             StepperDemo,
+            StepperWithActivity,
             StepperWithDescription,
             StepperWithForm,
             StepperWithIcon,
