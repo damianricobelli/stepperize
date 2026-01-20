@@ -7,14 +7,14 @@ import { Footer } from "@/components/home/footer";
 import Hero from "@/components/home/hero";
 
 export default function HomePage() {
-  return (
-    <div className="min-h-screen overflow-hidden">
-      <div className="relative z-10">
-        <Hero />
-        <Features />
-        <CodeExample className="py-40 sm:py-56">
-          <Code
-            code={`import * as React from "react";
+	return (
+		<div className="min-h-screen overflow-hidden">
+			<div className="relative z-10">
+				<Hero />
+				<Features />
+				<CodeExample className="py-40 sm:py-56">
+					<Code
+						code={`import * as React from "react";
 import { defineStepper } from "@stepperize/react";
 
 const stepper = defineStepper(
@@ -44,13 +44,13 @@ const StepperDemo = () => {
   );
 }
 `}
-            lang="tsx"
-          />
-        </CodeExample>
-        <DemoSection className="pb-40 sm:pb-56" />
-        <Cta className="py-40 sm:py-56" />
-        <Footer />
-      </div>
-    </div>
-  );
+						lang="tsx"
+					/>
+				</CodeExample>
+				<DemoSection className="pb-40 sm:pb-56" />
+				<Cta className="py-40 sm:py-56" />
+				<Footer />
+			</div>
+		</div>
+	);
 }

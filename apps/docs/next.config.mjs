@@ -7,8 +7,8 @@ const config = {
 	reactStrictMode: true,
 	serverExternalPackages: ["twoslash", "typescript"],
 	experimental: {
-		turbopackScopeHoisting: false
-	}
+		turbopackScopeHoisting: false,
+	},
 };
 
 export default withMDX(config);

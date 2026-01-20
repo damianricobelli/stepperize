@@ -1,11 +1,16 @@
 {
-	"$schema": "https://biomejs.dev/schemas/2.1.3/schema.json",
+	"$schema": "https://biomejs.dev/schemas/2.3.11/schema.json",
 	"files": {
 		"includes": ["**", "!.turbo", "!.next", "!.changeset", "!.pnpm-store", "!packages/react/dist"]
 	},
 	"assist": { "actions": { "source": { "organizeImports": "on" } } },
 	"formatter": {
 		"lineWidth": 120
+	},
+	"css": {
+		"parser": {
+			"tailwindDirectives": true
+		}
 	},
 	"linter": {
 		"enabled": true,
