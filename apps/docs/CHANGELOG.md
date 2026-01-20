@@ -1,5 +1,11 @@
 # docs
 
+## 2.5.8
+
+### Patch Changes
+
+- [#160](https://github.com/damianricobelli/stepperize/pull/160) [`fec5622`](https://github.com/damianricobelli/stepperize/commit/fec5622dcb2b3742a86be83585ad78e023a371b3) Thanks [@damianricobelli](https://github.com/damianricobelli)! - chore: update dependencies and configuration files
+
 ## 2.5.7
 
 ### Patch Changes
