@@ -106,7 +106,6 @@ Or install the component manually copying the following code in your project
               <nav
                 date-component="stepper-navigation"
                 aria-label={ariaLabel}
-                role="tablist"
                 {...props}
               >
                 <ol
@@ -234,7 +233,7 @@ Or install the component manually copying the following code in your project
                 {variant === "vertical" && (
                   <div className="flex gap-4">
                     {!isLast && (
-                      <div className="flex justify-center ps-[calc(var(--spacing)_*_4.5_-_1px)]">
+                      <div className="flex justify-center ps-[calc(var(--spacing)*4.5-1px)]">
                         <StepperSeparator
                           orientation="vertical"
                           isLast={isLast}
@@ -334,12 +333,11 @@ Or install the component manually copying the following code in your project
         return null;
       }
       return (
-        <div
+        <hr
           date-component="stepper-separator"
           data-orientation={orientation}
           data-state={state}
           data-disabled={disabled}
-          role="separator"
           tabIndex={-1}
           className={classForSeparator({ orientation, labelOrientation })}
         />

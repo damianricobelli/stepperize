@@ -38,9 +38,9 @@
 		"vue": ">=3.3.0"
 	},
 	"devDependencies": {
-		"tsup": "catalog:",
 		"terser": "catalog:",
+		"tsup": "catalog:",
 		"typescript": "catalog:",
-		"vue": "3.5.22"
+		"vue": "3.5.27"
 	}
 }
