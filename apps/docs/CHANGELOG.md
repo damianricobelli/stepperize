@@ -1,5 +1,11 @@
 # docs
 
+## 2.5.9
+
+### Patch Changes
+
+- [#162](https://github.com/damianricobelli/stepperize/pull/162) [`364c2e5`](https://github.com/damianricobelli/stepperize/commit/364c2e5ac3151bffc85eb4623d6a2e89d5e0c04a) Thanks [@damianricobelli](https://github.com/damianricobelli)! - fix: update stepper component to use destructured initialStep and initialMetadata props
+
 ## 2.5.8
 
 ### Patch Changes
