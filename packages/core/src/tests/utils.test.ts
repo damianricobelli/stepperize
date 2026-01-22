@@ -48,8 +48,8 @@ describe("generateStepperUtils", () => {
 			prev: steps[0],
 			next: steps[2],
 		});
-		expect(utils.getNeighbors("first")).toEqual({ prev: null, next: steps[1] });
-		expect(utils.getNeighbors("third")).toEqual({ prev: steps[1], next: null });
+		expect(utils.getNeighbors("first")).toEqual({ prev: undefined, next: steps[1] });
+		expect(utils.getNeighbors("third")).toEqual({ prev: steps[1], next: undefined });
 	});
 });
 

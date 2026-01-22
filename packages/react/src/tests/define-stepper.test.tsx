@@ -92,42 +92,78 @@ describe("defineStepper", () => {
     expect(result.current.getMetadata("first")).toEqual({ foo: "bar" });
   });
 
-  it("executes callbacks in beforeNext/afterNext", async () => {
+  it("executes callback in beforeNext and navigates if true", async () => {
     const { result } = renderHook(() => stepperDef.useStepper());
-    const cb = vi.fn();
+    const cb = vi.fn().mockReturnValue(true);
+
+    expect(result.current.current.id).toBe("first");
 
     await act(async () => {
       await result.current.beforeNext(cb);
     });
 
-    expect(cb).toHaveBeenCalled();
+    expect(cb).toHaveBeenCalledTimes(1);
+    expect(result.current.current.id).toBe("second");
+  });
+
+  it("executes callback in beforeNext and does not navigate if false", async () => {
+    const { result } = renderHook(() => stepperDef.useStepper());
+    const cb = vi.fn().mockReturnValue(false);
+
+    expect(result.current.current.id).toBe("first");
+
+    await act(async () => {
+      await result.current.beforeNext(cb);
+    });
+
+    expect(cb).toHaveBeenCalledTimes(1);
+    expect(result.current.current.id).toBe("first"); // Did not navigate
+  });
+
+  it("executes callback in afterNext after navigating", async () => {
+    const { result } = renderHook(() => stepperDef.useStepper());
+    const cb = vi.fn();
+
+    expect(result.current.current.id).toBe("first");
 
     await act(async () => {
       await result.current.afterNext(cb);
     });
 
+    expect(cb).toHaveBeenCalledTimes(1);
     expect(result.current.current.id).toBe("second");
-    expect(cb).toHaveBeenCalledTimes(2);
   });
 
-  it("executes callbacks in beforePrev/afterPrev", async () => {
+  it("executes callback in beforePrev and navigates if true", async () => {
     const { result } = renderHook(() =>
       stepperDef.useStepper({ initialStep: "second" })
     );
-    const cb = vi.fn();
+    const cb = vi.fn().mockReturnValue(true);
+
+    expect(result.current.current.id).toBe("second");
 
     await act(async () => {
       await result.current.beforePrev(cb);
     });
 
-    expect(cb).toHaveBeenCalled();
+    expect(cb).toHaveBeenCalledTimes(1);
+    expect(result.current.current.id).toBe("first");
+  });
+
+  it("executes callback in afterPrev after navigating", async () => {
+    const { result } = renderHook(() =>
+      stepperDef.useStepper({ initialStep: "second" })
+    );
+    const cb = vi.fn();
+
+    expect(result.current.current.id).toBe("second");
 
     await act(async () => {
       await result.current.afterPrev(cb);
     });
 
+    expect(cb).toHaveBeenCalledTimes(1);
     expect(result.current.current.id).toBe("first");
-    expect(cb).toHaveBeenCalledTimes(2);
   });
 
   it("executes callbacks in beforeGoTo/afterGoTo", async () => {
