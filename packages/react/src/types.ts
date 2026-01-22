@@ -1,6 +1,7 @@
 import type {
 	Get,
 	HistoryEntry,
+	InitialState,
 	PersistConfig,
 	RouterConfig,
 	Step,
@@ -11,6 +12,57 @@ import type {
 	TransitionContext,
 	Utils,
 } from "@stepperize/core";
+
+// =============================================================================
+// ASYNC INITIALIZATION TYPES
+// =============================================================================
+
+/**
+ * Function that returns initial state synchronously or asynchronously.
+ * Used for SSR, resuming from server state, or fetching saved progress.
+ *
+ * @typeParam Steps - The array of step definitions.
+ */
+export type GetInitialStateFn<Steps extends Step[]> = () =>
+	| InitialState<Steps>
+	| Promise<InitialState<Steps>>;
+
+/**
+ * Async initialization status.
+ * Follows a similar pattern to TanStack Query.
+ */
+export type AsyncInitStatus = "idle" | "pending" | "success" | "error";
+
+/**
+ * Error information for failed async initialization.
+ */
+export type AsyncInitError = {
+	/** The error that occurred. */
+	error: unknown;
+	/** Timestamp of when the error occurred. */
+	timestamp: number;
+};
+
+/**
+ * Async initialization state.
+ * Exposed to consumers so they can handle loading/error states.
+ *
+ * @typeParam Steps - The array of step definitions.
+ */
+export type AsyncInitState<Steps extends Step[]> = {
+	/** Current status of async initialization. */
+	status: AsyncInitStatus;
+	/** Whether initialization is in progress. */
+	isLoading: boolean;
+	/** Whether initialization completed successfully. */
+	isSuccess: boolean;
+	/** Whether initialization failed. */
+	isError: boolean;
+	/** Error information if initialization failed. */
+	error: AsyncInitError | null;
+	/** Retry the async initialization. */
+	retry: () => void;
+};
 
 // =============================================================================
 // SCOPED COMPONENT PROPS
@@ -84,7 +136,14 @@ export type StepperInstance<Steps extends Step[]> = {
 	 * Reset the stepper to its initial state.
 	 * @param options - Reset options.
 	 */
-	reset: (options?: { keepMetadata?: boolean; keepStatuses?: boolean }) => void;
+	reset: (options?: {
+		/** If `true`, keeps the current metadata values. */
+		keepMetadata?: boolean;
+		/** If `true`, keeps the current status values. */
+		keepStatuses?: boolean;
+		/** If `true`, clears the persisted state from storage. */
+		clearPersisted?: boolean;
+	}) => void;
 
 	// -------------------------------------------------------------------------
 	// Step Retrieval
@@ -230,6 +289,27 @@ export type StepperInstance<Steps extends Step[]> = {
 	redo: () => void;
 	/** The navigation history stack. */
 	readonly history: HistoryEntry<Steps>[];
+
+	// -------------------------------------------------------------------------
+	// Async Initialization
+	// -------------------------------------------------------------------------
+
+	/**
+	 * Async initialization state.
+	 * Only present when `getInitialState` is configured.
+	 * Use this to handle loading/error states in your UI.
+	 */
+	readonly asyncInit: AsyncInitState<Steps>;
+
+	// -------------------------------------------------------------------------
+	// Persistence
+	// -------------------------------------------------------------------------
+
+	/**
+	 * Clear persisted state from storage.
+	 * Only has effect when `persist` is configured.
+	 */
+	clearPersistedState: () => Promise<void>;
 };
 
 // =============================================================================
@@ -296,6 +376,28 @@ export type StepperConfigOptions<Steps extends Step[]> = {
 	 * @default "free"
 	 */
 	mode?: "linear" | "free";
+	/**
+	 * Async function to fetch initial state.
+	 * Useful for SSR, resuming from server state, or fetching saved progress.
+	 *
+	 * The returned state is merged with sync `initialStep`/`initialMetadata`/`initialStatuses`,
+	 * with async values taking precedence.
+	 *
+	 * @example
+	 * ```ts
+	 * .config({
+	 *   getInitialState: async () => {
+	 *     const savedProgress = await api.getSavedProgress();
+	 *     return {
+	 *       step: savedProgress.currentStep,
+	 *       metadata: savedProgress.formData,
+	 *       statuses: savedProgress.completedSteps,
+	 *     };
+	 *   }
+	 * })
+	 * ```
+	 */
+	getInitialState?: GetInitialStateFn<Steps>;
 	/**
 	 * Callback executed before any transition.
 	 * Return `false` to prevent the transition.

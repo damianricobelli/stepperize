@@ -1,6 +1,9 @@
 import type {
 	Get,
 	HistoryEntry,
+	InitialState,
+	PersistConfig,
+	PersistManager,
 	Step,
 	StepMetadata,
 	StepStatus,
@@ -10,6 +13,8 @@ import type {
 import {
 	areDependenciesSatisfied,
 	calculateProgress,
+	createPersistedState,
+	createPersistManager,
 	findNextValidStepIndex,
 	generateCommonStepperUseFns,
 	generateStepperUtils,
@@ -18,9 +23,12 @@ import {
 	getInitialStatuses,
 	getInitialStepIndex,
 	isStepCompleted,
+	persistedStateToInitialState,
 } from "@stepperize/core";
 import * as React from "react";
 import type {
+	AsyncInitState,
+	AsyncInitStatus,
 	ScopedProps,
 	StepperBuilder,
 	StepperConfigOptions,
@@ -95,20 +103,56 @@ function createStepperDefinition<Steps extends Step[]>(
 	 */
 	function useStepperInternal(props: UseStepperProps<Steps> = {}): StepperInstance<Steps> {
 		// Merge props with config options (props take precedence)
-		const mergedConfig = {
-			initialStep: props.initialStep ?? configOptions.initialStep,
-			initialMetadata: { ...configOptions.initialMetadata, ...props.initialMetadata },
-			initialStatuses: { ...configOptions.initialStatuses, ...props.initialStatuses },
-			mode: configOptions.mode ?? "free",
-			onBeforeTransition: configOptions.onBeforeTransition,
-			onAfterTransition: configOptions.onAfterTransition,
-		};
+		const mergedConfig = React.useMemo(
+			() => ({
+				initialStep: props.initialStep ?? configOptions.initialStep,
+				initialMetadata: { ...configOptions.initialMetadata, ...props.initialMetadata },
+				initialStatuses: { ...configOptions.initialStatuses, ...props.initialStatuses },
+				mode: configOptions.mode ?? "free",
+				getInitialState: configOptions.getInitialState,
+				persist: configOptions.persist,
+				onBeforeTransition: configOptions.onBeforeTransition,
+				onAfterTransition: configOptions.onAfterTransition,
+			}),
+			[props.initialStep, props.initialMetadata, props.initialStatuses],
+		);
 
 		// Calculate initial values
 		const initialStepIndex = React.useMemo(
 			() => getInitialStepIndex(steps, mergedConfig.initialStep),
 			[mergedConfig.initialStep],
 		);
+
+		// ==========================================================================
+		// PERSISTENCE SETUP
+		// ==========================================================================
+
+		const persistManager = React.useMemo<PersistManager<Steps> | null>(
+			() => (mergedConfig.persist ? createPersistManager(mergedConfig.persist) : null),
+			[mergedConfig.persist],
+		);
+
+		// Track if we've hydrated from storage
+		const [isHydrated, setIsHydrated] = React.useState(!persistManager);
+
+		// ==========================================================================
+		// ASYNC INITIALIZATION STATE
+		// ==========================================================================
+
+		const hasAsyncInit = Boolean(mergedConfig.getInitialState);
+		const hasPersist = Boolean(persistManager);
+
+		// Start as pending if we have async init OR persistence to load
+		const [asyncInitStatus, setAsyncInitStatus] = React.useState<AsyncInitStatus>(
+			hasAsyncInit || hasPersist ? "pending" : "success",
+		);
+		const [asyncInitError, setAsyncInitError] = React.useState<{
+			error: unknown;
+			timestamp: number;
+		} | null>(null);
+
+		// Track if we need to re-run async init (for retry)
+		const [asyncInitTrigger, setAsyncInitTrigger] = React.useState(0);
 
 		// State
 		const [currentIndex, setCurrentIndex] = React.useState(initialStepIndex);
@@ -122,6 +166,159 @@ function createStepperDefinition<Steps extends Step[]>(
 			{ step: steps[initialStepIndex], index: initialStepIndex, timestamp: Date.now() },
 		]);
 		const [historyIndex, setHistoryIndex] = React.useState(0);
+
+		// ==========================================================================
+		// APPLY INITIAL STATE HELPER
+		// ==========================================================================
+
+		/**
+		 * Apply the initial state from async initialization or persistence.
+		 * Merges with sync initial values (loaded values take precedence).
+		 */
+		const applyInitialState = React.useCallback(
+			(state: InitialState<Steps>) => {
+				// Update step if provided
+				if (state.step) {
+					const newIndex = getInitialStepIndex(steps, state.step);
+					setCurrentIndex(newIndex);
+					setHistory([{ step: steps[newIndex], index: newIndex, timestamp: Date.now() }]);
+					setHistoryIndex(0);
+				}
+
+				// Merge metadata (loaded values take precedence)
+				if (state.metadata) {
+					setMetadata((prev) => ({
+						...prev,
+						...state.metadata,
+					}) as StepMetadata<Steps>);
+				}
+
+				// Merge statuses (loaded values take precedence)
+				if (state.statuses) {
+					setStatuses((prev) => ({
+						...prev,
+						...state.statuses,
+					}) as StepStatuses<Steps>);
+				}
+			},
+			[],
+		);
+
+		// ==========================================================================
+		// INITIALIZATION EFFECT (Persistence + Async)
+		// ==========================================================================
+
+		React.useEffect(() => {
+			// If no persistence and no async init, nothing to do
+			if (!persistManager && !mergedConfig.getInitialState) return;
+
+			let isCancelled = false;
+			setAsyncInitStatus("pending");
+			setAsyncInitError(null);
+
+			const runInitialization = async () => {
+				try {
+					// Step 1: Try to load from persistence first
+					if (persistManager) {
+						const loadResult = await persistManager.load();
+
+						if (!isCancelled && loadResult.success) {
+							// Apply persisted state
+							const initialState = persistedStateToInitialState(loadResult.state);
+							applyInitialState(initialState);
+							setIsHydrated(true);
+
+							// If no async init, we're done
+							if (!mergedConfig.getInitialState) {
+								setAsyncInitStatus("success");
+								return;
+							}
+						} else {
+							setIsHydrated(true);
+						}
+					}
+
+					// Step 2: Run async init if configured
+					// Note: Async init takes precedence over persisted state
+					if (mergedConfig.getInitialState) {
+						const result = await mergedConfig.getInitialState();
+
+						if (isCancelled) return;
+
+						// Apply async init result (takes precedence)
+						applyInitialState(result);
+					}
+
+					if (!isCancelled) {
+						setAsyncInitStatus("success");
+					}
+				} catch (error) {
+					if (isCancelled) return;
+
+					setAsyncInitError({ error, timestamp: Date.now() });
+					setAsyncInitStatus("error");
+					setIsHydrated(true); // Mark as hydrated even on error
+				}
+			};
+
+			runInitialization();
+
+			return () => {
+				isCancelled = true;
+			};
+		}, [asyncInitTrigger, persistManager, mergedConfig.getInitialState, applyInitialState]);
+
+		// ==========================================================================
+		// AUTO-SAVE EFFECT (Persistence)
+		// ==========================================================================
+
+		// Track the current step ID for persistence
+		const currentStepId = steps[currentIndex].id as Get.Id<Steps>;
+
+		React.useEffect(() => {
+			// Don't save until we've hydrated (to avoid overwriting with initial state)
+			if (!persistManager || !isHydrated) return;
+
+			// Don't save while async init is pending
+			if (asyncInitStatus === "pending") return;
+
+			// Save state
+			const stateToSave = createPersistedState<Steps>(currentStepId, metadata, statuses);
+			persistManager.save(stateToSave);
+		}, [persistManager, isHydrated, asyncInitStatus, currentStepId, metadata, statuses]);
+
+		// ==========================================================================
+		// RETRY & ASYNC INIT STATE
+		// ==========================================================================
+
+		// Retry function for async init
+		const retryAsyncInit = React.useCallback(() => {
+			if (!mergedConfig.getInitialState && !persistManager) return;
+			setAsyncInitTrigger((prev) => prev + 1);
+		}, [mergedConfig.getInitialState, persistManager]);
+
+		// Build async init state object
+		const asyncInitState = React.useMemo<AsyncInitState<Steps>>(
+			() => ({
+				status: asyncInitStatus,
+				isLoading: asyncInitStatus === "pending",
+				isSuccess: asyncInitStatus === "success",
+				isError: asyncInitStatus === "error",
+				error: asyncInitError,
+				retry: retryAsyncInit,
+			}),
+			[asyncInitStatus, asyncInitError, retryAsyncInit],
+		);
+
+		// ==========================================================================
+		// CLEAR PERSISTENCE HELPER
+		// ==========================================================================
+
+		const clearPersistedState = React.useCallback(async () => {
+			if (persistManager) {
+				await persistManager.clear();
+			}
+		}, [persistManager]);
 
 		// Derived state
 		const current = steps[currentIndex];
@@ -261,6 +458,11 @@ function createStepperDefinition<Steps extends Step[]>(
 						setStatuses(getInitialStatuses(steps, mergedConfig.initialStatuses));
 					}
 
+					// Clear persisted state if requested
+					if (options.clearPersisted && persistManager) {
+						persistManager.clear();
+					}
+
 					setHistory([{ step: steps[newIndex], index: newIndex, timestamp: Date.now() }]);
 					setHistoryIndex(0);
 				},
@@ -364,6 +566,12 @@ function createStepperDefinition<Steps extends Step[]>(
 					}
 				},
 				history,
+
+				// Async initialization
+				asyncInit: asyncInitState,
+
+				// Persistence
+				clearPersistedState,
 			};
 		}, [
 			current,
@@ -380,6 +588,7 @@ function createStepperDefinition<Steps extends Step[]>(
 			initialStepIndex,
 			mergedConfig.initialMetadata,
 			mergedConfig.initialStatuses,
+			asyncInitState,
 		]);
 
 		return stepper;
@@ -425,7 +634,69 @@ function createStepperDefinition<Steps extends Step[]>(
 }
 
 // =============================================================================
+// ASYNC INIT HELPERS
+// =============================================================================
+
+/**
+ * Type guard to check if async initialization is ready.
+ * Use this to narrow the stepper type and ensure safe access.
+ *
+ * @param stepper - The stepper instance.
+ * @returns `true` if async initialization is complete (success or no async init).
+ *
+ * @example
+ * ```tsx
+ * function MyComponent() {
+ *   const stepper = useStepper();
+ *
+ *   if (!isStepperReady(stepper)) {
+ *     if (stepper.asyncInit.isError) {
+ *       return <ErrorDisplay error={stepper.asyncInit.error} onRetry={stepper.asyncInit.retry} />;
+ *     }
+ *     return <LoadingSpinner />;
+ *   }
+ *
+ *   // Stepper is ready to use
+ *   return <StepContent step={stepper.current} />;
+ * }
+ * ```
+ */
+export function isStepperReady<Steps extends Step[]>(
+	stepper: StepperInstance<Steps>,
+): boolean {
+	return stepper.asyncInit.isSuccess;
+}
+
+/**
+ * Hook that waits for async initialization to complete.
+ * Returns a tuple with loading state and the stepper.
+ *
+ * @param stepper - The stepper instance.
+ * @returns Tuple of [isReady, stepper].
+ *
+ * @example
+ * ```tsx
+ * function MyComponent() {
+ *   const stepper = useStepper();
+ *   const [isReady] = useWaitForAsyncInit(stepper);
+ *
+ *   if (!isReady) {
+ *     return <LoadingSpinner />;
+ *   }
+ *
+ *   return <StepContent step={stepper.current} />;
+ * }
+ * ```
+ */
+export function useWaitForAsyncInit<Steps extends Step[]>(
+	stepper: StepperInstance<Steps>,
+): [isReady: boolean, stepper: StepperInstance<Steps>] {
+	return [stepper.asyncInit.isSuccess, stepper];
+}
+
+// =============================================================================
 // RE-EXPORT FOR CONVENIENCE
 // =============================================================================
 
 export type { StepperBuilder, StepperConfigOptions, StepperDefinition, StepperInstance };
+export type { AsyncInitState, AsyncInitStatus, GetInitialStateFn } from "./types";

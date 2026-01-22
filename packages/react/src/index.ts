@@ -5,7 +5,10 @@
 export type {
 	Get,
 	HistoryEntry,
+	InitialState,
+	PersistedState,
 	PersistConfig,
+	PersistManager,
 	PersistStorage,
 	RouterAdapter,
 	RouterConfig,
@@ -20,12 +23,27 @@ export type {
 	ZodType,
 } from "@stepperize/core";
 
+// Re-export persistence utilities
+export {
+	createMemoryStorage,
+	createPersistManager,
+	localStorageAdapter,
+	sessionStorageAdapter,
+} from "@stepperize/core";
+
 // =============================================================================
 // REACT-SPECIFIC TYPES
 // =============================================================================
 
 export type {
+	// Async initialization types
+	AsyncInitError,
+	AsyncInitState,
+	AsyncInitStatus,
+	GetInitialStateFn,
+	// Component props
 	ScopedProps,
+	// Stepper types
 	StepperBuilder,
 	StepperConfigOptions,
 	StepperDefinition,
@@ -38,4 +56,4 @@ export type {
 // MAIN API
 // =============================================================================
 
-export { defineStepper } from "./define-stepper";
+export { defineStepper, isStepperReady, useWaitForAsyncInit } from "./define-stepper";
