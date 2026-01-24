@@ -20,7 +20,6 @@ export type {
 	TransitionContext,
 	TransitionDirection,
 	Utils,
-	ZodType,
 } from "@stepperize/core";
 
 // Re-export persistence utilities

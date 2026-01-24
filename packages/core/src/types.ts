@@ -1,23 +1,8 @@
 // =============================================================================
-// ZOD INTEGRATION (Optional)
+// STANDARD SCHEMA
 // =============================================================================
 
-/**
- * Represents a Zod schema type.
- * This allows the library to work with Zod schemas without requiring Zod as a dependency.
- * Users can pass their own Zod schemas and get full type inference.
- */
-export type ZodType = {
-	_input: unknown;
-	_output: unknown;
-	parse: (data: unknown) => unknown;
-	safeParse: (data: unknown) => { success: boolean; data?: unknown; error?: unknown };
-};
-
-/**
- * Infers the output type from a Zod-like schema.
- */
-export type InferZodOutput<T extends ZodType> = T["_output"];
+import type { StandardSchemaV1 } from "./standard-schema";
 
 // =============================================================================
 // STEP STATUS
@@ -44,11 +29,11 @@ export type StepStatuses<Steps extends Step[]> = Record<Get.Id<Steps>, StepStatu
  */
 export type Step<
 	Id extends string = string,
-	Schema extends ZodType | undefined = undefined,
+	Schema extends StandardSchemaV1 | undefined = undefined,
 > = {
 	/** Unique identifier for the step. */
 	readonly id: Id;
-	/** Optional Zod schema for validating step metadata. */
+	/** Optional Standard Schema for validating step metadata. */
 	readonly schema?: Schema;
 	/**
 	 * Function to determine if this step should be skipped.
@@ -66,9 +51,12 @@ export type Step<
 /**
  * Infers the metadata type from a step's schema.
  * If no schema is defined, defaults to `Record<string, unknown> | null`.
+ * If schema exists but doesn't have types defined, defaults to `unknown`.
  */
-export type InferStepMetadata<S extends Step> = S["schema"] extends ZodType
-	? InferZodOutput<S["schema"]>
+export type InferStepMetadata<S extends Step> = S["schema"] extends StandardSchemaV1
+	? S["schema"]["~standard"]["types"] extends StandardSchemaV1.Types
+		? S["schema"]["~standard"]["types"]["output"]
+		: unknown
 	: Record<string, unknown> | null;
 
 /**

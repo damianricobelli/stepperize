@@ -10,6 +10,7 @@ import type {
 	TransitionContext,
 	TransitionDirection,
 } from "./types";
+import type { StandardSchemaV1 } from "./standard-schema";
 
 // =============================================================================
 // STATE MACHINE TYPES
@@ -498,21 +499,34 @@ export function findNextValidStepIndex<Steps extends Step[]>(
 // =============================================================================
 
 /**
- * Zod-like schema interface for validation.
+ * Type guard to check if a value is a valid Standard Schema.
  */
-interface ZodLikeSchema {
-	safeParse: (data: unknown) => { success: boolean; data?: unknown; error?: unknown };
-}
+function isStandardSchema(value: unknown): value is StandardSchemaV1 {
+	if (typeof value !== "object" || value === null) {
+		return false;
+	}
 
-/**
- * Type guard to check if a value is a valid Zod-like schema.
- */
-function isZodLikeSchema(value: unknown): value is ZodLikeSchema {
+	const obj = value as Record<string, unknown>;
+
+	// Check for ~standard property
+	if (!("~standard" in obj)) {
+		return false;
+	}
+
+	const standard = obj["~standard"];
+
+	// Check that ~standard is an object with required properties
+	if (typeof standard !== "object" || standard === null) {
+		return false;
+	}
+
+	const standardObj = standard as Record<string, unknown>;
+
+	// Check for required properties: version, vendor, validate
 	return (
-		typeof value === "object" &&
-		value !== null &&
-		"safeParse" in value &&
-		typeof (value as Record<string, unknown>).safeParse === "function"
+		standardObj.version === 1 &&
+		typeof standardObj.vendor === "string" &&
+		typeof standardObj.validate === "function"
 	);
 }
 
@@ -521,20 +535,39 @@ function isZodLikeSchema(value: unknown): value is ZodLikeSchema {
  *
  * @param step - The step with optional schema.
  * @param metadata - The metadata to validate.
- * @returns Validation result.
+ * @returns Validation result (synchronous or asynchronous).
  */
 export function validateStepMetadata(
 	step: Step,
 	metadata: unknown,
-): { success: true; data: unknown } | { success: false; error: unknown } {
+): { success: true; data: unknown } | { success: false; error: unknown } | Promise<{ success: true; data: unknown } | { success: false; error: unknown }> {
 	const schema: unknown = step.schema;
 
-	if (!isZodLikeSchema(schema)) {
+	if (!isStandardSchema(schema)) {
 		return { success: true, data: metadata };
 	}
 
-	const result = schema.safeParse(metadata);
-	return result.success
-		? { success: true, data: result.data }
-		: { success: false, error: result.error };
+	const result = schema["~standard"].validate(metadata);
+
+	// Handle both synchronous and asynchronous validation
+	if (result instanceof Promise) {
+		return result.then((resolvedResult) => {
+			// Standard Schema returns { value, issues?: undefined } on success
+			// or { issues: ReadonlyArray<Issue> } on failure
+			if ("issues" in resolvedResult && resolvedResult.issues !== undefined) {
+				return { success: false, error: resolvedResult.issues } as const;
+			}
+
+			// Success case: result has value and no issues
+			return { success: true, data: resolvedResult.value } as const;
+		});
+	}
+
+	// Synchronous validation
+	if ("issues" in result && result.issues !== undefined) {
+		return { success: false, error: result.issues };
+	}
+
+	// Success case: result has value and no issues
+	return { success: true, data: result.value };
 }
