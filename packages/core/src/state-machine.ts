@@ -17,6 +17,7 @@ import type {
 
 /**
  * Internal state of the stepper state machine.
+ * @internal
  */
 export type StepperState<Steps extends Step[]> = {
 	/** Current step index. */
@@ -35,6 +36,7 @@ export type StepperState<Steps extends Step[]> = {
 
 /**
  * Actions that can be dispatched to the state machine.
+ * @internal
  */
 export type StepperAction<Steps extends Step[]> =
 	| { type: "GO_TO"; index: number }
@@ -56,6 +58,7 @@ export type StepperAction<Steps extends Step[]> =
  * @param steps - The step definitions.
  * @param config - The stepper configuration.
  * @returns The initial state.
+ * @internal
  */
 export function createInitialState<Steps extends Step[]>(
 	steps: Steps,
@@ -69,7 +72,7 @@ export function createInitialState<Steps extends Step[]>(
 		metadata: createInitialMetadata(steps, config?.initialMetadata),
 		history: [createHistoryEntry(steps, initialIndex)],
 		historyIndex: 0,
-		initialized: !config?.getInitialState, // Not initialized if async init is pending
+		initialized: !config?.initialData, // Not initialized if initialData is pending
 	};
 }
 
@@ -139,6 +142,7 @@ function createHistoryEntry<Steps extends Step[]>(
  * @param steps - Step definitions.
  * @param config - Stepper configuration.
  * @returns New state.
+ * @internal
  */
 export function stepperReducer<Steps extends Step[]>(
 	state: StepperState<Steps>,
@@ -360,6 +364,7 @@ export function areDependenciesSatisfied<Steps extends Step[]>(
  * @param targetIndex - Target index.
  * @param direction - Transition direction.
  * @returns The transition context.
+ * @internal
  */
 export function createTransitionContext<Steps extends Step[]>(
 	steps: Steps,
@@ -383,40 +388,6 @@ export function createTransitionContext<Steps extends Step[]>(
 // =============================================================================
 
 /**
- * Calculate progress percentage based on completed steps.
- *
- * @param statuses - Step statuses.
- * @param totalSteps - Total number of steps.
- * @returns Progress percentage (0-100).
- */
-export function calculateProgress<Steps extends Step[]>(
-	statuses: StepStatuses<Steps>,
-	totalSteps: number,
-): number {
-	if (totalSteps === 0) return 0;
-
-	const completedCount = Object.values(statuses).filter(
-		(status) => status === "success",
-	).length;
-
-	return Math.round((completedCount / totalSteps) * 100);
-}
-
-/**
- * Get array of completed steps.
- *
- * @param steps - Step definitions.
- * @param statuses - Step statuses.
- * @returns Array of completed step objects.
- */
-export function getCompletedSteps<Steps extends Step[]>(
-	steps: Steps,
-	statuses: StepStatuses<Steps>,
-): Steps[number][] {
-	return steps.filter((step) => statuses[step.id as Get.Id<Steps>] === "success");
-}
-
-/**
  * Check if a specific step is completed.
  *
  * @param stepId - Step ID to check.
@@ -438,6 +409,7 @@ export function isStepCompleted<Steps extends Step[]>(
  * @param stepId - Step ID to check.
  * @param mode - Navigation mode.
  * @returns `true` if the step can be accessed.
+ * @internal
  */
 export function canAccessStep<Steps extends Step[]>(
 	steps: Steps,
@@ -457,6 +429,7 @@ export function canAccessStep<Steps extends Step[]>(
 
 /**
  * Check if undo is available.
+ * @internal
  */
 export function canUndo<Steps extends Step[]>(state: StepperState<Steps>): boolean {
 	return state.historyIndex > 0;
@@ -464,6 +437,7 @@ export function canUndo<Steps extends Step[]>(state: StepperState<Steps>): boole
 
 /**
  * Check if redo is available.
+ * @internal
  */
 export function canRedo<Steps extends Step[]>(state: StepperState<Steps>): boolean {
 	return state.historyIndex < state.history.length - 1;

@@ -270,10 +270,10 @@ export type StepperConfig<Steps extends Step[]> = {
 	 */
 	mode?: "linear" | "free";
 	/**
-	 * Async function to fetch initial state.
+	 * Function to fetch initial data synchronously or asynchronously.
 	 * Useful for SSR, resuming from server state, or fetching saved progress.
 	 */
-	getInitialState?: () => Promise<InitialState<Steps>> | InitialState<Steps>;
+	initialData?: () => Promise<InitialState<Steps>> | InitialState<Steps>;
 	/**
 	 * Router configuration for URL synchronization.
 	 */

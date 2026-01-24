@@ -12,31 +12,45 @@ import type {
 	TransitionContext,
 	Utils,
 } from "@stepperize/core";
+import type {
+	ActionsProps,
+	ContentProps,
+	DescriptionProps,
+	IndicatorProps,
+	ItemProps,
+	ListProps,
+	NextProps,
+	Orientation,
+	PrevProps,
+	RootProps,
+	SeparatorProps,
+	TitleProps,
+	TriggerProps,
+} from "./primitives/types";
 
 // =============================================================================
 // ASYNC INITIALIZATION TYPES
 // =============================================================================
 
 /**
- * Function that returns initial state synchronously or asynchronously.
+ * Function that returns initial data synchronously or asynchronously.
  * Used for SSR, resuming from server state, or fetching saved progress.
  *
  * @typeParam Steps - The array of step definitions.
  */
-export type GetInitialStateFn<Steps extends Step[]> = () =>
+export type InitialDataFn<Steps extends Step[]> = () =>
 	| InitialState<Steps>
 	| Promise<InitialState<Steps>>;
 
 /**
- * Async initialization status.
- * Follows a similar pattern to TanStack Query.
+ * Stepper status reflecting initialization state.
  */
-export type AsyncInitStatus = "idle" | "pending" | "success" | "error";
+export type StepperStatus = "pending" | "success" | "error";
 
 /**
- * Error information for failed async initialization.
+ * Error information for failed initialization.
  */
-export type AsyncInitError = {
+export type StepperError = {
 	/** The error that occurred. */
 	error: unknown;
 	/** Timestamp of when the error occurred. */
@@ -44,24 +58,23 @@ export type AsyncInitError = {
 };
 
 /**
- * Async initialization state.
- * Exposed to consumers so they can handle loading/error states.
- *
- * @typeParam Steps - The array of step definitions.
+ * Comprehensive information about a step, including its definition, status, metadata, and helper methods.
  */
-export type AsyncInitState<Steps extends Step[]> = {
-	/** Current status of async initialization. */
-	status: AsyncInitStatus;
-	/** Whether initialization is in progress. */
-	isLoading: boolean;
-	/** Whether initialization completed successfully. */
-	isSuccess: boolean;
-	/** Whether initialization failed. */
-	isError: boolean;
-	/** Error information if initialization failed. */
-	error: AsyncInitError | null;
-	/** Retry the async initialization. */
-	retry: () => void;
+export type StepInfo<Steps extends Step[], Id extends Get.Id<Steps>> = {
+	/** The step data definition. */
+	readonly data: Get.StepById<Steps, Id>;
+	/** The step's current status. */
+	readonly status: StepStatus;
+	/** The step's metadata. */
+	readonly metadata: StepMetadata<Steps>[Id];
+	/** `true` if the step is completed (status is "success"). */
+	readonly isCompleted: boolean;
+	/** `true` if the step can be accessed (dependencies satisfied). */
+	readonly canAccess: boolean;
+	/** Set the status of this step. */
+	setStatus: (status: StepStatus) => void;
+	/** Set the metadata of this step. */
+	setMetadata: (values: StepMetadata<Steps>[Id]) => void;
 };
 
 // =============================================================================
@@ -93,24 +106,20 @@ export type StepperInstance<Steps extends Step[]> = {
 	// State
 	// -------------------------------------------------------------------------
 
-	/** All defined steps. */
-	readonly all: Steps;
-	/** The current active step. */
-	readonly current: Steps[number];
+	/** Array of all steps with full information. This is the source of truth. */
+	readonly steps: StepInfo<Steps, Get.Id<Steps>>[];
+	/** The current active step (derived from steps[currentIndex]). */
+	readonly current: StepInfo<Steps, Get.Id<Steps>>;
 	/** Index of the current step. */
 	readonly currentIndex: number;
-	/** `true` if the current step is the last step. */
-	readonly isLast: boolean;
-	/** `true` if the current step is the first step. */
+	/** `true` if the current step is the first step (derived). */
 	readonly isFirst: boolean;
-	/** Metadata for all steps. */
-	readonly metadata: StepMetadata<Steps>;
-	/** Status of all steps. */
-	readonly statuses: StepStatuses<Steps>;
-	/** Progress percentage (0-100) based on completed steps. */
+	/** `true` if the current step is the last step (derived). */
+	readonly isLast: boolean;
+	/** Progress percentage (0-100) based on completed steps (derived). */
 	readonly progress: number;
-	/** Array of completed steps (status === "success"). */
-	readonly completedSteps: Steps[number][];
+	/** Array of completed steps (derived). */
+	readonly completedSteps: StepInfo<Steps, Get.Id<Steps>>[];
 
 	// -------------------------------------------------------------------------
 	// Navigation
@@ -119,19 +128,22 @@ export type StepperInstance<Steps extends Step[]> = {
 	/**
 	 * Navigate to the next step.
 	 * @throws Error if already on the last step.
+	 * @returns Promise that resolves when navigation completes.
 	 */
-	next: () => void;
+	next: () => Promise<void>;
 	/**
 	 * Navigate to the previous step.
 	 * @throws Error if already on the first step.
+	 * @returns Promise that resolves when navigation completes.
 	 */
-	prev: () => void;
+	prev: () => Promise<void>;
 	/**
 	 * Navigate to a specific step by ID.
 	 * @param id - The step ID to navigate to.
 	 * @throws Error if step ID is not found.
+	 * @returns Promise that resolves when navigation completes.
 	 */
-	goTo: (id: Get.Id<Steps>) => void;
+	goTo: (id: Get.Id<Steps>) => Promise<void>;
 	/**
 	 * Reset the stepper to its initial state.
 	 * @param options - Reset options.
@@ -146,64 +158,20 @@ export type StepperInstance<Steps extends Step[]> = {
 	}) => void;
 
 	// -------------------------------------------------------------------------
-	// Step Retrieval
+	// Step Access
 	// -------------------------------------------------------------------------
 
 	/**
-	 * Get a step by its ID with full type inference.
+	 * Get comprehensive information about a step by its ID.
 	 * @param id - The step ID.
-	 * @returns The step object.
+	 * @returns Step information including definition, status, metadata, and helper methods.
 	 */
-	get: <Id extends Get.Id<Steps>>(id: Id) => Get.StepById<Steps, Id>;
-
-	// -------------------------------------------------------------------------
-	// Status Management
-	// -------------------------------------------------------------------------
-
-	/**
-	 * Get the status of a specific step.
-	 * @param id - The step ID.
-	 * @returns The step's current status.
-	 */
-	getStatus: (id: Get.Id<Steps>) => StepStatus;
-	/**
-	 * Set the status of a specific step.
-	 * @param id - The step ID.
-	 * @param status - The new status.
-	 */
-	setStatus: (id: Get.Id<Steps>, status: StepStatus) => void;
-	/**
-	 * Check if a step is completed (status is "success").
-	 * @param id - The step ID.
-	 * @returns `true` if the step is completed.
-	 */
-	isCompleted: (id: Get.Id<Steps>) => boolean;
-	/**
-	 * Check if a step can be accessed (dependencies satisfied).
-	 * @param id - The step ID.
-	 * @returns `true` if the step can be accessed.
-	 */
-	canAccess: (id: Get.Id<Steps>) => boolean;
+	step: <Id extends Get.Id<Steps>>(id: Id) => StepInfo<Steps, Id>;
 
 	// -------------------------------------------------------------------------
 	// Metadata Management
 	// -------------------------------------------------------------------------
 
-	/**
-	 * Set metadata for a specific step with type safety.
-	 * @param id - The step ID.
-	 * @param values - The metadata values to set.
-	 */
-	setMetadata: <Id extends Get.Id<Steps>>(
-		id: Id,
-		values: StepMetadata<Steps>[Id],
-	) => void;
-	/**
-	 * Get metadata for a specific step with type inference.
-	 * @param id - The step ID.
-	 * @returns The step's metadata.
-	 */
-	getMetadata: <Id extends Get.Id<Steps>>(id: Id) => StepMetadata<Steps>[Id];
 	/**
 	 * Reset all metadata to initial values.
 	 * @param keepInitialMetadata - If `true`, keeps the initial metadata from config.
@@ -291,15 +259,35 @@ export type StepperInstance<Steps extends Step[]> = {
 	readonly history: HistoryEntry<Steps>[];
 
 	// -------------------------------------------------------------------------
-	// Async Initialization
+	// Initialization Status
 	// -------------------------------------------------------------------------
 
 	/**
-	 * Async initialization state.
-	 * Only present when `getInitialState` is configured.
-	 * Use this to handle loading/error states in your UI.
+	 * Stepper initialization status.
+	 * - "pending": Loading initial data (from initialData or persistence)
+	 * - "success": Stepper is ready to use
+	 * - "error": Initialization failed
 	 */
-	readonly asyncInit: AsyncInitState<Steps>;
+	readonly initStatus: StepperStatus;
+	/**
+	 * Error information if initStatus is "error".
+	 * `null` when initStatus is "pending" or "success".
+	 */
+	readonly error: StepperError | null;
+	/**
+	 * Retry initialization if initStatus is "error".
+	 */
+	retry: () => void;
+
+	// -------------------------------------------------------------------------
+	// Transition Status
+	// -------------------------------------------------------------------------
+
+	/**
+	 * `true` when a transition is in progress (e.g., during async callbacks like beforeNext, afterNext, etc.).
+	 * Useful for showing loading states during step transitions.
+	 */
+	readonly isTransitioning: boolean;
 
 	// -------------------------------------------------------------------------
 	// Persistence
@@ -329,6 +317,83 @@ export type UseStepperProps<Steps extends Step[]> = {
 };
 
 /**
+ * Type-safe primitives returned by defineStepper.
+ * These primitives are bound to the specific steps, providing full type safety.
+ */
+export type TypedStepperPrimitives<Steps extends Step[]> = {
+	Root: React.ForwardRefExoticComponent<
+		Omit<RootProps<Steps>, "stepper" | "stepperContext" | "children"> &
+			Omit<ScopedProps<Steps>, "children"> &
+			React.RefAttributes<HTMLDivElement> & {
+				orientation?: Orientation;
+				tracking?: boolean;
+				/**
+				 * Children can be a ReactNode or a function that receives the stepper instance.
+				 * The stepper is automatically obtained from the Scoped context (created internally).
+				 * Root internally uses Scoped, so you don't need to wrap it in Stepper.Provider or Stepper.Scoped.
+				 *
+				 * @example
+				 * ```tsx
+				 * <Stepper.Root>
+				 *   {({ stepper }) => (
+				 *     <Stepper.List>
+				 *       {stepper.steps.map((stepInfo) => (
+				 *         <Stepper.Item key={stepInfo.data.id} step={stepInfo.data.id}>
+				 *           <Stepper.Trigger>{stepInfo.data.title}</Stepper.Trigger>
+				 *         </Stepper.Item>
+				 *       ))}
+				 *     </Stepper.List>
+				 *   )}
+				 * </Stepper.Root>
+				 * ```
+				 */
+				children?:
+					| React.ReactNode
+					| ((props: { stepper: StepperInstance<Steps> }) => React.ReactNode);
+			}
+	>;
+	List: React.ForwardRefExoticComponent<
+		ListProps & React.RefAttributes<HTMLOListElement>
+	>;
+	Item: React.ForwardRefExoticComponent<
+		Omit<ItemProps<Steps>, "step"> &
+			React.RefAttributes<HTMLLIElement> & {
+				step: Get.Id<Steps>;
+			}
+	>;
+	Trigger: React.ForwardRefExoticComponent<
+		TriggerProps & React.RefAttributes<HTMLButtonElement>
+	>;
+	Indicator: React.ForwardRefExoticComponent<
+		IndicatorProps & React.RefAttributes<HTMLSpanElement>
+	>;
+	Separator: React.ForwardRefExoticComponent<
+		SeparatorProps & React.RefAttributes<HTMLHRElement>
+	>;
+	Title: React.ForwardRefExoticComponent<
+		TitleProps & React.RefAttributes<HTMLSpanElement>
+	>;
+	Description: React.ForwardRefExoticComponent<
+		DescriptionProps & React.RefAttributes<HTMLSpanElement>
+	>;
+	Content: React.ForwardRefExoticComponent<
+		Omit<ContentProps<Steps>, "step"> &
+			React.RefAttributes<HTMLDivElement> & {
+				step?: Get.Id<Steps>;
+			}
+	>;
+	Actions: React.ForwardRefExoticComponent<
+		ActionsProps & React.RefAttributes<HTMLDivElement>
+	>;
+	Prev: React.ForwardRefExoticComponent<
+		PrevProps & React.RefAttributes<HTMLButtonElement>
+	>;
+	Next: React.ForwardRefExoticComponent<
+		NextProps & React.RefAttributes<HTMLButtonElement>
+	>;
+};
+
+/**
  * The object returned by defineStepper() (before or after .config()).
  */
 export type StepperDefinition<Steps extends Step[]> = {
@@ -349,6 +414,26 @@ export type StepperDefinition<Steps extends Step[]> = {
 	 * Can be used standalone or within a Scoped provider.
 	 */
 	useStepper: (props?: UseStepperProps<Steps>) => StepperInstance<Steps>;
+	/**
+	 * Type-safe primitives bound to these specific steps.
+	 * Use these components for full type safety and autocomplete.
+	 *
+	 * @example
+	 * ```tsx
+	 * const { Stepper } = defineStepper(
+	 *   { id: "shipping", title: "Shipping" },
+	 *   { id: "payment", title: "Payment" }
+	 * );
+	 *
+	 * <Stepper.Root stepper={stepper}>
+	 *   <Stepper.List>
+	 *     <Stepper.Item step="shipping">...</Stepper.Item>
+	 *     <Stepper.Item step="payment">...</Stepper.Item>
+	 *   </Stepper.List>
+	 * </Stepper.Root>
+	 * ```
+	 */
+	Stepper: TypedStepperPrimitives<Steps>;
 };
 
 /**
@@ -380,13 +465,13 @@ export type StepperConfigOptions<Steps extends Step[]> = {
 	 * Async function to fetch initial state.
 	 * Useful for SSR, resuming from server state, or fetching saved progress.
 	 *
-	 * The returned state is merged with sync `initialStep`/`initialMetadata`/`initialStatuses`,
+	 * The returned data is merged with sync `initialStep`/`initialMetadata`/`initialStatuses`,
 	 * with async values taking precedence.
 	 *
 	 * @example
 	 * ```ts
 	 * .config({
-	 *   getInitialState: async () => {
+	 *   initialData: async () => {
 	 *     const savedProgress = await api.getSavedProgress();
 	 *     return {
 	 *       step: savedProgress.currentStep,
@@ -397,7 +482,7 @@ export type StepperConfigOptions<Steps extends Step[]> = {
 	 * })
 	 * ```
 	 */
-	getInitialState?: GetInitialStateFn<Steps>;
+	initialData?: InitialDataFn<Steps>;
 	/**
 	 * Callback executed before any transition.
 	 * Return `false` to prevent the transition.
@@ -447,12 +532,3 @@ export type StepperBuilder<Steps extends Step[]> = StepperDefinition<Steps> & {
 	 */
 	config: (options: StepperConfigOptions<Steps>) => StepperDefinition<Steps>;
 };
-
-// =============================================================================
-// LEGACY TYPES (for backwards compatibility)
-// =============================================================================
-
-/**
- * @deprecated Use StepperDefinition instead
- */
-export type StepperReturn<Steps extends Step[]> = StepperDefinition<Steps>;

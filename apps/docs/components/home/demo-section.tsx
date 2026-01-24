@@ -108,11 +108,11 @@ const DemoContent = () => {
 				<StepperHeader methods={methods} isComplete={isComplete} />
 				<div className="p-8">
 					<form onSubmit={handleSubmit}>
-						<AnimatePresence mode="wait" custom={methods.current.id}>
+						<AnimatePresence mode="wait" custom={methods.current.data.id}>
 							{methods.when("personal-info", () => (
 								<motion.div
 									key="step1"
-									custom={methods.current.id}
+									custom={methods.current.data.id}
 									variants={slideVariants}
 									initial="enter"
 									animate="center"
@@ -128,7 +128,7 @@ const DemoContent = () => {
 							{methods.when("address", () => (
 								<motion.div
 									key="step2"
-									custom={methods.current.id}
+									custom={methods.current.data.id}
 									variants={slideVariants}
 									initial="enter"
 									animate="center"
@@ -144,7 +144,7 @@ const DemoContent = () => {
 							{methods.when("payment", () => (
 								<motion.div
 									key="step3"
-									custom={methods.current.id}
+									custom={methods.current.data.id}
 									variants={slideVariants}
 									initial="enter"
 									animate="center"
@@ -160,7 +160,7 @@ const DemoContent = () => {
 							{methods.when("success", () => (
 								<motion.div
 									key="step4"
-									custom={methods.current.id}
+									custom={methods.current.data.id}
 									variants={slideVariants}
 									initial="enter"
 									animate="center"
@@ -278,7 +278,7 @@ const StepperHeader = ({
 	methods: ReturnType<typeof stepper.useStepper>;
 	isComplete: boolean;
 }) => {
-	const currentIndex = methods.all.findIndex((step: any) => step.id === methods.current.id);
+	const currentIndex = methods.steps.findIndex((step: any) => step.data.id === methods.current.data.id);
 
 	return (
 		<nav className="bg-gray-4/30 p-8">
@@ -289,20 +289,20 @@ const StepperHeader = ({
 						initial={{ width: "0%" }}
 						animate={{
 							width:
-								methods.current.id === methods.all[methods.all.length - 1].id || isComplete
+								methods.current.data.id === methods.steps[methods.steps.length - 1].data.id || isComplete
 									? "100%"
-									: `${(currentIndex / (methods.all.length - 1)) * 100}%`,
+									: `${(currentIndex / (methods.steps.length - 1)) * 100}%`,
 						}}
 						transition={{ duration: 0.5 }}
 					/>
 				</div>
-				{methods.all.map((step: any, index: number) => {
-					const isActive = step.id === methods.current.id;
+				{methods.steps.map((step, index: number) => {
+					const isActive = step.data.id === methods.current.data.id;
 					return (
 						<motion.li
-							key={step.id}
+							key={step.data.id}
 							className="flex flex-col items-center relative flex-shrink-0 z-10"
-							onClick={() => methods.goTo(step.id)}
+							onClick={() => methods.goTo(step.data.id)}
 							whileHover={!isComplete ? { scale: 1.05 } : {}}
 							whileTap={!isComplete ? { scale: 0.95 } : {}}
 						>
@@ -333,7 +333,7 @@ const StepperHeader = ({
 										<CheckCircle className="size-5" />
 									</motion.div>
 								) : (
-									<step.icon className="size-5" />
+									<step.data.icon className="size-5" />
 								)}
 							</motion.div>
 							<motion.span
@@ -345,7 +345,7 @@ const StepperHeader = ({
 								animate={{ opacity: 1 }}
 								transition={{ delay: 0.2 + 0.1 * index }}
 							>
-								{step.label}
+								{step.data.label}
 							</motion.span>
 						</motion.li>
 					);

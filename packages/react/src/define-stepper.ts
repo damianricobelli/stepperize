@@ -2,7 +2,6 @@ import type {
 	Get,
 	HistoryEntry,
 	InitialState,
-	PersistConfig,
 	PersistManager,
 	Step,
 	StepMetadata,
@@ -10,15 +9,14 @@ import type {
 	StepStatuses,
 	TransitionContext,
 } from "@stepperize/core";
+import type { StepInfo } from "./types";
 import {
 	areDependenciesSatisfied,
-	calculateProgress,
 	createPersistedState,
 	createPersistManager,
 	findNextValidStepIndex,
 	generateCommonStepperUseFns,
 	generateStepperUtils,
-	getCompletedSteps,
 	getInitialMetadata,
 	getInitialStatuses,
 	getInitialStepIndex,
@@ -26,14 +24,29 @@ import {
 	persistedStateToInitialState,
 } from "@stepperize/core";
 import * as React from "react";
+import {
+	Actions,
+	Content,
+	Description,
+	Indicator,
+	Item,
+	List,
+	Next,
+	Prev,
+	Root,
+	Separator,
+	Title,
+	Trigger,
+} from "./primitives";
 import type {
-	AsyncInitState,
-	AsyncInitStatus,
 	ScopedProps,
 	StepperBuilder,
 	StepperConfigOptions,
 	StepperDefinition,
+	StepperError,
 	StepperInstance,
+	StepperStatus,
+	TypedStepperPrimitives,
 	UseStepperProps,
 } from "./types";
 
@@ -109,7 +122,7 @@ function createStepperDefinition<Steps extends Step[]>(
 				initialMetadata: { ...configOptions.initialMetadata, ...props.initialMetadata },
 				initialStatuses: { ...configOptions.initialStatuses, ...props.initialStatuses },
 				mode: configOptions.mode ?? "free",
-				getInitialState: configOptions.getInitialState,
+				initialData: configOptions.initialData,
 				persist: configOptions.persist,
 				onBeforeTransition: configOptions.onBeforeTransition,
 				onAfterTransition: configOptions.onAfterTransition,
@@ -136,23 +149,20 @@ function createStepperDefinition<Steps extends Step[]>(
 		const [isHydrated, setIsHydrated] = React.useState(!persistManager);
 
 		// ==========================================================================
-		// ASYNC INITIALIZATION STATE
+		// STATUS STATE
 		// ==========================================================================
 
-		const hasAsyncInit = Boolean(mergedConfig.getInitialState);
+		const hasInitialData = Boolean(mergedConfig.initialData);
 		const hasPersist = Boolean(persistManager);
 
-		// Start as pending if we have async init OR persistence to load
-		const [asyncInitStatus, setAsyncInitStatus] = React.useState<AsyncInitStatus>(
-			hasAsyncInit || hasPersist ? "pending" : "success",
+		// Start as pending if we have initialData OR persistence to load
+		const [status, setStatus] = React.useState<StepperStatus>(
+			hasInitialData || hasPersist ? "pending" : "success",
 		);
-		const [asyncInitError, setAsyncInitError] = React.useState<{
-			error: unknown;
-			timestamp: number;
-		} | null>(null);
+		const [error, setError] = React.useState<StepperError | null>(null);
 
-		// Track if we need to re-run async init (for retry)
-		const [asyncInitTrigger, setAsyncInitTrigger] = React.useState(0);
+		// Track if we need to re-run initialization (for retry)
+		const [initTrigger, setInitTrigger] = React.useState(0);
 
 		// State
 		const [currentIndex, setCurrentIndex] = React.useState(initialStepIndex);
@@ -166,6 +176,8 @@ function createStepperDefinition<Steps extends Step[]>(
 			{ step: steps[initialStepIndex], index: initialStepIndex, timestamp: Date.now() },
 		]);
 		const [historyIndex, setHistoryIndex] = React.useState(0);
+		const [isTransitioning, setIsTransitioning] = React.useState(false);
+		const transitioningRef = React.useRef(0);
 
 		// ==========================================================================
 		// APPLY INITIAL STATE HELPER
@@ -209,12 +221,12 @@ function createStepperDefinition<Steps extends Step[]>(
 		// ==========================================================================
 
 		React.useEffect(() => {
-			// If no persistence and no async init, nothing to do
-			if (!persistManager && !mergedConfig.getInitialState) return;
+			// If no persistence and no initialData, nothing to do
+			if (!persistManager && !mergedConfig.initialData) return;
 
 			let isCancelled = false;
-			setAsyncInitStatus("pending");
-			setAsyncInitError(null);
+			setStatus("pending");
+			setError(null);
 
 			const runInitialization = async () => {
 				try {
@@ -228,9 +240,9 @@ function createStepperDefinition<Steps extends Step[]>(
 							applyInitialState(initialState);
 							setIsHydrated(true);
 
-							// If no async init, we're done
-							if (!mergedConfig.getInitialState) {
-								setAsyncInitStatus("success");
+							// If no initialData, we're done
+							if (!mergedConfig.initialData) {
+								setStatus("success");
 								return;
 							}
 						} else {
@@ -238,25 +250,25 @@ function createStepperDefinition<Steps extends Step[]>(
 						}
 					}
 
-					// Step 2: Run async init if configured
-					// Note: Async init takes precedence over persisted state
-					if (mergedConfig.getInitialState) {
-						const result = await mergedConfig.getInitialState();
+					// Step 2: Run initialData if configured
+					// Note: initialData takes precedence over persisted state
+					if (mergedConfig.initialData) {
+						const result = await mergedConfig.initialData();
 
 						if (isCancelled) return;
 
-						// Apply async init result (takes precedence)
+						// Apply initialData result (takes precedence)
 						applyInitialState(result);
 					}
 
 					if (!isCancelled) {
-						setAsyncInitStatus("success");
+						setStatus("success");
 					}
-				} catch (error) {
+				} catch (err) {
 					if (isCancelled) return;
 
-					setAsyncInitError({ error, timestamp: Date.now() });
-					setAsyncInitStatus("error");
+					setError({ error: err, timestamp: Date.now() });
+					setStatus("error");
 					setIsHydrated(true); // Mark as hydrated even on error
 				}
 			};
@@ -266,7 +278,7 @@ function createStepperDefinition<Steps extends Step[]>(
 			return () => {
 				isCancelled = true;
 			};
-		}, [asyncInitTrigger, persistManager, mergedConfig.getInitialState, applyInitialState]);
+		}, [initTrigger, persistManager, mergedConfig.initialData, applyInitialState]);
 
 		// ==========================================================================
 		// AUTO-SAVE EFFECT (Persistence)
@@ -279,36 +291,23 @@ function createStepperDefinition<Steps extends Step[]>(
 			// Don't save until we've hydrated (to avoid overwriting with initial state)
 			if (!persistManager || !isHydrated) return;
 
-			// Don't save while async init is pending
-			if (asyncInitStatus === "pending") return;
+			// Don't save while pending
+			if (status === "pending") return;
 
 			// Save state
 			const stateToSave = createPersistedState<Steps>(currentStepId, metadata, statuses);
 			persistManager.save(stateToSave);
-		}, [persistManager, isHydrated, asyncInitStatus, currentStepId, metadata, statuses]);
+		}, [persistManager, isHydrated, status, currentStepId, metadata, statuses]);
 
 		// ==========================================================================
-		// RETRY & ASYNC INIT STATE
+		// RETRY FUNCTION
 		// ==========================================================================
 
-		// Retry function for async init
-		const retryAsyncInit = React.useCallback(() => {
-			if (!mergedConfig.getInitialState && !persistManager) return;
-			setAsyncInitTrigger((prev) => prev + 1);
-		}, [mergedConfig.getInitialState, persistManager]);
-
-		// Build async init state object
-		const asyncInitState = React.useMemo<AsyncInitState<Steps>>(
-			() => ({
-				status: asyncInitStatus,
-				isLoading: asyncInitStatus === "pending",
-				isSuccess: asyncInitStatus === "success",
-				isError: asyncInitStatus === "error",
-				error: asyncInitError,
-				retry: retryAsyncInit,
-			}),
-			[asyncInitStatus, asyncInitError, retryAsyncInit],
-		);
+		// Retry function for initialization
+		const retry = React.useCallback(() => {
+			if (!mergedConfig.initialData && !persistManager) return;
+			setInitTrigger((prev) => prev + 1);
+		}, [mergedConfig.initialData, persistManager]);
 
 		// ==========================================================================
 		// CLEAR PERSISTENCE HELPER
@@ -320,12 +319,63 @@ function createStepperDefinition<Steps extends Step[]>(
 			}
 		}, [persistManager]);
 
-		// Derived state
-		const current = steps[currentIndex];
-		const isLast = currentIndex === steps.length - 1;
+		// Helper to create StepInfo for any step
+		const createStepInfo = React.useCallback(
+			<Id extends Get.Id<Steps>>(id: Id): StepInfo<Steps, Id> => {
+				const step = steps.find((s) => s.id === id);
+				if (!step) {
+					throw new Error(`Step with id "${String(id)}" not found.`);
+				}
+				const stepStatus = statuses[id];
+				const stepMetadata = metadata[id];
+				return {
+					data: step as Get.StepById<Steps, Id>,
+					status: stepStatus,
+					metadata: stepMetadata,
+					isCompleted: isStepCompleted(id, statuses),
+					canAccess: areDependenciesSatisfied(step, statuses),
+					setStatus: (newStatus: StepStatus) => {
+						setStatuses((prev) => {
+							if (prev[id] === newStatus) return prev;
+							return { ...prev, [id]: newStatus };
+						});
+					},
+					setMetadata: (values: StepMetadata<Steps>[Id]) => {
+						setMetadata((prev) => {
+							if (prev[id as keyof typeof prev] === values) return prev;
+							return { ...prev, [id]: values };
+						});
+					},
+				};
+			},
+			[steps, statuses, metadata],
+		);
+
+		// Create array of all StepInfo - this is the source of truth
+		const stepsArray = React.useMemo<StepInfo<Steps, Get.Id<Steps>>[]>(() => {
+			return steps.map((step) => createStepInfo(step.id as Get.Id<Steps>));
+		}, [steps, createStepInfo]);
+
+		// Derived state - all computed from stepsArray
+		const current = stepsArray[currentIndex];
 		const isFirst = currentIndex === 0;
-		const progress = calculateProgress(statuses, steps.length);
-		const completedSteps = getCompletedSteps(steps, statuses);
+		const isLast = currentIndex === steps.length - 1;
+		const progress = React.useMemo(() => {
+			const completed = stepsArray.filter((s) => s.isCompleted).length;
+			return steps.length > 0 ? Math.round((completed / steps.length) * 100) : 0;
+		}, [stepsArray, steps.length]);
+		const completedSteps = React.useMemo(() => {
+			return stepsArray.filter((s) => s.isCompleted);
+		}, [stepsArray]);
+
+		// Step lookup map for O(1) access
+		const stepsMap = React.useMemo(() => {
+			const map = new Map<Get.Id<Steps>, StepInfo<Steps, Get.Id<Steps>>>();
+			stepsArray.forEach((stepInfo) => {
+				map.set(stepInfo.data.id as Get.Id<Steps>, stepInfo);
+			});
+			return map;
+		}, [stepsArray]);
 
 		// Create transition context for callbacks
 		const createContext = React.useCallback(
@@ -347,8 +397,9 @@ function createStepperDefinition<Steps extends Step[]>(
 				// Validate bounds
 				if (targetIndex < 0 || targetIndex >= steps.length) {
 					const errorDirection = targetIndex < 0 ? "prev" : "next";
+					const currentStep = steps[currentIndex];
 					throw new Error(
-						`Cannot navigate ${errorDirection} from step "${current.id}": already at the ${targetIndex < 0 ? "first" : "last"} step`,
+						`Cannot navigate ${errorDirection} from step "${currentStep.id}": already at the ${targetIndex < 0 ? "first" : "last"} step`,
 					);
 				}
 
@@ -378,48 +429,61 @@ function createStepperDefinition<Steps extends Step[]>(
 					);
 				}
 
-				// Execute onBeforeTransition callback
-				if (mergedConfig.onBeforeTransition) {
-					const ctx = createContext(targetIndex, direction);
-					const shouldProceed = await mergedConfig.onBeforeTransition(ctx);
-					if (shouldProceed === false) {
-						return; // Navigation cancelled
+				transitioningRef.current += 1;
+				if (transitioningRef.current === 1) {
+					setIsTransitioning(true);
+				}
+				try {
+					// Execute onBeforeTransition callback
+					if (mergedConfig.onBeforeTransition) {
+						const ctx = createContext(targetIndex, direction);
+						const shouldProceed = await mergedConfig.onBeforeTransition(ctx);
+						if (shouldProceed === false) {
+							transitioningRef.current -= 1;
+							if (transitioningRef.current === 0) {
+								setIsTransitioning(false);
+							}
+							return; // Navigation cancelled
+						}
+					}
+
+					// Update state
+					setCurrentIndex(targetIndex);
+
+					// Update history
+					setHistory((prev) => {
+						const newHistory = [
+							...prev.slice(0, historyIndex + 1),
+							{ step: steps[targetIndex], index: targetIndex, timestamp: Date.now() },
+						];
+						return newHistory;
+					});
+					setHistoryIndex((prev) => prev + 1);
+
+					// Execute onAfterTransition callback
+					if (mergedConfig.onAfterTransition) {
+						const ctx = createContext(targetIndex, direction);
+						await mergedConfig.onAfterTransition(ctx);
+					}
+				} finally {
+					transitioningRef.current -= 1;
+					if (transitioningRef.current === 0) {
+						setIsTransitioning(false);
 					}
 				}
-
-				// Update state
-				setCurrentIndex(targetIndex);
-
-				// Update history
-				setHistory((prev) => {
-					const newHistory = [
-						...prev.slice(0, historyIndex + 1),
-						{ step: steps[targetIndex], index: targetIndex, timestamp: Date.now() },
-					];
-					return newHistory;
-				});
-				setHistoryIndex((prev) => prev + 1);
-
-				// Execute onAfterTransition callback
-				if (mergedConfig.onAfterTransition) {
-					const ctx = createContext(targetIndex, direction);
-					await mergedConfig.onAfterTransition(ctx);
-				}
 			},
-			[currentIndex, statuses, historyIndex, createContext, mergedConfig, current.id],
+			[currentIndex, statuses, historyIndex, createContext, mergedConfig, currentStepId],
 		);
 
 		// Build the stepper instance
 		const stepper = React.useMemo<StepperInstance<Steps>>(() => {
 			return {
-				// State
-				all: steps,
+				// State - steps array is the source of truth
+				steps: stepsArray,
 				current,
 				currentIndex,
-				isLast,
 				isFirst,
-				metadata,
-				statuses,
+				isLast,
 				progress,
 				completedSteps,
 
@@ -427,17 +491,17 @@ function createStepperDefinition<Steps extends Step[]>(
 				next() {
 					const nextIndex = findNextValidStepIndex(steps, currentIndex, 1, metadata);
 					if (nextIndex === -1) {
-						navigateTo(currentIndex + 1, "next"); // Will throw appropriate error
+						return navigateTo(currentIndex + 1, "next"); // Will throw appropriate error
 					} else {
-						navigateTo(nextIndex, "next");
+						return navigateTo(nextIndex, "next");
 					}
 				},
 				prev() {
 					const prevIndex = findNextValidStepIndex(steps, currentIndex, -1, metadata);
 					if (prevIndex === -1) {
-						navigateTo(currentIndex - 1, "prev"); // Will throw appropriate error
+						return navigateTo(currentIndex - 1, "prev"); // Will throw appropriate error
 					} else {
-						navigateTo(prevIndex, "prev");
+						return navigateTo(prevIndex, "prev");
 					}
 				},
 				goTo(id) {
@@ -445,7 +509,7 @@ function createStepperDefinition<Steps extends Step[]>(
 					if (index === -1) {
 						throw new Error(`Step with id "${String(id)}" not found.`);
 					}
-					navigateTo(index, "goTo");
+					return navigateTo(index, "goTo");
 				},
 				reset(options = {}) {
 					const newIndex = initialStepIndex;
@@ -467,44 +531,12 @@ function createStepperDefinition<Steps extends Step[]>(
 					setHistoryIndex(0);
 				},
 
-				// Step retrieval
-				get(id) {
-					const step = steps.find((s) => s.id === id);
-					if (!step) {
-						throw new Error(`Step with id "${String(id)}" not found.`);
-					}
-					return step as Get.StepById<Steps, typeof id>;
-				},
-
-				// Status management
-				getStatus(id) {
-					return statuses[id];
-				},
-				setStatus(id, status) {
-					setStatuses((prev) => {
-						if (prev[id] === status) return prev;
-						return { ...prev, [id]: status };
-					});
-				},
-				isCompleted(id) {
-					return isStepCompleted(id, statuses);
-				},
-				canAccess(id) {
-					const step = steps.find((s) => s.id === id);
-					if (!step) return false;
-					return areDependenciesSatisfied(step, statuses);
+				// Step access
+				step: <Id extends Get.Id<Steps>>(id: Id) => {
+					return createStepInfo(id);
 				},
 
 				// Metadata management
-				setMetadata(id, values) {
-					setMetadata((prev) => {
-						if (prev[id as keyof typeof prev] === values) return prev;
-						return { ...prev, [id]: values };
-					});
-				},
-				getMetadata<Id extends Get.Id<Steps>>(id: Id): StepMetadata<Steps>[Id] {
-					return metadata[id] as StepMetadata<Steps>[Id];
-				},
 				resetMetadata(keepInitialMetadata) {
 					setMetadata(
 						getInitialMetadata(steps, keepInitialMetadata ? mergedConfig.initialMetadata : undefined),
@@ -513,38 +545,104 @@ function createStepperDefinition<Steps extends Step[]>(
 
 				// Transition callbacks
 				async beforeNext(callback) {
-					const shouldProceed = await callback();
-					if (shouldProceed !== false) {
-						this.next();
+					transitioningRef.current += 1;
+					if (transitioningRef.current === 1) {
+						setIsTransitioning(true);
+					}
+					try {
+						const shouldProceed = await callback();
+						if (shouldProceed !== false) {
+							await this.next();
+						}
+					} finally {
+						transitioningRef.current -= 1;
+						if (transitioningRef.current === 0) {
+							setIsTransitioning(false);
+						}
 					}
 				},
 				async afterNext(callback) {
-					this.next();
-					await callback();
+					transitioningRef.current += 1;
+					if (transitioningRef.current === 1) {
+						setIsTransitioning(true);
+					}
+					try {
+						await this.next();
+						await callback();
+					} finally {
+						transitioningRef.current -= 1;
+						if (transitioningRef.current === 0) {
+							setIsTransitioning(false);
+						}
+					}
 				},
 				async beforePrev(callback) {
-					const shouldProceed = await callback();
-					if (shouldProceed !== false) {
-						this.prev();
+					transitioningRef.current += 1;
+					if (transitioningRef.current === 1) {
+						setIsTransitioning(true);
+					}
+					try {
+						const shouldProceed = await callback();
+						if (shouldProceed !== false) {
+							await this.prev();
+						}
+					} finally {
+						transitioningRef.current -= 1;
+						if (transitioningRef.current === 0) {
+							setIsTransitioning(false);
+						}
 					}
 				},
 				async afterPrev(callback) {
-					this.prev();
-					await callback();
+					transitioningRef.current += 1;
+					if (transitioningRef.current === 1) {
+						setIsTransitioning(true);
+					}
+					try {
+						await this.prev();
+						await callback();
+					} finally {
+						transitioningRef.current -= 1;
+						if (transitioningRef.current === 0) {
+							setIsTransitioning(false);
+						}
+					}
 				},
 				async beforeGoTo(id, callback) {
-					const shouldProceed = await callback();
-					if (shouldProceed !== false) {
-						this.goTo(id);
+					transitioningRef.current += 1;
+					if (transitioningRef.current === 1) {
+						setIsTransitioning(true);
+					}
+					try {
+						const shouldProceed = await callback();
+						if (shouldProceed !== false) {
+							await this.goTo(id);
+						}
+					} finally {
+						transitioningRef.current -= 1;
+						if (transitioningRef.current === 0) {
+							setIsTransitioning(false);
+						}
 					}
 				},
 				async afterGoTo(id, callback) {
-					this.goTo(id);
-					await callback();
+					transitioningRef.current += 1;
+					if (transitioningRef.current === 1) {
+						setIsTransitioning(true);
+					}
+					try {
+						await this.goTo(id);
+						await callback();
+					} finally {
+						transitioningRef.current -= 1;
+						if (transitioningRef.current === 0) {
+							setIsTransitioning(false);
+						}
+					}
 				},
 
 				// Conditional rendering
-				...generateCommonStepperUseFns(steps, current, currentIndex),
+				...generateCommonStepperUseFns(steps, current.data, currentIndex),
 
 				// History
 				canUndo: historyIndex > 0,
@@ -567,19 +665,23 @@ function createStepperDefinition<Steps extends Step[]>(
 				},
 				history,
 
-				// Async initialization
-				asyncInit: asyncInitState,
+				// Initialization Status
+				initStatus: status,
+				error,
+				retry,
+
+				// Transition Status
+				isTransitioning,
 
 				// Persistence
 				clearPersistedState,
 			};
 		}, [
+			stepsArray,
 			current,
 			currentIndex,
-			isLast,
 			isFirst,
-			metadata,
-			statuses,
+			isLast,
 			progress,
 			completedSteps,
 			history,
@@ -588,7 +690,11 @@ function createStepperDefinition<Steps extends Step[]>(
 			initialStepIndex,
 			mergedConfig.initialMetadata,
 			mergedConfig.initialStatuses,
-			asyncInitState,
+			status,
+			error,
+			retry,
+			isTransitioning,
+			stepsMap,
 		]);
 
 		return stepper;
@@ -625,11 +731,132 @@ function createStepperDefinition<Steps extends Step[]>(
 		return React.createElement(Context.Provider, { value: stepper }, children);
 	}
 
+	// ==========================================================================
+	// TYPED PRIMITIVES
+	// ==========================================================================
+
+	/**
+	 * Create type-safe primitives bound to this specific stepper definition.
+	 */
+	function createTypedPrimitives(): TypedStepperPrimitives<Steps> {
+		// Root that internally uses Scoped (like Provider custom)
+		const TypedRoot = React.forwardRef<
+			HTMLDivElement,
+			Omit<React.ComponentPropsWithoutRef<typeof Root>, "stepper" | "stepperContext" | "children"> &
+				Omit<ScopedProps<Steps>, "children"> & {
+					orientation?: "horizontal" | "vertical";
+					tracking?: boolean;
+					children?:
+						| React.ReactNode
+						| ((props: { stepper: StepperInstance<Steps> }) => React.ReactNode);
+				}
+		>((props, ref) => {
+			const {
+				initialStep,
+				initialMetadata,
+				initialStatuses,
+				orientation,
+				tracking,
+				children,
+				...rootProps
+			} = props;
+
+			// Handle children as function - will get stepper from Scoped context
+			const RootContent = () => {
+				const stepper = useStepper();
+				const resolvedChildren =
+					typeof children === "function" ? children({ stepper }) : children;
+
+				return React.createElement(Root, {
+					...rootProps,
+					children: resolvedChildren,
+					orientation,
+					tracking,
+					ref,
+				});
+			};
+
+			// Internally use Scoped, just like Provider custom
+			return React.createElement(Scoped, {
+				initialStep,
+				initialMetadata,
+				initialStatuses,
+				children: React.createElement(RootContent),
+			});
+		});
+		TypedRoot.displayName = "Stepper.Root";
+
+		// Item with typed step prop
+		const TypedItem = React.forwardRef<
+			HTMLLIElement,
+			Omit<React.ComponentPropsWithoutRef<typeof Item<Steps>>, "step"> & {
+				step: Get.Id<Steps>;
+			}
+		>((props, ref) => {
+			return React.createElement(Item, { ...props, ref });
+		});
+		TypedItem.displayName = "Stepper.Item";
+
+		// Content with typed step prop
+		const TypedContent = React.forwardRef<
+			HTMLDivElement,
+			Omit<React.ComponentPropsWithoutRef<typeof Content<Steps>>, "step"> & {
+				step?: Get.Id<Steps>;
+			}
+		>((props, ref) => {
+			return React.createElement(Content, { ...props, ref });
+		});
+		TypedContent.displayName = "Stepper.Content";
+
+		return {
+			Root: TypedRoot,
+			List: List as React.ForwardRefExoticComponent<
+				React.ComponentPropsWithoutRef<typeof List> &
+					React.RefAttributes<HTMLOListElement>
+			>,
+			Item: TypedItem,
+			Trigger: Trigger as React.ForwardRefExoticComponent<
+				React.ComponentPropsWithoutRef<typeof Trigger> &
+					React.RefAttributes<HTMLButtonElement>
+			>,
+			Indicator: Indicator as React.ForwardRefExoticComponent<
+				React.ComponentPropsWithoutRef<typeof Indicator> &
+					React.RefAttributes<HTMLSpanElement>
+			>,
+			Separator: Separator as React.ForwardRefExoticComponent<
+				React.ComponentPropsWithoutRef<typeof Separator> &
+					React.RefAttributes<HTMLHRElement>
+			>,
+			Title: Title as React.ForwardRefExoticComponent<
+				React.ComponentPropsWithoutRef<typeof Title> &
+					React.RefAttributes<HTMLSpanElement>
+			>,
+			Description: Description as React.ForwardRefExoticComponent<
+				React.ComponentPropsWithoutRef<typeof Description> &
+					React.RefAttributes<HTMLSpanElement>
+			>,
+			Content: TypedContent,
+			Actions: Actions as React.ForwardRefExoticComponent<
+				React.ComponentPropsWithoutRef<typeof Actions> &
+					React.RefAttributes<HTMLDivElement>
+			>,
+			Prev: Prev as React.ForwardRefExoticComponent<
+				React.ComponentPropsWithoutRef<typeof Prev> &
+					React.RefAttributes<HTMLButtonElement>
+			>,
+			Next: Next as React.ForwardRefExoticComponent<
+				React.ComponentPropsWithoutRef<typeof Next> &
+					React.RefAttributes<HTMLButtonElement>
+			>,
+		};
+	}
+
 	return {
 		steps,
 		utils,
 		Scoped,
 		useStepper,
+		Stepper: createTypedPrimitives(),
 	};
 }
 
@@ -638,11 +865,11 @@ function createStepperDefinition<Steps extends Step[]>(
 // =============================================================================
 
 /**
- * Type guard to check if async initialization is ready.
+ * Type guard to check if stepper is ready.
  * Use this to narrow the stepper type and ensure safe access.
  *
  * @param stepper - The stepper instance.
- * @returns `true` if async initialization is complete (success or no async init).
+ * @returns `true` if stepper status is "ready".
  *
  * @example
  * ```tsx
@@ -650,48 +877,21 @@ function createStepperDefinition<Steps extends Step[]>(
  *   const stepper = useStepper();
  *
  *   if (!isStepperReady(stepper)) {
- *     if (stepper.asyncInit.isError) {
- *       return <ErrorDisplay error={stepper.asyncInit.error} onRetry={stepper.asyncInit.retry} />;
+ *     if (stepper.initStatus === "error") {
+ *       return <ErrorDisplay error={stepper.error} onRetry={stepper.retry} />;
  *     }
  *     return <LoadingSpinner />;
  *   }
  *
- *   // Stepper is ready to use
- *   return <StepContent step={stepper.current} />;
+ *   // Stepper is ready (initStatus === "success")
+ *   return <StepContent step={stepper.current.step} />;
  * }
  * ```
  */
 export function isStepperReady<Steps extends Step[]>(
 	stepper: StepperInstance<Steps>,
 ): boolean {
-	return stepper.asyncInit.isSuccess;
-}
-
-/**
- * Hook that waits for async initialization to complete.
- * Returns a tuple with loading state and the stepper.
- *
- * @param stepper - The stepper instance.
- * @returns Tuple of [isReady, stepper].
- *
- * @example
- * ```tsx
- * function MyComponent() {
- *   const stepper = useStepper();
- *   const [isReady] = useWaitForAsyncInit(stepper);
- *
- *   if (!isReady) {
- *     return <LoadingSpinner />;
- *   }
- *
- *   return <StepContent step={stepper.current} />;
- * }
- * ```
- */
-export function useWaitForAsyncInit<Steps extends Step[]>(
-	stepper: StepperInstance<Steps>,
-): [isReady: boolean, stepper: StepperInstance<Steps>] {
-	return [stepper.asyncInit.isSuccess, stepper];
+	return stepper.initStatus === "success";
 }
 
 // =============================================================================
@@ -699,4 +899,4 @@ export function useWaitForAsyncInit<Steps extends Step[]>(
 // =============================================================================
 
 export type { StepperBuilder, StepperConfigOptions, StepperDefinition, StepperInstance };
-export type { AsyncInitState, AsyncInitStatus, GetInitialStateFn } from "./types";
+export type { InitialDataFn, StepperError, StepperStatus } from "./types";

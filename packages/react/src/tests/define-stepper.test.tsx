@@ -1,7 +1,7 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { createMemoryStorage } from "@stepperize/core";
-import { defineStepper, isStepperReady, useWaitForAsyncInit } from "../define-stepper";
+import { defineStepper, isStepperReady } from "../define-stepper";
 
 const steps = [
   { id: "first", label: "Step 1" },
@@ -15,7 +15,7 @@ describe("defineStepper", () => {
   it("initializes in the first step by default", () => {
     const { result } = renderHook(() => stepperDef.useStepper());
 
-    expect(result.current.current.id).toBe("first");
+    expect(result.current.current.data.id).toBe("first");
     expect(result.current.isFirst).toBe(true);
     expect(result.current.isLast).toBe(false);
   });
@@ -25,7 +25,7 @@ describe("defineStepper", () => {
       stepperDef.useStepper({ initialStep: "second" })
     );
 
-    expect(result.current.current.id).toBe("second");
+    expect(result.current.current.data.id).toBe("second");
   });
 
   it("advances with next()", () => {
@@ -33,7 +33,7 @@ describe("defineStepper", () => {
 
     act(() => result.current.next());
 
-    expect(result.current.current.id).toBe("second");
+    expect(result.current.current.data.id).toBe("second");
     expect(result.current.isFirst).toBe(false);
   });
 
@@ -44,7 +44,7 @@ describe("defineStepper", () => {
 
     act(() => result.current.prev());
 
-    expect(result.current.current.id).toBe("second");
+    expect(result.current.current.data.id).toBe("second");
   });
 
   it("goes to a specific step with goTo()", () => {
@@ -52,7 +52,7 @@ describe("defineStepper", () => {
 
     act(() => result.current.goTo("third"));
 
-    expect(result.current.current.id).toBe("third");
+    expect(result.current.current.data.id).toBe("third");
     expect(result.current.isLast).toBe(true);
   });
 
@@ -74,7 +74,7 @@ describe("defineStepper", () => {
       result.current.reset();
     });
 
-    expect(result.current.current.id).toBe("second");
+    expect(result.current.current.data.id).toBe("second");
   });
 
   it("handles metadata with set/get/reset", () => {
@@ -82,57 +82,57 @@ describe("defineStepper", () => {
       stepperDef.useStepper({ initialMetadata: { first: { foo: "bar" } } })
     );
 
-    expect(result.current.getMetadata("first")).toEqual({ foo: "bar" });
+    expect(result.current.step("first").metadata).toEqual({ foo: "bar" });
 
-    act(() => result.current.setMetadata("first", { foo: "baz" }));
+    act(() => result.current.step("first").setMetadata({ foo: "baz" }));
 
-    expect(result.current.getMetadata("first")).toEqual({ foo: "baz" });
+    expect(result.current.step("first").metadata).toEqual({ foo: "baz" });
 
     act(() => result.current.resetMetadata(true));
 
-    expect(result.current.getMetadata("first")).toEqual({ foo: "bar" });
+    expect(result.current.step("first").metadata).toEqual({ foo: "bar" });
   });
 
   it("executes callback in beforeNext and navigates if true", async () => {
     const { result } = renderHook(() => stepperDef.useStepper());
     const cb = vi.fn().mockReturnValue(true);
 
-    expect(result.current.current.id).toBe("first");
+    expect(result.current.current.data.id).toBe("first");
 
     await act(async () => {
       await result.current.beforeNext(cb);
     });
 
     expect(cb).toHaveBeenCalledTimes(1);
-    expect(result.current.current.id).toBe("second");
+    expect(result.current.current.data.id).toBe("second");
   });
 
   it("executes callback in beforeNext and does not navigate if false", async () => {
     const { result } = renderHook(() => stepperDef.useStepper());
     const cb = vi.fn().mockReturnValue(false);
 
-    expect(result.current.current.id).toBe("first");
+    expect(result.current.current.data.id).toBe("first");
 
     await act(async () => {
       await result.current.beforeNext(cb);
     });
 
     expect(cb).toHaveBeenCalledTimes(1);
-    expect(result.current.current.id).toBe("first"); // Did not navigate
+    expect(result.current.current.data.id).toBe("first"); // Did not navigate
   });
 
   it("executes callback in afterNext after navigating", async () => {
     const { result } = renderHook(() => stepperDef.useStepper());
     const cb = vi.fn();
 
-    expect(result.current.current.id).toBe("first");
+    expect(result.current.current.data.id).toBe("first");
 
     await act(async () => {
       await result.current.afterNext(cb);
     });
 
     expect(cb).toHaveBeenCalledTimes(1);
-    expect(result.current.current.id).toBe("second");
+    expect(result.current.current.data.id).toBe("second");
   });
 
   it("executes callback in beforePrev and navigates if true", async () => {
@@ -141,14 +141,14 @@ describe("defineStepper", () => {
     );
     const cb = vi.fn().mockReturnValue(true);
 
-    expect(result.current.current.id).toBe("second");
+    expect(result.current.current.data.id).toBe("second");
 
     await act(async () => {
       await result.current.beforePrev(cb);
     });
 
     expect(cb).toHaveBeenCalledTimes(1);
-    expect(result.current.current.id).toBe("first");
+    expect(result.current.current.data.id).toBe("first");
   });
 
   it("executes callback in afterPrev after navigating", async () => {
@@ -157,14 +157,14 @@ describe("defineStepper", () => {
     );
     const cb = vi.fn();
 
-    expect(result.current.current.id).toBe("second");
+    expect(result.current.current.data.id).toBe("second");
 
     await act(async () => {
       await result.current.afterPrev(cb);
     });
 
     expect(cb).toHaveBeenCalledTimes(1);
-    expect(result.current.current.id).toBe("first");
+    expect(result.current.current.data.id).toBe("first");
   });
 
   it("executes callbacks in beforeGoTo/afterGoTo", async () => {
@@ -181,7 +181,7 @@ describe("defineStepper", () => {
       await result.current.afterGoTo("third", cb);
     });
 
-    expect(result.current.current.id).toBe("third");
+    expect(result.current.current.data.id).toBe("third");
     expect(cb).toHaveBeenCalledTimes(2);
   });
 
@@ -201,7 +201,7 @@ describe("defineStepper", () => {
 
   it("get returns a step by id", () => {
     const { result } = renderHook(() => stepperDef.useStepper());
-    const step = result.current.get("second");
+    const step = result.current.step("second").data;
 
     expect(step).toEqual({ id: "second", label: "Step 2" });
   });
@@ -213,7 +213,7 @@ describe("defineStepper", () => {
 
     act(() => result.current.resetMetadata(false));
 
-    expect(result.current.getMetadata("first")).toBeNull();
+    expect(result.current.step("first").metadata).toBeNull();
   });
 
   it("Scoped provides context to the children", () => {
@@ -223,7 +223,7 @@ describe("defineStepper", () => {
       ),
     });
 
-    expect(result.current.current.id).toBe("third");
+    expect(result.current.current.data.id).toBe("third");
   });
 });
 
@@ -232,22 +232,20 @@ describe("defineStepper", () => {
 // =============================================================================
 
 describe("defineStepper - async initialization", () => {
-  it("starts with pending status when getInitialState is configured", () => {
+  it("starts with pending status when initialData is configured", () => {
     const asyncStepperDef = defineStepper(...steps).config({
-      getInitialState: async () => ({ step: "second" }),
+      initialData: async () => ({ step: "second" }),
     });
 
     const { result } = renderHook(() => asyncStepperDef.useStepper());
 
-    expect(result.current.asyncInit.status).toBe("pending");
-    expect(result.current.asyncInit.isLoading).toBe(true);
-    expect(result.current.asyncInit.isSuccess).toBe(false);
-    expect(result.current.asyncInit.isError).toBe(false);
+    expect(result.current.initStatus).toBe("pending");
+    expect(result.current.error).toBeNull();
   });
 
   it("resolves async initial step", async () => {
     const asyncStepperDef = defineStepper(...steps).config({
-      getInitialState: async () => {
+      initialData: async () => {
         await new Promise((resolve) => setTimeout(resolve, 10));
         return { step: "second" };
       },
@@ -256,21 +254,21 @@ describe("defineStepper - async initialization", () => {
     const { result } = renderHook(() => asyncStepperDef.useStepper());
 
     // Initially pending
-    expect(result.current.asyncInit.isLoading).toBe(true);
+    expect(result.current.initStatus).toBe("pending");
 
-    // Wait for async init to complete
+    // Wait for initialization to complete
     await waitFor(() => {
-      expect(result.current.asyncInit.isSuccess).toBe(true);
+      expect(result.current.initStatus).toBe("success");
     });
 
     // Step should be updated
-    expect(result.current.current.id).toBe("second");
+    expect(result.current.current.data.id).toBe("second");
   });
 
   it("merges async metadata with sync initial metadata", async () => {
     const asyncStepperDef = defineStepper(...steps).config({
       initialMetadata: { first: { syncValue: "sync" } },
-      getInitialState: async () => ({
+      initialData: async () => ({
         metadata: { second: { asyncValue: "async" } },
       }),
     });
@@ -278,18 +276,18 @@ describe("defineStepper - async initialization", () => {
     const { result } = renderHook(() => asyncStepperDef.useStepper());
 
     await waitFor(() => {
-      expect(result.current.asyncInit.isSuccess).toBe(true);
+      expect(result.current.initStatus).toBe("success");
     });
 
     // Both sync and async metadata should be present
-    expect(result.current.getMetadata("first")).toEqual({ syncValue: "sync" });
-    expect(result.current.getMetadata("second")).toEqual({ asyncValue: "async" });
+    expect(result.current.step("first").metadata).toEqual({ syncValue: "sync" });
+    expect(result.current.step("second").metadata).toEqual({ asyncValue: "async" });
   });
 
   it("async metadata takes precedence over sync metadata", async () => {
     const asyncStepperDef = defineStepper(...steps).config({
       initialMetadata: { first: { value: "sync" } },
-      getInitialState: async () => ({
+      initialData: async () => ({
         metadata: { first: { value: "async" } },
       }),
     });
@@ -297,17 +295,17 @@ describe("defineStepper - async initialization", () => {
     const { result } = renderHook(() => asyncStepperDef.useStepper());
 
     await waitFor(() => {
-      expect(result.current.asyncInit.isSuccess).toBe(true);
+      expect(result.current.initStatus).toBe("success");
     });
 
     // Async value should override sync value
-    expect(result.current.getMetadata("first")).toEqual({ value: "async" });
+    expect(result.current.step("first").metadata).toEqual({ value: "async" });
   });
 
   it("handles async initialization errors", async () => {
     const testError = new Error("Test error");
     const asyncStepperDef = defineStepper(...steps).config({
-      getInitialState: async () => {
+      initialData: async () => {
         throw testError;
       },
     });
@@ -315,18 +313,16 @@ describe("defineStepper - async initialization", () => {
     const { result } = renderHook(() => asyncStepperDef.useStepper());
 
     await waitFor(() => {
-      expect(result.current.asyncInit.isError).toBe(true);
+      expect(result.current.initStatus).toBe("error");
     });
 
-    expect(result.current.asyncInit.error?.error).toBe(testError);
-    expect(result.current.asyncInit.isLoading).toBe(false);
-    expect(result.current.asyncInit.isSuccess).toBe(false);
+    expect(result.current.error?.error).toBe(testError);
   });
 
   it("retry re-runs async initialization", async () => {
     let callCount = 0;
     const asyncStepperDef = defineStepper(...steps).config({
-      getInitialState: async () => {
+      initialData: async () => {
         callCount++;
         if (callCount === 1) {
           throw new Error("First attempt fails");
@@ -339,29 +335,29 @@ describe("defineStepper - async initialization", () => {
 
     // First attempt should fail
     await waitFor(() => {
-      expect(result.current.asyncInit.isError).toBe(true);
+      expect(result.current.initStatus).toBe("error");
     });
 
     expect(callCount).toBe(1);
 
     // Retry
     act(() => {
-      result.current.asyncInit.retry();
+      result.current.retry();
     });
 
     // Should succeed on retry
     await waitFor(() => {
-      expect(result.current.asyncInit.isSuccess).toBe(true);
+      expect(result.current.initStatus).toBe("success");
     });
 
     expect(callCount).toBe(2);
-    expect(result.current.current.id).toBe("third");
+    expect(result.current.current.data.id).toBe("third");
   });
 
   it("merges async statuses with sync initial statuses", async () => {
     const asyncStepperDef = defineStepper(...steps).config({
       initialStatuses: { first: "success" },
-      getInitialState: async () => ({
+      initialData: async () => ({
         statuses: { second: "success" },
       }),
     });
@@ -369,39 +365,38 @@ describe("defineStepper - async initialization", () => {
     const { result } = renderHook(() => asyncStepperDef.useStepper());
 
     await waitFor(() => {
-      expect(result.current.asyncInit.isSuccess).toBe(true);
+      expect(result.current.initStatus).toBe("success");
     });
 
     // Both sync and async statuses should be present
-    expect(result.current.getStatus("first")).toBe("success");
-    expect(result.current.getStatus("second")).toBe("success");
-    expect(result.current.getStatus("third")).toBe("idle");
+    expect(result.current.step("first").status).toBe("success");
+    expect(result.current.step("second").status).toBe("success");
+    expect(result.current.step("third").status).toBe("idle");
   });
 
-  it("supports synchronous getInitialState", async () => {
+  it("supports synchronous initialData", async () => {
     const asyncStepperDef = defineStepper(...steps).config({
-      getInitialState: () => ({ step: "second" }), // Sync function
+      initialData: () => ({ step: "second" }), // Sync function
     });
 
     const { result } = renderHook(() => asyncStepperDef.useStepper());
 
     await waitFor(() => {
-      expect(result.current.asyncInit.isSuccess).toBe(true);
+      expect(result.current.initStatus).toBe("success");
     });
 
-    expect(result.current.current.id).toBe("second");
+    expect(result.current.current.data.id).toBe("second");
   });
 
-  it("without getInitialState, asyncInit starts as success", () => {
+  it("without initialData, status starts as success", () => {
     const syncStepperDef = defineStepper(...steps).config({
       initialStep: "second",
     });
 
     const { result } = renderHook(() => syncStepperDef.useStepper());
 
-    expect(result.current.asyncInit.status).toBe("success");
-    expect(result.current.asyncInit.isSuccess).toBe(true);
-    expect(result.current.asyncInit.isLoading).toBe(false);
+    expect(result.current.initStatus).toBe("success");
+    expect(result.current.error).toBeNull();
   });
 });
 
@@ -410,9 +405,9 @@ describe("defineStepper - async initialization", () => {
 // =============================================================================
 
 describe("isStepperReady", () => {
-  it("returns true when async init is successful", async () => {
+  it("returns true when initialization is successful", async () => {
     const asyncStepperDef = defineStepper(...steps).config({
-      getInitialState: async () => ({ step: "second" }),
+      initialData: async () => ({ step: "second" }),
     });
 
     const { result } = renderHook(() => asyncStepperDef.useStepper());
@@ -425,50 +420,11 @@ describe("isStepperReady", () => {
     });
   });
 
-  it("returns true when no async init is configured", () => {
+  it("returns true when no initialData is configured", () => {
     const syncStepperDef = defineStepper(...steps);
     const { result } = renderHook(() => syncStepperDef.useStepper());
 
     expect(isStepperReady(result.current)).toBe(true);
-  });
-});
-
-describe("useWaitForAsyncInit", () => {
-  it("returns [false, stepper] while loading", () => {
-    const asyncStepperDef = defineStepper(...steps).config({
-      getInitialState: async () => {
-        await new Promise((resolve) => setTimeout(resolve, 100));
-        return { step: "second" };
-      },
-    });
-
-    const { result } = renderHook(() => {
-      const stepper = asyncStepperDef.useStepper();
-      return useWaitForAsyncInit(stepper);
-    });
-
-    const [isReady, stepper] = result.current;
-    expect(isReady).toBe(false);
-    expect(stepper).toBeDefined();
-  });
-
-  it("returns [true, stepper] when ready", async () => {
-    const asyncStepperDef = defineStepper(...steps).config({
-      getInitialState: async () => ({ step: "second" }),
-    });
-
-    const { result } = renderHook(() => {
-      const stepper = asyncStepperDef.useStepper();
-      return useWaitForAsyncInit(stepper);
-    });
-
-    await waitFor(() => {
-      const [isReady] = result.current;
-      expect(isReady).toBe(true);
-    });
-
-    const [, stepper] = result.current;
-    expect(stepper.current.id).toBe("second");
   });
 });
 
@@ -502,12 +458,12 @@ describe("defineStepper - persistence", () => {
 
     // Wait for hydration
     await waitFor(() => {
-      expect(result.current.asyncInit.isSuccess).toBe(true);
+      expect(result.current.initStatus).toBe("success");
     });
 
-    expect(result.current.current.id).toBe("second");
-    expect(result.current.getMetadata("first")).toEqual({ saved: true });
-    expect(result.current.getStatus("first")).toBe("success");
+    expect(result.current.current.data.id).toBe("second");
+    expect(result.current.step("first").metadata).toEqual({ saved: true });
+    expect(result.current.step("first").status).toBe("success");
   });
 
   it("auto-saves state changes to storage", async () => {
@@ -524,7 +480,7 @@ describe("defineStepper - persistence", () => {
 
     // Wait for hydration
     await waitFor(() => {
-      expect(result.current.asyncInit.isSuccess).toBe(true);
+      expect(result.current.initStatus).toBe("success");
     });
 
     // Navigate to second step
@@ -554,12 +510,12 @@ describe("defineStepper - persistence", () => {
     const { result } = renderHook(() => persistStepperDef.useStepper());
 
     await waitFor(() => {
-      expect(result.current.asyncInit.isSuccess).toBe(true);
+      expect(result.current.initStatus).toBe("success");
     });
 
     // Set metadata
     act(() => {
-      result.current.setMetadata("first", { name: "John" });
+      result.current.step("first").setMetadata({ name: "John" });
     });
 
     // Check storage was updated
@@ -583,12 +539,12 @@ describe("defineStepper - persistence", () => {
     const { result } = renderHook(() => persistStepperDef.useStepper());
 
     await waitFor(() => {
-      expect(result.current.asyncInit.isSuccess).toBe(true);
+      expect(result.current.initStatus).toBe("success");
     });
 
     // Set status
     act(() => {
-      result.current.setStatus("first", "success");
+      result.current.step("first").setStatus("success");
     });
 
     // Check storage was updated
@@ -624,7 +580,7 @@ describe("defineStepper - persistence", () => {
     const { result } = renderHook(() => persistStepperDef.useStepper());
 
     await waitFor(() => {
-      expect(result.current.asyncInit.isSuccess).toBe(true);
+      expect(result.current.initStatus).toBe("success");
     });
 
     // Reset with clearPersisted
@@ -638,7 +594,7 @@ describe("defineStepper - persistence", () => {
     });
 
     // Step should be reset to first
-    expect(result.current.current.id).toBe("first");
+    expect(result.current.current.data.id).toBe("first");
   });
 
   it("clearPersistedState clears storage", async () => {
@@ -664,7 +620,7 @@ describe("defineStepper - persistence", () => {
     const { result } = renderHook(() => persistStepperDef.useStepper());
 
     await waitFor(() => {
-      expect(result.current.asyncInit.isSuccess).toBe(true);
+      expect(result.current.initStatus).toBe("success");
     });
 
     // Clear persisted state
@@ -700,14 +656,14 @@ describe("defineStepper - persistence", () => {
     const { result } = renderHook(() => persistStepperDef.useStepper());
 
     await waitFor(() => {
-      expect(result.current.asyncInit.isSuccess).toBe(true);
+      expect(result.current.initStatus).toBe("success");
     });
 
     // Should NOT load expired state, should start at first step
-    expect(result.current.current.id).toBe("first");
+    expect(result.current.current.data.id).toBe("first");
   });
 
-  it("combines persistence with async getInitialState (async takes precedence)", async () => {
+  it("combines persistence with async initialData (async takes precedence)", async () => {
     const storage = createMemoryStorage();
 
     // Pre-populate storage
@@ -726,8 +682,8 @@ describe("defineStepper - persistence", () => {
         key: "test-stepper",
         storage,
       },
-      // Async init takes precedence
-      getInitialState: async () => ({
+      // initialData takes precedence
+      initialData: async () => ({
         step: "third",
         metadata: { first: { fromAsync: true } },
       }),
@@ -736,13 +692,13 @@ describe("defineStepper - persistence", () => {
     const { result } = renderHook(() => persistStepperDef.useStepper());
 
     await waitFor(() => {
-      expect(result.current.asyncInit.isSuccess).toBe(true);
+      expect(result.current.initStatus).toBe("success");
     });
 
     // Async values should take precedence
-    expect(result.current.current.id).toBe("third");
-    expect(result.current.getMetadata("first")).toEqual({ fromAsync: true });
+    expect(result.current.current.data.id).toBe("third");
+    expect(result.current.step("first").metadata).toEqual({ fromAsync: true });
     // But status from storage should still be there (not overridden by async)
-    expect(result.current.getStatus("first")).toBe("success");
+    expect(result.current.step("first").status).toBe("success");
   });
 });

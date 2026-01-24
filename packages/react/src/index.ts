@@ -36,11 +36,12 @@ export {
 // =============================================================================
 
 export type {
-	// Async initialization types
-	AsyncInitError,
-	AsyncInitState,
-	AsyncInitStatus,
-	GetInitialStateFn,
+	// Initial data types
+	InitialDataFn,
+	StepperError,
+	StepperStatus,
+	// Step info
+	StepInfo,
 	// Component props
 	ScopedProps,
 	// Stepper types
@@ -48,7 +49,6 @@ export type {
 	StepperConfigOptions,
 	StepperDefinition,
 	StepperInstance,
-	StepperReturn, // Legacy alias
 	UseStepperProps,
 } from "./types";
 
@@ -56,4 +56,4 @@ export type {
 // MAIN API
 // =============================================================================
 
-export { defineStepper, isStepperReady, useWaitForAsyncInit } from "./define-stepper";
+export { defineStepper, isStepperReady } from "./define-stepper";
