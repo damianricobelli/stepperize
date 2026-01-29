@@ -2,28 +2,27 @@
 
 import { cn } from "@/lib/cn";
 import { defineStepper } from "@stepperize/react";
-import { CreditCard, Home, User } from "lucide-react";
-import { CheckCircle } from "lucide-react";
+import { CheckCircle, CreditCard, Home, User } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import * as React from "react";
 
 const stepper = defineStepper([
-	{ id: "personal-info", label: "Personal Information", icon: User },
-	{ id: "address", label: "Address Information", icon: Home },
-	{ id: "payment", label: "Payment Information", icon: CreditCard },
-	{ id: "success", label: "Success", icon: CheckCircle },
+	{ id: "personal-info", label: "Personal Info", icon: User },
+	{ id: "address", label: "Address", icon: Home },
+	{ id: "payment", label: "Payment", icon: CreditCard },
+	{ id: "success", label: "Done", icon: CheckCircle },
 ]);
 
 const slideVariants = {
-	enter: (direction: number) => ({ x: direction > 0 ? 500 : -500, opacity: 0 }),
-	center: { x: 0, opacity: 1 },
-	exit: (direction: number) => ({ x: direction < 0 ? 500 : -500, opacity: 0 }),
+	enter: { opacity: 0 },
+	center: { opacity: 1 },
+	exit: { opacity: 0 },
 };
 
 export const DemoSection = ({ className }: { className?: string }) => {
 	return (
 		<stepper.Scoped>
-			<section id="demo" className={cn("px-4 sm:px-6 lg:px-8 relative", className)}>
+			<section id="demo" className={cn("px-4 sm:px-6 lg:px-8 py-20", className)}>
 				<DemoContent />
 			</section>
 		</stepper.Scoped>
@@ -63,64 +62,23 @@ const DemoContent = () => {
 	const isComplete = methods.isLast;
 
 	return (
-		<div className="max-w-5xl mx-auto relative z-10">
-			<motion.div
-				className="text-center mb-12"
-				initial={{ opacity: 0, y: 20 }}
-				whileInView={{ opacity: 1, y: 0 }}
-				transition={{ duration: 0.5, type: "spring", stiffness: 100 }}
-				viewport={{ once: true, margin: "-100px" }}
-			>
-				<motion.h2
-					className="text-3xl sm:text-4xl font-bold mb-4"
-					initial={{ opacity: 0, y: 20 }}
-					whileInView={{ opacity: 1, y: 0 }}
-					transition={{ duration: 0.5, delay: 0.1 }}
-					viewport={{ once: true, margin: "-100px" }}
-				>
-					<span className="bg-clip-text text-transparent bg-gradient-to-r from-indigo-9 via-purple-9 to-pink-9">
-						See It In Action
-					</span>
-				</motion.h2>
-				<motion.p
-					className="max-w-2xl mx-auto text-lg text-gray-12"
-					initial={{ opacity: 0, y: 20 }}
-					whileInView={{ opacity: 1, y: 0 }}
-					transition={{ duration: 0.5, delay: 0.2 }}
-					viewport={{ once: true, margin: "-100px" }}
-				>
-					Interactive demo of a multi-step form using @stepperize/react
-				</motion.p>
-			</motion.div>
+		<div className="max-w-2xl mx-auto">
+			<h2 className="text-2xl font-semibold text-gray-12 mb-2 text-center">See it in action</h2>
+			<p className="text-gray-11 text-center mb-10 text-sm">Multi-step form with @stepperize/react</p>
 
-			<motion.div
-				className="backdrop-blur-sm border rounded-xl overflow-hidden shadow-xl"
-				initial={{ opacity: 0, y: 20 }}
-				whileInView={{ opacity: 1, y: 0 }}
-				transition={{
-					duration: 0.5,
-					delay: 0.2,
-					type: "spring",
-					stiffness: 50,
-				}}
-				viewport={{ once: true, margin: "-100px" }}
-			>
+			<div className="border border-gray-6 rounded-xl overflow-hidden bg-gray-2/30">
 				<StepperHeader methods={methods} isComplete={isComplete} />
-				<div className="p-8">
+				<div className="p-6">
 					<form onSubmit={handleSubmit}>
-						<AnimatePresence mode="wait" custom={methods.current.data.id}>
+						<AnimatePresence mode="wait">
 							{methods.when("personal-info", () => (
 								<motion.div
 									key="step1"
-									custom={methods.current.data.id}
 									variants={slideVariants}
 									initial="enter"
 									animate="center"
 									exit="exit"
-									transition={{
-										x: { type: "spring", stiffness: 300, damping: 30 },
-										opacity: { duration: 0.2 },
-									}}
+									transition={{ duration: 0.15 }}
 								>
 									<PersonalInfoStep formData={formData} handleChange={handleChange} />
 								</motion.div>
@@ -128,15 +86,11 @@ const DemoContent = () => {
 							{methods.when("address", () => (
 								<motion.div
 									key="step2"
-									custom={methods.current.data.id}
 									variants={slideVariants}
 									initial="enter"
 									animate="center"
 									exit="exit"
-									transition={{
-										x: { type: "spring", stiffness: 300, damping: 30 },
-										opacity: { duration: 0.2 },
-									}}
+									transition={{ duration: 0.15 }}
 								>
 									<AddressStep formData={formData} handleChange={handleChange} />
 								</motion.div>
@@ -144,15 +98,11 @@ const DemoContent = () => {
 							{methods.when("payment", () => (
 								<motion.div
 									key="step3"
-									custom={methods.current.data.id}
 									variants={slideVariants}
 									initial="enter"
 									animate="center"
 									exit="exit"
-									transition={{
-										x: { type: "spring", stiffness: 300, damping: 30 },
-										opacity: { duration: 0.2 },
-									}}
+									transition={{ duration: 0.15 }}
 								>
 									<PaymentStep formData={formData} handleChange={handleChange} />
 								</motion.div>
@@ -160,15 +110,11 @@ const DemoContent = () => {
 							{methods.when("success", () => (
 								<motion.div
 									key="step4"
-									custom={methods.current.data.id}
 									variants={slideVariants}
 									initial="enter"
 									animate="center"
 									exit="exit"
-									transition={{
-										x: { type: "spring", stiffness: 300, damping: 30 },
-										opacity: { duration: 0.2 },
-									}}
+									transition={{ duration: 0.15 }}
 								>
 									<CompletionScreen
 										onReset={() => {
@@ -178,43 +124,26 @@ const DemoContent = () => {
 								</motion.div>
 							))}
 						</AnimatePresence>
-						<div className="mt-8 flex justify-between">
+						<div className="mt-6 flex justify-between">
 							{!methods.isFirst && (
-								<motion.button
+								<button
 									type="button"
 									onClick={methods.prev}
-									className="px-4 py-2 border border-gray-11 text-gray-12 rounded-md hover:bg-gray-12 transition-colors"
-									whileHover={{
-										scale: 1.05,
-										backgroundColor: "rgba(99, 102, 241, 0.2)",
-									}}
-									whileTap={{ scale: 0.95 }}
-									initial={{ opacity: 0, x: -20 }}
-									animate={{ opacity: 1, x: 0 }}
-									transition={{ duration: 0.3 }}
+									className="px-3 py-2 text-sm font-medium rounded-lg border border-gray-7 text-gray-12 hover:bg-gray-4 transition-colors"
 								>
 									Back
-								</motion.button>
+								</button>
 							)}
-							<motion.div
-								className="ml-auto"
-								initial={{ opacity: 0, x: 20 }}
-								animate={{ opacity: 1, x: 0 }}
-								transition={{ duration: 0.3 }}
+							<button
+								type="submit"
+								className="ml-auto px-4 py-2 text-sm font-medium rounded-lg text-white bg-indigo-9 hover:bg-indigo-10 transition-colors"
 							>
-								<motion.button
-									type="submit"
-									className="px-6 py-2 bg-gradient-to-r from-indigo-11 to-purple-11 text-gray-1 rounded-md hover:from-indigo-12 hover:to-purple-12 transition-all duration-300 shadow-md hover:shadow-indigo-11/30"
-									whileHover={{ scale: 1.05 }}
-									whileTap={{ scale: 0.95 }}
-								>
-									{isComplete ? "Submit" : "Next"}
-								</motion.button>
-							</motion.div>
+								{isComplete ? "Submit" : "Next"}
+							</button>
 						</div>
 					</form>
 				</div>
-			</motion.div>
+			</div>
 		</div>
 	);
 };
@@ -239,33 +168,23 @@ const InputField = ({
 	onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
 	placeholder?: string;
 	required?: boolean;
-}) => {
-	const itemVariants = {
-		hidden: { opacity: 0, y: 20 },
-		visible: {
-			opacity: 1,
-			y: 0,
-			transition: { type: "spring", stiffness: 100, damping: 10 },
-		},
-	} as const;
-	return (
-		<motion.div variants={itemVariants}>
-			<label htmlFor={name} className="block text-sm font-medium text-gray-12 mb-1">
-				{label}
-			</label>
-			<input
-				type={type}
-				name={name}
-				id={name}
-				value={value}
-				onChange={onChange}
-				placeholder={placeholder}
-				required={required}
-				className="w-full px-3 py-2 bg-gray-1 border border-gray-4 rounded-md text-gray-12 focus:outline-none focus:ring-2 focus:ring-indigo-11 transition-all duration-200"
-			/>
-		</motion.div>
-	);
-};
+}) => (
+	<div>
+		<label htmlFor={name} className="block text-sm font-medium text-gray-12 mb-1">
+			{label}
+		</label>
+		<input
+			type={type}
+			name={name}
+			id={name}
+			value={value}
+			onChange={onChange}
+			placeholder={placeholder}
+			required={required}
+			className="w-full px-3 py-2 text-sm bg-gray-2 border border-gray-6 rounded-lg text-gray-12 placeholder:text-gray-9 focus:outline-none focus:ring-2 focus:ring-indigo-8 focus:border-indigo-8"
+		/>
+	</div>
+);
 
 // #endregion InputField
 
@@ -278,76 +197,58 @@ const StepperHeader = ({
 	methods: ReturnType<typeof stepper.useStepper>;
 	isComplete: boolean;
 }) => {
-	const currentIndex = methods.steps.findIndex((step: any) => step.data.id === methods.current.data.id);
+	const currentIndex = methods.steps.findIndex((s: { data: { id: string } }) => s.data.id === methods.current.data.id);
+	const progress =
+		methods.current.data.id === methods.steps[methods.steps.length - 1].data.id || isComplete
+			? "100%"
+			: `${(currentIndex / (methods.steps.length - 1)) * 100}%`;
 
 	return (
-		<nav className="bg-gray-4/30 p-8">
+		<nav className="bg-gray-3/50 border-b border-gray-6 px-4 py-5">
 			<ol className="flex justify-between items-center relative">
-				<div className="absolute top-5 left-4 sm:left-12 right-4 h-0.5 bg-gray-9 z-0">
-					<motion.div
-						className="h-full bg-indigo-11"
-						initial={{ width: "0%" }}
-						animate={{
-							width:
-								methods.current.data.id === methods.steps[methods.steps.length - 1].data.id || isComplete
-									? "100%"
-									: `${(currentIndex / (methods.steps.length - 1)) * 100}%`,
-						}}
-						transition={{ duration: 0.5 }}
+				{/* Line from center of first step to center of last step (4 steps = 12.5% / 87.5%) */}
+				<div className="absolute top-5 left-[12.5%] right-[12.5%] h-0.5 bg-gray-6 z-0 rounded-full">
+					<div
+						className="h-full bg-indigo-9 rounded-full transition-all duration-300"
+						style={{ width: progress }}
 					/>
 				</div>
-				{methods.steps.map((step, index: number) => {
+				{methods.steps.map((step, index) => {
 					const isActive = step.data.id === methods.current.data.id;
+					const isPast = index < currentIndex;
 					return (
-						<motion.li
+						<li
 							key={step.data.id}
-							className="flex flex-col items-center relative flex-shrink-0 z-10"
-							onClick={() => methods.goTo(step.data.id)}
-							whileHover={!isComplete ? { scale: 1.05 } : {}}
-							whileTap={!isComplete ? { scale: 0.95 } : {}}
+							className="flex flex-col items-center relative z-10 flex-1"
 						>
-							<motion.div
+							<button
+								type="button"
+								onClick={() => !isComplete && methods.goTo(step.data.id)}
 								className={cn(
-									"size-10 rounded-full flex items-center justify-center cursor-pointer",
-									index <= currentIndex
-										? "bg-indigo-11 text-indigo-1"
-										: isActive || isComplete
-											? "bg-green-11 text-green-1"
-											: "bg-gray-12 text-gray-1",
+									"size-9 rounded-full flex items-center justify-center transition-colors shrink-0",
+									isPast || (isComplete && index < methods.steps.length - 1)
+										? "bg-indigo-9 text-white"
+										: isActive || (isComplete && index === methods.steps.length - 1)
+											? "bg-indigo-9 text-white"
+											: "bg-gray-6 text-gray-10",
 								)}
-								initial={{ scale: 0 }}
-								animate={{ scale: 1 }}
-								transition={{
-									type: "spring",
-									stiffness: 200,
-									damping: 10,
-									delay: 0.1 * index,
-								}}
+								disabled={isComplete}
 							>
-								{index < currentIndex || isComplete ? (
-									<motion.div
-										initial={{ scale: 0 }}
-										animate={{ scale: 1 }}
-										transition={{ type: "spring", stiffness: 200 }}
-									>
-										<CheckCircle className="size-5" />
-									</motion.div>
+								{isPast || (isComplete && index <= currentIndex) ? (
+									<CheckCircle className="size-4" />
 								) : (
-									<step.data.icon className="size-5" />
+									<step.data.icon className="size-4" />
 								)}
-							</motion.div>
-							<motion.span
+							</button>
+							<span
 								className={cn(
-									"text-xs mt-2 hidden sm:block",
-									isActive ? "text-indigo-11 font-medium" : !isComplete && "text-gray-11",
+									"text-xs mt-1.5 hidden sm:block",
+									isActive ? "text-gray-12 font-medium" : "text-gray-10",
 								)}
-								initial={{ opacity: 0 }}
-								animate={{ opacity: 1 }}
-								transition={{ delay: 0.2 + 0.1 * index }}
 							>
 								{step.data.label}
-							</motion.span>
-						</motion.li>
+							</span>
+						</li>
 					);
 				})}
 			</ol>
@@ -363,29 +264,20 @@ const PersonalInfoStep = ({
 	formData,
 	handleChange,
 }: {
-	formData: any;
+	formData: Record<string, string>;
 	handleChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-}) => {
-	const containerVariants = {
-		hidden: { opacity: 0 },
-		visible: {
-			opacity: 1,
-			transition: { staggerChildren: 0.1, delayChildren: 0.2 },
-		},
-	};
-	return (
-		<motion.div variants={containerVariants} initial="hidden" animate="visible">
-			<h3 className="text-xl font-semibold mb-6 text-gray-12">Personal Information</h3>
-			<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-				<InputField label="First Name" name="firstName" value={formData.firstName} onChange={handleChange} required />
-				<InputField label="Last Name" name="lastName" value={formData.lastName} onChange={handleChange} required />
-				<div className="md:col-span-2">
-					<InputField label="Email" name="email" type="email" value={formData.email} onChange={handleChange} required />
-				</div>
+}) => (
+	<div>
+		<h3 className="text-base font-semibold text-gray-12 mb-4">Personal Information</h3>
+		<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+			<InputField label="First Name" name="firstName" value={formData.firstName} onChange={handleChange} required />
+			<InputField label="Last Name" name="lastName" value={formData.lastName} onChange={handleChange} required />
+			<div className="sm:col-span-2">
+				<InputField label="Email" name="email" type="email" value={formData.email} onChange={handleChange} required />
 			</div>
-		</motion.div>
-	);
-};
+		</div>
+	</div>
+);
 
 // #endregion PersonalInfoStep
 
@@ -395,30 +287,20 @@ const AddressStep = ({
 	formData,
 	handleChange,
 }: {
-	formData: any;
+	formData: Record<string, string>;
 	handleChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-}) => {
-	const containerVariants = {
-		hidden: { opacity: 0 },
-		visible: {
-			opacity: 1,
-			transition: { staggerChildren: 0.1, delayChildren: 0.2 },
-		},
-	};
-
-	return (
-		<motion.div variants={containerVariants} initial="hidden" animate="visible">
-			<h3 className="text-xl font-semibold mb-6 text-gray-12">Address Information</h3>
-			<div className="space-y-6">
-				<InputField label="Street Address" name="address" value={formData.address} onChange={handleChange} required />
-				<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-					<InputField label="City" name="city" value={formData.city} onChange={handleChange} required />
-					<InputField label="Zip Code" name="zipCode" value={formData.zipCode} onChange={handleChange} required />
-				</div>
+}) => (
+	<div>
+		<h3 className="text-base font-semibold text-gray-12 mb-4">Address</h3>
+		<div className="space-y-4">
+			<InputField label="Street Address" name="address" value={formData.address} onChange={handleChange} required />
+			<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+				<InputField label="City" name="city" value={formData.city} onChange={handleChange} required />
+				<InputField label="Zip Code" name="zipCode" value={formData.zipCode} onChange={handleChange} required />
 			</div>
-		</motion.div>
-	);
-};
+		</div>
+	</div>
+);
 
 // #endregion AddressStep
 
@@ -428,94 +310,55 @@ const PaymentStep = ({
 	formData,
 	handleChange,
 }: {
-	formData: any;
+	formData: Record<string, string>;
 	handleChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-}) => {
-	const containerVariants = {
-		hidden: { opacity: 0 },
-		visible: {
-			opacity: 1,
-			transition: { staggerChildren: 0.1, delayChildren: 0.2 },
-		},
-	};
-
-	return (
-		<motion.div variants={containerVariants} initial="hidden" animate="visible">
-			<h3 className="text-xl font-semibold mb-6 text-gray-12">Payment Information</h3>
-			<div className="space-y-6">
-				<InputField label="Name on Card" name="cardName" value={formData.cardName} onChange={handleChange} required />
+}) => (
+	<div>
+		<h3 className="text-base font-semibold text-gray-12 mb-4">Payment</h3>
+		<div className="space-y-4">
+			<InputField label="Name on Card" name="cardName" value={formData.cardName} onChange={handleChange} required />
+			<InputField
+				label="Card Number"
+				name="cardNumber"
+				value={formData.cardNumber}
+				onChange={handleChange}
+				placeholder="XXXX XXXX XXXX XXXX"
+				required
+			/>
+			<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 				<InputField
-					label="Card Number"
-					name="cardNumber"
-					value={formData.cardNumber}
+					label="Expiry"
+					name="expiry"
+					value={formData.expiry}
 					onChange={handleChange}
-					placeholder="XXXX XXXX XXXX XXXX"
+					placeholder="MM/YY"
 					required
 				/>
-				<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-					<InputField
-						label="Expiry Date"
-						name="expiry"
-						value={formData.expiry}
-						onChange={handleChange}
-						placeholder="MM/YY"
-						required
-					/>
-					<InputField label="CVV" name="cvv" value={formData.cvv} onChange={handleChange} placeholder="XXX" required />
-				</div>
+				<InputField label="CVV" name="cvv" value={formData.cvv} onChange={handleChange} placeholder="XXX" required />
 			</div>
-		</motion.div>
-	);
-};
+		</div>
+	</div>
+);
 
 // #endregion PaymentStep
 
 // #region CompletionScreen
 
 const CompletionScreen = ({ onReset }: { onReset: () => void }) => (
-	<motion.div
-		className="text-center py-10"
-		initial={{ opacity: 0, scale: 0.9 }}
-		animate={{ opacity: 1, scale: 1 }}
-		transition={{ duration: 0.5, type: "spring", stiffness: 100 }}
-	>
-		<motion.div
-			className="size-20 bg-green-11 rounded-full flex items-center justify-center mx-auto mb-6"
-			initial={{ scale: 0 }}
-			animate={{ scale: 1 }}
-			transition={{ type: "spring", stiffness: 200, damping: 10, delay: 0.2 }}
-		>
-			<CheckCircle className="size-10 text-gray-1" />
-		</motion.div>
-		<motion.h3
-			className="text-2xl font-bold text-gray-12 mb-2"
-			initial={{ opacity: 0, y: 20 }}
-			animate={{ opacity: 1, y: 0 }}
-			transition={{ delay: 0.3 }}
-		>
-			Success!
-		</motion.h3>
-		<motion.p
-			className="text-gray-12 mb-6"
-			initial={{ opacity: 0, y: 20 }}
-			animate={{ opacity: 1, y: 0 }}
-			transition={{ delay: 0.4 }}
-		>
-			Your form has been submitted successfully.
-		</motion.p>
-		<motion.button
+	<div className="text-center py-8">
+		<div className="size-14 bg-green-9 rounded-full flex items-center justify-center mx-auto mb-4">
+			<CheckCircle className="size-7 text-white" />
+		</div>
+		<h3 className="text-lg font-semibold text-gray-12 mb-1">Done!</h3>
+		<p className="text-sm text-gray-11 mb-6">Form submitted successfully.</p>
+		<button
 			type="button"
 			onClick={onReset}
-			className="px-4 py-2 bg-indigo-11 text-gray-1 rounded-md hover:bg-indigo-12 transition-colors"
-			initial={{ opacity: 0, y: 20 }}
-			animate={{ opacity: 1, y: 0 }}
-			transition={{ delay: 0.5 }}
-			whileHover={{ scale: 1.05 }}
-			whileTap={{ scale: 0.95 }}
+			className="px-4 py-2 text-sm font-medium rounded-lg text-white bg-indigo-9 hover:bg-indigo-10 transition-colors"
 		>
-			Start Over
-		</motion.button>
-	</motion.div>
+			Start over
+		</button>
+	</div>
 );
 
 // #endregion CompletionScreen

@@ -74,6 +74,94 @@ Stepper.Root
 
 ---
 
+## Accessing step data
+
+You can get step data in three ways when using primitives:
+
+### 1. Render prop on `Stepper.Root`
+
+The root accepts a function `{({ stepper }) => (...)}` that receives the full stepper instance. Use it when you need global state (current step, navigation, etc.) in the same place you render the list and content:
+
+```tsx
+<Stepper.Root>
+  {({ stepper }) => (
+    <>
+      <div>Current: {stepper.current.data.title}</div>
+      <Stepper.List>...</Stepper.List>
+      <Stepper.Content step="shipping">...</Stepper.Content>
+      <Stepper.Actions>
+        <Stepper.Prev />
+        <Stepper.Next>{stepper.isLast ? "Finish" : "Next"}</Stepper.Next>
+      </Stepper.Actions>
+    </>
+  )}
+</Stepper.Root>
+```
+
+### 2. `useStepper()` — global stepper in any child
+
+Any component inside `Stepper.Root` can call `useStepper()` (from your `defineStepper` result) to access the full stepper: current step, `next()`, `prev()`, `goTo()`, `when()`, `switch()`, etc. Use it for content panels, navigation logic, or any component that needs to know "where we are" and control the flow.
+
+```tsx
+const { Stepper, useStepper } = defineStepper([...]);
+
+function ShippingForm() {
+  const stepper = useStepper();
+  return (
+    <Stepper.Content step="shipping">
+      <p>Step: {stepper.current.data.title}</p>
+      <button onClick={() => stepper.next()}>Continue</button>
+    </Stepper.Content>
+  );
+}
+```
+
+### 3. `useStepItemContext()` — this item's step and status
+
+Components that render **inside `Stepper.Item`** (e.g. custom trigger wrappers, indicators) can use `useStepItemContext()` from `@stepperize/react/primitives`. It returns data for **that specific item** only:
+
+| Value | Type | Description |
+| ----- | ---- | ----------- |
+| `step` | `Step` | The step definition (id, title, description, icon, etc.) |
+| `index` | `number` | Zero-based index in the list |
+| `status` | `StepStatus` | Resolved status: `"active"`, `"success"`, `"inactive"`, `"loading"`, `"error"`, `"skipped"` |
+| `isActive` | `boolean` | `status === "active"` |
+| `isCompleted` | `boolean` | `status === "success"` |
+| `isFirst` | `boolean` | First step in the list |
+| `isLast` | `boolean` | Last step in the list |
+| `disabled` | `boolean` | Whether this item is disabled |
+
+**When to use it:** When you need to style or behave based on "this step's status" without passing props—e.g. different button variant for inactive steps, or showing an icon only when completed.
+
+```tsx
+import { useStepItemContext } from "@stepperize/react/primitives";
+
+const CustomTrigger = () => {
+  const item = useStepItemContext();
+  const isInactive = item.status === "inactive";
+
+  return (
+    <Stepper.Trigger
+      render={(props) => (
+        <Button variant={isInactive ? "secondary" : "default"} {...props}>
+          <Stepper.Indicator />
+        </Button>
+      )}
+    />
+  );
+};
+
+// Use inside Item
+<Stepper.Item step="shipping">
+  <CustomTrigger />
+  <Stepper.Separator />
+</Stepper.Item>
+```
+
+**Important:** `useStepItemContext()` must be used within a `Stepper.Item`. For components that live outside items (e.g. inside `Stepper.Content`), use `useStepper()` instead.
+
+---
+
 ## Stepper.Root
 
 Container component that provides context for all primitives. Internally uses `Scoped` to manage stepper state.
