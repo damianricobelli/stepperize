@@ -1,16 +1,5 @@
-import { icons } from "@/components/icons";
-import type { BaseLayoutProps, LinkItemType } from "fumadocs-ui/layouts/shared";
+import type { BaseLayoutProps } from "fumadocs-ui/layouts/shared";
 import { Waypoints } from "lucide-react";
-
-export const linkItems: LinkItemType[] = [
-	{
-		icon: <icons.ReactIcon />,
-		text: "React",
-		url: "/docs/react",
-		active: "nested-url",
-		description: "Stepperize for React",
-	},
-];
 
 export const baseOptions: BaseLayoutProps = {
 	githubUrl: "https://github.com/damianricobelli/stepperize",
@@ -23,5 +12,4 @@ export const baseOptions: BaseLayoutProps = {
 		),
 		transparentMode: "top",
 	},
-	links: [...linkItems],
 };
