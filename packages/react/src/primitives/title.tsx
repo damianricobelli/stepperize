@@ -2,7 +2,6 @@ import * as React from "react";
 import {
 	createStepDataAttributes,
 	filterDataAttributes,
-	Slot,
 	useMaybeStepItemContext,
 	usePrimitiveContext,
 } from "./context";
@@ -29,7 +28,7 @@ import type { TitleProps } from "./types";
  * ```
  */
 const Title = React.forwardRef<HTMLSpanElement, TitleProps>(
-	({ asChild, render, children, ...props }, ref) => {
+	({ render, children, ...props }, ref) => {
 		const { config } = usePrimitiveContext();
 		const item = useMaybeStepItemContext();
 
@@ -45,10 +44,6 @@ const Title = React.forwardRef<HTMLSpanElement, TitleProps>(
 
 		if (render) {
 			return render(elementProps) ?? <span {...elementProps}>{children}</span>;
-		}
-
-		if (asChild) {
-			return <Slot {...elementProps}>{children}</Slot>;
 		}
 
 		return <span {...elementProps}>{children}</span>;

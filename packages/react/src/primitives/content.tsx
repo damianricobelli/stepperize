@@ -1,7 +1,6 @@
 import type { Get, Step } from "@stepperize/core";
 import * as React from "react";
 import {
-	Slot,
 	useMaybeStepItemContext,
 	usePrimitiveContext,
 } from "./context";
@@ -26,7 +25,7 @@ import type { ContentProps } from "./types";
  * ```
  */
 function ContentImpl<Steps extends Step[] = Step[]>(
-	{ step: stepId, asChild, render, children, ...props }: ContentProps<Steps>,
+	{ step: stepId, render, children, ...props }: ContentProps<Steps>,
 	ref: React.ForwardedRef<HTMLDivElement>,
 ) {
 	const { stepper, config } = usePrimitiveContext<Steps>();
@@ -72,7 +71,7 @@ function ContentImpl<Steps extends Step[] = Step[]>(
 	}, [config.tracking, isActive]);
 
 	const dataAttributes = {
-		"data-state": isActive ? "active" : "inactive",
+		"data-status": stepInfo.status,
 		"data-step": step.id,
 		"data-index": stepIndex,
 		"data-orientation": config.orientation,
@@ -96,10 +95,6 @@ function ContentImpl<Steps extends Step[] = Step[]>(
 
 	if (render) {
 		return render(elementProps) ?? <div {...elementProps}>{children}</div>;
-	}
-
-	if (asChild) {
-		return <Slot {...elementProps}>{children}</Slot>;
 	}
 
 	return <div {...elementProps}>{children}</div>;

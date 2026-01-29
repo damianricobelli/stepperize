@@ -1,6 +1,0 @@
-{
-	"title": "Svelte",
-	"root": true,
-	"description": "Stepperize for Svelte",
-	"pages": ["---Getting Started---", "index"]
-}

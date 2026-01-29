@@ -10,11 +10,59 @@ Stepperize is a versatile React library designed to streamline the creation of S
 
 ## Key Features
 
-- **Flexible Step Management**: Create linear or branching flows
+- **Type-Safe Primitives**: Fully typed components for building accessible stepper UIs
+- **Flexible Step Management**: Create linear or free-form navigation flows
 - **Headless Component**: Full control over styling and UI
 - **React Native Compatible**: Build steppers for web and mobile apps
 - **Conditional Rendering**: Dynamically adjust content based on user input
-- **State Management**: Built-in tools for handling step state
+- **State Management**: Built-in tools for handling step state, metadata, and status
+- **Persistence**: Save and restore stepper state with built-in persistence
+- **Async Support**: Handle async initialization and navigation callbacks
+
+## Quick Start
+
+```tsx
+import { defineStepper } from "@stepperize/react";
+
+const { Stepper, useStepper } = defineStepper([
+  { id: "shipping", title: "Shipping" },
+  { id: "payment", title: "Payment" },
+  { id: "confirmation", title: "Confirmation" }
+]);
+
+function Checkout() {
+  return (
+    <Stepper.Root>
+      {({ stepper }) => (
+        <>
+          <Stepper.List>
+            {stepper.steps.map((stepInfo) => (
+              <Stepper.Item key={stepInfo.data.id} step={stepInfo.data.id}>
+                <Stepper.Trigger>
+                  <Stepper.Indicator />
+                  <Stepper.Title>{stepInfo.data.title}</Stepper.Title>
+                </Stepper.Trigger>
+                <Stepper.Separator />
+              </Stepper.Item>
+            ))}
+          </Stepper.List>
+
+          {stepper.switch({
+            shipping: () => <ShippingForm />,
+            payment: () => <PaymentForm />,
+            confirmation: () => <Confirmation />
+          })}
+
+          <Stepper.Actions>
+            <Stepper.Prev />
+            <Stepper.Next />
+          </Stepper.Actions>
+        </>
+      )}
+    </Stepper.Root>
+  );
+}
+```
 
 ## Core Concepts
 
@@ -46,3 +94,46 @@ Stepperize goes beyond linear progressions, enabling:
 - Personalized user experiences
 - State-dependent UI changes
 - Multi-path processes
+
+### Step Information
+
+Each step provides comprehensive information:
+
+```tsx
+const stepper = useStepper();
+
+// Access current step
+stepper.current.data;       // Step definition { id, title, ... }
+stepper.current.status;     // "inactive" | "active" | "loading" | "error" | "success" | "skipped"
+stepper.current.metadata;   // Custom data storage
+stepper.current.isCompleted; // true if status is "success"
+
+// Modify step state
+stepper.current.setStatus("success");
+stepper.current.setMetadata({ formData: values });
+```
+
+### Navigation
+
+Multiple ways to navigate:
+
+```tsx
+// Basic navigation
+stepper.next();
+stepper.prev();
+stepper.goTo("payment");
+stepper.reset();
+
+// With callbacks
+stepper.beforeNext(async () => {
+  const isValid = await validateForm();
+  return isValid; // Return false to cancel
+});
+```
+
+## What's Next
+
+- [Installation](/docs/react/installation)
+- [API Reference - defineStepper](/docs/react/api-references/define)
+- [API Reference - useStepper](/docs/react/api-references/hook)
+- [Examples](/docs/react/examples)

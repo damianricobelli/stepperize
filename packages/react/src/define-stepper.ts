@@ -1,27 +1,29 @@
 import type {
+	BaseStepStatus,
 	Get,
 	HistoryEntry,
+	Initial,
 	InitialState,
 	PersistManager,
 	Step,
 	StepMetadata,
-	StepStatus,
 	StepStatuses,
 	TransitionContext,
 } from "@stepperize/core";
 import type { StepInfo } from "./types";
 import {
-	areDependenciesSatisfied,
 	createPersistedState,
 	createPersistManager,
-	findNextValidStepIndex,
 	generateCommonStepperUseFns,
 	generateStepperUtils,
 	getInitialMetadata,
 	getInitialStatuses,
 	getInitialStepIndex,
+	getSyncInitialState,
+	isInitialFunction,
 	isStepCompleted,
 	persistedStateToInitialState,
+	resolveStepStatus,
 } from "@stepperize/core";
 import * as React from "react";
 import {
@@ -40,7 +42,6 @@ import {
 } from "./primitives";
 import type {
 	ScopedProps,
-	StepperBuilder,
 	StepperConfigOptions,
 	StepperDefinition,
 	StepperError,
@@ -58,43 +59,47 @@ import type {
  * Creates a stepper definition with steps and utility functions.
  *
  * @param steps - The steps to be included in the stepper.
- * @returns A StepperBuilder that can be used directly or configured with .config()
+ * @param config - Optional configuration options.
+ * @returns A StepperDefinition with hooks, utilities and components.
  *
  * @example
  * ```ts
  * // Basic usage (no config)
- * const { useStepper, Scoped } = defineStepper(
+ * const { useStepper, Scoped } = defineStepper([
  *   { id: "step-1", title: "Step 1" },
  *   { id: "step-2", title: "Step 2" }
+ * ]);
+ *
+ * // With initial state
+ * const { useStepper, Scoped } = defineStepper(
+ *   [
+ *     { id: "step-1", title: "Step 1" },
+ *     { id: "step-2", title: "Step 2" }
+ *   ],
+ *   {
+ *     initial: { step: "step-1" },
+ *     mode: "linear",
+ *     onBeforeTransition: (ctx) => {
+ *       console.log(`${ctx.from.id} -> ${ctx.to.id}`);
+ *       return true;
+ *     }
+ *   }
  * );
  *
- * // With configuration
- * const { useStepper, Scoped } = defineStepper(
- *   { id: "step-1", title: "Step 1" },
- *   { id: "step-2", title: "Step 2" }
- * ).config({
- *   initialStep: "step-1",
- *   mode: "linear",
- *   onBeforeTransition: (ctx) => {
- *     console.log(`${ctx.from.id} -> ${ctx.to.id}`);
- *     return true;
+ * // With async initial data
+ * const { useStepper } = defineStepper(steps, {
+ *   initial: async () => {
+ *     const saved = await fetchProgress();
+ *     return { step: saved.step, metadata: saved.data };
  *   }
  * });
  * ```
  */
 export function defineStepper<const Steps extends Step[]>(
-	...steps: Steps
-): StepperBuilder<Steps> {
-	// Create the base definition without config
-	const baseDefinition = createStepperDefinition(steps, {});
-
-	// Return builder with .config() method
-	return {
-		...baseDefinition,
-		config(options: StepperConfigOptions<Steps>): StepperDefinition<Steps> {
-			return createStepperDefinition(steps, options);
-		},
-	};
+	steps: Steps,
+	config: StepperConfigOptions<Steps> = {},
+): StepperDefinition<Steps> {
+	return createStepperDefinition(steps, config);
 }
 
 // =============================================================================
@@ -115,25 +120,39 @@ function createStepperDefinition<Steps extends Step[]>(
 	 * Internal hook that creates the stepper instance.
 	 */
 	function useStepperInternal(props: UseStepperProps<Steps> = {}): StepperInstance<Steps> {
-		// Merge props with config options (props take precedence)
+		// Get sync initial state from config (undefined if async function)
+		const configSyncInitial = getSyncInitialState(configOptions.initial);
+
+		// Merge initial state: props.initial takes precedence over config sync initial
+		const mergedInitial = React.useMemo<InitialState<Steps>>(() => {
+			const base = configSyncInitial ?? {};
+			const override = props.initial ?? {};
+			return {
+				step: override.step ?? base.step,
+				metadata: { ...base.metadata, ...override.metadata },
+				statuses: { ...base.statuses, ...override.statuses },
+			};
+		}, [props.initial, configSyncInitial]);
+
+		// Check if config has async initial function
+		const hasAsyncInitial = isInitialFunction(configOptions.initial);
+
+		// Merged config for other options
 		const mergedConfig = React.useMemo(
 			() => ({
-				initialStep: props.initialStep ?? configOptions.initialStep,
-				initialMetadata: { ...configOptions.initialMetadata, ...props.initialMetadata },
-				initialStatuses: { ...configOptions.initialStatuses, ...props.initialStatuses },
 				mode: configOptions.mode ?? "free",
-				initialData: configOptions.initialData,
+				initial: configOptions.initial,
 				persist: configOptions.persist,
 				onBeforeTransition: configOptions.onBeforeTransition,
 				onAfterTransition: configOptions.onAfterTransition,
 			}),
-			[props.initialStep, props.initialMetadata, props.initialStatuses],
+			[],
 		);
 
-		// Calculate initial values
+		// Calculate initial values from sync initial state
 		const initialStepIndex = React.useMemo(
-			() => getInitialStepIndex(steps, mergedConfig.initialStep),
-			[mergedConfig.initialStep],
+			() => getInitialStepIndex(steps, mergedInitial.step),
+			[mergedInitial.step],
 		);
 
 		// ==========================================================================
@@ -152,12 +171,11 @@ function createStepperDefinition<Steps extends Step[]>(
 		// STATUS STATE
 		// ==========================================================================
 
-		const hasInitialData = Boolean(mergedConfig.initialData);
 		const hasPersist = Boolean(persistManager);
 
-		// Start as pending if we have initialData OR persistence to load
+		// Start as pending if we have async initial OR persistence to load
 		const [status, setStatus] = React.useState<StepperStatus>(
-			hasInitialData || hasPersist ? "pending" : "success",
+			hasAsyncInitial || hasPersist ? "pending" : "success",
 		);
 		const [error, setError] = React.useState<StepperError | null>(null);
 
@@ -167,10 +185,10 @@ function createStepperDefinition<Steps extends Step[]>(
 		// State
 		const [currentIndex, setCurrentIndex] = React.useState(initialStepIndex);
 		const [metadata, setMetadata] = React.useState<StepMetadata<Steps>>(() =>
-			getInitialMetadata(steps, mergedConfig.initialMetadata),
+			getInitialMetadata(steps, mergedInitial.metadata),
 		);
 		const [statuses, setStatuses] = React.useState<StepStatuses<Steps>>(() =>
-			getInitialStatuses(steps, mergedConfig.initialStatuses),
+			getInitialStatuses(steps, mergedInitial.statuses),
 		);
 		const [history, setHistory] = React.useState<HistoryEntry<Steps>[]>(() => [
 			{ step: steps[initialStepIndex], index: initialStepIndex, timestamp: Date.now() },
@@ -221,8 +239,8 @@ function createStepperDefinition<Steps extends Step[]>(
 		// ==========================================================================
 
 		React.useEffect(() => {
-			// If no persistence and no initialData, nothing to do
-			if (!persistManager && !mergedConfig.initialData) return;
+			// If no persistence and no async initial, nothing to do
+			if (!persistManager && !hasAsyncInitial) return;
 
 			let isCancelled = false;
 			setStatus("pending");
@@ -240,8 +258,8 @@ function createStepperDefinition<Steps extends Step[]>(
 							applyInitialState(initialState);
 							setIsHydrated(true);
 
-							// If no initialData, we're done
-							if (!mergedConfig.initialData) {
+							// If no async initial, we're done
+							if (!hasAsyncInitial) {
 								setStatus("success");
 								return;
 							}
@@ -250,14 +268,14 @@ function createStepperDefinition<Steps extends Step[]>(
 						}
 					}
 
-					// Step 2: Run initialData if configured
-					// Note: initialData takes precedence over persisted state
-					if (mergedConfig.initialData) {
-						const result = await mergedConfig.initialData();
+					// Step 2: Run async initial if configured
+					// Note: async initial takes precedence over persisted state
+					if (hasAsyncInitial && isInitialFunction(mergedConfig.initial)) {
+						const result = await mergedConfig.initial();
 
 						if (isCancelled) return;
 
-						// Apply initialData result (takes precedence)
+						// Apply async result (takes precedence)
 						applyInitialState(result);
 					}
 
@@ -278,7 +296,7 @@ function createStepperDefinition<Steps extends Step[]>(
 			return () => {
 				isCancelled = true;
 			};
-		}, [initTrigger, persistManager, mergedConfig.initialData, applyInitialState]);
+		}, [initTrigger, persistManager, hasAsyncInitial, mergedConfig.initial, applyInitialState]);
 
 		// ==========================================================================
 		// AUTO-SAVE EFFECT (Persistence)
@@ -305,9 +323,9 @@ function createStepperDefinition<Steps extends Step[]>(
 
 		// Retry function for initialization
 		const retry = React.useCallback(() => {
-			if (!mergedConfig.initialData && !persistManager) return;
+			if (!hasAsyncInitial && !persistManager) return;
 			setInitTrigger((prev) => prev + 1);
-		}, [mergedConfig.initialData, persistManager]);
+		}, [hasAsyncInitial, persistManager]);
 
 		// ==========================================================================
 		// CLEAR PERSISTENCE HELPER
@@ -322,19 +340,21 @@ function createStepperDefinition<Steps extends Step[]>(
 		// Helper to create StepInfo for any step
 		const createStepInfo = React.useCallback(
 			<Id extends Get.Id<Steps>>(id: Id): StepInfo<Steps, Id> => {
-				const step = steps.find((s) => s.id === id);
+				const stepIndex = steps.findIndex((s) => s.id === id);
+				const step = steps[stepIndex];
 				if (!step) {
 					throw new Error(`Step with id "${String(id)}" not found.`);
 				}
-				const stepStatus = statuses[id];
+				const baseStatus = statuses[id];
 				const stepMetadata = metadata[id];
+				// Resolve the status based on base status and navigation position
+				const resolvedStatus = resolveStepStatus(baseStatus, stepIndex, currentIndex);
 				return {
 					data: step as Get.StepById<Steps, Id>,
-					status: stepStatus,
+					status: resolvedStatus,
 					metadata: stepMetadata,
-					isCompleted: isStepCompleted(id, statuses),
-					canAccess: areDependenciesSatisfied(step, statuses),
-					setStatus: (newStatus: StepStatus) => {
+					isCompleted: resolvedStatus === "success",
+					setStatus: (newStatus: BaseStepStatus) => {
 						setStatuses((prev) => {
 							if (prev[id] === newStatus) return prev;
 							return { ...prev, [id]: newStatus };
@@ -348,7 +368,7 @@ function createStepperDefinition<Steps extends Step[]>(
 					},
 				};
 			},
-			[steps, statuses, metadata],
+			[steps, statuses, metadata, currentIndex],
 		);
 
 		// Create array of all StepInfo - this is the source of truth
@@ -418,17 +438,6 @@ function createStepperDefinition<Steps extends Step[]>(
 					}
 				}
 
-				// Check dependencies
-				const targetStep = steps[targetIndex];
-				if (!areDependenciesSatisfied(targetStep, statuses)) {
-					const missingDeps = targetStep.requires?.filter(
-						(reqId: string) => statuses[reqId as Get.Id<Steps>] !== "success",
-					);
-					throw new Error(
-						`Cannot access step "${targetStep.id}": required steps not completed: ${missingDeps?.join(", ")}`,
-					);
-				}
-
 				transitioningRef.current += 1;
 				if (transitioningRef.current === 1) {
 					setIsTransitioning(true);
@@ -489,20 +498,10 @@ function createStepperDefinition<Steps extends Step[]>(
 
 				// Navigation
 				next() {
-					const nextIndex = findNextValidStepIndex(steps, currentIndex, 1, metadata);
-					if (nextIndex === -1) {
-						return navigateTo(currentIndex + 1, "next"); // Will throw appropriate error
-					} else {
-						return navigateTo(nextIndex, "next");
-					}
+					return navigateTo(currentIndex + 1, "next");
 				},
 				prev() {
-					const prevIndex = findNextValidStepIndex(steps, currentIndex, -1, metadata);
-					if (prevIndex === -1) {
-						return navigateTo(currentIndex - 1, "prev"); // Will throw appropriate error
-					} else {
-						return navigateTo(prevIndex, "prev");
-					}
+					return navigateTo(currentIndex - 1, "prev");
 				},
 				goTo(id) {
 					const index = steps.findIndex((s) => s.id === id);
@@ -516,10 +515,10 @@ function createStepperDefinition<Steps extends Step[]>(
 					setCurrentIndex(newIndex);
 
 					if (!options.keepMetadata) {
-						setMetadata(getInitialMetadata(steps, mergedConfig.initialMetadata));
+						setMetadata(getInitialMetadata(steps, mergedInitial.metadata));
 					}
 					if (!options.keepStatuses) {
-						setStatuses(getInitialStatuses(steps, mergedConfig.initialStatuses));
+						setStatuses(getInitialStatuses(steps, mergedInitial.statuses));
 					}
 
 					// Clear persisted state if requested
@@ -539,7 +538,7 @@ function createStepperDefinition<Steps extends Step[]>(
 				// Metadata management
 				resetMetadata(keepInitialMetadata) {
 					setMetadata(
-						getInitialMetadata(steps, keepInitialMetadata ? mergedConfig.initialMetadata : undefined),
+						getInitialMetadata(steps, keepInitialMetadata ? mergedInitial.metadata : undefined),
 					);
 				},
 
@@ -688,8 +687,7 @@ function createStepperDefinition<Steps extends Step[]>(
 			historyIndex,
 			navigateTo,
 			initialStepIndex,
-			mergedConfig.initialMetadata,
-			mergedConfig.initialStatuses,
+			mergedInitial,
 			status,
 			error,
 			retry,
@@ -717,16 +715,10 @@ function createStepperDefinition<Steps extends Step[]>(
 	 * Scoped provider component.
 	 */
 	function Scoped({
-		initialStep,
-		initialMetadata,
-		initialStatuses,
+		initial,
 		children,
 	}: ScopedProps<Steps>): React.ReactElement {
-		const stepper = useStepperInternal({
-			initialStep,
-			initialMetadata,
-			initialStatuses,
-		});
+		const stepper = useStepperInternal({ initial });
 
 		return React.createElement(Context.Provider, { value: stepper }, children);
 	}
@@ -752,9 +744,7 @@ function createStepperDefinition<Steps extends Step[]>(
 				}
 		>((props, ref) => {
 			const {
-				initialStep,
-				initialMetadata,
-				initialStatuses,
+				initial,
 				orientation,
 				tracking,
 				children,
@@ -772,15 +762,14 @@ function createStepperDefinition<Steps extends Step[]>(
 					children: resolvedChildren,
 					orientation,
 					tracking,
+					stepperContext: Context as React.Context<StepperInstance<Step[]> | null>,
 					ref,
 				});
 			};
 
 			// Internally use Scoped, just like Provider custom
 			return React.createElement(Scoped, {
-				initialStep,
-				initialMetadata,
-				initialStatuses,
+				initial,
 				children: React.createElement(RootContent),
 			});
 		});
@@ -898,5 +887,5 @@ export function isStepperReady<Steps extends Step[]>(
 // RE-EXPORT FOR CONVENIENCE
 // =============================================================================
 
-export type { StepperBuilder, StepperConfigOptions, StepperDefinition, StepperInstance };
-export type { InitialDataFn, StepperError, StepperStatus } from "./types";
+export type { StepperConfigOptions, StepperDefinition, StepperInstance };
+export type { StepperError, StepperStatus } from "./types";

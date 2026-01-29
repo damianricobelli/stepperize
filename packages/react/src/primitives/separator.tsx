@@ -2,7 +2,6 @@ import * as React from "react";
 import {
 	createStepDataAttributes,
 	filterDataAttributes,
-	Slot,
 	useMaybeStepItemContext,
 	usePrimitiveContext,
 } from "./context";
@@ -29,7 +28,7 @@ import type { SeparatorProps } from "./types";
  * ```
  */
 const Separator = React.forwardRef<HTMLHRElement, SeparatorProps>(
-	({ orientation: orientationProp, asChild, render, ...props }, ref) => {
+	({ orientation: orientationProp, render, ...props }, ref) => {
 		const { config } = usePrimitiveContext();
 		const item = useMaybeStepItemContext();
 
@@ -60,10 +59,6 @@ const Separator = React.forwardRef<HTMLHRElement, SeparatorProps>(
 
 		if (render) {
 			return render(elementProps) ?? <hr {...elementProps} />;
-		}
-
-		if (asChild) {
-			return <Slot {...elementProps} />;
 		}
 
 		return <hr {...elementProps} />;

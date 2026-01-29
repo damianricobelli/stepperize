@@ -50,9 +50,11 @@
 //
 // @example Styling with data attributes
 // ```css
-// [data-state="active"] { background: blue; }
-// [data-state="completed"] { background: green; }
-// [data-state="inactive"] { opacity: 0.5; }
+// [data-status="active"] { background: blue; }
+// [data-status="success"] { background: green; }
+// [data-status="inactive"] { opacity: 0.5; }
+// [data-status="error"] { background: red; }
+// [data-status="loading"] { animation: pulse 1s infinite; }
 // [data-disabled="true"] { pointer-events: none; }
 // [data-orientation="vertical"] { flex-direction: column; }
 // ```
@@ -79,13 +81,9 @@ export type {
 	SeparatorProps,
 	StepDataAttributes,
 	StepItemContextValue,
-	StepState,
 	TitleProps,
 	TriggerProps,
 } from "./types";
-
-// Export utility function
-export { getStepState } from "./types";
 
 // Export context hooks (for advanced usage)
 export {

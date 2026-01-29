@@ -1,23 +1,56 @@
 // =============================================================================
-// STANDARD SCHEMA
-// =============================================================================
-
-import type { StandardSchemaV1 } from "./standard-schema";
-
-// =============================================================================
 // STEP STATUS
 // =============================================================================
 
 /**
- * Possible status values for a step.
- * Inspired by TanStack Query's status pattern.
+ * Base status values that can be set by the user.
+ * This is the internal status that gets stored.
  */
-export type StepStatus = "idle" | "pending" | "loading" | "error" | "success" | "skipped";
+export type BaseStepStatus = "incomplete" | "loading" | "error" | "success" | "skipped";
 
 /**
- * Record of step statuses indexed by step ID.
+ * Resolved status that combines base status with navigation position.
+ * This is what gets exposed in the API and data attributes.
+ *
+ * - `"inactive"` - Step is ahead of current position (not yet reached)
+ * - `"active"` - Step is the current step
+ * - `"loading"` - Step is processing
+ * - `"error"` - Step has an error
+ * - `"success"` - Step completed successfully
+ * - `"skipped"` - Step was skipped
  */
-export type StepStatuses<Steps extends Step[]> = Record<Get.Id<Steps>, StepStatus>;
+export type StepStatus = "inactive" | "active" | "loading" | "error" | "success" | "skipped";
+
+/**
+ * Record of base step statuses indexed by step ID.
+ * @internal
+ */
+export type StepStatuses<Steps extends Step[]> = Record<Get.Id<Steps>, BaseStepStatus>;
+
+/**
+ * Resolve the display status based on base status and navigation position.
+ *
+ * @param baseStatus - The base status set by the user
+ * @param stepIndex - Index of the step
+ * @param currentIndex - Index of the current step
+ * @returns The resolved status for display/styling
+ */
+export function resolveStepStatus(
+	baseStatus: BaseStepStatus,
+	stepIndex: number,
+	currentIndex: number,
+): StepStatus {
+	// Explicit statuses always take priority
+	if (baseStatus === "loading") return "loading";
+	if (baseStatus === "error") return "error";
+	if (baseStatus === "success") return "success";
+	if (baseStatus === "skipped") return "skipped";
+
+	// For "incomplete" status, derive from navigation position
+	if (stepIndex === currentIndex) return "active";
+	if (stepIndex < currentIndex) return "success"; // Past steps default to success
+	return "inactive"; // Future steps
+}
 
 // =============================================================================
 // STEP DEFINITION
@@ -27,44 +60,17 @@ export type StepStatuses<Steps extends Step[]> = Record<Get.Id<Steps>, StepStatu
  * Base step definition. Every step must have a unique `id`.
  * Additional properties can be added for custom data (title, description, icon, etc.).
  */
-export type Step<
-	Id extends string = string,
-	Schema extends StandardSchemaV1 | undefined = undefined,
-> = {
+export type Step<Id extends string = string> = {
 	/** Unique identifier for the step. */
 	readonly id: Id;
-	/** Optional Standard Schema for validating step metadata. */
-	readonly schema?: Schema;
-	/**
-	 * Function to determine if this step should be skipped.
-	 * @param metadata - Current metadata state.
-	 * @returns `true` to skip the step, `false` otherwise.
-	 */
-	readonly skip?: (metadata: Record<string, unknown>) => boolean;
-	/**
-	 * Array of step IDs that must be completed before this step can be accessed.
-	 * Used for dependency-based navigation control.
-	 */
-	readonly requires?: readonly string[];
 } & Record<string, unknown>;
 
 /**
- * Infers the metadata type from a step's schema.
- * If no schema is defined, defaults to `Record<string, unknown> | null`.
- * If schema exists but doesn't have types defined, defaults to `unknown`.
- */
-export type InferStepMetadata<S extends Step> = S["schema"] extends StandardSchemaV1
-	? S["schema"]["~standard"]["types"] extends StandardSchemaV1.Types
-		? S["schema"]["~standard"]["types"]["output"]
-		: unknown
-	: Record<string, unknown> | null;
-
-/**
  * Creates a typed metadata record from an array of steps.
- * Each step ID maps to its inferred metadata type.
+ * Each step ID maps to its metadata type (defaults to Record<string, unknown> | null).
  */
 export type StepMetadata<Steps extends Step[]> = {
-	[K in Steps[number] as K["id"]]: InferStepMetadata<K>;
+	[K in Steps[number] as K["id"]]: Record<string, unknown> | null;
 };
 
 // =============================================================================
@@ -97,58 +103,6 @@ export type TransitionContext<Steps extends Step[]> = {
 	readonly fromIndex: number;
 	/** Index of the target step. */
 	readonly toIndex: number;
-};
-
-// =============================================================================
-// ROUTER ADAPTER
-// =============================================================================
-
-/**
- * Interface for router adapters.
- * Allows synchronizing stepper state with URL parameters.
- *
- * @typeParam Steps - The array of step definitions.
- */
-export type RouterAdapter<Steps extends Step[] = Step[]> = {
-	/**
-	 * Subscribe to URL parameter changes.
-	 * @param onChange - Callback invoked when the step parameter changes.
-	 * @returns Cleanup function to unsubscribe.
-	 */
-	subscribe: (onChange: (stepId: Get.Id<Steps> | null) => void) => () => void;
-	/**
-	 * Push a new step ID to the URL (adds to history).
-	 * @param stepId - The step ID to navigate to.
-	 */
-	push: (stepId: Get.Id<Steps>) => void;
-	/**
-	 * Replace the current step ID in the URL (no history entry).
-	 * @param stepId - The step ID to navigate to.
-	 */
-	replace: (stepId: Get.Id<Steps>) => void;
-	/**
-	 * Get the current step ID from the URL.
-	 * @returns The current step ID or `null` if not present.
-	 */
-	getParam: () => Get.Id<Steps> | null;
-};
-
-/**
- * Configuration for router integration.
- */
-export type RouterConfig<Steps extends Step[]> = {
-	/** The router adapter instance. */
-	adapter: RouterAdapter<Steps>;
-	/**
-	 * Whether to use `push` or `replace` for URL updates.
-	 * @default "push"
-	 */
-	mode?: "push" | "replace";
-	/**
-	 * Whether to sync on initial mount.
-	 * @default true
-	 */
-	syncOnMount?: boolean;
 };
 
 // =============================================================================
@@ -219,7 +173,8 @@ export type PersistConfig<Steps extends Step[]> = {
 // =============================================================================
 
 /**
- * Initial state returned by async initialization.
+ * Initial state for the stepper.
+ * Can be provided as an object or returned from a sync/async function.
  */
 export type InitialState<Steps extends Step[]> = {
 	/** The step ID to start on. */
@@ -231,25 +186,59 @@ export type InitialState<Steps extends Step[]> = {
 };
 
 /**
+ * Initial configuration that can be:
+ * - An object with step, metadata, and/or statuses
+ * - A sync/async function that returns the initial state
+ *
+ * @example
+ * ```ts
+ * // Simple object
+ * initial: { step: "shipping" }
+ *
+ * // With metadata
+ * initial: { step: "payment", metadata: { shipping: { address: "..." } } }
+ *
+ * // Async function (SSR, fetch, etc.)
+ * initial: async () => {
+ *   const saved = await fetchProgress();
+ *   return { step: saved.step, metadata: saved.data };
+ * }
+ * ```
+ */
+export type Initial<Steps extends Step[]> =
+	| InitialState<Steps>
+	| (() => InitialState<Steps> | Promise<InitialState<Steps>>);
+
+/**
  * Configuration options for the stepper.
  *
  * @typeParam Steps - The array of step definitions.
  */
 export type StepperConfig<Steps extends Step[]> = {
 	/**
-	 * The initial step to display.
-	 * @default First step in the array
+	 * Initial state configuration.
+	 * Can be an object with step/metadata/statuses, or a sync/async function.
+	 *
+	 * @example
+	 * ```ts
+	 * // Simple - start on specific step
+	 * initial: { step: "shipping" }
+	 *
+	 * // With metadata and statuses
+	 * initial: {
+	 *   step: "payment",
+	 *   metadata: { shipping: { address: "123 Main St" } },
+	 *   statuses: { shipping: "success" }
+	 * }
+	 *
+	 * // Async - fetch from server
+	 * initial: async () => {
+	 *   const saved = await api.getSavedProgress();
+	 *   return { step: saved.currentStep, metadata: saved.formData };
+	 * }
+	 * ```
 	 */
-	initialStep?: Get.Id<Steps>;
-	/**
-	 * Initial metadata values for steps.
-	 */
-	initialMetadata?: Partial<StepMetadata<Steps>>;
-	/**
-	 * Initial status values for steps.
-	 * @default All steps start as "idle"
-	 */
-	initialStatuses?: Partial<StepStatuses<Steps>>;
+	initial?: Initial<Steps>;
 	/**
 	 * Navigation mode.
 	 * - `"linear"`: Steps must be completed in order.
@@ -257,15 +246,6 @@ export type StepperConfig<Steps extends Step[]> = {
 	 * @default "free"
 	 */
 	mode?: "linear" | "free";
-	/**
-	 * Function to fetch initial data synchronously or asynchronously.
-	 * Useful for SSR, resuming from server state, or fetching saved progress.
-	 */
-	initialData?: () => Promise<InitialState<Steps>> | InitialState<Steps>;
-	/**
-	 * Router configuration for URL synchronization.
-	 */
-	router?: RouterConfig<Steps>;
 	/**
 	 * Persistence configuration for saving state.
 	 */
@@ -377,29 +357,25 @@ export type Stepper<Steps extends Step[] = Step[]> = {
 	// -------------------------------------------------------------------------
 
 	/**
-	 * Get the status of a specific step.
+	 * Get the resolved status of a specific step.
+	 * The resolved status combines the base status with navigation position.
 	 * @param id - The step ID.
-	 * @returns The step's current status.
+	 * @returns The step's resolved status.
 	 */
 	getStatus: (id: Get.Id<Steps>) => StepStatus;
 	/**
-	 * Set the status of a specific step.
+	 * Set the base status of a specific step.
+	 * Use "incomplete" to let the status be derived from navigation position.
 	 * @param id - The step ID.
-	 * @param status - The new status.
+	 * @param status - The new base status.
 	 */
-	setStatus: (id: Get.Id<Steps>, status: StepStatus) => void;
+	setStatus: (id: Get.Id<Steps>, status: BaseStepStatus) => void;
 	/**
-	 * Check if a step is completed (status is "success").
+	 * Check if a step is completed (resolved status is "success").
 	 * @param id - The step ID.
 	 * @returns `true` if the step is completed.
 	 */
 	isCompleted: (id: Get.Id<Steps>) => boolean;
-	/**
-	 * Check if a step's dependencies are satisfied.
-	 * @param id - The step ID.
-	 * @returns `true` if all required steps are completed.
-	 */
-	canAccess: (id: Get.Id<Steps>) => boolean;
 
 	// -------------------------------------------------------------------------
 	// Metadata Management

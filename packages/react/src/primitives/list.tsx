@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Slot, usePrimitiveContext } from "./context";
+import { usePrimitiveContext } from "./context";
 import type { ListProps } from "./types";
 
 /**
@@ -18,7 +18,7 @@ import type { ListProps } from "./types";
  * ```
  */
 const List = React.forwardRef<HTMLOListElement, ListProps>(
-	({ asChild, render, children, ...props }, ref) => {
+	({ render, children, ...props }, ref) => {
 		const { config } = usePrimitiveContext();
 
 		const dataAttributes = {
@@ -36,10 +36,6 @@ const List = React.forwardRef<HTMLOListElement, ListProps>(
 
 		if (render) {
 			return render(elementProps) ?? <ol {...elementProps}>{children}</ol>;
-		}
-
-		if (asChild) {
-			return <Slot {...elementProps}>{children}</Slot>;
 		}
 
 		return <ol {...elementProps}>{children}</ol>;

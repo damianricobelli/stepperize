@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Slot, usePrimitiveContext } from "./context";
+import { usePrimitiveContext } from "./context";
 import type { NextProps } from "./types";
 
 /**
@@ -24,7 +24,6 @@ const Next = React.forwardRef<HTMLButtonElement, NextProps>(
 			disableOnLast = true,
 			onClick,
 			disabled: disabledProp,
-			asChild,
 			render,
 			children,
 			...props
@@ -67,10 +66,6 @@ const Next = React.forwardRef<HTMLButtonElement, NextProps>(
 
 		if (render) {
 			return render(elementProps) ?? <button {...elementProps}>{children}</button>;
-		}
-
-		if (asChild) {
-			return <Slot {...elementProps}>{children}</Slot>;
 		}
 
 		return <button {...elementProps}>{children}</button>;

@@ -3,61 +3,252 @@ title: Utils
 description: Pure utility functions for working with steps
 ---
 
-The `Utils` object provides a set of pure functions for working with steps. These functions help you query and traverse step collections without modifying state or requiring stepper context.
+The `utils` object provides a set of pure functions for working with steps. These functions help you query and traverse step collections without modifying state or requiring stepper context.
 
 ## Functions
 
-| Function       | Description                                                                | Parameters                                         | Returns                                                                          |
-| -------------- | -------------------------------------------------------------------------- | -------------------------------------------------- | -------------------------------------------------------------------------------- |
-| `getAll`       | Retrieves all steps in the stepper.                                        | None                                               | An array of all steps                                                            |
-| `get`          | Retrieves a step by its ID.                                                | `id`: The ID of the step to retrieve               | The step with the specified ID                                                   |
-| `getIndex`     | Retrieves the index of a step by its ID.                                   | `id`: The ID of the step to retrieve the index for | The index of the step                                                            |
-| `getByIndex`   | Retrieves a step by its index.                                             | `index`: The index of the step to retrieve         | The step at the specified index                                                  |
-| `getFirst`     | Retrieves the first step in the stepper.                                   | None                                               | The first step                                                                   |
-| `getLast`      | Retrieves the last step in the stepper.                                    | None                                               | The last step                                                                    |
-| `getNext`      | Retrieves the next step after the specified ID.                            | `id`: The ID of the current step                   | The next step                                                                    |
-| `getPrev`      | Retrieves the previous step before the specified ID.                       | `id`: The ID of the current step                   | The previous step                                                                |
-| `getNeighbors` | Retrieves the neighboring steps (previous and next) of the specified step. | `id`: The ID of the current step                   | An object containing the previous and next steps, or `null` if they do not exist |
+| Function | Description | Parameters | Returns |
+| -------- | ----------- | ---------- | ------- |
+| `getAll` | Retrieves all steps in the stepper | None | Array of all steps |
+| `get` | Retrieves a step by its ID | `id`: Step ID | The step object |
+| `getIndex` | Retrieves the index of a step by its ID | `id`: Step ID | The step index |
+| `getByIndex` | Retrieves a step by its index | `index`: Step index | The step object |
+| `getFirst` | Retrieves the first step | None | The first step |
+| `getLast` | Retrieves the last step | None | The last step |
+| `getNext` | Retrieves the next step after the specified ID | `id`: Current step ID | The next step or `undefined` |
+| `getPrev` | Retrieves the previous step before the specified ID | `id`: Current step ID | The previous step or `undefined` |
+| `getNeighbors` | Retrieves neighboring steps | `id`: Current step ID | `{ prev, next }` |
+| `has` | Checks if a step exists | `id`: Step ID to check | `boolean` |
+| `count` | Gets the total number of steps | None | Number of steps |
 
 ## Usage Example
-
-Here's a quick example of how you might use the `Utils` object in a React component:
 
 ```tsx twoslash
 import * as React from "react";
 import { defineStepper } from "@stepperize/react";
 
 // Define the stepper with the steps
-const { utils } = defineStepper(
+const { utils } = defineStepper([
   { id: "step1", name: "Step 1" },
   { id: "step2", name: "Step 2" },
   { id: "step3", name: "Step 3" },
   { id: "step4", name: "Step 4" }
-);
+]);
 
 export function StepNavigator() {
   // Fetch all steps
-  const allSteps = utils.getAll(); // Result: Array of all steps
+  const allSteps = utils.getAll(); 
+  // Result: [{ id: 'step1', ... }, { id: 'step2', ... }, ...]
 
   // Fetch the first and last steps
-  const firstStep = utils.getFirst(); // Result: { id: 'step1', name: 'Step 1' }
-  const lastStep = utils.getLast(); // Result: { id: 'step4', name: 'Step 4' }
+  const firstStep = utils.getFirst(); 
+  // Result: { id: 'step1', name: 'Step 1' }
+
+  const lastStep = utils.getLast(); 
+  // Result: { id: 'step4', name: 'Step 4' }
 
   // Get a step by ID
-  const stepById = utils.get("step3"); // Result: { id: 'step3', name: 'Step 3' }
+  const stepById = utils.get("step3"); 
+  // Result: { id: 'step3', name: 'Step 3' }
 
   // Get the index of a step by ID
-  const indexOfStep2 = utils.getIndex("step2"); // Result: 1
+  const indexOfStep2 = utils.getIndex("step2"); 
+  // Result: 1
 
   // Get a step by its index
-  const stepAtIndex2 = utils.getByIndex(2); // Result: { id: 'step3', name: 'Step 3' }
+  const stepAtIndex2 = utils.getByIndex(2); 
+  // Result: { id: 'step3', name: 'Step 3' }
 
   // Get the next and previous steps
-  const nextStepAfter1 = utils.getNext("step1"); // Result: { id: 'step2', name: 'Step 2' }
-  const prevStepBefore3 = utils.getPrev("step3"); // Result: { id: 'step2', name: 'Step 2' }
+  const nextStepAfter1 = utils.getNext("step1"); 
+  // Result: { id: 'step2', name: 'Step 2' }
+
+  const prevStepBefore3 = utils.getPrev("step3"); 
+  // Result: { id: 'step2', name: 'Step 2' }
 
   // Get neighbors of a step
   const neighborsOfStep2 = utils.getNeighbors("step2");
-  // Result: { prev: { id: 'step1', name: 'Step 1' }, next: { id: 'step3', name: 'Step 3' } }
+  // Result: { 
+  //   prev: { id: 'step1', name: 'Step 1' }, 
+  //   next: { id: 'step3', name: 'Step 3' } 
+  // }
+
+  // Check if a step exists
+  const hasStep = utils.has("step1");
+  // Result: true
+
+  // Get total count
+  const totalSteps = utils.count();
+  // Result: 4
+}
+```
+
+## When to Use Utils vs Hook
+
+Use `utils` when you need to:
+- Access step information outside of React components
+- Build navigation logic that doesn't depend on current state
+- Validate step IDs before navigation
+- Get step information during server-side rendering
+
+Use `useStepper` hook when you need to:
+- Access or modify current stepper state
+- Navigate between steps
+- Access metadata or status information
+- React to step changes
+
+## Practical Examples
+
+### Breadcrumb Navigation
+
+```tsx twoslash
+import * as React from "react";
+import { defineStepper } from "@stepperize/react";
+
+const { utils, useStepper } = defineStepper([
+  { id: "home", title: "Home" },
+  { id: "category", title: "Category" },
+  { id: "product", title: "Product" },
+  { id: "checkout", title: "Checkout" }
+]);
+
+function Breadcrumbs() {
+  const stepper = useStepper();
+  const currentIndex = stepper.currentIndex;
+
+  // Get all steps up to and including current
+  const breadcrumbSteps = utils.getAll().slice(0, currentIndex + 1);
+
+  return (
+    <nav aria-label="Breadcrumb">
+      <ol style={{ display: "flex", gap: "0.5rem" }}>
+        {breadcrumbSteps.map((step, index) => (
+          <li key={step.id}>
+            {index < currentIndex ? (
+              <button onClick={() => stepper.goTo(step.id)}>
+                {step.title}
+              </button>
+            ) : (
+              <span aria-current="page">{step.title}</span>
+            )}
+            {index < currentIndex && <span> / </span>}
+          </li>
+        ))}
+      </ol>
+    </nav>
+  );
+}
+```
+
+### Progress Bar
+
+```tsx twoslash
+import * as React from "react";
+import { defineStepper } from "@stepperize/react";
+
+const { utils, useStepper } = defineStepper([
+  { id: "step-1", title: "Step 1" },
+  { id: "step-2", title: "Step 2" },
+  { id: "step-3", title: "Step 3" },
+  { id: "step-4", title: "Step 4" }
+]);
+
+function ProgressBar() {
+  const stepper = useStepper();
+  const totalSteps = utils.count();
+  const currentIndex = stepper.currentIndex;
+  
+  // Calculate progress percentage
+  const progress = ((currentIndex + 1) / totalSteps) * 100;
+
+  return (
+    <div>
+      <div style={{ 
+        width: "100%", 
+        height: "8px", 
+        background: "#e0e0e0",
+        borderRadius: "4px"
+      }}>
+        <div style={{ 
+          width: `${progress}%`, 
+          height: "100%", 
+          background: "#4caf50",
+          borderRadius: "4px",
+          transition: "width 0.3s ease"
+        }} />
+      </div>
+      <p>Step {currentIndex + 1} of {totalSteps}</p>
+    </div>
+  );
+}
+```
+
+### Dynamic Step Navigation
+
+```tsx twoslash
+import * as React from "react";
+import { defineStepper } from "@stepperize/react";
+
+const { utils, useStepper } = defineStepper([
+  { id: "intro", title: "Introduction", skippable: false },
+  { id: "optional-1", title: "Optional Info", skippable: true },
+  { id: "optional-2", title: "More Details", skippable: true },
+  { id: "required", title: "Required Step", skippable: false },
+  { id: "finish", title: "Finish", skippable: false }
+]);
+
+function SkipToRequired() {
+  const stepper = useStepper();
+
+  // Find next required (non-skippable) step
+  const findNextRequired = () => {
+    const allSteps = utils.getAll();
+    const currentIndex = stepper.currentIndex;
+    
+    for (let i = currentIndex + 1; i < allSteps.length; i++) {
+      if (!allSteps[i].skippable) {
+        return allSteps[i];
+      }
+    }
+    return null;
+  };
+
+  const nextRequired = findNextRequired();
+
+  return nextRequired ? (
+    <button onClick={() => stepper.goTo(nextRequired.id)}>
+      Skip to {nextRequired.title}
+    </button>
+  ) : null;
+}
+```
+
+### Step Info Display
+
+```tsx twoslash
+import * as React from "react";
+import { defineStepper } from "@stepperize/react";
+
+const { utils, useStepper } = defineStepper([
+  { id: "step-1", title: "First", icon: "📝" },
+  { id: "step-2", title: "Second", icon: "📋" },
+  { id: "step-3", title: "Third", icon: "✅" }
+]);
+
+function StepInfo() {
+  const stepper = useStepper();
+  const { prev, next } = utils.getNeighbors(stepper.current.data.id);
+
+  return (
+    <div>
+      <p>
+        {prev ? `Previous: ${prev.title}` : "This is the first step"}
+      </p>
+      <h2>{stepper.current.data.icon} {stepper.current.data.title}</h2>
+      <p>
+        {next ? `Next: ${next.title}` : "This is the last step"}
+      </p>
+    </div>
+  );
 }
 ```

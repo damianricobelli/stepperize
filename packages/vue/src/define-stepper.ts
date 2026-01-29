@@ -22,27 +22,45 @@ import {
 import type { ScopedProps, StepperReturn } from "./types";
 
 /**
+ * Configuration options for the stepper.
+ */
+export type StepperConfig<Steps extends Step[]> = {
+	/** The initial step to display. */
+	initialStep?: Get.Id<Steps>;
+	/** The initial metadata. */
+	initialMetadata?: Partial<Record<Get.Id<Steps>, Metadata>>;
+};
+
+/**
  * Creates a stepper context and utility functions for managing stepper state.
  *
  * @param steps - The steps to be included in the stepper.
+ * @param config - Optional configuration options.
  * @returns An object containing the stepper context and utility functions.
  */
-export const defineStepper = <const Steps extends Step[]>(...steps: Steps): StepperReturn<Steps> => {
+export const defineStepper = <const Steps extends Step[]>(
+	steps: Steps,
+	config: StepperConfig<Steps> = {},
+): StepperReturn<Steps> => {
 	const contextKey = Symbol("StepperizeContext") as InjectionKey<ComputedRef<Stepper<Steps>>>;
 
 	const utils = generateStepperUtils(...steps);
 
-	const useStepper = (config?: {
+	const useStepper = (props?: {
 		initialStep?: MaybeRefOrGetter<Get.Id<Steps>>;
 		initialMetadata?: Partial<Record<Get.Id<Steps>, Metadata>>;
 	}) => {
-		const stepIndex = ref(getInitialStepIndex(steps, toValue(config?.initialStep)));
-		const metadata = ref(getInitialMetadata(steps, toValue(config?.initialMetadata)));
+		// Merge props with config (props take precedence)
+		const initialStep = toValue(props?.initialStep) ?? config.initialStep;
+		const initialMetadata = { ...config.initialMetadata, ...props?.initialMetadata };
+		
+		const stepIndex = ref(getInitialStepIndex(steps, initialStep));
+		const metadata = ref(getInitialMetadata(steps, initialMetadata));
 
 		watch(
-			() => toValue(config?.initialStep),
+			() => toValue(props?.initialStep),
 			(value) => {
-				stepIndex.value = getInitialStepIndex(steps, value);
+				stepIndex.value = getInitialStepIndex(steps, value ?? config.initialStep);
 			},
 		);
 
@@ -69,7 +87,7 @@ export const defineStepper = <const Steps extends Step[]>(...steps: Steps): Step
 					return metadata.value[id];
 				},
 				resetMetadata(keepInitialMetadata) {
-					metadata.value = getInitialMetadata(steps, keepInitialMetadata ? config?.initialMetadata : undefined);
+					metadata.value = getInitialMetadata(steps, keepInitialMetadata ? initialMetadata : undefined);
 				},
 				next() {
 					updateStepIndex(steps, stepIndex.value + 1, (newIndex) => {
@@ -92,7 +110,7 @@ export const defineStepper = <const Steps extends Step[]>(...steps: Steps): Step
 					});
 				},
 				reset() {
-					stepIndex.value = getInitialStepIndex(steps, toValue(config?.initialStep));
+					stepIndex.value = getInitialStepIndex(steps, initialStep);
 				},
 				async beforeNext(callback) {
 					await executeTransition({ stepper: stepper.value, direction: "next", callback, before: true });

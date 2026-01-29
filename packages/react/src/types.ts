@@ -1,9 +1,10 @@
 import type {
+	BaseStepStatus,
 	Get,
 	HistoryEntry,
+	Initial,
 	InitialState,
 	PersistConfig,
-	RouterConfig,
 	Step,
 	StepMetadata,
 	StepperConfig,
@@ -33,16 +34,6 @@ import type {
 // =============================================================================
 
 /**
- * Function that returns initial data synchronously or asynchronously.
- * Used for SSR, resuming from server state, or fetching saved progress.
- *
- * @typeParam Steps - The array of step definitions.
- */
-export type InitialDataFn<Steps extends Step[]> = () =>
-	| InitialState<Steps>
-	| Promise<InitialState<Steps>>;
-
-/**
  * Stepper status reflecting initialization state.
  */
 export type StepperStatus = "pending" | "success" | "error";
@@ -63,16 +54,26 @@ export type StepperError = {
 export type StepInfo<Steps extends Step[], Id extends Get.Id<Steps>> = {
 	/** The step data definition. */
 	readonly data: Get.StepById<Steps, Id>;
-	/** The step's current status. */
+	/**
+	 * The step's resolved status.
+	 * Combines base status with navigation position:
+	 * - "inactive" - Step is ahead (not yet reached)
+	 * - "active" - Step is current
+	 * - "loading" - Step is processing
+	 * - "error" - Step has an error
+	 * - "success" - Step completed successfully
+	 * - "skipped" - Step was skipped
+	 */
 	readonly status: StepStatus;
 	/** The step's metadata. */
 	readonly metadata: StepMetadata<Steps>[Id];
 	/** `true` if the step is completed (status is "success"). */
 	readonly isCompleted: boolean;
-	/** `true` if the step can be accessed (dependencies satisfied). */
-	readonly canAccess: boolean;
-	/** Set the status of this step. */
-	setStatus: (status: StepStatus) => void;
+	/**
+	 * Set the base status of this step.
+	 * Use "inactive" to derive status from navigation position.
+	 */
+	setStatus: (status: BaseStepStatus) => void;
 	/** Set the metadata of this step. */
 	setMetadata: (values: StepMetadata<Steps>[Id]) => void;
 };
@@ -85,12 +86,11 @@ export type StepInfo<Steps extends Step[], Id extends Get.Id<Steps>> = {
  * Props for the Scoped provider component.
  */
 export type ScopedProps<Steps extends Step[]> = React.PropsWithChildren<{
-	/** The initial step to display. */
-	initialStep?: Get.Id<Steps>;
-	/** Initial metadata values for steps. */
-	initialMetadata?: Partial<StepMetadata<Steps>>;
-	/** Initial status values for steps. */
-	initialStatuses?: Partial<StepStatuses<Steps>>;
+	/**
+	 * Initial state for this scoped instance.
+	 * Only accepts sync object (async not supported in Scoped).
+	 */
+	initial?: InitialState<Steps>;
 }>;
 
 // =============================================================================
@@ -308,12 +308,12 @@ export type StepperInstance<Steps extends Step[]> = {
  * Hook props for useStepper.
  */
 export type UseStepperProps<Steps extends Step[]> = {
-	/** The initial step to display. */
-	initialStep?: Get.Id<Steps>;
-	/** Initial metadata values for steps. */
-	initialMetadata?: Partial<StepMetadata<Steps>>;
-	/** Initial status values for steps. */
-	initialStatuses?: Partial<StepStatuses<Steps>>;
+	/**
+	 * Initial state override for this hook instance.
+	 * Only accepts sync object (async not supported in hook props).
+	 * Merged with config initial (hook props take precedence).
+	 */
+	initial?: InitialState<Steps>;
 };
 
 /**
@@ -394,7 +394,7 @@ export type TypedStepperPrimitives<Steps extends Step[]> = {
 };
 
 /**
- * The object returned by defineStepper() (before or after .config()).
+ * The object returned by defineStepper().
  */
 export type StepperDefinition<Steps extends Step[]> = {
 	/** The defined steps. */
@@ -420,10 +420,10 @@ export type StepperDefinition<Steps extends Step[]> = {
 	 *
 	 * @example
 	 * ```tsx
-	 * const { Stepper } = defineStepper(
+	 * const { Stepper } = defineStepper([
 	 *   { id: "shipping", title: "Shipping" },
 	 *   { id: "payment", title: "Payment" }
-	 * );
+	 * ]);
 	 *
 	 * <Stepper.Root stepper={stepper}>
 	 *   <Stepper.List>
@@ -437,23 +437,33 @@ export type StepperDefinition<Steps extends Step[]> = {
 };
 
 /**
- * Configuration options for the stepper (passed to .config()).
+ * Configuration options for the stepper.
  */
 export type StepperConfigOptions<Steps extends Step[]> = {
 	/**
-	 * The initial step to display.
-	 * @default First step in the array
+	 * Initial state configuration.
+	 * Can be an object with step/metadata/statuses, or a sync/async function.
+	 *
+	 * @example
+	 * ```ts
+	 * // Simple - start on specific step
+	 * initial: { step: "shipping" }
+	 *
+	 * // With metadata and statuses
+	 * initial: {
+	 *   step: "payment",
+	 *   metadata: { shipping: { address: "123 Main St" } },
+	 *   statuses: { shipping: "success" }
+	 * }
+	 *
+	 * // Async - fetch from server
+	 * initial: async () => {
+	 *   const saved = await api.getSavedProgress();
+	 *   return { step: saved.currentStep, metadata: saved.formData };
+	 * }
+	 * ```
 	 */
-	initialStep?: Get.Id<Steps>;
-	/**
-	 * Initial metadata values for steps.
-	 */
-	initialMetadata?: Partial<StepMetadata<Steps>>;
-	/**
-	 * Initial status values for steps.
-	 * @default All steps start as "idle"
-	 */
-	initialStatuses?: Partial<StepStatuses<Steps>>;
+	initial?: Initial<Steps>;
 	/**
 	 * Navigation mode.
 	 * - `"linear"`: Steps must be completed in order.
@@ -461,28 +471,6 @@ export type StepperConfigOptions<Steps extends Step[]> = {
 	 * @default "free"
 	 */
 	mode?: "linear" | "free";
-	/**
-	 * Async function to fetch initial state.
-	 * Useful for SSR, resuming from server state, or fetching saved progress.
-	 *
-	 * The returned data is merged with sync `initialStep`/`initialMetadata`/`initialStatuses`,
-	 * with async values taking precedence.
-	 *
-	 * @example
-	 * ```ts
-	 * .config({
-	 *   initialData: async () => {
-	 *     const savedProgress = await api.getSavedProgress();
-	 *     return {
-	 *       step: savedProgress.currentStep,
-	 *       metadata: savedProgress.formData,
-	 *       statuses: savedProgress.completedSteps,
-	 *     };
-	 *   }
-	 * })
-	 * ```
-	 */
-	initialData?: InitialDataFn<Steps>;
 	/**
 	 * Callback executed before any transition.
 	 * Return `false` to prevent the transition.
@@ -493,42 +481,8 @@ export type StepperConfigOptions<Steps extends Step[]> = {
 	 */
 	onAfterTransition?: (ctx: TransitionContext<Steps>) => void | Promise<void>;
 	/**
-	 * Router configuration for URL synchronization.
-	 * @see RouterConfig
-	 */
-	router?: RouterConfig<Steps>;
-	/**
 	 * Persistence configuration for saving state.
 	 * @see PersistConfig
 	 */
 	persist?: PersistConfig<Steps>;
-};
-
-/**
- * Builder object returned by defineStepper() that allows chaining .config().
- */
-export type StepperBuilder<Steps extends Step[]> = StepperDefinition<Steps> & {
-	/**
-	 * Configure the stepper with additional options.
-	 * This method returns a new StepperDefinition with the config applied.
-	 *
-	 * @param options - Configuration options
-	 * @returns A configured StepperDefinition
-	 *
-	 * @example
-	 * ```ts
-	 * const stepper = defineStepper(
-	 *   { id: "step-1", title: "Step 1" },
-	 *   { id: "step-2", title: "Step 2" }
-	 * ).config({
-	 *   initialStep: "step-1",
-	 *   mode: "linear",
-	 *   onBeforeTransition: (ctx) => {
-	 *     console.log(`Navigating from ${ctx.from.id} to ${ctx.to.id}`);
-	 *     return true;
-	 *   }
-	 * });
-	 * ```
-	 */
-	config: (options: StepperConfigOptions<Steps>) => StepperDefinition<Steps>;
 };

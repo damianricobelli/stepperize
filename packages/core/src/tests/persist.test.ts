@@ -61,7 +61,7 @@ describe("createPersistManager", () => {
 		const state = createPersistedState(
 			"first" as const,
 			{ first: null, second: null, third: null },
-			{ first: "idle", second: "idle", third: "idle" },
+			{ first: "incomplete", second: "incomplete", third: "incomplete" },
 		);
 
 		await manager.save(state);
@@ -85,7 +85,7 @@ describe("createPersistManager", () => {
 		const state = createPersistedState(
 			"second" as const,
 			{ first: { foo: "bar" }, second: null, third: null },
-			{ first: "success", second: "idle", third: "idle" },
+			{ first: "success", second: "incomplete", third: "incomplete" },
 		);
 
 		await manager.save(state);
@@ -122,7 +122,7 @@ describe("createPersistManager", () => {
 		const state = createPersistedState(
 			"first" as const,
 			{ first: null, second: null, third: null },
-			{ first: "idle", second: "idle", third: "idle" },
+			{ first: "incomplete", second: "incomplete", third: "incomplete" },
 		);
 
 		await manager.save(state);
@@ -147,7 +147,7 @@ describe("createPersistManager", () => {
 		const state = createPersistedState(
 			"first" as const,
 			{ first: null, second: null, third: null },
-			{ first: "idle", second: "idle", third: "idle" },
+			{ first: "incomplete", second: "incomplete", third: "incomplete" },
 		);
 
 		await manager.save(state);
@@ -184,7 +184,7 @@ describe("createPersistManager", () => {
 		const state = createPersistedState(
 			"first" as const,
 			{ first: null, second: null, third: null },
-			{ first: "idle", second: "idle", third: "idle" },
+			{ first: "incomplete", second: "incomplete", third: "incomplete" },
 		);
 
 		await manager.save(state);
@@ -208,7 +208,7 @@ describe("createPersistManager", () => {
 		const state = createPersistedState(
 			"first" as const,
 			{ first: null, second: null, third: null },
-			{ first: "idle", second: "idle", third: "idle" },
+			{ first: "incomplete", second: "incomplete", third: "incomplete" },
 		);
 
 		await manager.save(state);
@@ -229,7 +229,7 @@ describe("createPersistManager", () => {
 		const state = createPersistedState(
 			"first" as const,
 			{ first: null, second: null, third: null },
-			{ first: "idle", second: "idle", third: "idle" },
+			{ first: "incomplete", second: "incomplete", third: "incomplete" },
 		);
 
 		await manager.save(state);
@@ -257,7 +257,7 @@ describe("createPersistManager", () => {
 		const state = createPersistedState(
 			"first" as const,
 			{ first: { data: "test" }, second: null, third: null },
-			{ first: "success", second: "idle", third: "idle" },
+			{ first: "success", second: "incomplete", third: "incomplete" },
 		);
 
 		await manager.save(state);
@@ -289,7 +289,7 @@ describe("createPersistManager", () => {
 		const state = createPersistedState(
 			"first" as const,
 			{ first: null, second: null, third: null },
-			{ first: "idle", second: "idle", third: "idle" },
+			{ first: "incomplete", second: "incomplete", third: "incomplete" },
 		);
 
 		// Should not throw
@@ -317,9 +317,9 @@ describe("createPersistedState", () => {
 			third: null,
 		};
 		const statuses: StepStatuses<Steps> = {
-			first: "idle",
-			second: "idle",
-			third: "idle",
+			first: "incomplete",
+			second: "incomplete",
+			third: "incomplete",
 		};
 
 		const state = createPersistedState("second" as const, metadata, statuses);
@@ -343,8 +343,8 @@ describe("persistedStateToInitialState", () => {
 			},
 			statuses: {
 				first: "success",
-				second: "idle",
-				third: "idle",
+				second: "incomplete",
+				third: "incomplete",
 			},
 		};
 

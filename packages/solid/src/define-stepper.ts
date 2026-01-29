@@ -12,24 +12,40 @@ import { createStore, produce } from "solid-js/store";
 import type { StepperReturn } from "./types";
 
 /**
+ * Configuration options for the stepper.
+ */
+export type StepperConfig<Steps extends Step[]> = {
+	/** The initial step to display. */
+	initialStep?: Get.Id<Steps>;
+	/** The initial metadata. */
+	initialMetadata?: Partial<Record<Get.Id<Steps>, Metadata>>;
+};
+
+/**
  * Creates a stepper context and utility functions for managing stepper state.
  *
  * @param steps - The steps to be included in the stepper.
+ * @param config - Optional configuration options.
  * @returns An object containing the stepper context and utility functions.
  */
-export const defineStepper = <const Steps extends Step[]>(...steps: Steps): StepperReturn<Steps> => {
+export const defineStepper = <const Steps extends Step[]>(
+	steps: Steps,
+	config: StepperConfig<Steps> = {},
+): StepperReturn<Steps> => {
 	const utils = generateStepperUtils(...steps);
 
 	const [state, setState] = createStore({
-		stepIndex: 0,
-		metadata: getInitialMetadata(steps, undefined),
+		stepIndex: getInitialStepIndex(steps, config.initialStep),
+		metadata: getInitialMetadata(steps, config.initialMetadata),
 	});
 
-	const useStepper = (config?: {
+	const useStepper = (props?: {
 		initialStep?: Get.Id<Steps>;
 		initialMetadata?: Partial<Record<Get.Id<Steps>, Metadata>>;
 	}) => {
-		const { initialStep, initialMetadata } = config ?? {};
+		// Merge props with config (props take precedence)
+		const initialStep = props?.initialStep ?? config.initialStep;
+		const initialMetadata = { ...config.initialMetadata, ...props?.initialMetadata };
 		const initialStepIndex = getInitialStepIndex(steps, initialStep);
 
 		if (initialStep || initialMetadata) {

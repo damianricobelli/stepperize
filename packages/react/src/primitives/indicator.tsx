@@ -2,7 +2,6 @@ import * as React from "react";
 import {
 	createStepDataAttributes,
 	filterDataAttributes,
-	Slot,
 	usePrimitiveContext,
 	useStepItemContext,
 } from "./context";
@@ -29,7 +28,7 @@ import type { IndicatorProps } from "./types";
  * ```
  */
 const Indicator = React.forwardRef<HTMLSpanElement, IndicatorProps>(
-	({ asChild, render, children, ...props }, ref) => {
+	({ render, children, ...props }, ref) => {
 		const { config } = usePrimitiveContext();
 		const item = useStepItemContext();
 
@@ -49,10 +48,6 @@ const Indicator = React.forwardRef<HTMLSpanElement, IndicatorProps>(
 
 		if (render) {
 			return render(elementProps) ?? <span {...elementProps}>{content}</span>;
-		}
-
-		if (asChild) {
-			return <Slot {...elementProps}>{children}</Slot>;
 		}
 
 		return <span {...elementProps}>{content}</span>;

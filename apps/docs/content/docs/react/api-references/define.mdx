@@ -1,53 +1,913 @@
 ---
 title: Define
-description: How to define a stepper using defineStepper
+description: Create a fully-typed stepper with all necessary tools
 ---
 
-`defineStepper` is the core function for creating a customizable stepper. It generates the necessary components and hooks for building your stepper UI and managing its state.
+`defineStepper` is the core function for creating a stepper. It returns typed components, hooks, and utilities bound to your step definitions.
 
-## Usage
+## Basic Usage
 
-<Steps>
-  <Step>
-    ### Import
+```tsx twoslash
+import { defineStepper } from "@stepperize/react";
 
-    ```tsx twoslash
-    import { defineStepper } from "@stepperize/react";
-    ```
+const { Stepper, Scoped, useStepper, steps, utils } = defineStepper([
+  { id: "shipping", title: "Shipping", description: "Enter your address" },
+  { id: "payment", title: "Payment", description: "Payment details" },
+  { id: "confirmation", title: "Confirmation", description: "Review order" }
+]);
+```
 
-  </Step>
-  <Step>
-    ### Define steps
-    Call `defineStepper` with your step configurations:
-
-    ```tsx twoslash
-    import { defineStepper } from "@stepperize/react"
-    // ---cut-before---
-    const { Scoped, useStepper, steps } = defineStepper(
-      { id: "step-1", title: "Step 1", description: "First step" },
-      { id: "step-2", title: "Step 2", description: "Second step" },
-      { id: "step-3", title: "Step 3", description: "Third step" }
-    );
-    ```
-
-    - `id` (required): Unique identifier for each step
-    - Add any custom properties (e.g., `title`, `description`) for use in your UI
-
-  </Step>
-  </Steps>
+Each step requires an `id` (unique identifier). You can add any custom properties (e.g., `title`, `description`, `icon`, `schema`) for use in your UI.
 
 ## Return Value
 
-`defineStepper` returns an object with:
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `steps` | `Steps` | The array of defined step objects |
+| `utils` | `Utils<Steps>` | Pure utility functions for working with steps ([see Utils](./utils)) |
+| `useStepper` | `(props?) => StepperInstance` | Hook for accessing and controlling the stepper ([see Hook](./hook)) |
+| `Scoped` | `Component` | Provider component for scoping stepper state ([see Scoped](./scoped)) |
+| `Stepper` | `TypedStepperPrimitives` | Type-safe primitive components ([see Primitives](./primitives)) |
 
-- `Scoped`: A Provider component for scoping stepper state
-- `useStepper`: A custom hook for accessing and controlling the stepper
-- `steps`: An array of the defined step objects
-- `utils`: Pure utility functions for working with steps
+## Configuration Options
+
+You can pass a configuration object as the second parameter:
+
+```tsx twoslash
+import { defineStepper } from "@stepperize/react"
+// ---cut-before---
+const { useStepper, Stepper } = defineStepper(
+  [
+    { id: "step-1", title: "Step 1" },
+    { id: "step-2", title: "Step 2" }
+  ],
+  {
+    // Initial state
+    initial: {
+      step: "step-1",
+      metadata: {
+        "step-1": { value: "initial" }
+      },
+      statuses: {
+        "step-1": "incomplete"
+      }
+    },
+    // Navigation mode
+    mode: "free",
+    // Transition callbacks
+    onBeforeTransition: (ctx) => {
+      console.log(`${ctx.from.id} -> ${ctx.to.id}`);
+      return true;
+    },
+    onAfterTransition: (ctx) => {
+      console.log(`Transitioned to ${ctx.to.id}`);
+    },
+    // Persistence
+    persist: {
+      key: "my-stepper",
+      storage: localStorage,
+      ttl: 1000 * 60 * 60
+    }
+  }
+);
+```
+
+### Options Reference
+
+| Option | Type | Default | Description |
+| ------ | ---- | ------- | ----------- |
+| `initial` | `Initial<Steps>` | `undefined` | Initial state configuration (object or async function) |
+| `mode` | `"linear" \| "free"` | `"free"` | Navigation mode. Linear requires steps to be completed in order |
+| `onBeforeTransition` | `(ctx) => boolean \| Promise<boolean>` | `undefined` | Callback before any transition. Return `false` to cancel |
+| `onAfterTransition` | `(ctx) => void \| Promise<void>` | `undefined` | Callback after any transition completes |
+| `persist` | `PersistConfig` | `undefined` | Persistence configuration for saving state |
+
+### Initial State
+
+The `initial` option configures the starting state of the stepper. It can be an object (for static initial state) or an async function (for dynamic state from server/storage).
+
+#### Initial State Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `step` | `StepId` | Initial active step ID |
+| `metadata` | `Record<StepId, any>` | Pre-populated metadata for each step |
+| `statuses` | `Record<StepId, StepStatus>` | Pre-set status for each step |
+
+#### Static Initial State
+
+Use an object when initial state is known at build time:
+
+```tsx twoslash
+import { defineStepper } from "@stepperize/react"
+// ---cut-before---
+// Start on a specific step
+const { useStepper } = defineStepper(
+  [
+    { id: "intro", title: "Introduction" },
+    { id: "setup", title: "Setup" },
+    { id: "complete", title: "Complete" }
+  ],
+  {
+    initial: {
+      step: "setup" // Start on second step
+    }
+  }
+);
+```
+
+#### Pre-populated Form Data
+
+Pass initial metadata when you have existing data to display:
+
+```tsx twoslash
+import { defineStepper } from "@stepperize/react"
+// ---cut-before---
+// Edit existing user profile
+const { useStepper } = defineStepper(
+  [
+    { id: "personal", title: "Personal Info" },
+    { id: "contact", title: "Contact" },
+    { id: "preferences", title: "Preferences" }
+  ],
+  {
+    initial: {
+      step: "personal",
+      metadata: {
+        personal: {
+          firstName: "John",
+          lastName: "Doe",
+          birthDate: "1990-01-15"
+        },
+        contact: {
+          email: "john@example.com",
+          phone: "+1 555-1234"
+        },
+        preferences: null // No data yet
+      },
+      statuses: {
+        personal: "success",    // Already completed
+        contact: "success",     // Already completed
+        preferences: "incomplete"     // Not started
+      }
+    }
+  }
+);
+```
+
+#### Async Initial State (Server-Side)
+
+Use a function when initial state needs to be fetched:
+
+```tsx twoslash
+import * as React from "react"
+import { defineStepper } from "@stepperize/react"
+
+type SavedProgress = {
+  currentStep: "step-1" | "step-2" | "step-3";
+  formData: Record<string, unknown>;
+  stepStatuses: Record<string, "incomplete" | "loading" | "error" | "success" | "skipped">;
+};
+// ---cut-before---
+const { useStepper, Stepper } = defineStepper(
+  [
+    { id: "step-1", title: "Step 1" },
+    { id: "step-2", title: "Step 2" },
+    { id: "step-3", title: "Step 3" }
+  ],
+  {
+    initial: async () => {
+      // Fetch saved progress from server
+      const response = await fetch("/api/user/progress");
+      
+      if (!response.ok) {
+        // Return default state on error
+        return { step: "step-1" };
+      }
+
+      const saved: SavedProgress = await response.json();
+      
+      return {
+        step: saved.currentStep,
+        metadata: saved.formData,
+        statuses: saved.stepStatuses
+      };
+    }
+  }
+);
+
+// Handle loading state in your component
+function MyComponent() {
+  const stepper = useStepper();
+
+  if (stepper.initStatus === "pending") {
+    return <div>Loading your progress...</div>;
+  }
+
+  if (stepper.initStatus === "error") {
+    return (
+      <div>
+        <p>Failed to load progress</p>
+        <button onClick={() => stepper.retry()}>Retry</button>
+      </div>
+    );
+  }
+
+  return <div>Ready! Current step: {stepper.current.data.title}</div>;
+}
+```
+
+#### With URL Parameters
+
+Initialize based on URL for shareable links:
+
+```tsx twoslash
+import { defineStepper } from "@stepperize/react"
+
+declare function getUrlParam(key: string): string | null;
+// ---cut-before---
+const { useStepper } = defineStepper(
+  [
+    { id: "category", title: "Category" },
+    { id: "details", title: "Details" },
+    { id: "confirm", title: "Confirm" }
+  ],
+  {
+    initial: () => {
+      // Read step from URL: /wizard?step=details
+      const urlStep = getUrlParam("step");
+      
+      if (urlStep && ["category", "details", "confirm"].includes(urlStep)) {
+        return { step: urlStep as "category" | "details" | "confirm" };
+      }
+      
+      return { step: "category" };
+    }
+  }
+);
+```
+
+#### Combining with Persistence
+
+When both `initial` and `persist` are provided, persisted state takes priority:
+
+```tsx twoslash
+import { defineStepper } from "@stepperize/react"
+// ---cut-before---
+const { useStepper } = defineStepper(
+  [
+    { id: "step-1", title: "Step 1" },
+    { id: "step-2", title: "Step 2" }
+  ],
+  {
+    initial: {
+      step: "step-1",
+      metadata: { "step-1": { default: true } }
+    },
+    persist: {
+      key: "my-stepper",
+      storage: localStorage
+    }
+  }
+);
+
+// On first visit: Uses `initial` config
+// On return visit: Uses persisted state from localStorage
+// After TTL expires: Falls back to `initial` config
+```
+
+### Navigation Modes
+
+| Mode | Description |
+| ---- | ----------- |
+| `"free"` | Users can navigate to any step at any time |
+| `"linear"` | Users must complete steps in order. Only allows moving to next step or going back |
+
+#### Free Mode (Default)
+
+In `"free"` mode, users can jump to any step regardless of completion status. This is useful for:
+- Non-sequential forms where users can fill sections in any order
+- Review/edit flows where users need to revisit previous steps
+- Dashboards or settings with independent sections
+
+```tsx twoslash
+import * as React from "react"
+import { defineStepper } from "@stepperize/react"
+// ---cut-before---
+const { useStepper, Stepper } = defineStepper(
+  [
+    { id: "profile", title: "Profile" },
+    { id: "preferences", title: "Preferences" },
+    { id: "notifications", title: "Notifications" }
+  ],
+  { mode: "free" } // Default, can be omitted
+);
+
+function SettingsPage() {
+  const stepper = useStepper();
+
+  return (
+    <div>
+      {/* Users can click any tab to navigate directly */}
+      <nav>
+        {stepper.steps.map((stepInfo) => (
+          <button
+            key={stepInfo.data.id}
+            onClick={() => stepper.goTo(stepInfo.data.id)}
+            data-active={stepper.current.data.id === stepInfo.data.id}
+          >
+            {stepInfo.data.title}
+          </button>
+        ))}
+      </nav>
+
+      {stepper.switch({
+        profile: () => <div>Profile settings...</div>,
+        preferences: () => <div>Preference settings...</div>,
+        notifications: () => <div>Notification settings...</div>,
+      })}
+    </div>
+  );
+}
+```
+
+#### Linear Mode
+
+In `"linear"` mode, navigation is restricted:
+- **Going back**: Always allowed to any previous step
+- **Going forward**: Only allowed to the immediate next step, and only if the current step has `"success"` status
+
+This is ideal for:
+- Checkout flows where payment info shouldn't be accessible before shipping
+- Onboarding wizards that must be completed in sequence
+- Multi-step forms with dependencies between steps
+
+```tsx twoslash
+import * as React from "react"
+import { defineStepper } from "@stepperize/react"
+// ---cut-before---
+const { useStepper, Stepper } = defineStepper(
+  [
+    { id: "shipping", title: "Shipping" },
+    { id: "payment", title: "Payment" },
+    { id: "review", title: "Review" }
+  ],
+  { mode: "linear" }
+);
+
+function CheckoutFlow() {
+  const stepper = useStepper();
+
+  const handleShippingSubmit = async (data: { address: string }) => {
+    // Save shipping data...
+    
+    // Mark step as completed - this enables navigation to next step
+    stepper.step("shipping").setStatus("success");
+    stepper.step("shipping").setMetadata(data);
+    
+    // Now we can navigate to payment
+    await stepper.next();
+  };
+
+  const handlePaymentSubmit = async (data: { card: string }) => {
+    stepper.step("payment").setStatus("success");
+    stepper.step("payment").setMetadata(data);
+    await stepper.next();
+  };
+
+  return (
+    <div>
+      {/* Step indicators - clicking won't work unless allowed */}
+      <nav>
+        {stepper.steps.map((stepInfo) => (
+          <button
+            key={stepInfo.data.id}
+            onClick={() => stepper.goTo(stepInfo.data.id)}
+            // In linear mode, goTo will be ignored if not allowed
+            disabled={stepInfo.status === "inactive"}
+          >
+            {stepInfo.data.title}
+            {stepInfo.isCompleted && " ✓"}
+          </button>
+        ))}
+      </nav>
+
+      {stepper.switch({
+        shipping: () => (
+          <form onSubmit={(e) => {
+            e.preventDefault();
+            handleShippingSubmit({ address: "123 Main St" });
+          }}>
+            <input placeholder="Address" />
+            <button type="submit">Continue to Payment</button>
+          </form>
+        ),
+        payment: () => (
+          <form onSubmit={(e) => {
+            e.preventDefault();
+            handlePaymentSubmit({ card: "****1234" });
+          }}>
+            <input placeholder="Card number" />
+            <button type="button" onClick={() => stepper.prev()}>
+              Back to Shipping
+            </button>
+            <button type="submit">Continue to Review</button>
+          </form>
+        ),
+        review: () => (
+          <div>
+            <p>Shipping: {JSON.stringify(stepper.step("shipping").metadata)}</p>
+            <p>Payment: {JSON.stringify(stepper.step("payment").metadata)}</p>
+            <button onClick={() => stepper.prev()}>Back</button>
+            <button onClick={() => alert("Order placed!")}>Place Order</button>
+          </div>
+        ),
+      })}
+    </div>
+  );
+}
+```
+
+#### Linear Mode Navigation Rules
+
+| Action | Allowed? | Condition |
+| ------ | -------- | --------- |
+| `prev()` | ✅ Always | Can go back to any previous step |
+| `next()` | ⚠️ Conditional | Only if current step status is `"success"` |
+| `goTo(previousStep)` | ✅ Always | Can jump back to any previous step |
+| `goTo(nextStep)` | ⚠️ Conditional | Only to immediate next step, and only if current is `"success"` |
+| `goTo(futureStep)` | ⚠️ Conditional | Only if ALL intermediate steps have `"success"` status |
+
+```tsx twoslash
+import { defineStepper } from "@stepperize/react"
+
+const { useStepper } = defineStepper(
+  [
+    { id: "step-1", title: "Step 1" },
+    { id: "step-2", title: "Step 2" },
+    { id: "step-3", title: "Step 3" }
+  ],
+  { mode: "linear" }
+);
+// ---cut-before---
+// Example: Currently on step-1
+const stepper = useStepper();
+
+// ❌ Will be ignored - current step not completed
+stepper.next();
+
+// ✅ Mark current step as completed
+stepper.step("step-1").setStatus("success");
+
+// ✅ Now next() works
+stepper.next(); // Goes to step-2
+
+// ❌ Can't skip to step-3 - step-2 not completed yet
+stepper.goTo("step-3");
+
+// ✅ Mark step-2 as completed
+stepper.step("step-2").setStatus("success");
+
+// ✅ Now we can go to step-3 (all intermediate steps completed)
+stepper.goTo("step-3");
+
+// ✅ Can always go back to any previous step
+stepper.goTo("step-1");
+```
+
+### Persistence
+
+Persistence automatically saves stepper state (current step, metadata, statuses) to storage. State is restored on page reload or component remount.
+
+#### Basic Usage
+
+```tsx twoslash
+import { defineStepper } from "@stepperize/react"
+// ---cut-before---
+const { useStepper } = defineStepper(
+  [{ id: "step-1" }, { id: "step-2" }],
+  {
+    persist: {
+      key: "checkout-stepper",     // Storage key
+      storage: localStorage,        // localStorage, sessionStorage, or custom
+      ttl: 1000 * 60 * 60 * 24     // Optional: expire after 24 hours
+    }
+  }
+);
+```
+
+#### Persistence Options
+
+| Option | Type | Required | Description |
+| ------ | ---- | -------- | ----------- |
+| `key` | `string` | Yes | Unique key for storage. Use different keys for different steppers |
+| `storage` | `PersistStorage` | No | Storage implementation. Default: `localStorage` |
+| `ttl` | `number` | No | Time-to-live in milliseconds. State expires after this duration |
+| `serialize` | `(state) => string` | No | Custom serializer function. Default: `JSON.stringify` |
+| `deserialize` | `(value) => state` | No | Custom deserializer function. Default: `JSON.parse` |
+| `partialize` | `(state) => Partial` | No | Filter which parts of state to persist |
+
+#### Using Session Storage
+
+Use `sessionStorage` when you want state to persist only for the browser session:
+
+```tsx twoslash
+import { defineStepper } from "@stepperize/react"
+// ---cut-before---
+const { useStepper } = defineStepper(
+  [
+    { id: "shipping", title: "Shipping" },
+    { id: "payment", title: "Payment" },
+    { id: "confirmation", title: "Confirmation" }
+  ],
+  {
+    persist: {
+      key: "checkout-flow",
+      storage: sessionStorage // Cleared when browser tab is closed
+    }
+  }
+);
+```
+
+#### With TTL (Time-to-Live)
+
+Automatically expire saved state after a duration:
+
+```tsx twoslash
+import { defineStepper } from "@stepperize/react"
+// ---cut-before---
+const { useStepper } = defineStepper(
+  [
+    { id: "step-1", title: "Step 1" },
+    { id: "step-2", title: "Step 2" }
+  ],
+  {
+    persist: {
+      key: "onboarding-stepper",
+      storage: localStorage,
+      ttl: 1000 * 60 * 60 // Expire after 1 hour
+    }
+  }
+);
+
+// If user returns after 1 hour, stepper starts fresh
+```
+
+#### Clearing Persisted State
+
+You can manually clear saved state:
+
+```tsx twoslash
+import * as React from "react"
+import { defineStepper } from "@stepperize/react"
+
+const { useStepper } = defineStepper(
+  [{ id: "step-1" }, { id: "step-2" }],
+  { persist: { key: "my-stepper", storage: localStorage } }
+);
+// ---cut-before---
+function MyComponent() {
+  const stepper = useStepper();
+
+  const handleLogout = async () => {
+    // Clear saved progress before logging out
+    await stepper.clearPersistedState();
+  };
+
+  const handleStartOver = () => {
+    // Reset stepper AND clear storage
+    stepper.reset({ clearPersisted: true });
+  };
+
+  return (
+    <div>
+      <button onClick={handleLogout}>Logout</button>
+      <button onClick={handleStartOver}>Start Over</button>
+    </div>
+  );
+}
+```
+
+### Custom Storage
+
+Implement a custom storage adapter for advanced use cases like IndexedDB, cookies, or server-side storage:
+
+```tsx twoslash
+import { defineStepper } from "@stepperize/react"
+// ---cut-before---
+// Custom adapter interface
+const customStorage = {
+  getItem: (key: string) => {
+    // Return stored value or null
+    return localStorage.getItem(key);
+  },
+  setItem: (key: string, value: string) => {
+    localStorage.setItem(key, value);
+  },
+  removeItem: (key: string) => {
+    localStorage.removeItem(key);
+  }
+};
+
+const { useStepper } = defineStepper(
+  [{ id: "step-1" }, { id: "step-2" }],
+  { persist: { key: "my-stepper", storage: customStorage } }
+);
+```
+
+#### Encrypted Storage Example
+
+```tsx twoslash
+import { defineStepper } from "@stepperize/react"
+
+function encrypt(data: string): string {
+  return btoa(data); // Simple example, use proper encryption in production
+}
+
+function decrypt(data: string): string {
+  return atob(data);
+}
+// ---cut-before---
+const encryptedStorage = {
+  getItem: (key: string) => {
+    const encrypted = localStorage.getItem(key);
+    if (!encrypted) return null;
+    try {
+      return decrypt(encrypted);
+    } catch {
+      return null;
+    }
+  },
+  setItem: (key: string, value: string) => {
+    const encrypted = encrypt(value);
+    localStorage.setItem(key, encrypted);
+  },
+  removeItem: (key: string) => {
+    localStorage.removeItem(key);
+  }
+};
+
+const { useStepper } = defineStepper(
+  [{ id: "step-1" }, { id: "step-2" }],
+  { persist: { key: "secure-stepper", storage: encryptedStorage } }
+);
+```
+
+#### Cookie-based Storage Example
+
+```tsx twoslash
+import { defineStepper } from "@stepperize/react"
+// ---cut-before---
+const cookieStorage = {
+  getItem: (key: string) => {
+    const match = document.cookie.match(new RegExp(`(^| )${key}=([^;]+)`));
+    return match ? decodeURIComponent(match[2]) : null;
+  },
+  setItem: (key: string, value: string) => {
+    const expires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toUTCString();
+    document.cookie = `${key}=${encodeURIComponent(value)}; expires=${expires}; path=/`;
+  },
+  removeItem: (key: string) => {
+    document.cookie = `${key}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`;
+  }
+};
+
+const { useStepper } = defineStepper(
+  [{ id: "step-1" }, { id: "step-2" }],
+  { persist: { key: "stepper-cookie", storage: cookieStorage } }
+);
+```
+
+## Transition Callbacks
+
+Transition callbacks let you intercept navigation and run logic before or after step changes. They're defined globally in `defineStepper` and apply to all navigation actions (`next()`, `prev()`, `goTo()`).
+
+### onBeforeTransition
+
+Called before any navigation. Return `false` (or a Promise that resolves to `false`) to cancel the navigation.
+
+```tsx twoslash
+import { defineStepper } from "@stepperize/react"
+// ---cut-before---
+const { useStepper } = defineStepper(
+  [
+    { id: "personal", title: "Personal Info" },
+    { id: "address", title: "Address" },
+    { id: "payment", title: "Payment" }
+  ],
+  {
+    onBeforeTransition: async (ctx) => {
+      console.log(`Navigating: ${ctx.from.id} → ${ctx.to.id} (${ctx.direction})`);
+      
+      // Example: Confirm before going back
+      if (ctx.direction === "prev") {
+        return window.confirm("Go back? Your changes on this step may be lost.");
+      }
+      
+      return true; // Allow navigation
+    }
+  }
+);
+```
+
+#### Form Validation Example
+
+```tsx twoslash
+import { defineStepper } from "@stepperize/react"
+
+type FormData = Record<string, { isValid: boolean }>;
+declare const formRefs: { current: FormData };
+// ---cut-before---
+const { useStepper } = defineStepper(
+  [
+    { id: "contact", title: "Contact" },
+    { id: "shipping", title: "Shipping" },
+    { id: "billing", title: "Billing" }
+  ],
+  {
+    onBeforeTransition: async (ctx) => {
+      // Only validate when moving forward
+      if (ctx.direction === "prev") return true;
+
+      // Get the form for the current step
+      const currentForm = formRefs.current[ctx.from.id];
+      
+      if (!currentForm?.isValid) {
+        alert(`Please complete the ${ctx.from.title} form before continuing.`);
+        return false; // Cancel navigation
+      }
+
+      return true;
+    }
+  }
+);
+```
+
+#### Async Validation Example
+
+```tsx twoslash
+import { defineStepper } from "@stepperize/react"
+
+async function validateOnServer(stepId: string, data: unknown): Promise<{ valid: boolean; errors?: string[] }> {
+  return { valid: true };
+}
+// ---cut-before---
+const { useStepper } = defineStepper(
+  [
+    { id: "email", title: "Email Verification" },
+    { id: "profile", title: "Profile Setup" },
+    { id: "complete", title: "Complete" }
+  ],
+  {
+    onBeforeTransition: async (ctx) => {
+      if (ctx.direction === "prev") return true;
+
+      // Server-side validation
+      const result = await validateOnServer(ctx.from.id, ctx.metadata[ctx.from.id]);
+      
+      if (!result.valid) {
+        console.error("Validation errors:", result.errors);
+        return false;
+      }
+
+      return true;
+    }
+  }
+);
+```
+
+### onAfterTransition
+
+Called after navigation completes. Cannot cancel navigation (it already happened). Use for analytics, auto-save, or side effects.
+
+```tsx twoslash
+import { defineStepper } from "@stepperize/react"
+
+declare function trackEvent(event: string, data: object): void;
+declare function saveToServer(stepId: string, metadata: unknown): Promise<void>;
+// ---cut-before---
+const { useStepper } = defineStepper(
+  [
+    { id: "intro", title: "Introduction" },
+    { id: "quiz", title: "Quiz" },
+    { id: "results", title: "Results" }
+  ],
+  {
+    onAfterTransition: async (ctx) => {
+      // Track analytics
+      trackEvent("step_completed", {
+        from: ctx.from.id,
+        to: ctx.to.id,
+        direction: ctx.direction
+      });
+
+      // Auto-save progress
+      await saveToServer(ctx.from.id, ctx.metadata[ctx.from.id]);
+    }
+  }
+);
+```
+
+#### Combined Example: Full Checkout Flow
+
+```tsx twoslash
+import { defineStepper } from "@stepperize/react"
+
+declare function validateShipping(data: unknown): Promise<boolean>;
+declare function validatePayment(data: unknown): Promise<boolean>;
+declare function saveProgress(data: { step: string; metadata: unknown }): Promise<void>;
+declare function trackCheckoutStep(step: string): void;
+// ---cut-before---
+const { useStepper, Stepper } = defineStepper(
+  [
+    { id: "cart", title: "Cart Review" },
+    { id: "shipping", title: "Shipping" },
+    { id: "payment", title: "Payment" },
+    { id: "confirm", title: "Confirmation" }
+  ],
+  {
+    mode: "linear",
+    
+    onBeforeTransition: async (ctx) => {
+      // Allow going back always
+      if (ctx.direction === "prev") return true;
+
+      // Step-specific validation when going forward
+      switch (ctx.from.id) {
+        case "cart":
+          // Check cart isn't empty
+          const items = ctx.metadata.cart as { items?: unknown[] } | null;
+          if (!items?.items?.length) {
+            alert("Your cart is empty!");
+            return false;
+          }
+          break;
+
+        case "shipping":
+          const shippingValid = await validateShipping(ctx.metadata.shipping);
+          if (!shippingValid) {
+            alert("Please enter a valid shipping address.");
+            return false;
+          }
+          break;
+
+        case "payment":
+          const paymentValid = await validatePayment(ctx.metadata.payment);
+          if (!paymentValid) {
+            alert("Please enter valid payment details.");
+            return false;
+          }
+          break;
+      }
+
+      return true;
+    },
+
+    onAfterTransition: async (ctx) => {
+      // Save progress after each step
+      await saveProgress({
+        step: ctx.to.id,
+        metadata: ctx.metadata
+      });
+
+      // Track funnel analytics
+      trackCheckoutStep(ctx.to.id);
+    },
+
+    persist: {
+      key: "checkout-progress",
+      storage: sessionStorage,
+      ttl: 1000 * 60 * 30 // 30 minutes
+    }
+  }
+);
+```
+
+### TransitionContext
+
+The context object passed to both callbacks:
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `from` | `Step` | The step being navigated from |
+| `to` | `Step` | The step being navigated to |
+| `direction` | `"next" \| "prev" \| "goTo"` | Navigation direction (which method triggered the transition) |
+| `fromIndex` | `number` | Index of the source step |
+| `toIndex` | `number` | Index of the target step |
+| `metadata` | `StepMetadata<Steps>` | Current metadata for all steps |
+| `statuses` | `StepStatuses<Steps>` | Current status of all steps |
+
+<Callout type="info">
+  Note: `onBeforeTransition` and `onAfterTransition` are global callbacks defined in `defineStepper`. 
+  For one-time callbacks on specific navigation actions, use `beforeNext()`, `afterNext()`, `beforePrev()`, etc. 
+  See the [Hook documentation](./hook#beforeafter-functions) for details.
+</Callout>
 
 ## Next Steps
 
-Learn how to use the returned components and hooks:
+Learn how to use the returned values:
 
-- [useStepper Hook](./hook)
-- [Scoped Component](./scoped)
+- [Primitives](./primitives) - Build your stepper UI with type-safe components
+- [useStepper Hook](./hook) - Access and control stepper state
+- [Scoped Component](./scoped) - Share stepper state across components
+- [Utils](./utils) - Pure utility functions for working with steps

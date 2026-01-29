@@ -3,12 +3,10 @@ import * as React from "react";
 import {
 	createStepDataAttributes,
 	filterDataAttributes,
-	Slot,
 	StepItemProvider,
 	usePrimitiveContext,
 } from "./context";
-import type { ItemProps, StepItemContextValue, StepState } from "./types";
-import { getStepState } from "./types";
+import type { ItemProps, StepItemContextValue } from "./types";
 
 /**
  * Item primitive that wraps a single step.
@@ -28,7 +26,6 @@ function ItemImpl<Steps extends Step[] = Step[]>(
 	{
 		step: stepId,
 		disabled,
-		asChild,
 		render,
 		children,
 		...props
@@ -37,7 +34,7 @@ function ItemImpl<Steps extends Step[] = Step[]>(
 ) {
 	const { stepper, config } = usePrimitiveContext<Steps>();
 
-	// Get step info
+	// Get step info - status is already resolved in stepInfo
 	const stepIndex = stepper.steps.findIndex(
 		(s) => s.data.id === (stepId as string),
 	);
@@ -53,9 +50,10 @@ function ItemImpl<Steps extends Step[] = Step[]>(
 	const step = stepInfo.data;
 	const isFirst = stepIndex === 0;
 	const isLast = stepIndex === stepper.steps.length - 1;
-	const isActive = stepper.current.data.id === stepId;
-	const state: StepState = getStepState(stepper.currentIndex, stepIndex);
-	const isCompleted = state === "completed";
+	// Use the resolved status from stepInfo
+	const status = stepInfo.status;
+	const isActive = status === "active";
+	const isCompleted = status === "success";
 
 	const itemContext = React.useMemo<StepItemContextValue<Steps>>(
 		() => ({
@@ -63,12 +61,12 @@ function ItemImpl<Steps extends Step[] = Step[]>(
 			index: stepIndex,
 			isActive,
 			isCompleted,
-			state,
+			status,
 			isFirst,
 			isLast,
 			disabled,
 		}),
-		[step, stepIndex, isActive, isCompleted, state, isFirst, isLast, disabled],
+		[step, stepIndex, isActive, isCompleted, status, isFirst, isLast, disabled],
 	);
 
 	const dataAttributes = filterDataAttributes(
@@ -86,8 +84,6 @@ function ItemImpl<Steps extends Step[] = Step[]>(
 
 	if (render) {
 		element = render(elementProps) ?? <li {...elementProps}>{children}</li>;
-	} else if (asChild) {
-		element = <Slot {...elementProps}>{children}</Slot>;
 	} else {
 		element = <li {...elementProps}>{children}</li>;
 	}

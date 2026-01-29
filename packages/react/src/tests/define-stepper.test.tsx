@@ -10,7 +10,7 @@ const steps = [
 ] as const;
 
 describe("defineStepper", () => {
-  const stepperDef = defineStepper(...steps);
+  const stepperDef = defineStepper(steps);
 
   it("initializes in the first step by default", () => {
     const { result } = renderHook(() => stepperDef.useStepper());
@@ -22,7 +22,7 @@ describe("defineStepper", () => {
 
   it("allows initializing in a custom step", () => {
     const { result } = renderHook(() =>
-      stepperDef.useStepper({ initialStep: "second" })
+      stepperDef.useStepper({ initial: { step: "second" } })
     );
 
     expect(result.current.current.data.id).toBe("second");
@@ -39,7 +39,7 @@ describe("defineStepper", () => {
 
   it("goes back with prev()", () => {
     const { result } = renderHook(() =>
-      stepperDef.useStepper({ initialStep: "third" })
+      stepperDef.useStepper({ initial: { step: "third" } })
     );
 
     act(() => result.current.prev());
@@ -66,7 +66,7 @@ describe("defineStepper", () => {
 
   it("resets to the initial step with reset()", () => {
     const { result } = renderHook(() =>
-      stepperDef.useStepper({ initialStep: "second" })
+      stepperDef.useStepper({ initial: { step: "second" } })
     );
 
     act(() => {
@@ -79,7 +79,7 @@ describe("defineStepper", () => {
 
   it("handles metadata with set/get/reset", () => {
     const { result } = renderHook(() =>
-      stepperDef.useStepper({ initialMetadata: { first: { foo: "bar" } } })
+      stepperDef.useStepper({ initial: { metadata: { first: { foo: "bar" } } } })
     );
 
     expect(result.current.step("first").metadata).toEqual({ foo: "bar" });
@@ -137,7 +137,7 @@ describe("defineStepper", () => {
 
   it("executes callback in beforePrev and navigates if true", async () => {
     const { result } = renderHook(() =>
-      stepperDef.useStepper({ initialStep: "second" })
+      stepperDef.useStepper({ initial: { step: "second" } })
     );
     const cb = vi.fn().mockReturnValue(true);
 
@@ -153,7 +153,7 @@ describe("defineStepper", () => {
 
   it("executes callback in afterPrev after navigating", async () => {
     const { result } = renderHook(() =>
-      stepperDef.useStepper({ initialStep: "second" })
+      stepperDef.useStepper({ initial: { step: "second" } })
     );
     const cb = vi.fn();
 
@@ -208,7 +208,7 @@ describe("defineStepper", () => {
 
   it("resetMetadata with keepInitialMetadata=false clears metadata", () => {
     const { result } = renderHook(() =>
-      stepperDef.useStepper({ initialMetadata: { first: { foo: "bar" } } })
+      stepperDef.useStepper({ initial: { metadata: { first: { foo: "bar" } } } })
     );
 
     act(() => result.current.resetMetadata(false));
@@ -219,7 +219,7 @@ describe("defineStepper", () => {
   it("Scoped provides context to the children", () => {
     const { result } = renderHook(() => stepperDef.useStepper(), {
       wrapper: ({ children }) => (
-        <stepperDef.Scoped initialStep="third">{children}</stepperDef.Scoped>
+        <stepperDef.Scoped initial={{ step: "third" }}>{children}</stepperDef.Scoped>
       ),
     });
 
@@ -232,9 +232,9 @@ describe("defineStepper", () => {
 // =============================================================================
 
 describe("defineStepper - async initialization", () => {
-  it("starts with pending status when initialData is configured", () => {
-    const asyncStepperDef = defineStepper(...steps).config({
-      initialData: async () => ({ step: "second" }),
+  it("starts with pending status when initial is async function", () => {
+    const asyncStepperDef = defineStepper(steps, {
+      initial: async () => ({ step: "second" }),
     });
 
     const { result } = renderHook(() => asyncStepperDef.useStepper());
@@ -244,8 +244,8 @@ describe("defineStepper - async initialization", () => {
   });
 
   it("resolves async initial step", async () => {
-    const asyncStepperDef = defineStepper(...steps).config({
-      initialData: async () => {
+    const asyncStepperDef = defineStepper(steps, {
+      initial: async () => {
         await new Promise((resolve) => setTimeout(resolve, 10));
         return { step: "second" };
       },
@@ -265,15 +265,16 @@ describe("defineStepper - async initialization", () => {
     expect(result.current.current.data.id).toBe("second");
   });
 
-  it("merges async metadata with sync initial metadata", async () => {
-    const asyncStepperDef = defineStepper(...steps).config({
-      initialMetadata: { first: { syncValue: "sync" } },
-      initialData: async () => ({
+  it("async initial overrides sync hook props", async () => {
+    const asyncStepperDef = defineStepper(steps, {
+      initial: async () => ({
         metadata: { second: { asyncValue: "async" } },
       }),
     });
 
-    const { result } = renderHook(() => asyncStepperDef.useStepper());
+    const { result } = renderHook(() =>
+      asyncStepperDef.useStepper({ initial: { metadata: { first: { syncValue: "sync" } } } })
+    );
 
     await waitFor(() => {
       expect(result.current.initStatus).toBe("success");
@@ -284,15 +285,16 @@ describe("defineStepper - async initialization", () => {
     expect(result.current.step("second").metadata).toEqual({ asyncValue: "async" });
   });
 
-  it("async metadata takes precedence over sync metadata", async () => {
-    const asyncStepperDef = defineStepper(...steps).config({
-      initialMetadata: { first: { value: "sync" } },
-      initialData: async () => ({
+  it("async metadata takes precedence over sync metadata in same step", async () => {
+    const asyncStepperDef = defineStepper(steps, {
+      initial: async () => ({
         metadata: { first: { value: "async" } },
       }),
     });
 
-    const { result } = renderHook(() => asyncStepperDef.useStepper());
+    const { result } = renderHook(() =>
+      asyncStepperDef.useStepper({ initial: { metadata: { first: { value: "sync" } } } })
+    );
 
     await waitFor(() => {
       expect(result.current.initStatus).toBe("success");
@@ -304,8 +306,8 @@ describe("defineStepper - async initialization", () => {
 
   it("handles async initialization errors", async () => {
     const testError = new Error("Test error");
-    const asyncStepperDef = defineStepper(...steps).config({
-      initialData: async () => {
+    const asyncStepperDef = defineStepper(steps, {
+      initial: async () => {
         throw testError;
       },
     });
@@ -321,8 +323,8 @@ describe("defineStepper - async initialization", () => {
 
   it("retry re-runs async initialization", async () => {
     let callCount = 0;
-    const asyncStepperDef = defineStepper(...steps).config({
-      initialData: async () => {
+    const asyncStepperDef = defineStepper(steps, {
+      initial: async () => {
         callCount++;
         if (callCount === 1) {
           throw new Error("First attempt fails");
@@ -354,29 +356,31 @@ describe("defineStepper - async initialization", () => {
     expect(result.current.current.data.id).toBe("third");
   });
 
-  it("merges async statuses with sync initial statuses", async () => {
-    const asyncStepperDef = defineStepper(...steps).config({
-      initialStatuses: { first: "success" },
-      initialData: async () => ({
+  it("async statuses override sync initial statuses in same step", async () => {
+    const asyncStepperDef = defineStepper(steps, {
+      initial: async () => ({
         statuses: { second: "success" },
       }),
     });
 
-    const { result } = renderHook(() => asyncStepperDef.useStepper());
+    const { result } = renderHook(() =>
+      asyncStepperDef.useStepper({ initial: { statuses: { first: "success" } } })
+    );
 
     await waitFor(() => {
       expect(result.current.initStatus).toBe("success");
     });
 
     // Both sync and async statuses should be present
+    // Status is resolved: explicit statuses take priority, "incomplete" derives from position
     expect(result.current.step("first").status).toBe("success");
     expect(result.current.step("second").status).toBe("success");
-    expect(result.current.step("third").status).toBe("idle");
+    expect(result.current.step("third").status).toBe("inactive"); // idle + future = inactive
   });
 
-  it("supports synchronous initialData", async () => {
-    const asyncStepperDef = defineStepper(...steps).config({
-      initialData: () => ({ step: "second" }), // Sync function
+  it("supports synchronous initial function", async () => {
+    const asyncStepperDef = defineStepper(steps, {
+      initial: () => ({ step: "second" }), // Sync function
     });
 
     const { result } = renderHook(() => asyncStepperDef.useStepper());
@@ -388,9 +392,9 @@ describe("defineStepper - async initialization", () => {
     expect(result.current.current.data.id).toBe("second");
   });
 
-  it("without initialData, status starts as success", () => {
-    const syncStepperDef = defineStepper(...steps).config({
-      initialStep: "second",
+  it("with sync initial object, status starts as success", () => {
+    const syncStepperDef = defineStepper(steps, {
+      initial: { step: "second" },
     });
 
     const { result } = renderHook(() => syncStepperDef.useStepper());
@@ -406,8 +410,8 @@ describe("defineStepper - async initialization", () => {
 
 describe("isStepperReady", () => {
   it("returns true when initialization is successful", async () => {
-    const asyncStepperDef = defineStepper(...steps).config({
-      initialData: async () => ({ step: "second" }),
+    const asyncStepperDef = defineStepper(steps, {
+      initial: async () => ({ step: "second" }),
     });
 
     const { result } = renderHook(() => asyncStepperDef.useStepper());
@@ -420,8 +424,8 @@ describe("isStepperReady", () => {
     });
   });
 
-  it("returns true when no initialData is configured", () => {
-    const syncStepperDef = defineStepper(...steps);
+  it("returns true when no async initial is configured", () => {
+    const syncStepperDef = defineStepper(steps);
     const { result } = renderHook(() => syncStepperDef.useStepper());
 
     expect(isStepperReady(result.current)).toBe(true);
@@ -442,12 +446,12 @@ describe("defineStepper - persistence", () => {
       JSON.stringify({
         stepId: "second",
         metadata: { first: { saved: true } },
-        statuses: { first: "success", second: "idle", third: "idle" },
+        statuses: { first: "success", second: "incomplete", third: "incomplete" },
         timestamp: Date.now(),
       })
     );
 
-    const persistStepperDef = defineStepper(...steps).config({
+    const persistStepperDef = defineStepper(steps, {
       persist: {
         key: "test-stepper",
         storage,
@@ -469,7 +473,7 @@ describe("defineStepper - persistence", () => {
   it("auto-saves state changes to storage", async () => {
     const storage = createMemoryStorage();
 
-    const persistStepperDef = defineStepper(...steps).config({
+    const persistStepperDef = defineStepper(steps, {
       persist: {
         key: "test-stepper",
         storage,
@@ -500,7 +504,7 @@ describe("defineStepper - persistence", () => {
   it("saves metadata changes to storage", async () => {
     const storage = createMemoryStorage();
 
-    const persistStepperDef = defineStepper(...steps).config({
+    const persistStepperDef = defineStepper(steps, {
       persist: {
         key: "test-stepper",
         storage,
@@ -529,7 +533,7 @@ describe("defineStepper - persistence", () => {
   it("saves status changes to storage", async () => {
     const storage = createMemoryStorage();
 
-    const persistStepperDef = defineStepper(...steps).config({
+    const persistStepperDef = defineStepper(steps, {
       persist: {
         key: "test-stepper",
         storage,
@@ -570,7 +574,7 @@ describe("defineStepper - persistence", () => {
       })
     );
 
-    const persistStepperDef = defineStepper(...steps).config({
+    const persistStepperDef = defineStepper(steps, {
       persist: {
         key: "test-stepper",
         storage,
@@ -610,7 +614,7 @@ describe("defineStepper - persistence", () => {
       })
     );
 
-    const persistStepperDef = defineStepper(...steps).config({
+    const persistStepperDef = defineStepper(steps, {
       persist: {
         key: "test-stepper",
         storage,
@@ -645,7 +649,7 @@ describe("defineStepper - persistence", () => {
       })
     );
 
-    const persistStepperDef = defineStepper(...steps).config({
+    const persistStepperDef = defineStepper(steps, {
       persist: {
         key: "test-stepper",
         storage,
@@ -663,7 +667,7 @@ describe("defineStepper - persistence", () => {
     expect(result.current.current.data.id).toBe("first");
   });
 
-  it("combines persistence with async initialData (async takes precedence)", async () => {
+  it("combines persistence with async initial (async takes precedence)", async () => {
     const storage = createMemoryStorage();
 
     // Pre-populate storage
@@ -677,13 +681,13 @@ describe("defineStepper - persistence", () => {
       })
     );
 
-    const persistStepperDef = defineStepper(...steps).config({
+    const persistStepperDef = defineStepper(steps, {
       persist: {
         key: "test-stepper",
         storage,
       },
-      // initialData takes precedence
-      initialData: async () => ({
+      // async initial takes precedence
+      initial: async () => ({
         step: "third",
         metadata: { first: { fromAsync: true } },
       }),

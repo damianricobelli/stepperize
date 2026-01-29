@@ -10,34 +10,6 @@ export const linkItems: LinkItemType[] = [
 		active: "nested-url",
 		description: "Stepperize for React",
 	},
-	{
-		icon: <icons.ShadcnIcon />,
-		text: "Shadcn",
-		url: "/docs/react/shadcn/introduction",
-		active: "nested-url",
-		description: "Stepperize for Shadcn",
-	},
-	{
-		icon: <icons.VueIcon />,
-		text: "Vue",
-		url: "/docs/vue",
-		active: "nested-url",
-		description: "Stepperize for Vue",
-	},
-	{
-		icon: <icons.SolidIcon />,
-		text: "Solid",
-		url: "/docs/solid",
-		active: "nested-url",
-		description: "Stepperize for Solid",
-	},
-	{
-		icon: <icons.SvelteIcon />,
-		text: "Svelte",
-		url: "/docs/svelte",
-		active: "nested-url",
-		description: "Stepperize for Svelte",
-	},
 ];
 
 export const baseOptions: BaseLayoutProps = {

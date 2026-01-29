@@ -121,7 +121,7 @@ export function getInitialMetadata<Steps extends Step[]>(
  *
  * @param steps - The steps to get the initial statuses for.
  * @param initialStatuses - The initial statuses to use (partial).
- * @returns A complete statuses record with "idle" defaults.
+ * @returns A complete statuses record with "incomplete" defaults.
  */
 export function getInitialStatuses<Steps extends Step[]>(
 	steps: Steps,
@@ -130,7 +130,7 @@ export function getInitialStatuses<Steps extends Step[]>(
 	return steps.reduce(
 		(acc, step) => {
 			const stepId = step.id as Get.Id<Steps>;
-			acc[stepId] = initialStatuses?.[stepId] ?? "idle";
+			acc[stepId] = initialStatuses?.[stepId] ?? "incomplete";
 			return acc;
 		},
 		{} as StepStatuses<Steps>,

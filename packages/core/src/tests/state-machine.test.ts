@@ -1,20 +1,15 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import type { Step, StepMetadata, StepStatuses } from "../types";
 import {
-	areDependenciesSatisfied,
 	canAccessStep,
 	canNavigate,
 	canRedo,
 	canUndo,
 	createInitialState,
 	createTransitionContext,
-	findNextValidStepIndex,
 	isStepCompleted,
-	shouldSkipStep,
 	stepperReducer,
-	validateStepMetadata,
 } from "../state-machine";
-import type { StandardSchemaV1 } from "../standard-schema";
 
 const steps: Step[] = [
 	{ id: "first", label: "Step 1" },
@@ -30,9 +25,9 @@ describe("createInitialState", () => {
 
 		expect(state.currentIndex).toBe(0);
 		expect(state.statuses).toEqual({
-			first: "idle",
-			second: "idle",
-			third: "idle",
+			first: "incomplete",
+			second: "incomplete",
+			third: "incomplete",
 		});
 		expect(state.metadata).toEqual({
 			first: null,
@@ -44,32 +39,36 @@ describe("createInitialState", () => {
 		expect(state.initialized).toBe(true);
 	});
 
-	it("uses initialStep from config", () => {
+	it("uses initial.step from config", () => {
 		const state = createInitialState(steps, {
-			initialStep: "second",
+			initial: { step: "second" },
 		});
 
 		expect(state.currentIndex).toBe(1);
 		expect(state.history[0].step.id).toBe("second");
 	});
 
-	it("uses initialStatuses from config", () => {
+	it("uses initial.statuses from config", () => {
 		const state = createInitialState(steps, {
-			initialStatuses: {
-				first: "success",
-				second: "pending",
+			initial: {
+				statuses: {
+					first: "success",
+					second: "loading",
+				},
 			},
 		});
 
 		expect(state.statuses.first).toBe("success");
-		expect(state.statuses.second).toBe("pending");
-		expect(state.statuses.third).toBe("idle");
+		expect(state.statuses.second).toBe("loading");
+		expect(state.statuses.third).toBe("incomplete");
 	});
 
-	it("uses initialMetadata from config", () => {
+	it("uses initial.metadata from config", () => {
 		const state = createInitialState(steps, {
-			initialMetadata: {
-				first: { foo: "bar" },
+			initial: {
+				metadata: {
+					first: { foo: "bar" },
+				},
 			},
 		});
 
@@ -78,12 +77,20 @@ describe("createInitialState", () => {
 		expect(state.metadata.third).toBeNull();
 	});
 
-	it("sets initialized to false when initialData is provided", () => {
+	it("sets initialized to false when initial is a function", () => {
 		const state = createInitialState(steps, {
-			initialData: async () => ({}),
+			initial: async () => ({}),
 		});
 
 		expect(state.initialized).toBe(false);
+	});
+
+	it("sets initialized to true when initial is an object", () => {
+		const state = createInitialState(steps, {
+			initial: { step: "second" },
+		});
+
+		expect(state.initialized).toBe(true);
 	});
 });
 
@@ -169,7 +176,7 @@ describe("stepperReducer", () => {
 			);
 
 			expect(newState.statuses.first).toBe("success");
-			expect(newState.statuses.second).toBe("idle");
+			expect(newState.statuses.second).toBe("incomplete");
 		});
 	});
 
@@ -213,8 +220,10 @@ describe("stepperReducer", () => {
 
 		it("keeps initial metadata when keepInitial is true", () => {
 			const state = createInitialState(steps, {
-				initialMetadata: {
-					first: { initial: "value" },
+				initial: {
+					metadata: {
+						first: { initial: "value" },
+					},
 				},
 			});
 
@@ -270,13 +279,13 @@ describe("stepperReducer", () => {
 					type: "RESET",
 					initialIndex: 0,
 					initialMetadata: { first: { initial: "value" } },
-					initialStatuses: { first: "idle" },
+					initialStatuses: { first: "incomplete" },
 				},
 				steps,
 			);
 
 			expect(resetState.currentIndex).toBe(0);
-			expect(resetState.statuses.first).toBe("idle");
+			expect(resetState.statuses.first).toBe("incomplete");
 			expect(resetState.metadata.first).toEqual({ initial: "value" });
 			expect(resetState.history).toHaveLength(1);
 			expect(resetState.historyIndex).toBe(0);
@@ -402,63 +411,6 @@ describe("canNavigate", () => {
 
 		expect(canNavigate(steps, state, 1, "linear")).toBe(false);
 	});
-
-	it("checks dependencies", () => {
-		const stepsWithDeps: Step[] = [
-			{ id: "first", label: "Step 1" },
-			{ id: "second", label: "Step 2", requires: ["first"] },
-			{ id: "third", label: "Step 3", requires: ["second"] },
-		];
-
-		let state = createInitialState(stepsWithDeps);
-
-		// Cannot navigate to second if first is not completed
-		expect(canNavigate(stepsWithDeps, state, 1, "free")).toBe(false);
-
-		// Complete first step
-		state = stepperReducer(
-			state,
-			{ type: "SET_STATUS", stepId: "first", status: "success" },
-			stepsWithDeps,
-		);
-
-		// Now can navigate to second
-		expect(canNavigate(stepsWithDeps, state, 1, "free")).toBe(true);
-	});
-});
-
-describe("areDependenciesSatisfied", () => {
-	it("returns true when step has no dependencies", () => {
-		const statuses: StepStatuses<Steps> = {
-			first: "idle",
-			second: "idle",
-			third: "idle",
-		};
-
-		expect(areDependenciesSatisfied(steps[0], statuses)).toBe(true);
-	});
-
-	it("returns true when all dependencies are satisfied", () => {
-		const step = { id: "third", requires: ["first", "second"] } as Step;
-		const statuses: StepStatuses<Steps> = {
-			first: "success",
-			second: "success",
-			third: "idle",
-		};
-
-		expect(areDependenciesSatisfied(step, statuses)).toBe(true);
-	});
-
-	it("returns false when any dependency is not satisfied", () => {
-		const step = { id: "third", requires: ["first", "second"] } as Step;
-		const statuses: StepStatuses<Steps> = {
-			first: "success",
-			second: "idle",
-			third: "idle",
-		};
-
-		expect(areDependenciesSatisfied(step, statuses)).toBe(false);
-	});
 });
 
 describe("createTransitionContext", () => {
@@ -480,8 +432,8 @@ describe("isStepCompleted", () => {
 	it("returns true when step status is success", () => {
 		const statuses: StepStatuses<Steps> = {
 			first: "success",
-			second: "idle",
-			third: "idle",
+			second: "incomplete",
+			third: "incomplete",
 		};
 
 		expect(isStepCompleted("first", statuses)).toBe(true);
@@ -489,8 +441,8 @@ describe("isStepCompleted", () => {
 
 	it("returns false when step status is not success", () => {
 		const statuses: StepStatuses<Steps> = {
-			first: "idle",
-			second: "pending",
+			first: "incomplete",
+			second: "loading",
 			third: "error",
 		};
 
@@ -546,188 +498,4 @@ describe("canRedo", () => {
 	});
 });
 
-describe("shouldSkipStep", () => {
-	it("returns false when step has no skip function", () => {
-		const metadata: StepMetadata<Steps> = {
-			first: null,
-			second: null,
-			third: null,
-		};
 
-		expect(shouldSkipStep(steps[0], metadata)).toBe(false);
-	});
-
-	it("returns true when skip function returns true", () => {
-		const step = {
-			id: "first",
-			skip: () => true,
-		} as Step;
-
-		const metadata: StepMetadata<Steps> = {
-			first: null,
-			second: null,
-			third: null,
-		};
-
-		expect(shouldSkipStep(step, metadata)).toBe(true);
-	});
-
-	it("returns false when skip function returns false", () => {
-		const step = {
-			id: "first",
-			skip: () => false,
-		} as Step;
-
-		const metadata: StepMetadata<Steps> = {
-			first: null,
-			second: null,
-			third: null,
-		};
-
-		expect(shouldSkipStep(step, metadata)).toBe(false);
-	});
-
-	it("passes metadata to skip function", () => {
-		const skipFn = vi.fn().mockReturnValue(false);
-		const step = {
-			id: "first",
-			skip: skipFn,
-		} as Step;
-
-		const metadata: StepMetadata<Steps> = {
-			first: { foo: "bar" },
-			second: null,
-			third: null,
-		};
-
-		shouldSkipStep(step, metadata);
-
-		expect(skipFn).toHaveBeenCalledWith({ first: { foo: "bar" }, second: null, third: null });
-	});
-});
-
-describe("findNextValidStepIndex", () => {
-	it("finds next non-skipped step forward", () => {
-		const stepsWithSkip: Step[] = [
-			{ id: "first", label: "Step 1" },
-			{ id: "second", label: "Step 2", skip: () => true },
-			{ id: "third", label: "Step 3" },
-		];
-
-		const metadata: StepMetadata<typeof stepsWithSkip> = {
-			first: null,
-			second: null,
-			third: null,
-		};
-
-		const index = findNextValidStepIndex(stepsWithSkip, 0, 1, metadata);
-
-		expect(index).toBe(2);
-	});
-
-	it("finds next non-skipped step backward", () => {
-		const stepsWithSkip: Step[] = [
-			{ id: "first", label: "Step 1" },
-			{ id: "second", label: "Step 2", skip: () => true },
-			{ id: "third", label: "Step 3" },
-		];
-
-		const metadata: StepMetadata<typeof stepsWithSkip> = {
-			first: null,
-			second: null,
-			third: null,
-		};
-
-		const index = findNextValidStepIndex(stepsWithSkip, 2, -1, metadata);
-
-		expect(index).toBe(0);
-	});
-
-	it("returns -1 when no valid step is found", () => {
-		const stepsWithSkip: Step[] = [
-			{ id: "first", label: "Step 1", skip: () => true },
-			{ id: "second", label: "Step 2", skip: () => true },
-		];
-
-		const metadata: StepMetadata<typeof stepsWithSkip> = {
-			first: null,
-			second: null,
-		};
-
-		const index = findNextValidStepIndex(stepsWithSkip, 0, 1, metadata);
-
-		expect(index).toBe(-1);
-	});
-});
-
-describe("validateStepMetadata", () => {
-	it("returns success when step has no schema", () => {
-		const step: Step = { id: "first" };
-		const result = validateStepMetadata(step, { foo: "bar" });
-
-		expect(result).toEqual({ success: true, data: { foo: "bar" } });
-	});
-
-	it("validates with Standard Schema synchronously", () => {
-		const mockSchema: StandardSchemaV1 = {
-			"~standard": {
-				version: 1,
-				vendor: "test",
-				validate: (value: unknown) => {
-					if (typeof value === "object" && value !== null && "valid" in value) {
-						return { value };
-					}
-					return {
-						issues: [{ message: "Invalid data" }],
-					};
-				},
-				types: {
-					input: {} as unknown,
-					output: { valid: true } as { valid: boolean },
-				},
-			},
-		};
-
-		const step = { id: "first", schema: mockSchema } as unknown as Step;
-
-		const successResult = validateStepMetadata(step, { valid: true });
-		expect(successResult).toEqual({ success: true, data: { valid: true } });
-
-		const failResult = validateStepMetadata(step, { invalid: true });
-		expect(failResult).toEqual({
-			success: false,
-			error: [{ message: "Invalid data" }],
-		});
-	});
-
-	it("validates with Standard Schema asynchronously", async () => {
-		const mockSchema: StandardSchemaV1 = {
-			"~standard": {
-				version: 1,
-				vendor: "test",
-				validate: (value: unknown) => {
-					return Promise.resolve(
-						typeof value === "object" && value !== null && "valid" in value
-							? { value }
-							: { issues: [{ message: "Invalid data" }] },
-					);
-				},
-				types: {
-					input: {} as unknown,
-					output: { valid: true } as { valid: boolean },
-				},
-			},
-		};
-
-		const step = { id: "first", schema: mockSchema } as unknown as Step;
-
-		const successResult = await validateStepMetadata(step, { valid: true });
-		expect(successResult).toEqual({ success: true, data: { valid: true } });
-
-		const failResult = await validateStepMetadata(step, { invalid: true });
-		expect(failResult).toEqual({
-			success: false,
-			error: [{ message: "Invalid data" }],
-		});
-	});
-});

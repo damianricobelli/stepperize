@@ -3,15 +3,15 @@
 // =============================================================================
 
 export type {
+	BaseStepStatus,
 	Get,
 	HistoryEntry,
+	Initial,
 	InitialState,
 	PersistedState,
 	PersistConfig,
 	PersistManager,
 	PersistStorage,
-	RouterAdapter,
-	RouterConfig,
 	Step,
 	StepMetadata,
 	StepperConfig,
@@ -35,8 +35,7 @@ export {
 // =============================================================================
 
 export type {
-	// Initial data types
-	InitialDataFn,
+	// Status types
 	StepperError,
 	StepperStatus,
 	// Step info
@@ -44,7 +43,6 @@ export type {
 	// Component props
 	ScopedProps,
 	// Stepper types
-	StepperBuilder,
 	StepperConfigOptions,
 	StepperDefinition,
 	StepperInstance,

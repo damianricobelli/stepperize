@@ -4,7 +4,6 @@ import type { StepperInstance } from "../types";
 import {
 	DEFAULT_CONFIG,
 	PrimitiveProvider,
-	Slot,
 } from "./context";
 import type { PrimitiveContextValue, RootProps } from "./types";
 
@@ -52,7 +51,6 @@ const Root = React.forwardRef<HTMLDivElement, RootProps>(
 			stepperContext,
 			orientation = DEFAULT_CONFIG.orientation,
 			tracking = DEFAULT_CONFIG.tracking,
-			asChild,
 			render,
 			children,
 			...props
@@ -97,8 +95,6 @@ const Root = React.forwardRef<HTMLDivElement, RootProps>(
 
 		if (render) {
 			element = render(elementProps) ?? <div {...elementProps}>{children}</div>;
-		} else if (asChild) {
-			element = <Slot {...elementProps}>{children}</Slot>;
 		} else {
 			element = <div {...elementProps}>{children}</div>;
 		}

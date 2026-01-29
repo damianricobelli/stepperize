@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Slot, usePrimitiveContext } from "./context";
+import { usePrimitiveContext } from "./context";
 import type { ActionsProps } from "./types";
 
 /**
@@ -15,7 +15,7 @@ import type { ActionsProps } from "./types";
  * ```
  */
 const Actions = React.forwardRef<HTMLDivElement, ActionsProps>(
-	({ asChild, render, children, ...props }, ref) => {
+	({ render, children, ...props }, ref) => {
 		const { config } = usePrimitiveContext();
 
 		const dataAttributes = {
@@ -32,10 +32,6 @@ const Actions = React.forwardRef<HTMLDivElement, ActionsProps>(
 
 		if (render) {
 			return render(elementProps) ?? <div {...elementProps}>{children}</div>;
-		}
-
-		if (asChild) {
-			return <Slot {...elementProps}>{children}</Slot>;
 		}
 
 		return <div {...elementProps}>{children}</div>;

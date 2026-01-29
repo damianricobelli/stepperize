@@ -104,58 +104,6 @@ export const DEFAULT_CONFIG: Required<PrimitiveConfig> = {
 };
 
 // =============================================================================
-// SLOT COMPONENT (for asChild)
-// =============================================================================
-
-interface SlotProps extends React.HTMLAttributes<HTMLElement> {
-	children?: React.ReactNode;
-}
-
-/**
- * Minimal Slot implementation that merges props with single child.
- */
-export const Slot = React.forwardRef<HTMLElement, SlotProps>(
-	({ children, ...props }, ref) => {
-		if (!React.isValidElement(children)) {
-			console.warn(
-				"[@stepperize/react] Slot: asChild requires a single valid React element as child.",
-			);
-			return null;
-		}
-
-		const childProps = children.props as Record<string, unknown>;
-
-		return React.cloneElement(children, {
-			...props,
-			...childProps,
-			ref,
-			// Merge className
-			className: mergeClassNames(
-				props.className,
-				childProps.className as string | undefined,
-			),
-			// Merge styles
-			style: {
-				...props.style,
-				...(childProps.style as React.CSSProperties | undefined),
-			},
-		} as React.HTMLAttributes<HTMLElement>);
-	},
-);
-
-Slot.displayName = "Slot";
-
-/**
- * Merge class names, filtering out undefined values.
- */
-function mergeClassNames(
-	...classNames: (string | undefined)[]
-): string | undefined {
-	const merged = classNames.filter(Boolean).join(" ");
-	return merged || undefined;
-}
-
-// =============================================================================
 // DATA ATTRIBUTE HELPERS
 // =============================================================================
 
@@ -167,7 +115,7 @@ export function createStepDataAttributes(
 	orientation: "horizontal" | "vertical",
 ): Record<string, string | number | undefined> {
 	return {
-		"data-state": item.state,
+		"data-status": item.status,
 		"data-disabled": item.disabled ? "true" : undefined,
 		"data-first": item.isFirst ? "true" : undefined,
 		"data-last": item.isLast ? "true" : undefined,

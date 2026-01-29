@@ -17,8 +17,8 @@ import { StepperWithDescription } from "@/registry/new-york/blocks/stepper-with-
 import { StepperWithForm } from "@/registry/new-york/blocks/stepper-with-form/components/stepper-with-form";
 import { StepperWithIcon } from "@/registry/new-york/blocks/stepper-with-icon/components/stepper-with-icon";
 import { StepperWithLabelOrientation } from "@/registry/new-york/blocks/stepper-with-label-orientation/components/stepper-with-label-orientation";
-import { StepperWithResponsiveVariant } from "@/registry/new-york/blocks/stepper-with-responsive-variant/components/stepper-with-responsive-variant";
-import { StepperWithTracking } from "@/registry/new-york/blocks/stepper-with-tracking/components/stepper-with-tracking";
+// import { StepperWithResponsiveVariant } from "@/registry/new-york/blocks/stepper-with-responsive-variant/components/stepper-with-responsive-variant";
+import { StepperWithScrollTracking } from "@/registry/new-york/blocks/stepper-with-scroll-tracking/components/stepper-with-scroll-tracking";
 import { StepperWithVariants } from "@/registry/new-york/blocks/stepper-with-variants/components/stepper-with-variants";
 
 export default async function Page(props: { params: Promise<{ slug?: string[] }> }) {
@@ -69,8 +69,7 @@ export default async function Page(props: { params: Promise<{ slug?: string[] }>
 						StepperWithForm,
 						StepperWithIcon,
 						StepperWithLabelOrientation,
-						StepperWithResponsiveVariant,
-						StepperWithTracking,
+						StepperWithScrollTracking,
 						StepperWithVariants,
 						OpenInV0,
 						DocsCategory: ({ url }: { url: string }) => <DocsCategory url={url} />,

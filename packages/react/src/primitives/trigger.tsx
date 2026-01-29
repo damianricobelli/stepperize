@@ -3,7 +3,6 @@ import * as React from "react";
 import {
 	createStepDataAttributes,
 	filterDataAttributes,
-	Slot,
 	usePrimitiveContext,
 	useStepItemContext,
 } from "./context";
@@ -29,12 +28,12 @@ import type { TriggerProps } from "./types";
  * ```
  */
 const Trigger = React.forwardRef<HTMLButtonElement, TriggerProps>(
-	({ onClick, asChild, render, children, disabled: disabledProp, ...props }, ref) => {
+	({ onClick, render, children, disabled: disabledProp, ...props }, ref) => {
 		const { stepper, config } = usePrimitiveContext();
 		const item = useStepItemContext();
 
 		const disabled = disabledProp ?? item.disabled;
-		const isDisabled = disabled || item.state === "inactive";
+		const isDisabled = disabled || item.status === "inactive";
 
 		const handleClick: React.MouseEventHandler<HTMLButtonElement> = (e) => {
 			if (onClick) {
@@ -99,10 +98,6 @@ const Trigger = React.forwardRef<HTMLButtonElement, TriggerProps>(
 
 		if (render) {
 			return render(elementProps) ?? <button {...elementProps}>{children}</button>;
-		}
-
-		if (asChild) {
-			return <Slot {...elementProps}>{children}</Slot>;
 		}
 
 		return <button {...elementProps}>{children}</button>;

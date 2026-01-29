@@ -95,12 +95,6 @@ importers:
       '@stepperize/react':
         specifier: workspace:*
         version: link:../../packages/react
-      '@stepperize/solid':
-        specifier: workspace:*
-        version: link:../../packages/solid
-      '@stepperize/vue':
-        specifier: workspace:*
-        version: link:../../packages/vue
       arktype:
         specifier: ^2.1.29
         version: 2.1.29

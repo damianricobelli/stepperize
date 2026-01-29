@@ -7,12 +7,12 @@ import { CheckCircle } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import * as React from "react";
 
-const stepper = defineStepper(
+const stepper = defineStepper([
 	{ id: "personal-info", label: "Personal Information", icon: User },
 	{ id: "address", label: "Address Information", icon: Home },
 	{ id: "payment", label: "Payment Information", icon: CreditCard },
 	{ id: "success", label: "Success", icon: CheckCircle },
-);
+]);
 
 const slideVariants = {
 	enter: (direction: number) => ({ x: direction > 0 ? 500 : -500, opacity: 0 }),

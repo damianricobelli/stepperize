@@ -20,11 +20,13 @@ const Schema = z.object({
 
 type MyFormValues = z.infer<typeof Schema>;
 
-const stepperInstance = defineStepper({
-  id: "personal",
-  label: "Personal Information",
-  schema: Schema,
-});
+const stepperInstance = defineStepper([
+  {
+    id: "personal",
+    label: "Personal Information",
+    schema: Schema,
+  }
+]);
 ```
 
 ## ValiBot
@@ -40,11 +42,13 @@ const Schema = v.object({
 
 type MyFormValues = v.InferInput<typeof Schema>;
 
-const stepperInstance = defineStepper({
-  id: "personal",
-  label: "Personal Information",
-  schema: Schema,
-});
+const stepperInstance = defineStepper([
+  {
+    id: "personal",
+    label: "Personal Information",
+    schema: Schema,
+  }
+]);
 ```
 
 ## ArkType
@@ -60,11 +64,51 @@ const Schema = type({
 
 type MyFormValues = typeof Schema.infer;
 
-const stepperInstance = defineStepper({
-  id: "personal",
-  label: "Personal Information",
-  schema: Schema,
+const stepperInstance = defineStepper([
+  {
+    id: "personal",
+    label: "Personal Information",
+    schema: Schema,
+  }
+]);
+```
+
+## Accessing Schemas
+
+Once you've defined your stepper with schemas, you can access them through the stepper instance:
+
+```tsx twoslash
+import * as React from "react";
+import { z } from "zod";
+import { defineStepper } from "@stepperize/react";
+
+const PersonalSchema = z.object({
+  name: z.string().min(1),
+  email: z.string().email(),
 });
+
+const AddressSchema = z.object({
+  street: z.string().min(1),
+  city: z.string().min(1),
+});
+
+const { useStepper } = defineStepper([
+  { id: "personal", title: "Personal", schema: PersonalSchema },
+  { id: "address", title: "Address", schema: AddressSchema },
+]);
+
+function MyForm() {
+  const stepper = useStepper();
+
+  // Access schema from current step
+  const currentSchema = stepper.current.data.schema;
+
+  // Access schema from specific step
+  const personalSchema = stepper.step("personal").data.schema;
+  const addressSchema = stepper.step("address").data.schema;
+
+  return <div>Schema available: {currentSchema ? "Yes" : "No"}</div>;
+}
 ```
 
 ## Working with multiple schemas and steps
@@ -89,7 +133,7 @@ const SecondStepSchema = z.object({
 
 const ThirdStepSchema = z.object({});
 
-const stepperInstance = defineStepper(
+const stepperInstance = defineStepper([
   {
     id: "personal-info",
     label: "Personal Information",
@@ -105,13 +149,13 @@ const stepperInstance = defineStepper(
     label: "Complete",
     schema: ThirdStepSchema,
   }
-);
+]);
 ```
 
 <Callout type="info">
   You've probably noticed that the last step has an empty schema. This is
-  because stepperize infers all the steps, and when you want to send your
-  `currentStep.schema`, one of them could be undefined. To avoid this, you can
+  because stepperize infers all the steps, and when you want to access your
+  `stepper.current.data.schema`, one of them could be undefined. To avoid this, you can
   simply add an empty schema. Or, if you prefer, you can choose not to do this
   and validate for yourself whether the schema exists.
 </Callout>

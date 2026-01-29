@@ -7,11 +7,6 @@ import type { StepperInstance } from "../types";
 // =============================================================================
 
 /**
- * State for step-related primitives.
- */
-export type StepState = "active" | "completed" | "inactive";
-
-/**
  * Orientation for the stepper layout.
  */
 export type Orientation = "horizontal" | "vertical";
@@ -25,9 +20,10 @@ export type CommonDataAttributes = {
 
 /**
  * Data attributes for step-related primitives.
+ * Uses `data-status` for the resolved step status.
  */
 export type StepDataAttributes = CommonDataAttributes & {
-	"data-state"?: StepState | StepStatus | string;
+	"data-status"?: StepStatus;
 	"data-disabled"?: string;
 	"data-first"?: string;
 	"data-last"?: string;
@@ -63,10 +59,6 @@ export type PrimitiveProps<E extends React.ElementType = "div"> =
 		 * Receives all props including data attributes, event handlers, and ARIA attributes.
 		 */
 		render?: RenderProp<E>;
-		/**
-		 * Whether to render as a Slot (merge with single child).
-		 */
-		asChild?: boolean;
 		/**
 		 * Children can be a ReactNode or a function receiving step info.
 		 */
@@ -111,12 +103,12 @@ export type StepItemContextValue<Steps extends Step[] = Step[]> = {
 	step: Steps[number];
 	/** The step index. */
 	index: number;
-	/** Whether this step is currently active. */
+	/** Whether this step is currently active (status === "active"). */
 	isActive: boolean;
-	/** Whether this step is completed. */
+	/** Whether this step is completed (status === "success"). */
 	isCompleted: boolean;
-	/** The computed state of the step. */
-	state: StepState;
+	/** The resolved status of the step. */
+	status: StepStatus;
 	/** Whether this is the first step. */
 	isFirst: boolean;
 	/** Whether this is the last step. */
@@ -247,15 +239,3 @@ export type NextProps = PrimitiveProps<"button"> & {
 	disableOnLast?: boolean;
 };
 
-// =============================================================================
-// UTILITY TYPES
-// =============================================================================
-
-/**
- * Helper to get step state from current and target indices.
- */
-export function getStepState(currentIndex: number, stepIndex: number): StepState {
-	if (currentIndex === stepIndex) return "active";
-	if (currentIndex > stepIndex) return "completed";
-	return "inactive";
-}

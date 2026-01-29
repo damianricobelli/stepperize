@@ -1,11 +1,10 @@
 "use client";
 
-import * as React from "react";
-
-import { defineStepper } from "@/registry/new-york/blocks/stepper-with-description/components/ui/stepper";
+import { defineStepper, Get } from "@stepperize/react";
+import { useStepItemContext } from "@stepperize/react/primitives";
 import { Button } from "@/registry/new-york/ui/button";
 
-const { Stepper } = defineStepper(
+const { Stepper, ...stepperDefinition } = defineStepper([
 	{
 		id: "step-1",
 		title: "Step 1",
@@ -21,44 +20,163 @@ const { Stepper } = defineStepper(
 		title: "Step 3",
 		description: "This is the third step",
 	},
-);
+]);
+
+const StepperTriggerWrapper = () => {
+	const item = useStepItemContext();
+	const isInactive = item.status === "inactive";
+
+	return (
+		<Stepper.Trigger
+			render={(domProps) => (
+				<Button
+					className="rounded-full"
+					variant={isInactive ? "secondary" : "default"}
+					size="icon"
+					{...domProps}
+				>
+					<Stepper.Indicator />
+				</Button>
+			)}
+		/>
+	);
+};
+
+const StepperTitleWrapper = ({ title }: { title: string }) => {
+	return (
+		<Stepper.Title
+			render={(domProps) => (
+				<h4 className="text-base font-medium" {...domProps}>
+					{title}
+				</h4>
+			)}
+		/>
+	);
+};
+
+const StepperDescriptionWrapper = ({ description }: { description?: string }) => {
+	if (!description) return null;
+	return (
+		<Stepper.Description
+			render={(domProps) => (
+				<p className="text-sm text-muted-foreground" {...domProps}>
+					{description}
+				</p>
+			)}
+		/>
+	);
+};
+
+const StepperSeparatorWithStatus = ({
+	status,
+	isLast,
+}: { status: string; isLast: boolean }) => {
+	if (isLast) return null;
+
+	return (
+		<Stepper.Separator
+			orientation="horizontal"
+			data-status={status}
+			className="bg-muted data-[status=success]:bg-primary data-[disabled]:opacity-50 transition-all duration-300 ease-in-out data-[orientation=horizontal]:h-0.5 data-[orientation=horizontal]:flex-1 data-[orientation=vertical]:h-full data-[orientation=vertical]:w-0.5"
+		/>
+	);
+};
 
 export function StepperWithDescription() {
 	return (
-		<Stepper.Provider className="space-y-4" variant="horizontal">
-			{({ methods }) => (
-				<React.Fragment>
-					<Stepper.Navigation>
-						{methods.all.map((step) => (
-							<Stepper.Step key={step.id} of={step.id} onClick={() => methods.goTo(step.id)}>
-								<Stepper.Title>{step.title}</Stepper.Title>
-								<Stepper.Description>{step.description}</Stepper.Description>
-							</Stepper.Step>
-						))}
-					</Stepper.Navigation>
-					{methods.switch({
-						"step-1": (step) => <Content id={step.id} />,
-						"step-2": (step) => <Content id={step.id} />,
-						"step-3": (step) => <Content id={step.id} />,
+		<Stepper.Root className="w-full space-y-4" orientation="horizontal">
+			{({ stepper }) => (
+				<>
+					<Stepper.List
+						className="flex gap-2 data-[orientation=horizontal]:flex-row data-[orientation=horizontal]:items-center data-[orientation=horizontal]:justify-between data-[orientation=vertical]:flex-col"
+					>
+						{stepper.steps.map((stepInfo, index) => {
+							const { status } = stepInfo;
+							const isLast = index === stepper.steps.length - 1;
+							const stepData = stepInfo.data as {
+								id: string;
+								title: string;
+								description?: string;
+							};
+
+							return [
+								<Stepper.Item
+									key={stepInfo.data.id}
+									step={stepInfo.data.id}
+									className="group peer relative flex items-center gap-2"
+								>
+									<StepperTriggerWrapper />
+									<div className="flex flex-col items-start gap-1">
+										<StepperTitleWrapper title={stepData.title} />
+										<StepperDescriptionWrapper
+											description={stepData.description}
+										/>
+									</div>
+								</Stepper.Item>,
+								<StepperSeparatorWithStatus
+									key={`separator-${stepInfo.data.id}`}
+									status={status}
+									isLast={isLast}
+								/>,
+							];
+						})}
+					</Stepper.List>
+					{stepper.switch({
+						"step-1": (data) => <Content id={data.id} />,
+						"step-2": (data) => <Content id={data.id} />,
+						"step-3": (data) => <Content id={data.id} />,
 					})}
-					<Stepper.Controls>
-						{!methods.isLast && (
-							<Button type="button" variant="secondary" onClick={methods.prev} disabled={methods.isFirst}>
-								Previous
-							</Button>
+					<Stepper.Actions className="flex justify-end gap-4">
+						{!stepper.isLast && (
+							<Stepper.Prev
+								render={(domProps) => (
+									<Button
+										type="button"
+										variant="secondary"
+										{...domProps}
+									>
+										Previous
+									</Button>
+								)}
+							/>
 						)}
-						<Button onClick={methods.isLast ? methods.reset : methods.next}>{methods.isLast ? "Reset" : "Next"}</Button>
-					</Stepper.Controls>
-				</React.Fragment>
+						{stepper.isLast ? (
+							<Button
+								type="button"
+								onClick={() => stepper.reset()}
+							>
+								Reset
+							</Button>
+						) : (
+							<Stepper.Next
+								render={(domProps) => (
+									<Button type="button" {...domProps}>
+										Next
+									</Button>
+								)}
+							/>
+						)}
+					</Stepper.Actions>
+				</>
 			)}
-		</Stepper.Provider>
+		</Stepper.Root>
 	);
 }
 
-const Content = ({ id }: { id: string }) => {
+const Content = ({
+	id,
+}: { id: Get.Id<typeof stepperDefinition.steps> }) => {
 	return (
-		<Stepper.Panel className="h-[200px] content-center rounded border bg-secondary text-secondary-foreground p-8">
-			<p className="text-xl font-normal">Content for {id}</p>
-		</Stepper.Panel>
+		<Stepper.Content
+			step={id}
+			render={(props) => (
+				<div
+					{...props}
+					className="h-[200px] content-center rounded border bg-secondary text-secondary-foreground p-8"
+				>
+					<p className="text-xl font-normal">Content for {id}</p>
+				</div>
+			)}
+		/>
 	);
 };

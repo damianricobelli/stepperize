@@ -1,5 +1,5 @@
 export type * from "./types";
-export type * from "./standard-schema";
+export { resolveStepStatus } from "./types";
 export * from "./utils";
 export * from "./state-machine";
 export * from "./persist";
