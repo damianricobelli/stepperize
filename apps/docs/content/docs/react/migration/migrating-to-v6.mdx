@@ -8,6 +8,33 @@ Stepperize v6 introduces a completely redesigned API with typed primitives, impr
 
 ## Breaking Changes
 
+### `defineStepper` signature: two parameters (steps array + config)
+
+In v6, `defineStepper` takes **two arguments**: first the **array of steps**, second the **configuration object**. The single-object form is no longer supported.
+
+```tsx
+// v5 — single object
+const { useStepper } = defineStepper(
+  { id: "step-1", title: "Step 1" },
+  { id: "step-2", title: "Step 2" },
+);
+
+// v6 — steps array + config object
+const { useStepper } = defineStepper(
+  [
+    { id: "step-1", title: "Step 1" },
+    { id: "step-2", title: "Step 2" },
+  ],
+  {
+    initial: { step: "step-1" },
+    mode: "linear",
+  }
+);
+```
+
+- **First parameter:** the steps array (same step shape as before).
+- **Second parameter:** optional config object (`initial`, `mode`, `persist`, `onBeforeTransition`, `onAfterTransition`).
+
 ### Navigation methods are now async
 
 All navigation methods (`next`, `prev`, `goTo`) now return `Promise<void>`:
