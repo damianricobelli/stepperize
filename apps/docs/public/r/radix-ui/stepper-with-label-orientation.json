@@ -1,6 +1,6 @@
 {
   "$schema": "https://ui.shadcn.com/schema/registry-item.json",
-  "name": "stepper-with-label-orientation",
+  "name": "radix-ui/stepper-with-label-orientation",
   "title": "Stepper with label orientation",
   "description": "A stepper with a label orientation",
   "dependencies": [

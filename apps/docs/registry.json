@@ -4,7 +4,7 @@
 	"homepage": "https://stepperize.vercel.app/",
 	"items": [
 		{
-			"name": "stepper-demo",
+			"name": "radix-ui/stepper-demo",
 			"type": "registry:component",
 			"title": "Stepper demo",
 			"description": "Simple stepper demo",
@@ -23,7 +23,7 @@
 			]
 		},
 		{
-			"name": "stepper-with-description",
+			"name": "radix-ui/stepper-with-description",
 			"type": "registry:component",
 			"title": "Stepper with description",
 			"description": "A stepper with a description",
@@ -42,7 +42,7 @@
 			]
 		},
 		{
-			"name": "stepper-with-form",
+			"name": "radix-ui/stepper-with-form",
 			"type": "registry:component",
 			"title": "Stepper with form",
 			"description": "A stepper with a form using zod for validation",
@@ -61,7 +61,7 @@
 			]
 		},
 		{
-			"name": "stepper-with-icon",
+			"name": "radix-ui/stepper-with-icon",
 			"type": "registry:component",
 			"title": "Stepper with icon",
 			"description": "A stepper with an icon",
@@ -80,7 +80,7 @@
 			]
 		},
 		{
-			"name": "stepper-with-label-orientation",
+			"name": "radix-ui/stepper-with-label-orientation",
 			"type": "registry:component",
 			"title": "Stepper with label orientation",
 			"description": "A stepper with a label orientation",
@@ -99,7 +99,7 @@
 			]
 		},
 		{
-			"name": "stepper-with-scroll-tracking",
+			"name": "radix-ui/stepper-with-scroll-tracking",
 			"type": "registry:component",
 			"title": "Stepper with scroll tracking",
 			"description": "A stepper with scroll tracking",
@@ -118,7 +118,7 @@
 			]
 		},
 		{
-			"name": "stepper-with-variants",
+			"name": "radix-ui/stepper-with-variants",
 			"type": "registry:component",
 			"title": "Stepper with variants",
 			"description": "A stepper with variants",

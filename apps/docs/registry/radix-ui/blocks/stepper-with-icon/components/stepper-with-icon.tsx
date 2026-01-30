@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/registry/radix-ui/ui/button";
+import React from "react";
 
 const { Stepper, ...stepperDefinition } = defineStepper([
 	{
@@ -125,9 +126,8 @@ export function StepperWithIcon() {
 							const stepData = stepInfo.data as StepData;
 
 							return (
-								<>
+								<React.Fragment key={stepInfo.data.id}>
 									<Stepper.Item
-										key={stepInfo.data.id}
 										step={stepInfo.data.id}
 										className="group peer relative flex items-center gap-2"
 									>
@@ -148,7 +148,7 @@ export function StepperWithIcon() {
 										status={status}
 										isLast={isLast}
 									/>
-								</>
+								</React.Fragment>
 							);
 						})}
 					</Stepper.List>

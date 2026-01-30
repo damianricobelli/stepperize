@@ -1,6 +1,6 @@
 {
   "$schema": "https://ui.shadcn.com/schema/registry-item.json",
-  "name": "stepper-with-scroll-tracking",
+  "name": "radix-ui/stepper-with-scroll-tracking",
   "title": "Stepper with scroll tracking",
   "description": "A stepper with scroll tracking",
   "dependencies": [

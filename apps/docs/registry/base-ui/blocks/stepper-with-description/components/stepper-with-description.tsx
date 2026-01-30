@@ -3,6 +3,7 @@
 import { defineStepper, Get } from "@stepperize/react";
 import { useStepItemContext } from "@stepperize/react/primitives";
 import { Button } from "@/registry/base-ui/ui/button";
+import React from "react";
 
 const { Stepper, ...stepperDefinition } = defineStepper([
 	{
@@ -100,9 +101,8 @@ export function StepperWithDescription() {
 							};
 
 							return (
-								<>
-									<Stepper.Item
-										key={stepInfo.data.id}
+								<React.Fragment key={stepInfo.data.id}>
+										<Stepper.Item
 										step={stepInfo.data.id}
 										className="group peer relative flex items-center gap-2"
 									>
@@ -119,7 +119,7 @@ export function StepperWithDescription() {
 										status={status}
 										isLast={isLast}
 									/>
-								</>
+								</React.Fragment>
 							);
 						})}
 					</Stepper.List>

@@ -14,6 +14,7 @@ import {
 	FieldLabel,
 } from "@/registry/radix-ui/ui/field";
 import { Input } from "@/registry/radix-ui/ui/input";
+import React from "react";
 
 const personalInfoSchema = z.object({
 	firstName: z.string().min(2, "First name must be at least 2 characters"),
@@ -433,9 +434,8 @@ export function StepperWithForm() {
 								};
 
 								return (
-									<>
+									<React.Fragment key={stepInfo.data.id}>
 										<Stepper.Item
-											key={stepInfo.data.id}
 											step={stepInfo.data.id}
 											className="group peer relative flex items-center gap-2"
 										>
@@ -456,7 +456,7 @@ export function StepperWithForm() {
 											status={status}
 											isLast={isLast}
 										/>
-									</>
+									</React.Fragment>
 								);
 							})}
 						</Stepper.List>

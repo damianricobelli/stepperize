@@ -3,6 +3,7 @@
 import { defineStepper, Get } from "@stepperize/react";
 import { useStepItemContext } from "@stepperize/react/primitives";
 import { Button } from "@/registry/base-ui/ui/button";
+import React from "react";
 
 const { Stepper, ...stepperDefinition } = defineStepper([
 	{
@@ -72,9 +73,8 @@ export function StepperDemo() {
 								const isLast = index === stepper.steps.length - 1;
 								
 								return (
-									<>
+									<React.Fragment key={stepInfo.data.id}>
 										<Stepper.Item
-											key={stepInfo.data.id}
 											step={stepInfo.data.id}
 											className="group peer relative flex items-center gap-2"
 										>
@@ -84,7 +84,7 @@ export function StepperDemo() {
 											</div>
 										</Stepper.Item>
 										<StepperSeparatorWithStatus key={`separator-${stepInfo.data.id}`} status={status} isLast={isLast} />
-									</>
+									</React.Fragment>
 								);
 							})}
 						</Stepper.List>
