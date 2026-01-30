@@ -2,7 +2,6 @@ import type {
 	BaseStepStatus,
 	Get,
 	HistoryEntry,
-	Initial,
 	InitialState,
 	PersistManager,
 	Step,
@@ -21,7 +20,6 @@ import {
 	getInitialStepIndex,
 	getSyncInitialState,
 	isInitialFunction,
-	isStepCompleted,
 	persistedStateToInitialState,
 	resolveStepStatus,
 } from "@stepperize/core";

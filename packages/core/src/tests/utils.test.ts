@@ -5,7 +5,6 @@ import {
 	generateStepperUtils,
 	getInitialMetadata,
 	getInitialStepIndex,
-	updateStepIndex,
 } from "../utils";
 
 const steps = [
@@ -168,23 +167,5 @@ describe("executeTransition", () => {
 		const cb = vi.fn();
 		await executeTransition({ stepper: mockStepper as any, direction: "next", callback: cb, before: false });
 		expect(cb).toHaveBeenCalled();
-	});
-});
-
-describe("updateStepIndex", () => {
-	it("sets valid index", () => {
-		const setter = vi.fn();
-		updateStepIndex(steps, 1, setter);
-		expect(setter).toHaveBeenCalledWith(1);
-	});
-
-	it("throws error if newIndex < 0", () => {
-		const setter = vi.fn();
-		expect(() => updateStepIndex(steps, -1, setter)).toThrowError(/first step/);
-	});
-
-	it("throws error if newIndex >= steps.length", () => {
-		const setter = vi.fn();
-		expect(() => updateStepIndex(steps, 10, setter)).toThrowError(/last step/);
 	});
 });

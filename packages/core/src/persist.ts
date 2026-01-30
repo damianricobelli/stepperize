@@ -279,7 +279,7 @@ function isValidPersistedState<Steps extends Step[]>(
  * Initial state format returned by persistedStateToInitialState.
  * Matches the InitialState type from types.ts but with required fields.
  */
-export type PersistedInitialState<Steps extends Step[]> = {
+type PersistedInitialState<Steps extends Step[]> = {
 	step: Get.Id<Steps>;
 	metadata: Partial<StepMetadata<Steps>>;
 	statuses: Partial<StepStatuses<Steps>>;

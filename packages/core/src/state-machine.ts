@@ -20,7 +20,7 @@ import type {
  * Internal state of the stepper state machine.
  * @internal
  */
-export type StepperState<Steps extends Step[]> = {
+type StepperState<Steps extends Step[]> = {
 	/** Current step index. */
 	currentIndex: number;
 	/** Status of each step. */
@@ -39,7 +39,7 @@ export type StepperState<Steps extends Step[]> = {
  * Actions that can be dispatched to the state machine.
  * @internal
  */
-export type StepperAction<Steps extends Step[]> =
+type StepperAction<Steps extends Step[]> =
 	| { type: "GO_TO"; index: number }
 	| { type: "SET_STATUS"; stepId: Get.Id<Steps>; status: BaseStepStatus }
 	| { type: "SET_METADATA"; stepId: Get.Id<Steps>; metadata: StepMetadata<Steps>[Get.Id<Steps>] }
@@ -392,20 +392,6 @@ export function createTransitionContext<Steps extends Step[]>(
 // =============================================================================
 // COMPUTED VALUES
 // =============================================================================
-
-/**
- * Check if a specific step is completed.
- *
- * @param stepId - Step ID to check.
- * @param statuses - Step statuses.
- * @returns `true` if the step status is "success".
- */
-export function isStepCompleted<Steps extends Step[]>(
-	stepId: Get.Id<Steps>,
-	statuses: StepStatuses<Steps>,
-): boolean {
-	return statuses[stepId] === "success";
-}
 
 /**
  * Check if user can access a specific step.

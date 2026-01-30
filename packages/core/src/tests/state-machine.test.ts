@@ -7,7 +7,6 @@ import {
 	canUndo,
 	createInitialState,
 	createTransitionContext,
-	isStepCompleted,
 	stepperReducer,
 } from "../state-machine";
 
@@ -425,30 +424,6 @@ describe("createTransitionContext", () => {
 		expect(context.toIndex).toBe(1);
 		expect(context.metadata).toEqual(state.metadata);
 		expect(context.statuses).toEqual(state.statuses);
-	});
-});
-
-describe("isStepCompleted", () => {
-	it("returns true when step status is success", () => {
-		const statuses: StepStatuses<Steps> = {
-			first: "success",
-			second: "incomplete",
-			third: "incomplete",
-		};
-
-		expect(isStepCompleted("first", statuses)).toBe(true);
-	});
-
-	it("returns false when step status is not success", () => {
-		const statuses: StepStatuses<Steps> = {
-			first: "incomplete",
-			second: "loading",
-			third: "error",
-		};
-
-		expect(isStepCompleted("first", statuses)).toBe(false);
-		expect(isStepCompleted("second", statuses)).toBe(false);
-		expect(isStepCompleted("third", statuses)).toBe(false);
 	});
 });
 
