@@ -71,19 +71,21 @@ export function StepperDemo() {
 								const { status } = stepInfo;
 								const isLast = index === stepper.steps.length - 1;
 								
-								return [
-									<Stepper.Item
-										key={stepInfo.data.id}
-										step={stepInfo.data.id}
-										className="group peer relative flex items-center gap-2"
-									>
-										<StepperTriggerWrapper />
-										<div className="flex flex-col items-start">
-											<StepperTitleWrapper title={stepInfo.data.title} />
-										</div>
-									</Stepper.Item>,
-									<StepperSeparatorWithStatus key={`separator-${stepInfo.data.id}`} status={status} isLast={isLast} />,
-								];
+								return (
+									<>
+										<Stepper.Item
+											key={stepInfo.data.id}
+											step={stepInfo.data.id}
+											className="group peer relative flex items-center gap-2"
+										>
+											<StepperTriggerWrapper />
+											<div className="flex flex-col items-start">
+												<StepperTitleWrapper title={stepInfo.data.title} />
+											</div>
+										</Stepper.Item>
+										<StepperSeparatorWithStatus key={`separator-${stepInfo.data.id}`} status={status} isLast={isLast} />
+									</>
+								);
 							})}
 						</Stepper.List>
 					{stepper.switch({
