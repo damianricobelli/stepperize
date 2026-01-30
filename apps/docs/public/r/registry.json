@@ -12,12 +12,12 @@
 			"registryDependencies": ["button"],
 			"files": [
 				{
-					"path": "registry/new-york/blocks/stepper-demo/page.tsx",
+					"path": "registry/radix-ui/blocks/stepper-demo/page.tsx",
 					"type": "registry:page",
 					"target": "app/stepper-demo/page.tsx"
 				},
 				{
-					"path": "registry/new-york/blocks/stepper-demo/components/stepper-demo.tsx",
+					"path": "registry/radix-ui/blocks/stepper-demo/components/stepper-demo.tsx",
 					"type": "registry:component"
 				}
 			]
@@ -31,12 +31,12 @@
 			"registryDependencies": ["button"],
 			"files": [
 				{
-					"path": "registry/new-york/blocks/stepper-with-description/page.tsx",
+					"path": "registry/radix-ui/blocks/stepper-with-description/page.tsx",
 					"type": "registry:page",
 					"target": "app/stepper-with-description/page.tsx"
 				},
 				{
-					"path": "registry/new-york/blocks/stepper-with-description/components/stepper-with-description.tsx",
+					"path": "registry/radix-ui/blocks/stepper-with-description/components/stepper-with-description.tsx",
 					"type": "registry:component"
 				}
 			]
@@ -50,12 +50,12 @@
 			"registryDependencies": ["button", "input", "label", "form"],
 			"files": [
 				{
-					"path": "registry/new-york/blocks/stepper-with-form/page.tsx",
+					"path": "registry/radix-ui/blocks/stepper-with-form/page.tsx",
 					"type": "registry:page",
 					"target": "app/stepper-with-form/page.tsx"
 				},
 				{
-					"path": "registry/new-york/blocks/stepper-with-form/components/stepper-with-form.tsx",
+					"path": "registry/radix-ui/blocks/stepper-with-form/components/stepper-with-form.tsx",
 					"type": "registry:component"
 				}
 			]
@@ -69,12 +69,12 @@
 			"registryDependencies": ["button"],
 			"files": [
 				{
-					"path": "registry/new-york/blocks/stepper-with-icon/page.tsx",
+					"path": "registry/radix-ui/blocks/stepper-with-icon/page.tsx",
 					"type": "registry:page",
 					"target": "app/stepper-with-icon/page.tsx"
 				},
 				{
-					"path": "registry/new-york/blocks/stepper-with-icon/components/stepper-with-icon.tsx",
+					"path": "registry/radix-ui/blocks/stepper-with-icon/components/stepper-with-icon.tsx",
 					"type": "registry:component"
 				}
 			]
@@ -88,12 +88,12 @@
 			"registryDependencies": ["button", "label", "radio-group"],
 			"files": [
 				{
-					"path": "registry/new-york/blocks/stepper-with-label-orientation/page.tsx",
+					"path": "registry/radix-ui/blocks/stepper-with-label-orientation/page.tsx",
 					"type": "registry:page",
 					"target": "app/stepper-with-label-orientation/page.tsx"
 				},
 				{
-					"path": "registry/new-york/blocks/stepper-with-label-orientation/components/stepper-with-label-orientation.tsx",
+					"path": "registry/radix-ui/blocks/stepper-with-label-orientation/components/stepper-with-label-orientation.tsx",
 					"type": "registry:component"
 				}
 			]
@@ -107,12 +107,12 @@
 			"registryDependencies": ["button", "label", "radio-group"],
 			"files": [
 				{
-					"path": "registry/new-york/blocks/stepper-with-scroll-tracking/page.tsx",
+					"path": "registry/radix-ui/blocks/stepper-with-scroll-tracking/page.tsx",
 					"type": "registry:page",
 					"target": "app/stepper-with-scroll-tracking/page.tsx"
 				},
 				{
-					"path": "registry/new-york/blocks/stepper-with-scroll-tracking/components/stepper-with-scroll-tracking.tsx",
+					"path": "registry/radix-ui/blocks/stepper-with-scroll-tracking/components/stepper-with-scroll-tracking.tsx",
 					"type": "registry:component"
 				}
 			]
@@ -126,12 +126,145 @@
 			"registryDependencies": ["button", "label", "radio-group"],
 			"files": [
 				{
-					"path": "registry/new-york/blocks/stepper-with-variants/page.tsx",
+					"path": "registry/radix-ui/blocks/stepper-with-variants/page.tsx",
 					"type": "registry:page",
 					"target": "app/stepper-with-variants/page.tsx"
 				},
 				{
-					"path": "registry/new-york/blocks/stepper-with-variants/components/stepper-with-variants.tsx",
+					"path": "registry/radix-ui/blocks/stepper-with-variants/components/stepper-with-variants.tsx",
+					"type": "registry:component"
+				}
+			]
+		},
+		{
+			"name": "base-ui/stepper-demo",
+			"type": "registry:component",
+			"title": "Stepper demo (Base UI)",
+			"description": "Simple stepper demo",
+			"dependencies": ["@stepperize/react"],
+			"registryDependencies": ["button"],
+			"files": [
+				{
+					"path": "registry/base-ui/blocks/stepper-demo/page.tsx",
+					"type": "registry:page",
+					"target": "app/stepper-demo/page.tsx"
+				},
+				{
+					"path": "registry/base-ui/blocks/stepper-demo/components/stepper-demo.tsx",
+					"type": "registry:component"
+				}
+			]
+		},
+		{
+			"name": "base-ui/stepper-with-description",
+			"type": "registry:component",
+			"title": "Stepper with description (Base UI)",
+			"description": "A stepper with a description",
+			"dependencies": ["@stepperize/react"],
+			"registryDependencies": ["button"],
+			"files": [
+				{
+					"path": "registry/base-ui/blocks/stepper-with-description/page.tsx",
+					"type": "registry:page",
+					"target": "app/stepper-with-description/page.tsx"
+				},
+				{
+					"path": "registry/base-ui/blocks/stepper-with-description/components/stepper-with-description.tsx",
+					"type": "registry:component"
+				}
+			]
+		},
+		{
+			"name": "base-ui/stepper-with-form",
+			"type": "registry:component",
+			"title": "Stepper with form (Base UI)",
+			"description": "A stepper with a form using zod for validation",
+			"dependencies": ["zod", "@stepperize/react"],
+			"registryDependencies": ["button", "input", "label", "field"],
+			"files": [
+				{
+					"path": "registry/base-ui/blocks/stepper-with-form/page.tsx",
+					"type": "registry:page",
+					"target": "app/stepper-with-form/page.tsx"
+				},
+				{
+					"path": "registry/base-ui/blocks/stepper-with-form/components/stepper-with-form.tsx",
+					"type": "registry:component"
+				}
+			]
+		},
+		{
+			"name": "base-ui/stepper-with-icon",
+			"type": "registry:component",
+			"title": "Stepper with icon (Base UI)",
+			"description": "A stepper with an icon",
+			"dependencies": ["@stepperize/react"],
+			"registryDependencies": ["button"],
+			"files": [
+				{
+					"path": "registry/base-ui/blocks/stepper-with-icon/page.tsx",
+					"type": "registry:page",
+					"target": "app/stepper-with-icon/page.tsx"
+				},
+				{
+					"path": "registry/base-ui/blocks/stepper-with-icon/components/stepper-with-icon.tsx",
+					"type": "registry:component"
+				}
+			]
+		},
+		{
+			"name": "base-ui/stepper-with-label-orientation",
+			"type": "registry:component",
+			"title": "Stepper with label orientation (Base UI)",
+			"description": "A stepper with a label orientation",
+			"dependencies": ["@stepperize/react"],
+			"registryDependencies": ["button", "label", "radio-group"],
+			"files": [
+				{
+					"path": "registry/base-ui/blocks/stepper-with-label-orientation/page.tsx",
+					"type": "registry:page",
+					"target": "app/stepper-with-label-orientation/page.tsx"
+				},
+				{
+					"path": "registry/base-ui/blocks/stepper-with-label-orientation/components/stepper-with-label-orientation.tsx",
+					"type": "registry:component"
+				}
+			]
+		},
+		{
+			"name": "base-ui/stepper-with-scroll-tracking",
+			"type": "registry:component",
+			"title": "Stepper with scroll tracking (Base UI)",
+			"description": "A stepper with scroll tracking",
+			"dependencies": ["@stepperize/react"],
+			"registryDependencies": ["button", "label", "radio-group"],
+			"files": [
+				{
+					"path": "registry/base-ui/blocks/stepper-with-scroll-tracking/page.tsx",
+					"type": "registry:page",
+					"target": "app/stepper-with-scroll-tracking/page.tsx"
+				},
+				{
+					"path": "registry/base-ui/blocks/stepper-with-scroll-tracking/components/stepper-with-scroll-tracking.tsx",
+					"type": "registry:component"
+				}
+			]
+		},
+		{
+			"name": "base-ui/stepper-with-variants",
+			"type": "registry:component",
+			"title": "Stepper with variants (Base UI)",
+			"description": "A stepper with variants",
+			"dependencies": ["@stepperize/react"],
+			"registryDependencies": ["button", "label", "radio-group"],
+			"files": [
+				{
+					"path": "registry/base-ui/blocks/stepper-with-variants/page.tsx",
+					"type": "registry:page",
+					"target": "app/stepper-with-variants/page.tsx"
+				},
+				{
+					"path": "registry/base-ui/blocks/stepper-with-variants/components/stepper-with-variants.tsx",
 					"type": "registry:component"
 				}
 			]
