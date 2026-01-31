@@ -8,7 +8,7 @@ import {
 } from "@stepperize/core";
 import * as React from "react";
 import { createStepperPrimitives } from "./primitives/create-stepper-primitives";
-import type { StepperReturn, TransitionContext, TransitionMethods, TransitionState } from "./types";
+import type { ScopedProps, StepperReturn, TransitionContext, TransitionMethods, TransitionState } from "./types";
 import { getStatuses } from "./utils";
 
 /**
@@ -140,20 +140,23 @@ export const defineStepper = <const Steps extends Step[]>(...steps: Steps): Step
 		return stepper;
 	};
 
+	const ScopedProvider = ({ initialStep, initialMetadata, children }: ScopedProps<Steps>) =>
+		React.createElement(
+			Context.Provider,
+			{ value: useStepper({ initialStep, initialMetadata }) },
+			children,
+		);
+
 	const Stepper = createStepperPrimitives(
 		Context as React.Context<Stepper<Steps> | null>,
 		utils,
+		ScopedProvider,
 	);
 
 	return {
 		steps,
 		utils,
-		Scoped: ({ initialStep, initialMetadata, children }) =>
-			React.createElement(
-				Context.Provider,
-				{ value: useStepper({ initialStep, initialMetadata }) },
-				children,
-			),
+		Scoped: ScopedProvider,
 		useStepper: (props = {}) => React.useContext(Context) ?? useStepper(props),
 		Stepper,
 	};

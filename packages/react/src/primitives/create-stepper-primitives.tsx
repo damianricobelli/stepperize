@@ -1,5 +1,5 @@
 import * as React from "react";
-import type { Step, Stepper, Utils } from "@stepperize/core";
+import type { Get, Metadata, Step, Stepper, Utils } from "@stepperize/core";
 import { createRoot } from "./root";
 import { createList } from "./list";
 import { createItem } from "./item";
@@ -28,12 +28,18 @@ export type StepperPrimitives<Steps extends Step[]> = {
 	Next: ReturnType<typeof createNext<Steps>>;
 };
 
+export type ScopedProviderProps<Steps extends Step[]> = React.PropsWithChildren<{
+	initialStep?: Get.Id<Steps>;
+	initialMetadata?: Partial<Record<Get.Id<Steps>, Metadata>>;
+}>;
+
 export function createStepperPrimitives<Steps extends Step[]>(
 	StepperContext: React.Context<Stepper<Steps> | null>,
 	utils: Utils<Steps>,
+	ScopedProvider: (props: ScopedProviderProps<Steps>) => React.ReactElement,
 ): StepperPrimitives<Steps> {
 	return {
-		Root: createRoot(StepperContext),
+		Root: createRoot(StepperContext, ScopedProvider),
 		List: createList(),
 		Item: createItem(StepperContext, utils),
 		Trigger: createTrigger(StepperContext),

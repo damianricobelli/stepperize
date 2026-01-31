@@ -11,23 +11,23 @@ Stepperize is a versatile React library designed to streamline the creation of S
 ## Key Features
 
 - **Type-Safe Primitives**: Fully typed components for building accessible stepper UIs
-- **Flexible Step Management**: Create linear or free-form navigation flows
+- **Flexible Step Management**: Navigate with next/prev/goTo and optional transition callbacks
 - **Headless Component**: Full control over styling and UI
 - **React Native Compatible**: Build steppers for web and mobile apps
 - **Conditional Rendering**: Dynamically adjust content based on user input
 - **State Management**: Built-in tools for handling step state, metadata, and status
-- **Async Support**: Handle async initialization and navigation callbacks
+- **Async Support**: Optional async onBeforeTransition / onAfterTransition callbacks
 
 ## Quick Start
 
 ```tsx
 import { defineStepper } from "@stepperize/react";
 
-const { Stepper, useStepper } = defineStepper([
+const { Stepper, useStepper } = defineStepper(
   { id: "shipping", title: "Shipping" },
   { id: "payment", title: "Payment" },
   { id: "confirmation", title: "Confirmation" }
-]);
+);
 
 function Checkout() {
   return (
@@ -35,11 +35,11 @@ function Checkout() {
       {({ stepper }) => (
         <>
           <Stepper.List>
-            {stepper.steps.map((stepInfo) => (
-              <Stepper.Item key={stepInfo.data.id} step={stepInfo.data.id}>
+            {stepper.all.map((step) => (
+              <Stepper.Item key={step.id} step={step.id}>
                 <Stepper.Trigger>
                   <Stepper.Indicator />
-                  <Stepper.Title>{stepInfo.data.title}</Stepper.Title>
+                  <Stepper.Title>{step.title}</Stepper.Title>
                 </Stepper.Trigger>
                 <Stepper.Separator />
               </Stepper.Item>
@@ -94,22 +94,18 @@ Stepperize goes beyond linear progressions, enabling:
 - State-dependent UI changes
 - Multi-path processes
 
-### Step Information
-
-Each step provides comprehensive information:
+### Step and metadata
 
 ```tsx
 const stepper = useStepper();
 
-// Access current step
-stepper.current.data;       // Step definition { id, title, ... }
-stepper.current.status;     // "inactive" | "active" | "loading" | "error" | "success" | "skipped"
-stepper.current.metadata;   // Custom data storage
-stepper.current.isCompleted; // true if status is "success"
+// Current step (the step object: { id, title, ... })
+stepper.current;
 
-// Modify step state
-stepper.current.setStatus("success");
-stepper.current.setMetadata({ formData: values });
+// Metadata per step
+stepper.getMetadata("shipping");
+stepper.setMetadata("shipping", { address: "..." });
+stepper.resetMetadata(true); // optional: keep initial metadata
 ```
 
 ### Navigation

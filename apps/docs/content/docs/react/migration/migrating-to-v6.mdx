@@ -1,304 +1,38 @@
 ---
-title: Migrating to v6
-description: Learn how to migrate from v5 to v6
+title: Current API (v6)
+description: Summary of the current Stepperize API
 icon: CircleFadingArrowUp
 ---
 
-Stepperize v6 introduces a completely redesigned API with typed primitives, improved state management, and async navigation.
+This page summarizes the current API. For full details see [Define](/docs/react/api-references/define) and [Hook](/docs/react/api-references/hook).
 
-## Breaking Changes
+## defineStepper
 
-### `defineStepper` signature: two parameters (steps array + config)
+- **Signature:** `defineStepper(...steps)` — only the steps array (or spread steps). No second config argument.
+- **Returns:** `{ steps, utils, Scoped, useStepper, Stepper }`.
 
-In v6, `defineStepper` takes **two arguments**: first the **array of steps**, second the **configuration object**. The single-object form is no longer supported.
+## useStepper
 
-```tsx
-// v5 — single object
-const { useStepper } = defineStepper(
-  { id: "step-1", title: "Step 1" },
-  { id: "step-2", title: "Step 2" },
-);
+- **Config:** `useStepper({ initialStep?, initialMetadata? })` — optional. No `initial`, `mode`, or global transition callbacks.
+- **Returns:** Stepper object with:
+  - **State:** `all`, `current`, `isFirst`, `isLast`, `isTransitioning`, `metadata`
+  - **Navigation:** `next()`, `prev()`, `goTo(id)`, `reset()`
+  - **Step lookup:** `get(id)`
+  - **Metadata:** `setMetadata(id, values)`, `getMetadata(id)`, `resetMetadata(keepInitial?)`
+  - **Rendering:** `when()`, `switch()`, `match()`
+  - **Transition hooks:** `onBeforeTransition(cb)`, `onAfterTransition(cb)` — call these to register callbacks; they run on every `next`/`prev`/`goTo`. Return `false` from the before callback to cancel.
 
-// v6 — steps array + config object
-const { useStepper } = defineStepper(
-  [
-    { id: "step-1", title: "Step 1" },
-    { id: "step-2", title: "Step 2" },
-  ],
-  {
-    initial: { step: "step-1" },
-    mode: "linear",
-  }
-);
-```
+## Scoped
 
-- **First parameter:** the steps array (same step shape as before).
-- **Second parameter:** optional config object (`initial`, `mode`, `onBeforeTransition`, `onAfterTransition`).
+- **Props:** `initialStep?`, `initialMetadata?`, `children` — no `initial` object or `statuses`.
 
-### Navigation methods are now async
+## Step and current
 
-All navigation methods (`next`, `prev`, `goTo`) now return `Promise<void>`:
+- `stepper.current` is the **step object** (e.g. `{ id, title }`), not a wrapper with `.data` or `.status`.
+- Use `stepper.all` for the list of steps (not `stepper.steps`).
+- Use `stepper.get(id)` to get a step by ID (not `stepper.step(id)`).
+- Step-level UI status (`active` / `success` / `inactive`) comes from primitives (e.g. `useStepItemContext().status`), not from a global status record.
 
-```tsx
-// v5
-stepper.next();
-stepper.prev();
-stepper.goTo("step-2");
+## Core package
 
-// v6
-await stepper.next();
-await stepper.prev();
-await stepper.goTo("step-2");
-
-// Or without await (fire and forget)
-stepper.next();
-```
-
-### `current` is now a `StepInfo` object
-
-The `current` property now returns a `StepInfo` object instead of the raw step:
-
-```tsx
-// v5
-const step = stepper.current; // { id: "step-1", title: "..." }
-
-// v6
-const stepInfo = stepper.current;
-// stepInfo.data     - The step definition { id: "step-1", title: "..." }
-// stepInfo.status   - Step status: "inactive" | "active" | "loading" | "error" | "success" | "skipped"
-// stepInfo.metadata - Step metadata
-// stepInfo.isCompleted - boolean
-// stepInfo.setStatus() - Set this step's status
-// stepInfo.setMetadata() - Set this step's metadata
-```
-
-### `all` renamed to `steps`
-
-The `all` property is now `steps` and returns `StepInfo[]`:
-
-```tsx
-// v5
-stepper.all.map((step) => <div>{step.title}</div>);
-
-// v6
-stepper.steps.map((stepInfo) => <div>{stepInfo.data.title}</div>);
-```
-
-### `get` renamed to `step`
-
-```tsx
-// v5
-const step = stepper.get("step-1");
-
-// v6
-const stepInfo = stepper.step("step-1");
-const stepData = stepInfo.data; // The raw step definition
-```
-
-### Metadata access via `step()`
-
-```tsx
-// v5
-const metadata = stepper.getMetadata("step-1");
-stepper.setMetadata("step-1", { value: "test" });
-
-// v6
-const metadata = stepper.step("step-1").metadata;
-stepper.step("step-1").setMetadata({ value: "test" });
-```
-
-### Status access via `step()`
-
-```tsx
-// v5
-const status = stepper.getStatus("step-1");
-stepper.setStatus("step-1", "success");
-stepper.isCompleted("step-1");
-
-// v6
-const status = stepper.step("step-1").status;
-stepper.step("step-1").setStatus("success");
-stepper.step("step-1").isCompleted;
-```
-
-### `reset` options changed
-
-```tsx
-// v5
-stepper.reset({ keepMetadata: true, keepStatuses: true });
-
-// v6
-stepper.reset({
-  keepMetadata: true,
-  keepStatuses: true,
-});
-```
-
-### `Scoped` component props changed
-
-```tsx
-// v5
-<Stepper.Scoped initialStep="step-2" initialMetadata={{ ... }}>
-
-// v6
-<Stepper.Scoped initial={{ step: "step-2", metadata: { ... }, statuses: { ... } }}>
-```
-
-### `when` callback receives step data directly
-
-```tsx
-// v5 - callback receives full step info
-stepper.when("step-1", (step) => <div>{step.title}</div>);
-
-// v6 - callback receives step data (the raw definition)
-stepper.when("step-1", (step) => <div>{step.title}</div>);
-// Same behavior, but be aware the step is now the data property
-```
-
-## New Features
-
-### Typed Stepper Primitives
-
-v6 introduces a new `Stepper` object with type-safe primitive components:
-
-```tsx
-const { Stepper, useStepper } = defineStepper([
-  { id: "step-1", title: "Step 1" },
-  { id: "step-2", title: "Step 2" }
-]);
-
-<Stepper.Root orientation="horizontal">
-  {({ stepper }) => (
-    <>
-      <Stepper.List>
-        {stepper.steps.map((stepInfo) => (
-          <Stepper.Item key={stepInfo.data.id} step={stepInfo.data.id}>
-            <Stepper.Trigger />
-            <Stepper.Title>{stepInfo.data.title}</Stepper.Title>
-          </Stepper.Item>
-        ))}
-      </Stepper.List>
-      <Stepper.Content step="step-1">Content for step 1</Stepper.Content>
-      <Stepper.Actions>
-        <Stepper.Prev />
-        <Stepper.Next />
-      </Stepper.Actions>
-    </>
-  )}
-</Stepper.Root>
-```
-
-Available primitives:
-- `Stepper.Root` - Container with built-in Scoped provider
-- `Stepper.List` - Step list container
-- `Stepper.Item` - Individual step wrapper
-- `Stepper.Trigger` - Clickable step trigger
-- `Stepper.Indicator` - Step number/icon indicator
-- `Stepper.Separator` - Visual separator between steps
-- `Stepper.Title` - Step title
-- `Stepper.Description` - Step description
-- `Stepper.Content` - Step content panel
-- `Stepper.Actions` - Navigation actions container
-- `Stepper.Prev` - Previous button
-- `Stepper.Next` - Next button
-
-### Initialization Status
-
-Track async initialization state:
-
-```tsx
-const stepper = useStepper();
-
-if (stepper.initStatus === "pending") {
-  return <Loading />;
-}
-
-if (stepper.initStatus === "error") {
-  return (
-    <Error error={stepper.error} onRetry={stepper.retry} />
-  );
-}
-
-// initStatus === "success" - ready to use
-```
-
-### Transition Status
-
-Track when transitions are in progress:
-
-```tsx
-const stepper = useStepper();
-
-<Button disabled={stepper.isTransitioning} onClick={() => stepper.next()}>
-  {stepper.isTransitioning ? "Loading..." : "Next"}
-</Button>
-```
-
-### Async Initial State
-
-Initialize from async sources:
-
-```tsx
-const { useStepper } = defineStepper(steps, {
-  initial: async () => {
-    const saved = await fetchProgress();
-    return {
-      step: saved.step,
-      metadata: saved.data,
-      statuses: saved.statuses
-    };
-  }
-});
-```
-
-### Navigation Mode
-
-Control navigation behavior:
-
-```tsx
-const { useStepper } = defineStepper(steps, {
-  mode: "linear" // or "free" (default)
-});
-
-// In linear mode:
-// - Can only navigate to next completed step
-// - Cannot skip steps unless previous steps are completed
-```
-
-### Transition Callbacks in Config
-
-Configure global transition callbacks:
-
-```tsx
-const { useStepper } = defineStepper(steps, {
-  onBeforeTransition: (ctx) => {
-    console.log(`Transitioning from ${ctx.from.id} to ${ctx.to.id}`);
-    return true; // Return false to cancel
-  },
-  onAfterTransition: (ctx) => {
-    console.log(`Transitioned to ${ctx.to.id}`);
-  }
-});
-```
-
-## Helper Function
-
-Use `isStepperReady` to check if stepper is initialized:
-
-```tsx
-import { isStepperReady } from "@stepperize/react";
-
-if (!isStepperReady(stepper)) {
-  return <Loading />;
-}
-```
-
-## Migration Checklist
-
-- [ ] Update `current` usage to access `.data` for step properties
-- [ ] Update `all` to `steps` and access `.data` for step properties
-- [ ] Update `get()` to `step()` and access `.data` for step properties
-- [ ] Update metadata/status methods to use `step(id).setMetadata()` / `step(id).setStatus()`
-- [ ] Update `Scoped` props from `initialStep`/`initialMetadata` to `initial`
-- [ ] Handle async navigation if needed
-- [ ] Consider using new typed primitives for UI components
+`@stepperize/core` exports types (`Step`, `Stepper`, `Utils`, `Get`) and pure helpers (`generateStepperUtils`, `getInitialStepIndex`, `getInitialMetadata`, `generateCommonStepperUseFns`, `updateStepIndex`). The React package uses these; you typically use `@stepperize/react` only.

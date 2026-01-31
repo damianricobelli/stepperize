@@ -6,12 +6,12 @@ import { CheckCircle, CreditCard, Home, User } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import * as React from "react";
 
-const stepper = defineStepper([
+const stepper = defineStepper(
 	{ id: "personal-info", label: "Personal Info", icon: User },
 	{ id: "address", label: "Address", icon: Home },
 	{ id: "payment", label: "Payment", icon: CreditCard },
-	{ id: "success", label: "Done", icon: CheckCircle },
-]);
+	{ id: "success", label: "Done", icon: CheckCircle }
+);
 
 const slideVariants = {
 	enter: { opacity: 0 },
@@ -197,11 +197,12 @@ const StepperHeader = ({
 	methods: ReturnType<typeof stepper.useStepper>;
 	isComplete: boolean;
 }) => {
-	const currentIndex = methods.steps.findIndex((s: { data: { id: string } }) => s.data.id === methods.current.data.id);
+	const steps = methods.all;
+	const currentIndex = steps.findIndex((s) => s.id === methods.current.id);
 	const progress =
-		methods.current.data.id === methods.steps[methods.steps.length - 1].data.id || isComplete
+		methods.current.id === steps[steps.length - 1].id || isComplete
 			? "100%"
-			: `${(currentIndex / (methods.steps.length - 1)) * 100}%`;
+			: `${(currentIndex / (steps.length - 1)) * 100}%`;
 
 	return (
 		<nav className="bg-gray-3/50 border-b border-gray-6 px-4 py-5">
@@ -213,22 +214,22 @@ const StepperHeader = ({
 						style={{ width: progress }}
 					/>
 				</div>
-				{methods.steps.map((step, index) => {
-					const isActive = step.data.id === methods.current.data.id;
+				{steps.map((step, index) => {
+					const isActive = step.id === methods.current.id;
 					const isPast = index < currentIndex;
 					return (
 						<li
-							key={step.data.id}
+							key={step.id}
 							className="flex flex-col items-center relative z-10 flex-1"
 						>
 							<button
 								type="button"
-								onClick={() => !isComplete && methods.goTo(step.data.id)}
+								onClick={() => !isComplete && methods.goTo(step.id)}
 								className={cn(
 									"size-9 rounded-full flex items-center justify-center transition-colors shrink-0",
-									isPast || (isComplete && index < methods.steps.length - 1)
+									isPast || (isComplete && index < steps.length - 1)
 										? "bg-indigo-9 text-white"
-										: isActive || (isComplete && index === methods.steps.length - 1)
+										: isActive || (isComplete && index === steps.length - 1)
 											? "bg-indigo-9 text-white"
 											: "bg-gray-6 text-gray-10",
 								)}
@@ -237,7 +238,7 @@ const StepperHeader = ({
 								{isPast || (isComplete && index <= currentIndex) ? (
 									<CheckCircle className="size-4" />
 								) : (
-									<step.data.icon className="size-4" />
+									<step.icon className="size-4" />
 								)}
 							</button>
 							<span
@@ -246,7 +247,7 @@ const StepperHeader = ({
 									isActive ? "text-gray-12 font-medium" : "text-gray-10",
 								)}
 							>
-								{step.data.label}
+								{step.label}
 							</span>
 						</li>
 					);

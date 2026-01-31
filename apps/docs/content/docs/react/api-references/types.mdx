@@ -1,257 +1,106 @@
 ---
 title: Types
-description: Type utilities and important exported types
+description: Exported types and type utilities
 ---
 
-This page documents the type utilities and important types exported by `@stepperize/react`.
+Types are exported from `@stepperize/core` and `@stepperize/react`.
 
-## Get Namespace
+## From @stepperize/core
 
-The `Get` namespace provides type utilities for working with steps in a type-safe way. Import it from `@stepperize/react`:
+### Step
 
-```tsx
-import { Get } from "@stepperize/react";
+```ts
+type Step = { id: string } & Record<string, any>;
 ```
 
-### Get.Id
+Steps must have a unique `id`; other properties are free.
 
-Extracts a union of all step IDs from a steps array:
+### Metadata
+
+```ts
+type Metadata = Record<string, any> | null;
+```
+
+### Stepper
+
+The stepper instance type: `all`, `current`, `isLast`, `isFirst`, `next`, `prev`, `get`, `goTo`, `reset`, `when`, `switch`, `match`, `metadata`, `setMetadata`, `getMetadata`, `resetMetadata`. See [Hook](./hook#api-summary).
+
+### Utils
+
+Pure step helpers: `getAll`, `get`, `getIndex`, `getByIndex`, `getFirst`, `getLast`, `getNext`, `getPrev`, `getNeighbors`.
+
+### Get namespace
+
+| Type | Description |
+| ---- | ----------- |
+| `Get.Id<Steps>` | Union of step IDs |
+| `Get.StepById<Steps, Id>` | Step type for given ID |
+| `Get.StepSansId<Steps, Id>` | Union of steps that are not `Id` |
+| `Get.Switch<Steps, R>` | Object type for `switch` handlers: `{ [Id in Get.Id<Steps>]?: (step: Get.StepById<Steps, Id>) => R }` |
 
 ```tsx twoslash
 import { defineStepper, Get } from "@stepperize/react";
 
-const { steps } = defineStepper([
+const { steps } = defineStepper(
   { id: "shipping", title: "Shipping" },
-  { id: "payment", title: "Payment" },
-  { id: "review", title: "Review" },
-]);
+  { id: "payment", title: "Payment" }
+);
 
-// Type: "shipping" | "payment" | "review"
-type StepId = Get.Id<typeof steps>;
-
-// Use for type-safe function parameters
-function navigateTo(stepper: any, id: StepId) {
-  stepper.goTo(id);
-}
+type StepId = Get.Id<typeof steps>;           // "shipping" | "payment"
+type ShippingStep = Get.StepById<typeof steps, "shipping">;  // { id: "shipping"; title: string }
 ```
 
-### Get.StepById
-
-Extracts a specific step type by its ID:
-
-```tsx twoslash
-import { defineStepper, Get } from "@stepperize/react";
-
-const { steps } = defineStepper([
-  { id: "shipping", title: "Shipping", address: "" },
-  { id: "payment", title: "Payment", card: "" },
-]);
-
-// Type: { id: "shipping"; title: string; address: string }
-type ShippingStep = Get.StepById<typeof steps, "shipping">;
-
-// Type: { id: "payment"; title: string; card: string }
-type PaymentStep = Get.StepById<typeof steps, "payment">;
-```
-
-### Get.StepSansId
-
-Extracts all steps except the one with the given ID:
-
-```tsx twoslash
-import { defineStepper, Get } from "@stepperize/react";
-
-const { steps } = defineStepper([
-  { id: "a", title: "A" },
-  { id: "b", title: "B" },
-  { id: "c", title: "C" },
-]);
-
-// Type: { id: "b"; title: string } | { id: "c"; title: string }
-type OtherSteps = Get.StepSansId<typeof steps, "a">;
-```
-
-### Get.Switch
-
-Creates a switch-case style type for step handlers. Used internally by the `switch` method:
-
-```tsx twoslash
-import { defineStepper, Get } from "@stepperize/react";
-import * as React from "react";
-
-const { steps, useStepper } = defineStepper([
-  { id: "intro", title: "Introduction" },
-  { id: "setup", title: "Setup" },
-  { id: "done", title: "Done" },
-]);
-
-// Type for switch handlers
-type StepHandlers = Get.Switch<typeof steps, React.ReactNode>;
-// Equivalent to:
-// {
-//   intro?: (step: { id: "intro"; title: string }) => React.ReactNode;
-//   setup?: (step: { id: "setup"; title: string }) => React.ReactNode;
-//   done?: (step: { id: "done"; title: string }) => React.ReactNode;
-// }
-
-function MyComponent() {
-  const stepper = useStepper();
-
-  // Type-safe switch
-  return stepper.switch({
-    intro: (step) => <p>Welcome to {step.title}</p>,
-    setup: (step) => <p>Configure {step.title}</p>,
-    done: (step) => <p>Completed {step.title}</p>,
-  });
-}
-```
-
-### Get.MetadataFor
-
-Extracts the metadata type for a specific step:
-
-```tsx twoslash
-import { defineStepper, Get } from "@stepperize/react";
-
-const { steps } = defineStepper([
-  { id: "personal", title: "Personal" },
-  { id: "address", title: "Address" },
-]);
-
-// Type: Record<string, unknown> | null
-type PersonalMetadata = Get.MetadataFor<typeof steps, "personal">;
-```
-
-## Status Types
-
-### StepStatus
-
-The resolved status that combines base status with navigation position:
-
-```tsx
-type StepStatus = 
-  | "inactive"  // Step is ahead (not yet reached)
-  | "active"    // Step is current
-  | "loading"   // Step is processing
-  | "error"     // Step has an error
-  | "success"   // Step completed successfully
-  | "skipped";  // Step was skipped
-```
-
-This is the status you see when accessing `stepper.current.status` or `stepper.step(id).status`.
-
-### BaseStepStatus
-
-The status values you can set on a step:
-
-```tsx
-type BaseStepStatus = 
-  | "incomplete" // Initial state, not started
-  | "loading"    // Processing/submitting
-  | "error"      // An error occurred
-  | "success"    // Successfully completed
-  | "skipped";   // Step was skipped
-```
-
-Use this with `setStatus()`:
-
-```tsx twoslash
-import { defineStepper } from "@stepperize/react";
-
-const { useStepper } = defineStepper([
-  { id: "step-1", title: "Step 1" },
-]);
-// ---cut-before---
-const stepper = useStepper();
-
-stepper.step("step-1").setStatus("success");
-stepper.step("step-1").setStatus("loading");
-stepper.step("step-1").setStatus("error");
-```
-
-<Callout type="info">
-  Note: `"inactive"` and `"active"` are not valid values for `setStatus()`. 
-  These are derived automatically from the step's position relative to the current step.
-</Callout>
-
-## Configuration Types
-
-### InitialState
-
-Configuration for the initial stepper state:
-
-```tsx
-type InitialState<Steps> = {
-  step?: Get.Id<Steps>;                    // Initial active step ID
-  metadata?: Partial<StepMetadata<Steps>>; // Initial metadata values
-  statuses?: Partial<StepStatuses<Steps>>; // Initial status values
-};
-```
-
-### Initial
-
-The `initial` config option can be an object or a function:
-
-```tsx
-type Initial<Steps> = 
-  | InitialState<Steps>
-  | (() => InitialState<Steps> | Promise<InitialState<Steps>>);
-```
-
-## Transition Types
+## From @stepperize/react
 
 ### TransitionContext
 
-Context object passed to transition callbacks (`onBeforeTransition`, `onAfterTransition`):
+Passed to `onBeforeTransition` / `onAfterTransition` callbacks:
 
-```tsx
+```ts
 type TransitionContext<Steps> = {
-  readonly from: Steps[number];           // Step being transitioned from
-  readonly to: Steps[number];             // Step being transitioned to
-  readonly metadata: StepMetadata<Steps>; // Current metadata state
-  readonly statuses: StepStatuses<Steps>; // Current status of all steps
-  readonly direction: TransitionDirection; // "next" | "prev" | "goTo"
-  readonly fromIndex: number;             // Index of source step
-  readonly toIndex: number;               // Index of target step
+  readonly from: Steps[number];
+  readonly to: Steps[number];
+  readonly metadata: Record<Get.Id<Steps>, Metadata>;
+  readonly statuses: Record<Get.Id<Steps>, StepStatus>;
+  readonly direction: TransitionDirection;
+  readonly fromIndex: number;
+  readonly toIndex: number;
 };
 ```
 
 ### TransitionDirection
 
-Direction of a step transition:
-
-```tsx
+```ts
 type TransitionDirection = "next" | "prev" | "goTo";
 ```
 
-## Step Types
+### TransitionMethods
 
-### Step
+Methods on the stepper returned by `useStepper()`:
 
-Base step definition type:
-
-```tsx
-type Step<Id extends string = string> = {
-  readonly id: Id;
-} & Record<string, unknown>;
-```
-
-Every step must have a unique `id`. Additional properties can be added for custom data.
-
-### StepMetadata
-
-Typed metadata record for all steps:
-
-```tsx
-type StepMetadata<Steps> = {
-  [K in Steps[number] as K["id"]]: Record<string, unknown> | null;
+```ts
+type TransitionMethods<Steps> = {
+  onBeforeTransition: (cb: (ctx: TransitionContext<Steps>) => void | Promise<void | false>) => void;
+  onAfterTransition: (cb: (ctx: TransitionContext<Steps>) => void | Promise<void>) => void;
 };
 ```
 
-### StepStatuses
+### TransitionState
 
-Record of base statuses for all steps:
-
-```tsx
-type StepStatuses<Steps> = Record<Get.Id<Steps>, BaseStepStatus>;
+```ts
+type TransitionState = {
+  isTransitioning: boolean;
+};
 ```
+
+### StepStatus (primitives)
+
+Used in primitives for UI state: `"active" | "inactive" | "success"` (current step, future step, past step).
+
+### ScopedProps
+
+Props for `Scoped`: `initialStep?`, `initialMetadata?`, `children`.
+
+### StepperReturn
+
+Return type of `defineStepper`: `steps`, `utils`, `Scoped`, `useStepper`, `Stepper`.

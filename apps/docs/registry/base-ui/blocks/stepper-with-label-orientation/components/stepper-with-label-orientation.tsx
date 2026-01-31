@@ -5,7 +5,7 @@ import { useStepItemContext } from "@stepperize/react/primitives";
 
 import { Button } from "@/registry/base-ui/ui/button";
 
-const { Stepper, ...stepperDefinition } = defineStepper([
+const { Stepper, ...stepperDefinition } = defineStepper(
 	{
 		id: "step-1",
 		title: "Account",
@@ -25,8 +25,8 @@ const { Stepper, ...stepperDefinition } = defineStepper([
 		id: "step-4",
 		title: "Complete",
 		description: "All done!",
-	},
-]);
+	}
+);
 
 const StepperTriggerWrapper = () => {
 	const item = useStepItemContext();

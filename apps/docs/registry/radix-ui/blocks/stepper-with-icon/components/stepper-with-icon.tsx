@@ -13,7 +13,7 @@ import {
 import { Button } from "@/registry/radix-ui/ui/button";
 import React from "react";
 
-const { Stepper, ...stepperDefinition } = defineStepper([
+const { Stepper, ...stepperDefinition } = defineStepper(
 	{
 		id: "cart",
 		title: "Cart",
@@ -37,8 +37,8 @@ const { Stepper, ...stepperDefinition } = defineStepper([
 		title: "Confirmation",
 		description: "Order confirmed",
 		icon: Package,
-	},
-]);
+	}
+);
 
 type StepData = {
 	id: string;

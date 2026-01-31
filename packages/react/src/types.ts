@@ -30,7 +30,7 @@ export type ScopedProps<Steps extends Step[]> = React.PropsWithChildren<{
 	/** The initial step to display. */
 	initialStep?: Get.Id<Steps>;
 	/** The initial metadata. */
-	initialMetadata?: Record<Get.Id<Steps>, Metadata>;
+	initialMetadata?: Partial<Record<Get.Id<Steps>, Metadata>>;
 }>;
 
 export type StepperReturn<Steps extends Step[]> = {

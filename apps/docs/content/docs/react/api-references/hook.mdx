@@ -3,7 +3,7 @@ title: Hook
 description: Access and control your stepper with the useStepper hook
 ---
 
-The `useStepper` hook provides methods to interact with and control your stepper. It can be used with or without the [`Scoped`](./scoped) component.
+The `useStepper` hook returns the stepper instance: state, navigation, metadata, and transition hooks. Use it with or without the [`Scoped`](./scoped) component.
 
 ## Usage
 
@@ -11,1161 +11,157 @@ The `useStepper` hook provides methods to interact with and control your stepper
 import * as React from "react";
 import { defineStepper } from "@stepperize/react";
 
-const { useStepper } = defineStepper([
+const { useStepper } = defineStepper(
   { id: "first", title: "First step" },
   { id: "second", title: "Second step" }
-]);
+);
 
 const MyStepperComponent = () => {
   const stepper = useStepper();
-  // Use stepper methods and state here
+  return (
+    <div>
+      <h1>{stepper.current.title}</h1>
+      <button onClick={() => stepper.next()} disabled={stepper.isLast}>Next</button>
+      <button onClick={() => stepper.prev()} disabled={stepper.isFirst}>Previous</button>
+    </div>
+  );
 };
 ```
 
-### Hook Props
+## Hook config
 
-The hook accepts an optional configuration object:
+Optional object passed to `useStepper({ ... })`:
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `initialStep` | `Get.Id<Steps>` | Initial active step ID |
+| `initialMetadata` | `Partial<Record<Get.Id<Steps>, Metadata>>` | Initial metadata per step |
 
 ```tsx twoslash
 import * as React from "react";
 import { defineStepper } from "@stepperize/react";
 
-const { useStepper } = defineStepper([
-  { id: "first", title: "First step" },
-  { id: "second", title: "Second step" }
-]);
+const { useStepper } = defineStepper(
+  { id: "first", title: "First" },
+  { id: "second", title: "Second" }
+);
 
-const MyStepperComponent = () => {
+const MyComponent = () => {
   const stepper = useStepper({
-    initial: {
-      step: "first",           // Initial step ID
-      metadata: {              // Initial metadata per step
-        first: { value: "test" }
-      },
-      statuses: {              // Initial status per step
-        first: "incomplete"
-      }
-    }
+    initialStep: "second",
+    initialMetadata: { first: { value: "saved" } }
   });
+  return <div>{stepper.current.title}</div>;
 };
 ```
 
-## State Properties
+## State
 
-### steps
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `all` | `Steps` | Array of all step objects |
+| `current` | `Steps[number]` | Current step object (e.g. `{ id, title }`) |
+| `isFirst` | `boolean` | `true` if on the first step |
+| `isLast` | `boolean` | `true` if on the last step |
+| `isTransitioning` | `boolean` | `true` while a transition (with callbacks) is in progress |
+| `metadata` | `Record<Get.Id<Steps>, Metadata>` | Metadata for all steps |
 
-Array of all steps with full information (`StepInfo[]`):
+There is no `currentIndex` on the stepper; use `utils.getIndex(stepper.current.id)` from the `utils` returned by `defineStepper`.
 
-```tsx twoslash
-import * as React from "react";
-import { defineStepper } from "@stepperize/react";
+## Navigation
 
-const { useStepper } = defineStepper([
-  { id: "first", title: "First step" },
-  { id: "second", title: "Second step" }
-]);
+| Method | Description |
+| ------ | ----------- |
+| `next()` | Go to next step. Returns `void` or `Promise<void>` when transition callbacks are used. |
+| `prev()` | Go to previous step. |
+| `goTo(id)` | Go to step by ID. |
+| `reset()` | Reset to initial step (and clear metadata unless you call `resetMetadata` separately with `true`). |
 
-const MyStepperComponent = () => {
-  const stepper = useStepper();
+## Step lookup
 
-  return (
-    <ul>
-      {stepper.steps.map((stepInfo) => (
-        <li key={stepInfo.data.id}>
-          {stepInfo.data.title} - Status: {stepInfo.status}
-        </li>
-      ))}
-    </ul>
-  );
-};
-```
+| Method | Description |
+| ------ | ----------- |
+| `get(id)` | Get step object by ID. |
 
-### current
+## Metadata
 
-The current active step (`StepInfo`):
+| Method | Description |
+| ------ | ----------- |
+| `setMetadata(id, values)` | Set metadata for a step. |
+| `getMetadata(id)` | Get metadata for a step. |
+| `resetMetadata(keepInitialMetadata?)` | Reset all metadata; pass `true` to keep initial metadata from config. |
 
-```tsx twoslash
-import * as React from "react";
-import { defineStepper } from "@stepperize/react";
+## Rendering helpers
 
-const { useStepper } = defineStepper([
-  { id: "first", title: "First step" },
-  { id: "second", title: "Second step" }
-]);
+| Method | Description |
+| ------ | ----------- |
+| `when(id, whenFn, elseFn?)` | Run `whenFn(step)` if current step matches `id`, else `elseFn(step)`. First arg can be `[id, ...conditions]` (conditions must be truthy). |
+| `switch(when)` | Object map of step ID → `(step) => R`. Runs the handler for the current step. |
+| `match(state, matches)` | Same shape as `switch` but `state` is any step ID (e.g. from URL or server). |
 
-const MyStepperComponent = () => {
-  const stepper = useStepper();
+## Transition hooks (on stepper)
 
-  return (
-    <div>
-      <h1>{stepper.current.data.title}</h1>
-      <p>Status: {stepper.current.status}</p>
-      <p>Completed: {stepper.current.isCompleted ? "Yes" : "No"}</p>
-    </div>
-  );
-};
-```
+Register callbacks that run on every `next()`, `prev()`, or `goTo()`. Call these methods on the stepper (e.g. in `useEffect`):
 
-### currentIndex, isFirst, isLast
+| Method | Description |
+| ------ | ----------- |
+| `onBeforeTransition(cb)` | Register callback before transition. Callback receives `TransitionContext`; return `false` (or Promise resolving to `false`) to cancel. |
+| `onAfterTransition(cb)` | Register callback after transition. |
 
-Position indicators:
+**TransitionContext** has: `from`, `to`, `metadata`, `statuses`, `direction` (`"next" \| "prev" \| "goTo"`), `fromIndex`, `toIndex`.
 
 ```tsx twoslash
 import * as React from "react";
 import { defineStepper } from "@stepperize/react";
 
-const { useStepper } = defineStepper([
-  { id: "first", title: "First step" },
-  { id: "second", title: "Second step" }
-]);
-
-const MyStepperComponent = () => {
-  const stepper = useStepper();
-
-  return (
-    <div>
-      <p>Step {stepper.currentIndex + 1} of {stepper.steps.length}</p>
-      {stepper.isFirst && <span>You're at the beginning</span>}
-      {stepper.isLast && <span>You're at the end</span>}
-    </div>
-  );
-};
-```
-
-## Navigation Methods
-
-### next, prev, goTo
-
-Navigate between steps. All navigation methods return `Promise<void>`:
-
-```tsx twoslash
-import * as React from "react";
-import { defineStepper } from "@stepperize/react";
-
-const { useStepper } = defineStepper([
-  { id: "first", title: "First step" },
-  { id: "second", title: "Second step" },
-  { id: "third", title: "Third step" }
-]);
-
-const MyStepperComponent = () => {
-  const stepper = useStepper();
-
-  return (
-    <div>
-      <button onClick={() => stepper.prev()} disabled={stepper.isFirst}>
-        Previous
-      </button>
-      <button onClick={() => stepper.next()} disabled={stepper.isLast}>
-        Next
-      </button>
-      <button onClick={() => stepper.goTo("third")}>
-        Go to Third
-      </button>
-    </div>
-  );
-};
-```
-
-### reset
-
-Reset the stepper to its initial state. Accepts options to preserve certain data:
-
-```tsx twoslash
-import * as React from "react";
-import { defineStepper } from "@stepperize/react";
-
-const { useStepper } = defineStepper([
-  { id: "first", title: "First step" },
-  { id: "second", title: "Second step" }
-]);
-
-const MyStepperComponent = () => {
-  const stepper = useStepper();
-
-  return (
-    <div>
-      <button onClick={() => stepper.reset()}>Reset All</button>
-      <button onClick={() => stepper.reset({ keepMetadata: true })}>
-        Reset (Keep Metadata)
-      </button>
-      <button onClick={() => stepper.reset({ keepStatuses: true })}>
-        Reset (Keep Statuses)
-      </button>
-    </div>
-  );
-};
-```
-
-#### Reset Options
-
-| Option | Type | Default | Description |
-| ------ | ---- | ------- | ----------- |
-| `keepMetadata` | `boolean` | `false` | Preserve form data and metadata |
-| `keepStatuses` | `boolean` | `false` | Preserve step completion statuses |
-
-#### Use Cases
-
-```tsx twoslash
-import * as React from "react";
-import { defineStepper } from "@stepperize/react";
-
-const { useStepper } = defineStepper([
-  { id: "cart", title: "Cart" },
-  { id: "shipping", title: "Shipping" },
-  { id: "payment", title: "Payment" },
-  { id: "confirmation", title: "Confirmation" }
-]);
-
-function CheckoutActions() {
-  const stepper = useStepper();
-
-  // Full reset: Start completely fresh
-  const handleStartOver = () => {
-    stepper.reset();
-  };
-
-  // Soft reset: Go back to start but keep filled data
-  const handleEditOrder = () => {
-    stepper.reset({ keepMetadata: true, keepStatuses: true });
-  };
-
-  return (
-    <div>
-      <button onClick={handleStartOver}>Start Over</button>
-      <button onClick={handleEditOrder}>Edit Order</button>
-    </div>
-  );
-}
-```
-
-## Step Access
-
-### step(id)
-
-Get comprehensive information about a specific step:
-
-```tsx twoslash
-import * as React from "react";
-import { defineStepper } from "@stepperize/react";
-
-const { useStepper } = defineStepper([
-  { id: "first", title: "First step" },
-  { id: "second", title: "Second step" }
-]);
-
-const MyStepperComponent = () => {
-  const stepper = useStepper();
-
-  const firstStep = stepper.step("first");
-
-  return (
-    <div>
-      <p>Title: {firstStep.data.title}</p>
-      <p>Status: {firstStep.status}</p>
-      <p>Completed: {firstStep.isCompleted ? "Yes" : "No"}</p>
-      <p>Metadata: {JSON.stringify(firstStep.metadata)}</p>
-    </div>
-  );
-};
-```
-
-## Rendering Methods
-
-### when
-
-Conditionally render content based on the current step. Returns `null` when the step is not active.
-
-```tsx twoslash
-import * as React from "react";
-import { defineStepper } from "@stepperize/react";
-
-const { useStepper } = defineStepper([
-  { id: "first", title: "First step" },
-  { id: "second", title: "Second step" }
-]);
-
-const MyStepperComponent = () => {
-  const stepper = useStepper();
-
-  return (
-    <React.Fragment>
-      {stepper.when("first", (step) => (
-        <p>First step: {step.title}</p>
-      ))}
-      {stepper.when("second", (step) => (
-        <p>Second step: {step.title}</p>
-      ))}
-    </React.Fragment>
-  );
-};
-```
-
-#### With Else Callback
-
-Provide a fallback render when the step is not active:
-
-```tsx twoslash
-import * as React from "react";
-import { defineStepper } from "@stepperize/react";
-
-const { useStepper } = defineStepper([
-  { id: "editing", title: "Edit" },
-  { id: "preview", title: "Preview" }
-]);
-
-function EditorToolbar() {
-  const stepper = useStepper();
-
-  return (
-    <div>
-      {stepper.when(
-        "editing",
-        (step) => (
-          <button onClick={() => stepper.goTo("preview")}>
-            Preview
-          </button>
-        ),
-        () => (
-          <button onClick={() => stepper.goTo("editing")}>
-            Edit
-          </button>
-        )
-      )}
-    </div>
-  );
-}
-```
-
-#### With Additional Conditions
-
-Add boolean conditions that must all be true:
-
-```tsx twoslash
-import * as React from "react";
-import { defineStepper } from "@stepperize/react";
-
-const { useStepper } = defineStepper([
-  { id: "first", title: "First step" },
-  { id: "second", title: "Second step" }
-]);
-
-const MyStepperComponent = () => {
-  const stepper = useStepper();
-  const isFormValid = true;
-  const hasPermission = true;
-
-  return (
-    <React.Fragment>
-      {stepper.when(["first", isFormValid, hasPermission], (step) => (
-        <p>First step: {step.title}</p>
-      ))}
-    </React.Fragment>
-  );
-};
-```
-
-<Callout type="info">
-  The first element of the array is the step ID, the following elements are
-  boolean values that must all be true.
-</Callout>
-
-#### Practical Example: Feature Flags
-
-```tsx twoslash
-import * as React from "react";
-import { defineStepper } from "@stepperize/react";
-
-const { useStepper } = defineStepper([
-  { id: "basic", title: "Basic Info" },
-  { id: "advanced", title: "Advanced Settings" },
-  { id: "review", title: "Review" }
-]);
-
-declare const featureFlags: { advancedSettings: boolean };
-declare const user: { role: "admin" | "user" };
-
-function SettingsWizard() {
-  const stepper = useStepper();
-  const showAdvanced = featureFlags.advancedSettings && user.role === "admin";
-
-  return (
-    <div>
-      {stepper.when("basic", () => <div>Basic settings form...</div>)}
-      
-      {/* Only shows if on "advanced" step AND conditions are met */}
-      {stepper.when(
-        ["advanced", showAdvanced],
-        () => <div>Advanced settings form...</div>,
-        () => <div>Advanced settings not available</div>
-      )}
-      
-      {stepper.when("review", () => <div>Review your settings...</div>)}
-    </div>
-  );
-}
-```
-
-### switch
-
-Switch-case style rendering based on current step. Cleaner than multiple `when` calls when you need to handle all steps:
-
-```tsx twoslash
-import * as React from "react";
-import { defineStepper } from "@stepperize/react";
-
-const { useStepper } = defineStepper([
-  { id: "first", title: "First step" },
-  { id: "second", title: "Second step" }
-]);
-
-const MyStepperComponent = () => {
-  const stepper = useStepper();
-
-  return (
-    <React.Fragment>
-      {stepper.switch({
-        first: (step) => <p>First: {step.title}</p>,
-        second: (step) => <p>Second: {step.title}</p>,
-      })}
-    </React.Fragment>
-  );
-};
-```
-
-#### Full Wizard Example
-
-```tsx twoslash
-import * as React from "react";
-import { defineStepper } from "@stepperize/react";
-
-const { useStepper } = defineStepper([
-  { id: "info", title: "Personal Information" },
-  { id: "plan", title: "Choose Plan" },
-  { id: "payment", title: "Payment" },
-  { id: "complete", title: "Complete" }
-]);
-
-declare function PersonalInfoForm(): React.ReactElement;
-declare function PlanSelector(): React.ReactElement;
-declare function PaymentForm(): React.ReactElement;
-declare function SuccessMessage(): React.ReactElement;
-
-function SignupWizard() {
-  const stepper = useStepper();
-
-  return (
-    <div className="wizard">
-      <h1>{stepper.current.data.title}</h1>
-      
-      {stepper.switch({
-        info: () => <PersonalInfoForm />,
-        plan: () => <PlanSelector />,
-        payment: () => <PaymentForm />,
-        complete: () => <SuccessMessage />,
-      })}
-
-      <div className="navigation">
-        {!stepper.isFirst && (
-          <button onClick={() => stepper.prev()}>Back</button>
-        )}
-        {!stepper.isLast && (
-          <button onClick={() => stepper.next()}>Continue</button>
-        )}
-      </div>
-    </div>
-  );
-}
-```
-
-### match
-
-Match an external state value against step IDs. Unlike `switch` which uses the stepper's current step, `match` lets you render based on any string value:
-
-```tsx twoslash
-import * as React from "react";
-import { defineStepper } from "@stepperize/react";
-
-const { useStepper } = defineStepper([
-  { id: "first", title: "First step" },
-  { id: "second", title: "Second step" }
-]);
-
-const MyStepperComponent = () => {
-  const stepper = useStepper();
-  const serverState = "first"; // Value from server or external state
-
-  return (
-    <React.Fragment>
-      {stepper.match(serverState, {
-        first: (step) => <p>First: {step.title}</p>,
-        second: (step) => <p>Second: {step.title}</p>,
-      })}
-    </React.Fragment>
-  );
-};
-```
-
-#### Server-Side State (Next.js App Router)
-
-```tsx twoslash
-import * as React from "react";
-import { defineStepper } from "@stepperize/react";
-
-const { useStepper } = defineStepper([
-  { id: "pending", title: "Pending" },
-  { id: "processing", title: "Processing" },
-  { id: "shipped", title: "Shipped" },
-  { id: "delivered", title: "Delivered" }
-]);
-
-// Server component passes order status to client
-type OrderStatus = "pending" | "processing" | "shipped" | "delivered";
-
-function OrderTracker({ orderStatus }: { orderStatus: OrderStatus }) {
-  const stepper = useStepper();
-
-  // Match server-provided status to step definitions
-  return stepper.match(orderStatus, {
-    pending: (step) => (
-      <div>
-        <h2>{step.title}</h2>
-        <p>Your order is being prepared</p>
-      </div>
-    ),
-    processing: (step) => (
-      <div>
-        <h2>{step.title}</h2>
-        <p>Your order is being processed</p>
-      </div>
-    ),
-    shipped: (step) => (
-      <div>
-        <h2>{step.title}</h2>
-        <p>Your order is on its way!</p>
-      </div>
-    ),
-    delivered: (step) => (
-      <div>
-        <h2>{step.title}</h2>
-        <p>Your order has been delivered</p>
-      </div>
-    ),
-  });
-}
-```
-
-#### URL-Based Step (React Router / Remix)
-
-```tsx twoslash
-import * as React from "react";
-import { defineStepper, Get } from "@stepperize/react";
-
-declare function useParams(): { step?: string };
-
-const { useStepper, steps } = defineStepper([
-  { id: "account", title: "Account" },
-  { id: "profile", title: "Profile" },
-  { id: "security", title: "Security" }
-]);
-
-type StepperIds = Get.Id<typeof steps>
-
-function SettingsPage() {
-  const stepper = useStepper();
-  const { step } = useParams(); // From URL: /settings/:step
-
-  // Validate and default to "account"
-  const isValidStep = (id: string): id is StepperIds => 
-    steps.some(s => s.id === id);
-
-  const currentStep: StepperIds = step && isValidStep(step) 
-    ? step 
-    : "account";
-
-  return stepper.match(currentStep, {
-    account: () => <div>Account settings...</div>,
-    profile: () => <div>Profile settings...</div>,
-    security: () => <div>Security settings...</div>,
-  });
-}
-```
-
-<Callout type="info">
-  `match` is useful for server-side state management in frameworks like Remix or Next.js, 
-  or when the source of truth for the current step lives outside the stepper (URL, server state, etc.).
-</Callout>
-
-## Transition Hooks (onBeforeTransition / onAfterTransition)
-
-The stepper returned by `useStepper()` includes `onBeforeTransition(cb)` and `onAfterTransition(cb)`. Call them to register callbacks that run on every `next()`, `prev()`, or `goTo()`. The callback receives a `TransitionContext` with `from`, `to`, `metadata`, `statuses`, `direction`, `fromIndex`, `toIndex`. Return `false` from the before callback to cancel the transition.
-
-```tsx twoslash
-import * as React from "react";
-import { defineStepper } from "@stepperize/react";
-
-const { useStepper } = defineStepper([
-  { id: "first", title: "First step" },
-  { id: "second", title: "Second step" }
-]);
-
-const MyStepperComponent = () => {
+const { useStepper } = defineStepper(
+  { id: "first", title: "First" },
+  { id: "second", title: "Second" }
+);
+
+function MyStepper() {
   const stepper = useStepper();
 
   React.useEffect(() => {
     stepper.onBeforeTransition(async (ctx) => {
-      if (ctx.direction === "prev") {
-        return window.confirm("Go back? Unsaved changes will be lost.");
-      }
-      const isValid = await validateForm();
-      return isValid; // false cancels transition
+      if (ctx.direction === "prev" && !window.confirm("Go back?")) return false;
+      // allow: return nothing (void)
     });
     stepper.onAfterTransition((ctx) => {
-      console.log(`Moved from ${ctx.from.id} to ${ctx.to.id}`);
+      console.log(`${ctx.from.id} → ${ctx.to.id}`);
     });
   }, [stepper]);
 
   return (
     <div>
-      <button onClick={() => stepper.next()}>Next</button>
-      <button onClick={() => stepper.prev()}>Previous</button>
-      <button onClick={() => stepper.goTo("first")}>Go to first</button>
-    </div>
-  );
-};
-
-async function validateForm() {
-  return true;
-}
-```
-
-## Metadata
-
-### Setting Initial Metadata
-
-```tsx twoslash
-import * as React from "react";
-import { defineStepper } from "@stepperize/react";
-
-const { useStepper } = defineStepper(
-  [
-    { id: "first", title: "First step" },
-    { id: "second", title: "Second step" }
-  ],
-  {
-    initial: {
-      metadata: {
-        first: { value: "initial" }
-      }
-    }
-  }
-);
-```
-
-### Accessing and Setting Metadata
-
-```tsx twoslash
-import * as React from "react";
-import { defineStepper } from "@stepperize/react";
-
-const { useStepper } = defineStepper([
-  { id: "first", title: "First step" },
-  { id: "second", title: "Second step" }
-]);
-
-const MyStepperComponent = () => {
-  const stepper = useStepper();
-
-  // Get metadata
-  const firstMetadata = stepper.step("first").metadata;
-
-  // Set metadata
-  const handleSave = () => {
-    stepper.step("first").setMetadata({ value: "updated" });
-  };
-
-  return (
-    <div>
-      <p>Metadata: {JSON.stringify(firstMetadata)}</p>
-      <button onClick={handleSave}>Save</button>
-    </div>
-  );
-};
-```
-
-### Resetting Metadata
-
-```tsx twoslash
-import * as React from "react";
-import { defineStepper } from "@stepperize/react";
-
-const { useStepper } = defineStepper([
-  { id: "first", title: "First step" },
-  { id: "second", title: "Second step" }
-]);
-
-const MyStepperComponent = () => {
-  const stepper = useStepper();
-
-  return (
-    <div>
-      {/* Reset all metadata to null */}
-      <button onClick={() => stepper.resetMetadata()}>
-        Clear All Metadata
-      </button>
-
-      {/* Reset but keep initial metadata from config */}
-      <button onClick={() => stepper.resetMetadata(true)}>
-        Reset to Initial
+      <button onClick={() => stepper.next()} disabled={stepper.isTransitioning || stepper.isLast}>
+        {stepper.isTransitioning ? "..." : "Next"}
       </button>
     </div>
   );
-};
-```
-
-## Status Management
-
-Each step has a status that tracks its completion state. Status is especially important in `linear` mode where `"success"` status is required to move forward.
-
-### Available Status Values
-
-| Status | Description | Use Case |
-| ------ | ----------- | -------- |
-| `"incomplete"` | Initial state, not started | Default for unvisited steps |
-| `"loading"` | Processing/submitting | During API calls or async operations |
-| `"error"` | An error occurred | Validation failed or API error |
-| `"success"` | Successfully completed | Form submitted and validated |
-| `"skipped"` | Step was skipped | Optional steps that user bypassed |
-
-### Basic Status Usage
-
-```tsx twoslash
-import * as React from "react";
-import { defineStepper } from "@stepperize/react";
-
-const { useStepper } = defineStepper([
-  { id: "first", title: "First step" },
-  { id: "second", title: "Second step" }
-]);
-
-const MyStepperComponent = () => {
-  const stepper = useStepper();
-
-  // Get status
-  const status = stepper.step("first").status;
-  const isCompleted = stepper.step("first").isCompleted;
-
-  // Set status
-  const handleComplete = () => {
-    stepper.step("first").setStatus("success");
-  };
-
-  return (
-    <div>
-      <p>Status: {status}</p>
-      <p>Completed: {isCompleted ? "Yes" : "No"}</p>
-      <button onClick={handleComplete}>Mark as Complete</button>
-    </div>
-  );
-};
-```
-
-### Form Submission Pattern
-
-A common pattern is to update status based on form state:
-
-```tsx twoslash
-import * as React from "react";
-import { defineStepper } from "@stepperize/react";
-
-const { useStepper } = defineStepper([
-  { id: "personal", title: "Personal Info" },
-  { id: "address", title: "Address" },
-  { id: "review", title: "Review" }
-]);
-
-type FormData = { name: string; email: string };
-
-async function submitToAPI(data: FormData): Promise<{ success: boolean }> {
-  return { success: true };
-}
-
-function PersonalInfoForm() {
-  const stepper = useStepper();
-  const [formData, setFormData] = React.useState<FormData>({ name: "", email: "" });
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Set loading state
-    stepper.step("personal").setStatus("loading");
-
-    try {
-      // Submit to API
-      const result = await submitToAPI(formData);
-
-      if (result.success) {
-        // Mark as complete and save data
-        stepper.step("personal").setStatus("success");
-        stepper.step("personal").setMetadata(formData);
-        
-        // Move to next step
-        await stepper.next();
-      } else {
-        stepper.step("personal").setStatus("error");
-      }
-    } catch (error) {
-      stepper.step("personal").setStatus("error");
-    }
-  };
-
-  const currentStatus = stepper.step("personal").status;
-
-  return (
-    <form onSubmit={handleSubmit}>
-      <input
-        value={formData.name}
-        onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-        disabled={currentStatus === "loading"}
-      />
-      <input
-        value={formData.email}
-        onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-        disabled={currentStatus === "loading"}
-      />
-      
-      <button type="submit" disabled={currentStatus === "loading"}>
-        {currentStatus === "loading" ? "Saving..." : "Continue"}
-      </button>
-      
-      {currentStatus === "error" && (
-        <p style={{ color: "red" }}>Something went wrong. Please try again.</p>
-      )}
-    </form>
-  );
 }
 ```
 
-### Visual Status Indicators
-
-Use status to show visual feedback in step list:
-
-```tsx twoslash
-import * as React from "react";
-import { defineStepper } from "@stepperize/react";
-
-const { useStepper } = defineStepper([
-  { id: "step-1", title: "Step 1" },
-  { id: "step-2", title: "Step 2" },
-  { id: "step-3", title: "Step 3" }
-]);
-
-function StepIndicator({ stepId }: { stepId: "step-1" | "step-2" | "step-3" }) {
-  const stepper = useStepper();
-  const stepInfo = stepper.step(stepId);
-
-  // Choose icon based on status
-  const getStatusIcon = () => {
-    switch (stepInfo.status) {
-      case "success":
-        return "V";
-      case "error":
-        return "X";
-      case "loading":
-        return "...";
-      case "skipped":
-        return "-";
-      default:
-        return stepInfo.data.title.charAt(0);
-    }
-  };
-
-  // Choose color based on status
-  const getStatusColor = () => {
-    switch (stepInfo.status) {
-      case "success":
-        return "green";
-      case "error":
-        return "red";
-      case "loading":
-        return "blue";
-      case "skipped":
-        return "gray";
-      default:
-        return "inherit";
-    }
-  };
-
-  return (
-    <div style={{ color: getStatusColor() }}>
-      <span>{getStatusIcon()}</span>
-      <span>{stepInfo.data.title}</span>
-    </div>
-  );
-}
-```
-
-### Skippable Steps
-
-Mark optional steps as skipped:
-
-```tsx twoslash
-import * as React from "react";
-import { defineStepper } from "@stepperize/react";
-
-const { useStepper } = defineStepper(
-  [
-    { id: "required-1", title: "Required Step", optional: false },
-    { id: "optional", title: "Optional Step", optional: true },
-    { id: "required-2", title: "Final Step", optional: false }
-  ],
-  { mode: "linear" }
-);
-
-function OptionalStepContent() {
-  const stepper = useStepper();
-
-  const handleSkip = async () => {
-    // Mark as skipped instead of success
-    stepper.step("optional").setStatus("skipped");
-    await stepper.next();
-  };
-
-  const handleComplete = async () => {
-    stepper.step("optional").setStatus("success");
-    await stepper.next();
-  };
-
-  return (
-    <div>
-      <p>This step is optional</p>
-      <button onClick={handleSkip}>Skip</button>
-      <button onClick={handleComplete}>Complete</button>
-    </div>
-  );
-}
-```
-
-### Bulk Status Reset
-
-Reset statuses when starting over:
-
-```tsx twoslash
-import * as React from "react";
-import { defineStepper } from "@stepperize/react";
-
-const { useStepper, steps } = defineStepper([
-  { id: "step-1", title: "Step 1" },
-  { id: "step-2", title: "Step 2" },
-  { id: "step-3", title: "Step 3" }
-]);
-
-function ResetButton() {
-  const stepper = useStepper();
-
-  const handleFullReset = () => {
-    // Reset to initial state (clears statuses)
-    stepper.reset();
-  };
-
-  const handleSoftReset = () => {
-    // Reset position but keep statuses
-    stepper.reset({ keepStatuses: true });
-  };
-
-  const handleResetWithData = () => {
-    // Reset but keep metadata (form data)
-    stepper.reset({ keepMetadata: true });
-  };
-
-  return (
-    <div>
-      <button onClick={handleFullReset}>Start Over</button>
-      <button onClick={handleSoftReset}>Go to Start</button>
-      <button onClick={handleResetWithData}>Reset (Keep Data)</button>
-    </div>
-  );
-}
-```
-
-## Initialization Status
-
-Handle async initialization:
-
-```tsx twoslash
-import * as React from "react";
-import { defineStepper } from "@stepperize/react";
-
-const { useStepper } = defineStepper(
-  [
-    { id: "first", title: "First step" },
-    { id: "second", title: "Second step" }
-  ],
-  {
-    initial: async () => {
-      const data = await fetch("/api/progress").then(r => r.json());
-      return { step: data.step };
-    }
-  }
-);
-
-const MyStepperComponent = () => {
-  const stepper = useStepper();
-
-  if (stepper.initStatus === "pending") {
-    return <div>Loading...</div>;
-  }
-
-  if (stepper.initStatus === "error") {
-    return (
-      <div>
-        <p>Error loading stepper</p>
-        <button onClick={() => stepper.retry()}>Retry</button>
-      </div>
-    );
-  }
-
-  // initStatus === "success"
-  return <div>Stepper ready!</div>;
-};
-```
-
-## Transition Status
-
-Track when transitions are in progress:
-
-```tsx twoslash
-import * as React from "react";
-import { defineStepper } from "@stepperize/react";
-
-const { useStepper } = defineStepper([
-  { id: "first", title: "First step" },
-  { id: "second", title: "Second step" }
-]);
-
-const MyStepperComponent = () => {
-  const stepper = useStepper();
-
-  return (
-    <button
-      onClick={() => stepper.next()}
-      disabled={stepper.isTransitioning || stepper.isLast}
-    >
-      {stepper.isTransitioning ? "Loading..." : "Next"}
-    </button>
-  );
-};
-```
-
-## API Reference
-
-### State Properties
+## API summary
 
 | Name | Type | Description |
 | ---- | ---- | ----------- |
-| `steps` | `StepInfo[]` | Array of all steps with full information |
-| `current` | `StepInfo` | The current active step |
-| `currentIndex` | `number` | Index of the current step |
-| `isFirst` | `boolean` | `true` if current step is the first step |
-| `isLast` | `boolean` | `true` if current step is the last step |
-
-### Navigation Methods
-
-| Name | Type | Description |
-| ---- | ---- | ----------- |
-| `next` | `() => Promise<void>` | Navigate to the next step |
-| `prev` | `() => Promise<void>` | Navigate to the previous step |
-| `goTo` | `(id: string) => Promise<void>` | Navigate to a specific step |
-| `reset` | `(options?) => void` | Reset to initial state |
-
-### Step Access
-
-| Name | Type | Description |
-| ---- | ---- | ----------- |
-| `step` | `(id: string) => StepInfo` | Get step info by ID |
-
-### Rendering Methods
-
-| Name | Type | Description |
-| ---- | ---- | ----------- |
-| `when` | `(id, whenFn, elseFn?) => R1 \| R2` | Conditional rendering |
-| `switch` | `(cases) => R \| undefined` | Switch-case rendering |
+| `all` | `Steps` | All steps |
+| `current` | `Steps[number]` | Current step |
+| `isFirst` | `boolean` | On first step |
+| `isLast` | `boolean` | On last step |
+| `isTransitioning` | `boolean` | Transition in progress |
+| `metadata` | `Record<Id, Metadata>` | All metadata |
+| `next` | `() => void \| Promise<void>` | Next step |
+| `prev` | `() => void \| Promise<void>` | Previous step |
+| `goTo` | `(id) => void \| Promise<void>` | Go to step |
+| `reset` | `() => void` | Reset to initial |
+| `get` | `(id) => Step \| undefined` | Get step by ID |
+| `setMetadata` | `(id, values) => void` | Set step metadata |
+| `getMetadata` | `(id) => Metadata` | Get step metadata |
+| `resetMetadata` | `(keepInitial?) => void` | Reset metadata |
+| `when` | `(id, whenFn, elseFn?) => R` | Conditional by step |
+| `switch` | `(when) => R \| undefined` | Switch by current step |
 | `match` | `(state, matches) => R \| null` | Match external state |
-
-### Transition hooks (on stepper)
-
-Methods on the object returned by `useStepper()`:
-
-| Name | Type | Description |
-| ---- | ---- | ----------- |
-| `onBeforeTransition` | `(cb) => void` | Register callback that runs before any transition; callback can return `false` to cancel |
-| `onAfterTransition` | `(cb) => void` | Register callback that runs after any transition |
-
-### Metadata
-
-| Name | Type | Description |
-| ---- | ---- | ----------- |
-| `resetMetadata` | `(keepInitial?) => void` | Reset all metadata |
-
-### Status
-
-| Name | Type | Description |
-| ---- | ---- | ----------- |
-| `initStatus` | `"pending" \| "success" \| "error"` | Initialization status |
-| `error` | `StepperError \| null` | Error info if initStatus is "error" |
-| `retry` | `() => void` | Retry initialization |
-| `isTransitioning` | `boolean` | `true` during transitions |
-
-### StepInfo Type
-
-| Property | Type | Description |
-| -------- | ---- | ----------- |
-| `data` | `Step` | The step definition object |
-| `status` | `StepStatus` | Current step status |
-| `metadata` | `StepMetadata[Id]` | Step metadata (typed per step, or `null`) |
-| `isCompleted` | `boolean` | `true` if status is "success" |
-| `setStatus` | `(status) => void` | Set step status |
-| `setMetadata` | `(values) => void` | Set step metadata |
-
-## Helper Functions
-
-### isStepperReady
-
-Type guard to check if stepper initialization is complete. Useful when using async initial state.
-
-```tsx twoslash
-import * as React from "react";
-import { defineStepper, isStepperReady } from "@stepperize/react";
-
-const { useStepper } = defineStepper(
-  [
-    { id: "first", title: "First step" },
-    { id: "second", title: "Second step" }
-  ],
-  {
-    initial: async () => {
-      const data = await fetch("/api/progress").then(r => r.json());
-      return { step: data.step };
-    }
-  }
-);
-
-function MyComponent() {
-  const stepper = useStepper();
-
-  if (!isStepperReady(stepper)) {
-    if (stepper.initStatus === "error") {
-      return (
-        <div>
-          <p>Failed to load</p>
-          <button onClick={() => stepper.retry()}>Retry</button>
-        </div>
-      );
-    }
-    return <div>Loading...</div>;
-  }
-
-  // Stepper is ready (initStatus === "success")
-  return <div>Current step: {stepper.current.data.title}</div>;
-}
-```
+| `onBeforeTransition` | `(cb) => void` | Register before callback |
+| `onAfterTransition` | `(cb) => void` | Register after callback |

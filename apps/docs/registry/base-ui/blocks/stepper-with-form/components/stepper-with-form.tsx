@@ -36,7 +36,7 @@ type PersonalInfo = z.infer<typeof personalInfoSchema>;
 type ContactInfo = z.infer<typeof contactInfoSchema>;
 type Address = z.infer<typeof addressSchema>;
 
-const { Stepper } = defineStepper([
+const { Stepper } = defineStepper(
 	{
 		id: "personal",
 		title: "Personal Info",
@@ -56,8 +56,8 @@ const { Stepper } = defineStepper([
 		id: "complete",
 		title: "Complete",
 		description: "Review and submit",
-	},
-]);
+	}
+);
 
 const StepperTriggerWrapper = () => {
 	const item = useStepItemContext();

@@ -15,7 +15,7 @@ import {
 type Orientation = "horizontal" | "vertical";
 type LabelOrientation = "horizontal" | "vertical";
 
-const { Stepper, ...stepperDefinition } = defineStepper([
+const { Stepper, ...stepperDefinition } = defineStepper(
 	{
 		id: "step-1",
 		title: "Step 1",
@@ -30,8 +30,8 @@ const { Stepper, ...stepperDefinition } = defineStepper([
 		id: "step-3",
 		title: "Step 3",
 		description: "Third step description",
-	},
-]);
+	}
+);
 
 const StepperTriggerWrapper = () => {
 	const item = useStepItemContext();

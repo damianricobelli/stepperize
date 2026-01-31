@@ -1,123 +1,100 @@
 ---
 title: Scoped
-description: Using the Scoped component to share stepper state across child components
+description: Share stepper state with the Scoped component
 ---
 
-The `Scoped` component acts as a provider, allowing you to synchronize stepper state via `useStepper` across child components.
+`Scoped` is the provider for the stepper. Children can use `useStepper()` (from the same `defineStepper` result) to access the same stepper instance.
 
-## Basic Usage
+## Basic usage
 
 ```tsx twoslash
 import * as React from "react";
 import { defineStepper } from "@stepperize/react";
 
-const Stepper = defineStepper([
+const { Scoped, useStepper } = defineStepper(
   { id: "first", title: "First" },
   { id: "second", title: "Second" },
   { id: "last", title: "Last" }
-]);
+);
 
 export const MyScopedStepper = () => (
-  <Stepper.Scoped>
+  <Scoped>
     <StepContent />
     <StepNavigation />
-  </Stepper.Scoped>
+  </Scoped>
 );
 
 const StepContent = () => {
-  const stepper = Stepper.useStepper();
+  const stepper = useStepper();
   return (
-    <React.Fragment>
-      {stepper.when("first", (step) => (
-        <p>Starting with {step.title}</p>
-      ))}
-      {stepper.when("second", (step) => (
-        <p>In the middle: {step.title}</p>
-      ))}
-    </React.Fragment>
+    <div>
+      {stepper.when("first", (step) => <p>Starting with {step.title}</p>)}
+      {stepper.when("second", (step) => <p>In the middle: {step.title}</p>)}
+    </div>
   );
 };
 
 const StepNavigation = () => {
-  const stepper = Stepper.useStepper();
+  const stepper = useStepper();
   return (
     <button onClick={stepper.isLast ? () => stepper.reset() : () => stepper.next()}>
-      {stepper.when(
-        "last",
-        () => "Reset",
-        () => "Next"
-      )}
+      {stepper.when("last", () => "Reset", () => "Next")}
     </button>
   );
 };
 ```
 
-<Callout title="When to use Scoped">
-  Use `Scoped` when child components need access to stepper state.
-  Otherwise, use the hook directly in your component.
-</Callout>
+## Props
 
-## With Initial State
-
-You can pass initial state to the `Scoped` component:
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| `initialStep` | `Get.Id<Steps>` | Initial active step ID |
+| `initialMetadata` | `Partial<Record<Get.Id<Steps>, Metadata>>` | Initial metadata per step |
+| `children` | `React.ReactNode` | Content to render |
 
 ```tsx twoslash
 import * as React from "react";
 import { defineStepper } from "@stepperize/react";
 
-const Stepper = defineStepper([
+const { Scoped, useStepper } = defineStepper(
   { id: "first", title: "First" },
   { id: "second", title: "Second" },
   { id: "last", title: "Last" }
-]);
+);
 
 export const MyScopedStepper = () => (
-  <Stepper.Scoped
-    initial={{
-      step: "second",
-      metadata: {
-        first: { completed: true }
-      },
-      statuses: {
-        first: "success"
-      }
-    }}
+  <Scoped
+    initialStep="second"
+    initialMetadata={{ first: { completed: true }, second: null, last: null }}
   >
     <StepContent />
-  </Stepper.Scoped>
+  </Scoped>
 );
 
 const StepContent = () => {
-  const stepper = Stepper.useStepper();
-  return <div>Current: {stepper.current.data.title}</div>;
+  const stepper = useStepper();
+  return <div>Current: {stepper.current.title}</div>;
 };
 ```
 
-## API Reference
+## Nested scopes
 
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| `initial` | `{ step?: string, metadata?: Record<string, any>, statuses?: Record<string, StepStatus> }` | Initial state for the stepper | No |
-| `children` | `React.ReactNode` | Content to render inside the stepper | Yes |
-
-## Nested Scopes
-
-You can nest multiple scopes for complex stepper hierarchies:
+You can nest different steppers (e.g. global wizard + local sub-steps):
 
 ```tsx twoslash
 import * as React from "react";
 import { defineStepper } from "@stepperize/react";
 
-const GlobalStepper = defineStepper([
+const GlobalStepper = defineStepper(
   { id: "start", title: "Start" },
   { id: "middle", title: "Middle" },
   { id: "end", title: "End" }
-]);
+);
 
-const LocalStepper = defineStepper([
+const LocalStepper = defineStepper(
   { id: "sub1", title: "Sub-step 1" },
   { id: "sub2", title: "Sub-step 2" }
-]);
+);
 
 export const NestedSteppers = () => (
   <GlobalStepper.Scoped>
@@ -130,43 +107,36 @@ export const NestedSteppers = () => (
 
 const GlobalStepContent = () => {
   const stepper = GlobalStepper.useStepper();
-  return <div>Global: {stepper.current.data.title}</div>;
+  return <div>Global: {stepper.current.title}</div>;
 };
 
 const LocalStepContent = () => {
   const stepper = LocalStepper.useStepper();
-  return <div>Local: {stepper.current.data.title}</div>;
+  return <div>Local: {stepper.current.title}</div>;
 };
 ```
 
-This structure allows for independent control of global and local stepper states.
+## With Stepper.Root
 
-## Using Stepper.Root Instead
-
-For most use cases, you can use `Stepper.Root` which internally uses `Scoped` and provides a more convenient API:
+`Stepper.Root` wraps content and provides the stepper via context (it uses `Scoped` internally). You can pass `initialStep` and `initialMetadata` to `Stepper.Root` if your primitives support them; otherwise set initial state via `Scoped` or `useStepper({ ... })` when not using Root.
 
 ```tsx twoslash
 import * as React from "react";
 import { defineStepper } from "@stepperize/react";
 
-const { Stepper } = defineStepper([
+const { Stepper, useStepper } = defineStepper(
   { id: "first", title: "First" },
   { id: "second", title: "Second" }
-]);
+);
 
 export const MyStepper = () => (
-  <Stepper.Root initial={{ step: "first" }}>
+  <Stepper.Root>
     {({ stepper }) => (
       <div>
-        <p>Current: {stepper.current.data.title}</p>
+        <p>Current: {stepper.current.title}</p>
         <button onClick={() => stepper.next()}>Next</button>
       </div>
     )}
   </Stepper.Root>
 );
 ```
-
-`Stepper.Root` provides:
-- Built-in `Scoped` provider
-- Access to stepper via render props
-- Additional props like `orientation` and `tracking`

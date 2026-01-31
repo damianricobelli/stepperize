@@ -6,7 +6,7 @@ import * as React from "react";
 
 import { Button } from "@/registry/base-ui/ui/button";
 
-const { Stepper, ...stepperDefinition } = defineStepper([
+const { Stepper, ...stepperDefinition } = defineStepper(
 	{
 		id: "introduction",
 		title: "Introduction",
@@ -31,8 +31,8 @@ const { Stepper, ...stepperDefinition } = defineStepper([
 		id: "certification",
 		title: "Certification",
 		description: "Get your certificate",
-	},
-]);
+	}
+);
 
 const StepperTriggerWrapper = () => {
 	const item = useStepItemContext();

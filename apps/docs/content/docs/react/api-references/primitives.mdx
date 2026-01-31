@@ -11,11 +11,11 @@ The `Stepper` object returned by `defineStepper` provides a set of primitive com
 import * as React from "react"
 import { defineStepper } from "@stepperize/react"
 
-const { Stepper } = defineStepper([
+const { Stepper } = defineStepper(
   { id: "shipping", title: "Shipping" },
   { id: "payment", title: "Payment" },
   { id: "confirmation", title: "Confirmation" }
-]);
+);
 
 function CheckoutStepper() {
   return (
@@ -23,11 +23,11 @@ function CheckoutStepper() {
       {({ stepper }) => (
         <>
           <Stepper.List>
-            {stepper.steps.map((stepInfo) => (
-              <Stepper.Item key={stepInfo.data.id} step={stepInfo.data.id}>
+            {stepper.all.map((step) => (
+              <Stepper.Item key={step.id} step={step.id}>
                 <Stepper.Trigger>
                   <Stepper.Indicator />
-                  <Stepper.Title>{stepInfo.data.title}</Stepper.Title>
+                  <Stepper.Title>{step.title}</Stepper.Title>
                 </Stepper.Trigger>
                 <Stepper.Separator />
               </Stepper.Item>
@@ -86,7 +86,7 @@ The root accepts a function `{({ stepper }) => (...)}` that receives the full st
 <Stepper.Root>
   {({ stepper }) => (
     <>
-      <div>Current: {stepper.current.data.title}</div>
+      <div>Current: {stepper.current.title}</div>
       <Stepper.List>...</Stepper.List>
       <Stepper.Content step="shipping">...</Stepper.Content>
       <Stepper.Actions>
@@ -103,13 +103,13 @@ The root accepts a function `{({ stepper }) => (...)}` that receives the full st
 Any component inside `Stepper.Root` can call `useStepper()` (from your `defineStepper` result) to access the full stepper: current step, `next()`, `prev()`, `goTo()`, `when()`, `switch()`, etc. Use it for content panels, navigation logic, or any component that needs to know "where we are" and control the flow.
 
 ```tsx
-const { Stepper, useStepper } = defineStepper([...]);
+const { Stepper, useStepper } = defineStepper(/* step1, step2, ... */);
 
 function ShippingForm() {
   const stepper = useStepper();
   return (
     <Stepper.Content step="shipping">
-      <p>Step: {stepper.current.data.title}</p>
+      <p>Step: {stepper.current.title}</p>
       <button onClick={() => stepper.next()}>Continue</button>
     </Stepper.Content>
   );
@@ -122,14 +122,8 @@ Components that render **inside `Stepper.Item`** (e.g. custom trigger wrappers, 
 
 | Value | Type | Description |
 | ----- | ---- | ----------- |
-| `step` | `Step` | The step definition (id, title, description, icon, etc.) |
-| `index` | `number` | Zero-based index in the list |
-| `status` | `StepStatus` | Resolved status: `"active"`, `"success"`, `"inactive"`, `"loading"`, `"error"`, `"skipped"` |
-| `isActive` | `boolean` | `status === "active"` |
-| `isCompleted` | `boolean` | `status === "success"` |
-| `isFirst` | `boolean` | First step in the list |
-| `isLast` | `boolean` | Last step in the list |
-| `disabled` | `boolean` | Whether this item is disabled |
+| `data` | `Step` | The step object (id, title, etc.) for this item |
+| `status` | `StepStatus` | Resolved from position: `"active"` (current), `"success"` (past), `"inactive"` (future) |
 
 **When to use it:** When you need to style or behave based on "this step's status" without passing props—e.g. different button variant for inactive steps, or showing an icon only when completed.
 
@@ -169,7 +163,7 @@ Container component that provides context for all primitives. Internally uses `S
 ```tsx
 <Stepper.Root orientation="horizontal" tracking={false}>
   {({ stepper }) => (
-    <div>Current: {stepper.current.data.title}</div>
+    <div>Current: {stepper.current.title}</div>
   )}
 </Stepper.Root>
 ```
@@ -179,9 +173,9 @@ Container component that provides context for all primitives. Internally uses `S
 | Prop | Type | Default | Description |
 | ---- | ---- | ------- | ----------- |
 | `orientation` | `"horizontal" \| "vertical"` | `"horizontal"` | Layout orientation |
-| `tracking` | `boolean` | `false` | Auto-scroll to active content on step change |
-| `initial` | `InitialState` | `undefined` | Initial stepper state |
 | `children` | `ReactNode \| (({ stepper }) => ReactNode)` | — | Content or render function |
+
+Initial state is set via `Scoped` or `useStepper({ initialStep, initialMetadata })`, not on Root.
 
 ### Data Attributes
 
@@ -198,8 +192,8 @@ Ordered list container for step items. Renders as `<ol>` by default.
 
 ```tsx
 <Stepper.List>
-  {stepper.steps.map((stepInfo) => (
-    <Stepper.Item key={stepInfo.data.id} step={stepInfo.data.id}>
+  {stepper.all.map((step) => (
+    <Stepper.Item key={step.id} step={step.id}>
       {/* ... */}
     </Stepper.Item>
   ))}
@@ -254,7 +248,7 @@ Wrapper for a single step. Provides context for nested primitives.
 
 | Attribute | Value |
 | --------- | ----- |
-| `data-status` | `"active"`, `"success"`, `"inactive"`, `"loading"`, `"error"`, or `"skipped"` |
+| `data-status` | `"active"`, `"success"`, or `"inactive"` |
 | `data-disabled` | Present when disabled |
 | `data-first` | Present on first step |
 | `data-last` | Present on last step |
@@ -470,23 +464,6 @@ Panel that displays content for a specific step. Hidden when step is not active.
 - `aria-labelledby` linked to trigger
 - `hidden` attribute when not active
 
-### Scroll Tracking
-
-When `tracking={true}` is set on `Stepper.Root`, the content automatically scrolls into view when its step becomes active:
-
-```tsx
-<Stepper.Root tracking={true}>
-  {({ stepper }) => (
-    <>
-      {/* ... */}
-      <Stepper.Content step="step-1">
-        {/* Scrolls into view when step-1 becomes active */}
-      </Stepper.Content>
-    </>
-  )}
-</Stepper.Root>
-```
-
 ---
 
 ## Stepper.Actions
@@ -529,9 +506,7 @@ Button to navigate to the previous step. Automatically disabled on first step.
 <Stepper.Prev>Previous</Stepper.Prev>
 
 {/* Custom disabled behavior */}
-<Stepper.Prev disableOnFirst={false}>
-  Back
-</Stepper.Prev>
+<Stepper.Prev>Back</Stepper.Prev>
 
 {/* Custom click handler */}
 <Stepper.Prev onClick={() => {
@@ -546,9 +521,8 @@ Button to navigate to the previous step. Automatically disabled on first step.
 
 | Prop | Type | Default | Description |
 | ---- | ---- | ------- | ----------- |
-| `disableOnFirst` | `boolean` | `true` | Disable when on first step |
-| `onClick` | `MouseEventHandler` | `undefined` | Override default click behavior |
-| `disabled` | `boolean` | `false` | Manually disable the button |
+| `onClick` | `MouseEventHandler` | `undefined` | Called after default prev() |
+| `disabled` | `boolean` | `false` | Manually disable (default: disabled when `stepper.isFirst`) |
 | `render` | `(props) => ReactElement` | `undefined` | Custom render function |
 | `children` | `ReactNode` | — | Button content |
 
@@ -574,7 +548,7 @@ Button to navigate to the next step. Automatically disabled on last step.
 <Stepper.Next>Next</Stepper.Next>
 
 {/* Dynamic label */}
-<Stepper.Next disableOnLast={false}>
+<Stepper.Next>
   {stepper.isLast ? "Finish" : "Next"}
 </Stepper.Next>
 
@@ -593,9 +567,8 @@ Button to navigate to the next step. Automatically disabled on last step.
 
 | Prop | Type | Default | Description |
 | ---- | ---- | ------- | ----------- |
-| `disableOnLast` | `boolean` | `true` | Disable when on last step |
-| `onClick` | `MouseEventHandler` | `undefined` | Override default click behavior |
-| `disabled` | `boolean` | `false` | Manually disable the button |
+| `onClick` | `MouseEventHandler` | `undefined` | Called after default next() |
+| `disabled` | `boolean` | `false` | Manually disable (default: disabled when `stepper.isLast`) |
 | `render` | `(props) => ReactElement` | `undefined` | Custom render function |
 | `children` | `ReactNode` | — | Button content |
 
@@ -692,11 +665,11 @@ Use data attributes for CSS styling:
 import * as React from "react"
 import { defineStepper } from "@stepperize/react"
 
-const { Stepper, useStepper } = defineStepper([
+const { Stepper, useStepper } = defineStepper(
   { id: "account", title: "Account", description: "Create your account" },
   { id: "profile", title: "Profile", description: "Set up your profile" },
   { id: "complete", title: "Complete", description: "All done!" }
-]);
+);
 
 function OnboardingStepper() {
   return (
@@ -705,22 +678,20 @@ function OnboardingStepper() {
         <div className="stepper-container">
           {/* Step list */}
           <Stepper.List className="stepper-list">
-            {stepper.steps.map((stepInfo) => (
+            {stepper.all.map((step) => (
               <Stepper.Item
-                key={stepInfo.data.id}
-                step={stepInfo.data.id}
+                key={step.id}
+                step={step.id}
                 className="stepper-item"
               >
                 <Stepper.Trigger className="stepper-trigger">
-                  <Stepper.Indicator className="stepper-indicator">
-                    {stepInfo.isCompleted ? "✓" : stepInfo.data.id}
-                  </Stepper.Indicator>
+                  <Stepper.Indicator className="stepper-indicator" />
                   <div className="stepper-text">
                     <Stepper.Title className="stepper-title">
-                      {stepInfo.data.title}
+                      {step.title}
                     </Stepper.Title>
                     <Stepper.Description className="stepper-description">
-                      {stepInfo.data.description}
+                      {step.description}
                     </Stepper.Description>
                   </div>
                 </Stepper.Trigger>

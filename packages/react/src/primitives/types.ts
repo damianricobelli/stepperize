@@ -1,4 +1,4 @@
-import type { Get, Step, Stepper } from "@stepperize/core";
+import type { Get, Metadata, Step, Stepper } from "@stepperize/core";
 import * as React from "react";
 
 /** Step status for UI: active (current), success (past), inactive (future) */
@@ -34,6 +34,10 @@ export type RootProps<Steps extends Step[]> = Omit<
 	"children"
 > & {
 	orientation?: "horizontal" | "vertical";
+	/** Initial step (passed to Scoped internally). */
+	initialStep?: Get.Id<Steps>;
+	/** Initial metadata (passed to Scoped internally). */
+	initialMetadata?: Partial<Record<Get.Id<Steps>, Metadata>>;
 	children: React.ReactNode | ((props: { stepper: Stepper<Steps> }) => React.ReactNode);
 };
 

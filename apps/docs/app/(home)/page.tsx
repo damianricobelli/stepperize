@@ -16,10 +16,10 @@ export default function HomePage() {
 					code={`import * as React from "react";
 import { defineStepper } from "@stepperize/react";
 
-const stepper = defineStepper([
+const stepper = defineStepper(
   { id: "step-1", title: "Step 1" },
-  { id: "step-2", title: "Step 2", description: "Second step" },
-]);
+  { id: "step-2", title: "Step 2", description: "Second step" }
+);
 
 const StepperDemo = () => {
   const methods = stepper.useStepper();
