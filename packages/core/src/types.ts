@@ -11,27 +11,15 @@ export type Stepper<Steps extends Step[] = Step[]> = {
 	/** Returns true if the current step is the first step. */
 	isFirst: boolean;
 	/** Advances to the next step. */
-	next: () => void;
+	next: () => void | Promise<void>;
 	/** Returns to the previous step. */
-	prev: () => void;
+	prev: () => void | Promise<void>;
 	/** Returns a step by its ID. */
 	get: <Id extends Get.Id<Steps>>(id: Id) => Get.StepById<Steps, Id>;
 	/** Navigates to a specific step by its ID. */
-	goTo: (id: Get.Id<Steps>) => void;
+	goTo: (id: Get.Id<Steps>) => void | Promise<void>;
 	/** Resets the stepper to its initial state. */
 	reset: () => void;
-	/** Executes a function before navigating to the next step. */
-	beforeNext: (callback: () => Promise<boolean> | boolean) => Promise<void> | void;
-	/** Executes a function after navigating to the next step. */
-	afterNext: (callback: () => Promise<void> | void) => Promise<void> | void;
-	/** Executes a function before navigating to the previous step. */
-	beforePrev: (callback: () => Promise<boolean> | boolean) => Promise<void> | void;
-	/** Executes a function after navigating to the previous step. */
-	afterPrev: (callback: () => Promise<void> | void) => Promise<void> | void;
-	/** Executes a function before navigating to a specific step. */
-	beforeGoTo: (id: Get.Id<Steps>, callback: () => Promise<boolean> | boolean) => Promise<void> | void;
-	/** Executes a function after navigating to a specific step. */
-	afterGoTo: (id: Get.Id<Steps>, callback: () => Promise<void> | void) => Promise<void> | void;
 	/**
 	 * Executes a function based on the current step ID.
 	 * @param id - The ID of the step to check.

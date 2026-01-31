@@ -1,5 +1,30 @@
 import type { Get, Metadata, Step, Stepper, Utils } from "@stepperize/core";
 import type { StepperPrimitives } from "./primitives/create-stepper-primitives";
+import type { StepStatus } from "./primitives/types";
+
+export type TransitionDirection = "next" | "prev" | "goTo";
+
+export type TransitionContext<Steps extends Step[]> = {
+	readonly from: Steps[number];
+	readonly to: Steps[number];
+	readonly metadata: Record<Get.Id<Steps>, Metadata>;
+	readonly statuses: Record<Get.Id<Steps>, StepStatus>;
+	readonly direction: TransitionDirection;
+	readonly fromIndex: number;
+	readonly toIndex: number;
+};
+
+/** Methods on the stepper to register transition callbacks (returned by useStepper). */
+export type TransitionMethods<Steps extends Step[]> = {
+	onBeforeTransition: (cb: (ctx: TransitionContext<Steps>) => void | Promise<void | false>) => void;
+	onAfterTransition: (cb: (ctx: TransitionContext<Steps>) => void | Promise<void>) => void;
+};
+
+/** Transition state exposed on the stepper (returned by useStepper). */
+export type TransitionState = {
+	/** `true` while a transition (next/prev/goTo with callbacks) is in progress. */
+	isTransitioning: boolean;
+};
 
 export type ScopedProps<Steps extends Step[]> = React.PropsWithChildren<{
 	/** The initial step to display. */
@@ -42,7 +67,7 @@ export type StepperReturn<Steps extends Step[]> = {
 	useStepper: (props?: {
 		initialStep?: Get.Id<Steps>;
 		initialMetadata?: Partial<Record<Get.Id<Steps>, Metadata>>;
-	}) => Stepper<Steps>;
+	}) => Stepper<Steps> & TransitionMethods<Steps> & TransitionState;
 	/**
 	 * Type-safe primitive components (Root, List, Item, Trigger, Title, Description, Indicator, Separator, Content, Actions, Prev, Next).
 	 * Use within Scoped. Root children can be a function receiving `{ stepper }`.

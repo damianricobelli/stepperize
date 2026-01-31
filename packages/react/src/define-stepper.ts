@@ -8,22 +8,8 @@ import {
 } from "@stepperize/core";
 import * as React from "react";
 import { createStepperPrimitives } from "./primitives/create-stepper-primitives";
-import type { StepStatus } from "./primitives/types";
-import type { StepperReturn, TransitionContext, TransitionMethods } from "./types";
-
-function getStatuses<Steps extends Step[]>(
-	steps: Steps,
-	currentIndex: number,
-): Record<Get.Id<Steps>, StepStatus> {
-	return steps.reduce(
-		(acc, step, i) => {
-			acc[step.id as Get.Id<Steps>] =
-				i < currentIndex ? "success" : i === currentIndex ? "active" : "inactive";
-			return acc;
-		},
-		{} as Record<Get.Id<Steps>, StepStatus>,
-	);
-}
+import type { StepperReturn, TransitionContext, TransitionMethods, TransitionState } from "./types";
+import { getStatuses } from "./utils";
 
 /**
  * Creates a stepper context and utility functions for managing stepper state.
@@ -32,7 +18,9 @@ function getStatuses<Steps extends Step[]>(
  * @returns An object containing the stepper context and utility functions.
  */
 export const defineStepper = <const Steps extends Step[]>(...steps: Steps): StepperReturn<Steps> => {
-	const Context = React.createContext<(Stepper<Steps> & TransitionMethods<Steps>) | null>(null);
+	const Context = React.createContext<
+			(Stepper<Steps> & TransitionMethods<Steps> & TransitionState) | null
+		>(null);
 
 	const utils = generateStepperUtils(...steps);
 
@@ -45,6 +33,7 @@ export const defineStepper = <const Steps extends Step[]>(...steps: Steps): Step
 
 		const [stepIndex, setStepIndex] = React.useState(initialStepIndex);
 		const [metadata, setMetadata] = React.useState(() => getInitialMetadata(steps, initialMetadata));
+		const [isTransitioning, setIsTransitioning] = React.useState(false);
 
 		const onBeforeRef = React.useRef<(ctx: TransitionContext<Steps>) => void | Promise<void | false>>(
 			undefined,
@@ -53,25 +42,30 @@ export const defineStepper = <const Steps extends Step[]>(...steps: Steps): Step
 
 		const performTransition = React.useCallback(
 			async (fromIndex: number, toIndex: number, direction: "next" | "prev" | "goTo") => {
-				const from = steps[fromIndex];
-				const to = steps[toIndex];
-				const ctx: TransitionContext<Steps> = {
-					from,
-					to,
-					metadata,
-					statuses: getStatuses(steps, fromIndex),
-					direction,
-					fromIndex,
-					toIndex,
-				};
-				const proceed = await onBeforeRef.current?.(ctx);
-				if (proceed === false) return;
-				setStepIndex(toIndex);
-				const ctxAfter: TransitionContext<Steps> = {
-					...ctx,
-					statuses: getStatuses(steps, toIndex),
-				};
-				await onAfterRef.current?.(ctxAfter);
+				setIsTransitioning(true);
+				try {
+					const from = steps[fromIndex];
+					const to = steps[toIndex];
+					const ctx: TransitionContext<Steps> = {
+						from,
+						to,
+						metadata,
+						statuses: getStatuses(steps, fromIndex),
+						direction,
+						fromIndex,
+						toIndex,
+					};
+					const proceed = await onBeforeRef.current?.(ctx);
+					if (proceed === false) return;
+					setStepIndex(toIndex);
+					const ctxAfter: TransitionContext<Steps> = {
+						...ctx,
+						statuses: getStatuses(steps, toIndex),
+					};
+					await onAfterRef.current?.(ctxAfter);
+				} finally {
+					setIsTransitioning(false);
+				}
 			},
 			[metadata],
 		);
@@ -86,6 +80,7 @@ export const defineStepper = <const Steps extends Step[]>(...steps: Steps): Step
 				current,
 				isLast,
 				isFirst,
+				isTransitioning,
 				metadata,
 				setMetadata(id, data) {
 					setMetadata((prev) => {
@@ -139,8 +134,8 @@ export const defineStepper = <const Steps extends Step[]>(...steps: Steps): Step
 					onAfterRef.current = cb;
 				},
 				...generateCommonStepperUseFns(steps, current, stepIndex),
-			} as Stepper<Steps> & TransitionMethods<Steps>;
-		}, [stepIndex, metadata, performTransition]);
+			} as Stepper<Steps> & TransitionMethods<Steps> & TransitionState;
+		}, [stepIndex, metadata, isTransitioning, performTransition]);
 
 		return stepper;
 	};

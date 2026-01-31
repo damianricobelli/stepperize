@@ -123,11 +123,9 @@ stepper.prev();
 stepper.goTo("payment");
 stepper.reset();
 
-// With callbacks
-stepper.beforeNext(async () => {
-  const isValid = await validateForm();
-  return isValid; // Return false to cancel
-});
+// With transition hooks (on the stepper returned by useStepper)
+const stepper = useStepper();
+stepper.onBeforeTransition(async (ctx) => (await validateForm()) || false);
 ```
 
 ## What's Next

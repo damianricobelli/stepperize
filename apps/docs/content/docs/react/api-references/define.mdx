@@ -654,7 +654,7 @@ The context object passed to both callbacks:
 
 <Callout type="info">
   Note: `onBeforeTransition` and `onAfterTransition` are global callbacks defined in `defineStepper`. 
-  For one-time callbacks on specific navigation actions, use `beforeNext()`, `afterNext()`, `beforePrev()`, etc. 
+  For callbacks on every navigation, call `stepper.onBeforeTransition(cb)` and/or `stepper.onAfterTransition(cb)` on the object returned by `useStepper()`. 
   See the [Hook documentation](./hook#beforeafter-functions) for details.
 </Callout>
 

@@ -596,11 +596,9 @@ function SettingsPage() {
   or when the source of truth for the current step lives outside the stepper (URL, server state, etc.).
 </Callout>
 
-## Before/After Functions
+## Transition Hooks (onBeforeTransition / onAfterTransition)
 
-Execute callbacks before or after navigation:
-
-### beforeNext / afterNext
+The stepper returned by `useStepper()` includes `onBeforeTransition(cb)` and `onAfterTransition(cb)`. Call them to register callbacks that run on every `next()`, `prev()`, or `goTo()`. The callback receives a `TransitionContext` with `from`, `to`, `metadata`, `statuses`, `direction`, `fromIndex`, `toIndex`. Return `false` from the before callback to cancel the transition.
 
 ```tsx twoslash
 import * as React from "react";
@@ -614,30 +612,24 @@ const { useStepper } = defineStepper([
 const MyStepperComponent = () => {
   const stepper = useStepper();
 
+  React.useEffect(() => {
+    stepper.onBeforeTransition(async (ctx) => {
+      if (ctx.direction === "prev") {
+        return window.confirm("Go back? Unsaved changes will be lost.");
+      }
+      const isValid = await validateForm();
+      return isValid; // false cancels transition
+    });
+    stepper.onAfterTransition((ctx) => {
+      console.log(`Moved from ${ctx.from.id} to ${ctx.to.id}`);
+    });
+  }, [stepper]);
+
   return (
     <div>
-      <button
-        onClick={() => {
-          stepper.beforeNext(async () => {
-            // Validate form, save data, etc.
-            const isValid = await validateForm();
-            return isValid; // Return false to cancel navigation
-          });
-        }}
-      >
-        Next (with validation)
-      </button>
-
-      <button
-        onClick={() => {
-          stepper.afterNext(() => {
-            // Log analytics, trigger side effects, etc.
-            console.log("Moved to next step");
-          });
-        }}
-      >
-        Next (with callback)
-      </button>
+      <button onClick={() => stepper.next()}>Next</button>
+      <button onClick={() => stepper.prev()}>Previous</button>
+      <button onClick={() => stepper.goTo("first")}>Go to first</button>
     </div>
   );
 };
@@ -645,65 +637,6 @@ const MyStepperComponent = () => {
 async function validateForm() {
   return true;
 }
-```
-
-### beforePrev / afterPrev
-
-```tsx twoslash
-import * as React from "react";
-import { defineStepper } from "@stepperize/react";
-
-const { useStepper } = defineStepper([
-  { id: "first", title: "First step" },
-  { id: "second", title: "Second step" }
-]);
-
-const MyStepperComponent = () => {
-  const stepper = useStepper();
-
-  return (
-    <div>
-      <button
-        onClick={() => {
-          stepper.beforePrev(() => {
-            // Confirm before going back
-            return window.confirm("Go back? Unsaved changes will be lost.");
-          });
-        }}
-      >
-        Previous
-      </button>
-    </div>
-  );
-};
-```
-
-### beforeGoTo / afterGoTo
-
-```tsx twoslash
-import * as React from "react";
-import { defineStepper } from "@stepperize/react";
-
-const { useStepper } = defineStepper([
-  { id: "first", title: "First step" },
-  { id: "second", title: "Second step" }
-]);
-
-const MyStepperComponent = () => {
-  const stepper = useStepper();
-
-  return (
-    <button
-      onClick={() => {
-        stepper.beforeGoTo("first", () => {
-          return true; // or false to cancel
-        });
-      }}
-    >
-      Go to first step
-    </button>
-  );
-};
 ```
 
 ## Metadata
@@ -1159,16 +1092,14 @@ const MyStepperComponent = () => {
 | `switch` | `(cases) => R \| undefined` | Switch-case rendering |
 | `match` | `(state, matches) => R \| null` | Match external state |
 
-### Transition Callbacks
+### Transition hooks (on stepper)
+
+Methods on the object returned by `useStepper()`:
 
 | Name | Type | Description |
 | ---- | ---- | ----------- |
-| `beforeNext` | `(callback) => Promise<void>` | Execute before next |
-| `afterNext` | `(callback) => Promise<void>` | Execute after next |
-| `beforePrev` | `(callback) => Promise<void>` | Execute before prev |
-| `afterPrev` | `(callback) => Promise<void>` | Execute after prev |
-| `beforeGoTo` | `(id, callback) => Promise<void>` | Execute before goTo |
-| `afterGoTo` | `(id, callback) => Promise<void>` | Execute after goTo |
+| `onBeforeTransition` | `(cb) => void` | Register callback that runs before any transition; callback can return `false` to cancel |
+| `onAfterTransition` | `(cb) => void` | Register callback that runs after any transition |
 
 ### Metadata
 

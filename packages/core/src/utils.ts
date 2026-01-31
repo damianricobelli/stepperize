@@ -104,47 +104,6 @@ export function generateCommonStepperUseFns<const Steps extends Step[]>(
 	} as Pick<Stepper<Steps>, "switch" | "when" | "match">;
 }
 
-async function executeStepCallback(
-	callback: (() => Promise<boolean> | boolean) | (() => Promise<void> | void),
-	isBefore: boolean,
-): Promise<boolean> {
-	const result = await callback();
-	if (isBefore) {
-		return result !== false;
-	}
-	return true;
-}
-
-/**
- * This function is used to execute a callback before or after a transition.
- * @param stepper - The stepper to execute the transition for.
- * @param direction - The direction to execute the transition for.
- * @param callback - The callback to execute the transition for.
- * @param before - Whether the callback is before the transition.
- * @param targetId - The target ID to execute the transition for.
- */
-export const executeTransition = async <Steps extends Step[]>({
-	stepper,
-	direction,
-	callback,
-	before,
-	targetId,
-}: {
-	stepper: Stepper<Steps>;
-	direction: "next" | "prev" | "goTo";
-	callback: (() => Promise<boolean> | boolean) | (() => Promise<void> | void);
-	before: boolean;
-	targetId?: Get.Id<Steps>;
-}) => {
-	const shouldProceed = before ? await executeStepCallback(callback, true) : true;
-	if (shouldProceed) {
-		if (direction === "next") stepper.next();
-		else if (direction === "prev") stepper.prev();
-		else if (direction === "goTo" && targetId) stepper.goTo(targetId);
-		if (!before) await executeStepCallback(callback, false);
-	}
-};
-
 /**
  * Update the step index.
  * @param steps - The steps to update the step index for.

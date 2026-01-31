@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
-	executeTransition,
 	generateCommonStepperUseFns,
 	generateStepperUtils,
 	getInitialMetadata,
@@ -118,56 +117,6 @@ describe("generateCommonStepperUseFns", () => {
 	it("match returns null if there is no step", () => {
 		const result = fns.match("unknown" as any, {});
 		expect(result).toBeNull();
-	});
-});
-
-describe("executeTransition", () => {
-	let mockStepper: any;
-
-	beforeEach(() => {
-		vi.clearAllMocks();
-		mockStepper = {
-			next: vi.fn(),
-			prev: vi.fn(),
-			goTo: vi.fn(),
-		};
-	});
-
-	it("executes next with callback before that returns true", async () => {
-		const cb = vi.fn().mockResolvedValue(true);
-		await executeTransition({ stepper: mockStepper as any, direction: "next", callback: cb, before: true });
-		expect(mockStepper.next).toHaveBeenCalled();
-		expect(cb).toHaveBeenCalled();
-	});
-
-	it("does not execute anything if callback before returns false", async () => {
-		const cb = vi.fn().mockResolvedValue(false);
-		await executeTransition({ stepper: mockStepper as any, direction: "next", callback: cb, before: true });
-		expect(mockStepper.next).not.toHaveBeenCalled();
-	});
-
-	it("executes prev when direction=prev", async () => {
-		const cb = vi.fn();
-		await executeTransition({ stepper: mockStepper as any, direction: "prev", callback: cb, before: true });
-		expect(mockStepper.prev).toHaveBeenCalled();
-	});
-
-	it("executes goTo when direction=goTo", async () => {
-		const cb = vi.fn();
-		await executeTransition({
-			stepper: mockStepper as any,
-			direction: "goTo",
-			callback: cb,
-			before: true,
-			targetId: "second",
-		});
-		expect(mockStepper.goTo).toHaveBeenCalledWith("second");
-	});
-
-	it("executes callback in after (before=false)", async () => {
-		const cb = vi.fn();
-		await executeTransition({ stepper: mockStepper as any, direction: "next", callback: cb, before: false });
-		expect(cb).toHaveBeenCalled();
 	});
 });
 
