@@ -1,9 +1,8 @@
 import * as React from "react";
-import type { Step } from "@stepperize/core";
 import type { ListProps } from "./types";
 
-export function createList<Steps extends Step[]>() {
-	return function List(props: ListProps<Steps>) {
+export function createList() {
+	return function List(props: ListProps) {
 		const { orientation, render, children, ...rest } = props;
 		const merged = {
 			"data-component": "stepper-list",

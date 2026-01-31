@@ -37,7 +37,7 @@ export type RootProps<Steps extends Step[]> = Omit<
 	children: React.ReactNode | ((props: { stepper: Stepper<Steps> }) => React.ReactNode);
 };
 
-export type ListProps<Steps extends Step[]> = PrimitiveProps<"ol"> & {
+export type ListProps = PrimitiveProps<"ol"> & {
 	orientation?: "horizontal" | "vertical";
 };
 
@@ -45,7 +45,7 @@ export type ItemProps<Steps extends Step[]> = PrimitiveProps<"li"> & {
 	step: Get.Id<Steps>;
 };
 
-export type TriggerProps<Steps extends Step[]> = PrimitiveProps<"button">;
+export type TriggerProps = PrimitiveProps<"button">;
 
 export type TitleProps = PrimitiveProps<"h4">;
 export type DescriptionProps = PrimitiveProps<"p">;

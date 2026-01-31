@@ -15,7 +15,7 @@ import { createNext } from "./next";
 
 export type StepperPrimitives<Steps extends Step[]> = {
 	Root: ReturnType<typeof createRoot<Steps>>;
-	List: ReturnType<typeof createList<Steps>>;
+	List: ReturnType<typeof createList>;
 	Item: ReturnType<typeof createItem<Steps>>;
 	Trigger: ReturnType<typeof createTrigger<Steps>>;
 	Title: ReturnType<typeof createTitle>;

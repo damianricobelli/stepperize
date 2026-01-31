@@ -6,7 +6,7 @@ import { useStepItemContext } from "./context";
 export function createTrigger<Steps extends Step[]>(
 	StepperContext: React.Context<Stepper<Steps> | null>,
 ) {
-	return function Trigger(props: TriggerProps<Steps>) {
+	return function Trigger(props: TriggerProps) {
 		const { render, children, ...rest } = props;
 		const stepper = React.useContext(StepperContext);
 		const item = useStepItemContext();
