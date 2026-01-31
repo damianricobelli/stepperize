@@ -218,9 +218,6 @@ const MyStepperComponent = () => {
       <button onClick={() => stepper.reset({ keepStatuses: true })}>
         Reset (Keep Statuses)
       </button>
-      <button onClick={() => stepper.reset({ clearPersisted: true })}>
-        Reset & Clear Storage
-      </button>
     </div>
   );
 };
@@ -232,7 +229,6 @@ const MyStepperComponent = () => {
 | ------ | ---- | ------- | ----------- |
 | `keepMetadata` | `boolean` | `false` | Preserve form data and metadata |
 | `keepStatuses` | `boolean` | `false` | Preserve step completion statuses |
-| `clearPersisted` | `boolean` | `false` | Also clear data from storage (if persistence is enabled) |
 
 #### Use Cases
 
@@ -240,35 +236,24 @@ const MyStepperComponent = () => {
 import * as React from "react";
 import { defineStepper } from "@stepperize/react";
 
-const { useStepper } = defineStepper(
-  [
-    { id: "cart", title: "Cart" },
-    { id: "shipping", title: "Shipping" },
-    { id: "payment", title: "Payment" },
-    { id: "confirmation", title: "Confirmation" }
-  ],
-  { persist: { key: "checkout", storage: localStorage } }
-);
+const { useStepper } = defineStepper([
+  { id: "cart", title: "Cart" },
+  { id: "shipping", title: "Shipping" },
+  { id: "payment", title: "Payment" },
+  { id: "confirmation", title: "Confirmation" }
+]);
 
 function CheckoutActions() {
   const stepper = useStepper();
 
   // Full reset: Start completely fresh
   const handleStartOver = () => {
-    stepper.reset({ clearPersisted: true });
+    stepper.reset();
   };
 
   // Soft reset: Go back to start but keep filled data
   const handleEditOrder = () => {
     stepper.reset({ keepMetadata: true, keepStatuses: true });
-  };
-
-  // After successful order: Reset but don't clear storage yet
-  // (in case user needs to reference order)
-  const handleOrderComplete = () => {
-    stepper.reset({ keepMetadata: true });
-    // Clear storage after a delay
-    setTimeout(() => stepper.clearPersistedState(), 5000);
   };
 
   return (
@@ -1193,38 +1178,6 @@ const MyStepperComponent = () => {
 };
 ```
 
-## Persistence
-
-Clear persisted state:
-
-```tsx twoslash
-import * as React from "react";
-import { defineStepper } from "@stepperize/react";
-
-const { useStepper } = defineStepper(
-  [
-    { id: "first", title: "First step" },
-    { id: "second", title: "Second step" }
-  ],
-  {
-    persist: {
-      key: "my-stepper",
-      storage: localStorage
-    }
-  }
-);
-
-const MyStepperComponent = () => {
-  const stepper = useStepper();
-
-  return (
-    <button onClick={() => stepper.clearPersistedState()}>
-      Clear Saved Progress
-    </button>
-  );
-};
-```
-
 ## API Reference
 
 ### State Properties
@@ -1298,12 +1251,6 @@ const MyStepperComponent = () => {
 | `retry` | `() => void` | Retry initialization |
 | `isTransitioning` | `boolean` | `true` during transitions |
 
-### Persistence
-
-| Name | Type | Description |
-| ---- | ---- | ----------- |
-| `clearPersistedState` | `() => Promise<void>` | Clear persisted state |
-
 ### StepInfo Type
 
 | Property | Type | Description |
@@ -1319,7 +1266,7 @@ const MyStepperComponent = () => {
 
 ### isStepperReady
 
-Type guard to check if stepper initialization is complete. Useful when using async initial state or persistence.
+Type guard to check if stepper initialization is complete. Useful when using async initial state.
 
 ```tsx twoslash
 import * as React from "react";

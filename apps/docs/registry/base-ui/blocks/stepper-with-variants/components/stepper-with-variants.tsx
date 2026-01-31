@@ -297,7 +297,7 @@ export function StepperWithVariants() {
 
 								// Horizontal with horizontal labels
 								return (
-									<>
+									<React.Fragment key={stepInfo.data.id}>
 										<Stepper.Item
 											key={stepInfo.data.id}
 											step={stepInfo.data.id}
@@ -322,7 +322,7 @@ export function StepperWithVariants() {
 											orientation={orientation}
 											labelOrientation={labelOrientation}
 										/>
-									</>
+									</React.Fragment>
 								);
 							})}
 						</Stepper.List>

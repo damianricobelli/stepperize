@@ -8,10 +8,6 @@ export type {
 	HistoryEntry,
 	Initial,
 	InitialState,
-	PersistedState,
-	PersistConfig,
-	PersistManager,
-	PersistStorage,
 	Step,
 	StepMetadata,
 	StepperConfig,
@@ -20,14 +16,6 @@ export type {
 	TransitionContext,
 	TransitionDirection,
 	Utils,
-} from "@stepperize/core";
-
-// Re-export persistence utilities
-export {
-	createMemoryStorage,
-	createPersistManager,
-	localStorageAdapter,
-	sessionStorageAdapter,
 } from "@stepperize/core";
 
 // =============================================================================

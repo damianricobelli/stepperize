@@ -4,7 +4,7 @@ description: Learn how to migrate from v5 to v6
 icon: CircleFadingArrowUp
 ---
 
-Stepperize v6 introduces a completely redesigned API with typed primitives, improved state management, async navigation, and better persistence support.
+Stepperize v6 introduces a completely redesigned API with typed primitives, improved state management, and async navigation.
 
 ## Breaking Changes
 
@@ -33,7 +33,7 @@ const { useStepper } = defineStepper(
 ```
 
 - **First parameter:** the steps array (same step shape as before).
-- **Second parameter:** optional config object (`initial`, `mode`, `persist`, `onBeforeTransition`, `onAfterTransition`).
+- **Second parameter:** optional config object (`initial`, `mode`, `onBeforeTransition`, `onAfterTransition`).
 
 ### Navigation methods are now async
 
@@ -131,7 +131,6 @@ stepper.reset({ keepMetadata: true, keepStatuses: true });
 stepper.reset({
   keepMetadata: true,
   keepStatuses: true,
-  clearPersisted: true // New option to clear persisted state
 });
 ```
 
@@ -247,20 +246,6 @@ console.log(stepper.progress); // e.g., 66
 
 // Completed steps array
 console.log(stepper.completedSteps); // StepInfo[]
-```
-
-### Enhanced Persistence
-
-Clear persisted state programmatically:
-
-```tsx
-const stepper = useStepper();
-
-// Clear persisted state
-await stepper.clearPersistedState();
-
-// Or clear on reset
-stepper.reset({ clearPersisted: true });
 ```
 
 ### Async Initial State

@@ -198,35 +198,6 @@ type Initial<Steps> =
   | (() => InitialState<Steps> | Promise<InitialState<Steps>>);
 ```
 
-### PersistConfig
-
-Configuration for state persistence:
-
-```tsx
-type PersistConfig<Steps> = {
-  key: string;                                              // Storage key
-  storage?: PersistStorage;                                 // Default: localStorage
-  ttl?: number;                                             // Time-to-live in ms
-  serialize?: (state: PersistedState<Steps>) => string;    // Default: JSON.stringify
-  deserialize?: (value: string) => PersistedState<Steps>;  // Default: JSON.parse
-  partialize?: (state: PersistedState<Steps>) => Partial<PersistedState<Steps>>;
-};
-```
-
-### PersistStorage
-
-Interface for storage implementations:
-
-```tsx
-type PersistStorage = {
-  getItem: (key: string) => string | null | Promise<string | null>;
-  setItem: (key: string, value: string) => void | Promise<void>;
-  removeItem: (key: string) => void | Promise<void>;
-};
-```
-
-Compatible with `localStorage`, `sessionStorage`, or custom implementations.
-
 ## Transition Types
 
 ### TransitionContext
@@ -265,53 +236,6 @@ type HistoryEntry<Steps> = {
   index: number;        // The step index
   timestamp: number;    // When this entry was created
 };
-```
-
-## Persistence Utilities
-
-### Storage Adapters
-
-Pre-built storage adapters exported from `@stepperize/react`:
-
-```tsx twoslash
-import { 
-  localStorageAdapter, 
-  sessionStorageAdapter,
-  createMemoryStorage 
-} from "@stepperize/react";
-
-// Use localStorage (default)
-const storage1 = localStorageAdapter;
-
-// Use sessionStorage
-const storage2 = sessionStorageAdapter;
-
-// Create in-memory storage (useful for testing)
-const storage3 = createMemoryStorage();
-```
-
-### createPersistManager
-
-Create a persistence manager for manual control:
-
-```tsx twoslash
-import { createPersistManager, defineStepper } from "@stepperize/react";
-
-const { steps } = defineStepper([
-  { id: "step-1", title: "Step 1" },
-  { id: "step-2", title: "Step 2" },
-]);
-
-const manager = createPersistManager<typeof steps>({
-  key: "my-stepper",
-  storage: localStorage,
-});
-
-// Manual operations
-await manager.save({ stepId: "step-1", metadata: {}, statuses: {}, timestamp: Date.now() } as any);
-const result = await manager.load();
-await manager.clear();
-const exists = await manager.has();
 ```
 
 ## Step Types

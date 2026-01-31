@@ -1,7 +1,11 @@
 import type {
+	BaseStepStatus,
 	Get,
+	Initial,
+	InitialState,
 	Step,
 	StepMetadata,
+	StepStatus,
 	StepStatuses,
 	Stepper,
 	TransitionDirection,
@@ -78,6 +82,27 @@ export function generateStepperUtils<const Steps extends Step[]>(...steps: Steps
 // =============================================================================
 // INITIAL STATE HELPERS
 // =============================================================================
+
+/**
+ * Check if the initial config is a function.
+ */
+export function isInitialFunction<Steps extends Step[]>(
+	initial: Initial<Steps> | undefined,
+): initial is () => InitialState<Steps> | Promise<InitialState<Steps>> {
+	return typeof initial === "function";
+}
+
+/**
+ * Extract the sync initial state from the config.
+ * Returns undefined for async functions (will be resolved later).
+ */
+export function getSyncInitialState<Steps extends Step[]>(
+	initial: Initial<Steps> | undefined,
+): InitialState<Steps> | undefined {
+	if (!initial) return undefined;
+	if (isInitialFunction(initial)) return undefined;
+	return initial;
+}
 
 /**
  * Get the initial step index for the stepper.
@@ -243,6 +268,31 @@ export async function executeTransition<Steps extends Step[]>({
 		else if (direction === "goTo" && targetId) stepper.goTo(targetId);
 		if (!before) await executeStepCallback(callback, false);
 	}
+}
+
+/**
+ * Resolve the display status based on base status and navigation position.
+ *
+ * @param baseStatus - The base status set by the user
+ * @param stepIndex - Index of the step
+ * @param currentIndex - Index of the current step
+ * @returns The resolved status for display/styling
+ */
+export function resolveStepStatus(
+	baseStatus: BaseStepStatus,
+	stepIndex: number,
+	currentIndex: number,
+): StepStatus {
+	// Explicit statuses always take priority
+	if (baseStatus === "loading") return "loading";
+	if (baseStatus === "error") return "error";
+	if (baseStatus === "success") return "success";
+	if (baseStatus === "skipped") return "skipped";
+
+	// For "incomplete" status, derive from navigation position
+	if (stepIndex === currentIndex) return "active";
+	if (stepIndex < currentIndex) return "success"; // Past steps default to success
+	return "inactive"; // Future steps
 }
 
 

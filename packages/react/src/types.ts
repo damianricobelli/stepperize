@@ -4,7 +4,6 @@ import type {
 	HistoryEntry,
 	Initial,
 	InitialState,
-	PersistConfig,
 	Step,
 	StepMetadata,
 	StepperConfig,
@@ -153,8 +152,6 @@ export type StepperInstance<Steps extends Step[]> = {
 		keepMetadata?: boolean;
 		/** If `true`, keeps the current status values. */
 		keepStatuses?: boolean;
-		/** If `true`, clears the persisted state from storage. */
-		clearPersisted?: boolean;
 	}) => void;
 
 	// -------------------------------------------------------------------------
@@ -264,7 +261,7 @@ export type StepperInstance<Steps extends Step[]> = {
 
 	/**
 	 * Stepper initialization status.
-	 * - "pending": Loading initial data (from initialData or persistence)
+	 * - "pending": Loading initial data (from async initial)
 	 * - "success": Stepper is ready to use
 	 * - "error": Initialization failed
 	 */
@@ -288,16 +285,6 @@ export type StepperInstance<Steps extends Step[]> = {
 	 * Useful for showing loading states during step transitions.
 	 */
 	readonly isTransitioning: boolean;
-
-	// -------------------------------------------------------------------------
-	// Persistence
-	// -------------------------------------------------------------------------
-
-	/**
-	 * Clear persisted state from storage.
-	 * Only has effect when `persist` is configured.
-	 */
-	clearPersistedState: () => Promise<void>;
 };
 
 // =============================================================================
@@ -480,9 +467,4 @@ export type StepperConfigOptions<Steps extends Step[]> = {
 	 * Callback executed after any transition completes.
 	 */
 	onAfterTransition?: (ctx: TransitionContext<Steps>) => void | Promise<void>;
-	/**
-	 * Persistence configuration for saving state.
-	 * @see PersistConfig
-	 */
-	persist?: PersistConfig<Steps>;
 };

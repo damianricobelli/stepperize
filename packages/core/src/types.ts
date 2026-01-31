@@ -27,30 +27,6 @@ export type StepStatus = "inactive" | "active" | "loading" | "error" | "success"
  */
 export type StepStatuses<Steps extends Step[]> = Record<Get.Id<Steps>, BaseStepStatus>;
 
-/**
- * Resolve the display status based on base status and navigation position.
- *
- * @param baseStatus - The base status set by the user
- * @param stepIndex - Index of the step
- * @param currentIndex - Index of the current step
- * @returns The resolved status for display/styling
- */
-export function resolveStepStatus(
-	baseStatus: BaseStepStatus,
-	stepIndex: number,
-	currentIndex: number,
-): StepStatus {
-	// Explicit statuses always take priority
-	if (baseStatus === "loading") return "loading";
-	if (baseStatus === "error") return "error";
-	if (baseStatus === "success") return "success";
-	if (baseStatus === "skipped") return "skipped";
-
-	// For "incomplete" status, derive from navigation position
-	if (stepIndex === currentIndex) return "active";
-	if (stepIndex < currentIndex) return "success"; // Past steps default to success
-	return "inactive"; // Future steps
-}
 
 // =============================================================================
 // STEP DEFINITION
@@ -103,69 +79,6 @@ export type TransitionContext<Steps extends Step[]> = {
 	readonly fromIndex: number;
 	/** Index of the target step. */
 	readonly toIndex: number;
-};
-
-// =============================================================================
-// PERSISTENCE
-// =============================================================================
-
-/**
- * Storage interface for persistence.
- * Compatible with `localStorage`, `sessionStorage`, or custom implementations.
- */
-export type PersistStorage = {
-	getItem: (key: string) => string | null | Promise<string | null>;
-	setItem: (key: string, value: string) => void | Promise<void>;
-	removeItem: (key: string) => void | Promise<void>;
-};
-
-/**
- * Data structure persisted to storage.
- */
-export type PersistedState<Steps extends Step[]> = {
-	/** The current step ID. */
-	stepId: Get.Id<Steps>;
-	/** The metadata state. */
-	metadata: StepMetadata<Steps>;
-	/** The status of each step. */
-	statuses: StepStatuses<Steps>;
-	/** Timestamp of when the state was persisted. */
-	timestamp: number;
-};
-
-/**
- * Configuration for state persistence.
- *
- * @typeParam Steps - The array of step definitions.
- */
-export type PersistConfig<Steps extends Step[]> = {
-	/** Storage key for the persisted state. */
-	key: string;
-	/**
-	 * Storage implementation to use.
-	 * @default localStorage (in browser environments)
-	 */
-	storage?: PersistStorage;
-	/**
-	 * Time-to-live in milliseconds. State older than this will be discarded.
-	 * @default undefined (no expiration)
-	 */
-	ttl?: number;
-	/**
-	 * Custom serializer for the state.
-	 * @default JSON.stringify
-	 */
-	serialize?: (state: PersistedState<Steps>) => string;
-	/**
-	 * Custom deserializer for the state.
-	 * @default JSON.parse
-	 */
-	deserialize?: (value: string) => PersistedState<Steps>;
-	/**
-	 * Filter which parts of the state to persist.
-	 * @default Persists everything
-	 */
-	partialize?: (state: PersistedState<Steps>) => Partial<PersistedState<Steps>>;
 };
 
 // =============================================================================
@@ -246,10 +159,6 @@ export type StepperConfig<Steps extends Step[]> = {
 	 * @default "free"
 	 */
 	mode?: "linear" | "free";
-	/**
-	 * Persistence configuration for saving state.
-	 */
-	persist?: PersistConfig<Steps>;
 	/**
 	 * Callback executed before any transition.
 	 * Return `false` to prevent the transition.
