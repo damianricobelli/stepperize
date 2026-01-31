@@ -1,59 +1,18 @@
 import * as React from "react";
-import {
-	createStepDataAttributes,
-	filterDataAttributes,
-	usePrimitiveContext,
-	useStepItemContext,
-} from "./context";
+import type { Step } from "@stepperize/core";
 import type { IndicatorProps } from "./types";
+import { useStepItemContext } from "./context";
 
-/**
- * Indicator primitive that shows step number/icon/status.
- * Must be used within an Item component.
- *
- * @example
- * ```tsx
- * // Default: shows step number
- * <Indicator />
- *
- * // Custom: show icon
- * <Indicator>
- *   <CheckIcon />
- * </Indicator>
- *
- * // Conditional rendering based on state
- * <Indicator>
- *   {item.isCompleted ? <CheckIcon /> : item.index + 1}
- * </Indicator>
- * ```
- */
-const Indicator = React.forwardRef<HTMLSpanElement, IndicatorProps>(
-	({ render, children, ...props }, ref) => {
-		const { config } = usePrimitiveContext();
+export function createIndicator<Steps extends Step[]>() {
+	return function Indicator(props: IndicatorProps) {
+		const { render, children, ...rest } = props;
 		const item = useStepItemContext();
-
-		const dataAttributes = filterDataAttributes(
-			createStepDataAttributes(item, config.orientation),
-		);
-
-		// Default content is the step number (1-indexed)
-		const content = children ?? item.index + 1;
-
-		const elementProps = {
-			"aria-hidden": true as const,
-			...dataAttributes,
-			...props,
-			ref,
+		const merged = {
+			"data-component": "stepper-indicator",
+			"data-status": item.status,
+			...rest,
 		};
-
-		if (render) {
-			return render(elementProps) ?? <span {...elementProps}>{content}</span>;
-		}
-
-		return <span {...elementProps}>{content}</span>;
-	},
-);
-
-Indicator.displayName = "Stepper.Indicator";
-
-export { Indicator };
+		const content = render ? render(merged as React.ComponentPropsWithoutRef<"span">) : children;
+		return React.createElement("span", { "aria-hidden": true, ...merged }, content);
+	};
+}

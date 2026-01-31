@@ -211,16 +211,16 @@ export function StepperWithVariants() {
 								orientation === "vertical" && "flex-col",
 							)}
 						>
-							{stepper.steps.map((stepInfo, index) => {
-								const { status } = stepInfo;
-								const isLast = index === stepper.steps.length - 1;
-								const stepData = stepInfo.data;
+							{stepper.all.map((stepData, index) => {
+								const currentIndex = stepper.all.findIndex((s) => s.id === stepper.current.id);
+								const status = index < currentIndex ? "success" : index === currentIndex ? "active" : "inactive";
+								const isLast = index === stepper.all.length - 1;
 
 								if (orientation === "vertical") {
 									return (
-										<React.Fragment key={stepInfo.data.id}>
+										<React.Fragment key={stepData.id}>
 											<Stepper.Item
-												step={stepInfo.data.id}
+												step={stepData.id}
 												className="group peer relative flex items-center gap-2"
 											>
 												<StepperTriggerWrapper />
@@ -253,7 +253,7 @@ export function StepperWithVariants() {
 												<div className="my-3 flex-1 ps-4">
 													<Content
 														id={
-															stepInfo.data
+															stepData
 																.id as Get.Id<
 																typeof stepperDefinition.steps
 															>
@@ -268,8 +268,8 @@ export function StepperWithVariants() {
 								if (isVerticalLabel) {
 									return (
 										<Stepper.Item
-											key={stepInfo.data.id}
-											step={stepInfo.data.id}
+											key={stepData.id}
+											step={stepData.id}
 											className="group peer relative flex w-full flex-col items-center justify-center gap-2"
 										>
 											<StepperTriggerWrapper />
@@ -297,10 +297,10 @@ export function StepperWithVariants() {
 
 								// Horizontal with horizontal labels
 								return (
-									<React.Fragment key={stepInfo.data.id}>
+									<React.Fragment key={stepData.id}>
 										<Stepper.Item
-											key={stepInfo.data.id}
-											step={stepInfo.data.id}
+											key={stepData.id}
+											step={stepData.id}
 											className="group peer relative flex items-center gap-2"
 										>
 											<StepperTriggerWrapper />
@@ -316,7 +316,7 @@ export function StepperWithVariants() {
 											</div>
 										</Stepper.Item>
 										<StepperSeparator
-											key={`separator-${stepInfo.data.id}`}
+											key={`separator-${stepData.id}`}
 											status={status}
 											isLast={isLast}
 											orientation={orientation}

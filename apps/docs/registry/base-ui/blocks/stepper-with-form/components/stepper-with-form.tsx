@@ -423,36 +423,37 @@ export function StepperWithForm() {
 				return (
 					<>
 						<Stepper.List className="flex gap-2 flex-row items-center justify-between">
-							{stepper.steps.map((stepInfo, index) => {
-								const { status } = stepInfo;
+							{stepper.all.map((stepData, index) => {
+								const currentIndex = stepper.all.findIndex((s) => s.id === stepper.current.id);
+								const status = index < currentIndex ? "success" : index === currentIndex ? "active" : "inactive";
 								const isLast =
-									index === stepper.steps.length - 1;
-								const stepData = stepInfo.data as {
+									index === stepper.all.length - 1;
+								const data = stepData as {
 									id: string;
 									title: string;
 									description?: string;
 								};
 
 								return (
-									<React.Fragment key={stepInfo.data.id}>
+									<React.Fragment key={stepData.id}>
 										<Stepper.Item
-											step={stepInfo.data.id}
+											step={stepData.id}
 											className="group peer relative flex items-center gap-2"
 										>
 											<StepperTriggerWrapper />
 											<div className="flex flex-col items-start gap-1">
 												<StepperTitleWrapper
-													title={stepData.title}
+													title={data.title}
 												/>
 												<StepperDescriptionWrapper
 													description={
-														stepData.description
+														data.description
 													}
 												/>
 											</div>
 										</Stepper.Item>			
 										<StepperSeparatorWithStatus
-											key={`separator-${stepInfo.data.id}`}
+											key={`separator-${stepData.id}`}
 											status={status}
 											isLast={isLast}	
 										/>

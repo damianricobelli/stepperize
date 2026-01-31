@@ -1,100 +1,36 @@
-import type { Step } from "@stepperize/core";
 import * as React from "react";
-import {
-	createStepDataAttributes,
-	filterDataAttributes,
-	StepItemProvider,
-	usePrimitiveContext,
-} from "./context";
-import type { ItemProps, StepItemContextValue } from "./types";
+import type { Get, Step, Stepper } from "@stepperize/core";
+import type { ItemProps, StepStatus } from "./types";
+import { StepItemProvider } from "./context";
 
-/**
- * Item primitive that wraps a single step.
- * Provides context for nested primitives (Trigger, Indicator, Title, etc.)
- *
- * @example
- * ```tsx
- * <Item step="shipping">
- *   <Trigger>
- *     <Indicator />
- *     <Title>Shipping</Title>
- *   </Trigger>
- * </Item>
- * ```
- */
-function ItemImpl<Steps extends Step[] = Step[]>(
-	{
-		step: stepId,
-		disabled,
-		render,
-		children,
-		...props
-	}: ItemProps<Steps>,
-	ref: React.ForwardedRef<HTMLLIElement>,
+export function createItem<Steps extends Step[]>(
+	StepperContext: React.Context<Stepper<Steps> | null>,
+	utils: { getIndex: (id: Get.Id<Steps>) => number },
 ) {
-	const { stepper, config } = usePrimitiveContext<Steps>();
-
-	// Get step info - status is already resolved in stepInfo
-	const stepIndex = stepper.steps.findIndex(
-		(s) => s.data.id === (stepId as string),
-	);
-	const stepInfo = stepper.steps[stepIndex];
-
-	if (!stepInfo) {
-		console.warn(
-			`[@stepperize/react] Item: Step "${String(stepId)}" not found.`,
+	return function Item(props: ItemProps<Steps>) {
+		const { step, render, children, ...rest } = props;
+		const stepper = React.useContext(StepperContext);
+		if (!stepper) {
+			throw new Error("Stepper.Item must be used within Stepper.Root.");
+		}
+		const stepIndex = utils.getIndex(step);
+		const currentIndex = utils.getIndex(stepper.current.id);
+		const status: StepStatus =
+			stepIndex < currentIndex ? "success" : stepIndex === currentIndex ? "active" : "inactive";
+		const stepData = stepper.all[stepIndex];
+		const itemValue = React.useMemo(
+			() => ({ status, data: stepData }),
+			[status, stepData],
 		);
-		return null;
-	}
-
-	const step = stepInfo.data;
-	const isFirst = stepIndex === 0;
-	const isLast = stepIndex === stepper.steps.length - 1;
-	// Use the resolved status from stepInfo
-	const status = stepInfo.status;
-	const isActive = status === "active";
-	const isCompleted = status === "success";
-
-	const itemContext = React.useMemo<StepItemContextValue<Steps>>(
-		() => ({
-			step,
-			index: stepIndex,
-			isActive,
-			isCompleted,
-			status,
-			isFirst,
-			isLast,
-			disabled,
-		}),
-		[step, stepIndex, isActive, isCompleted, status, isFirst, isLast, disabled],
-	);
-
-	const dataAttributes = filterDataAttributes(
-		createStepDataAttributes(itemContext, config.orientation),
-	);
-
-	const elementProps = {
-		role: "presentation",
-		...dataAttributes,
-		...props,
-		ref,
+		const merged = {
+			"data-component": "stepper-item",
+			"data-status": status,
+			...rest,
+		};
+		const content = render ? render(merged as React.ComponentPropsWithoutRef<"li">) : children;
+		return React.createElement(
+			StepItemProvider,
+			{ value: itemValue, children: React.createElement("li", merged, content) },
+		);
 	};
-
-	let element: React.ReactElement;
-
-	if (render) {
-		element = render(elementProps) ?? <li {...elementProps}>{children}</li>;
-	} else {
-		element = <li {...elementProps}>{children}</li>;
-	}
-
-	return <StepItemProvider value={itemContext}>{element}</StepItemProvider>;
 }
-
-const Item = React.forwardRef(ItemImpl) as <Steps extends Step[] = Step[]>(
-	props: ItemProps<Steps> & { ref?: React.ForwardedRef<HTMLLIElement> },
-) => React.ReactElement | null;
-
-(Item as React.FC).displayName = "Stepper.Item";
-
-export { Item };

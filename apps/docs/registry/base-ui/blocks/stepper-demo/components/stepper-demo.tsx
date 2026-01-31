@@ -68,22 +68,22 @@ export function StepperDemo() {
 						<Stepper.List
 							className="flex gap-2 data-[orientation=horizontal]:flex-row data-[orientation=horizontal]:items-center data-[orientation=horizontal]:justify-between data-[orientation=vertical]:flex-col"
 						>
-							{stepper.steps.map((stepInfo, index) => {
-								const { status } = stepInfo;
-								const isLast = index === stepper.steps.length - 1;
-								
+							{stepper.all.map((stepData, index) => {
+								const currentIndex = stepper.all.findIndex((s) => s.id === stepper.current.id);
+								const status = index < currentIndex ? "success" : index === currentIndex ? "active" : "inactive";
+								const isLast = index === stepper.all.length - 1;
 								return (
-									<React.Fragment key={stepInfo.data.id}>
+									<React.Fragment key={stepData.id}>
 										<Stepper.Item
-											step={stepInfo.data.id}
+											step={stepData.id}
 											className="group peer relative flex items-center gap-2"
 										>
 											<StepperTriggerWrapper />
 											<div className="flex flex-col items-start">
-												<StepperTitleWrapper title={stepInfo.data.title} />
+												<StepperTitleWrapper title={stepData.title} />
 											</div>
 										</Stepper.Item>
-										<StepperSeparatorWithStatus key={`separator-${stepInfo.data.id}`} status={status} isLast={isLast} />
+										<StepperSeparatorWithStatus key={`separator-${stepData.id}`} status={status} isLast={isLast} />
 									</React.Fragment>
 								);
 							})}

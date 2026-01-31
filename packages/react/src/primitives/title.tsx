@@ -1,55 +1,14 @@
 import * as React from "react";
-import {
-	createStepDataAttributes,
-	filterDataAttributes,
-	useMaybeStepItemContext,
-	usePrimitiveContext,
-} from "./context";
 import type { TitleProps } from "./types";
 
-/**
- * Title primitive that renders the step title.
- * Can be used within an Item component to automatically get the step context.
- *
- * @example
- * ```tsx
- * <Item step="shipping">
- *   <Trigger>
- *     <Title>Shipping</Title>
- *   </Trigger>
- * </Item>
- *
- * // Or with automatic title from step definition
- * <Item step="shipping">
- *   <Trigger>
- *     <Title>{step.title}</Title>
- *   </Trigger>
- * </Item>
- * ```
- */
-const Title = React.forwardRef<HTMLSpanElement, TitleProps>(
-	({ render, children, ...props }, ref) => {
-		const { config } = usePrimitiveContext();
-		const item = useMaybeStepItemContext();
-
-		const dataAttributes = item
-			? filterDataAttributes(createStepDataAttributes(item, config.orientation))
-			: { "data-orientation": config.orientation };
-
-		const elementProps = {
-			...dataAttributes,
-			...props,
-			ref,
+export function createTitle() {
+	return function Title(props: TitleProps) {
+		const { render, children, ...rest } = props;
+		const merged = {
+			"data-component": "stepper-title",
+			...rest,
 		};
-
-		if (render) {
-			return render(elementProps) ?? <span {...elementProps}>{children}</span>;
-		}
-
-		return <span {...elementProps}>{children}</span>;
-	},
-);
-
-Title.displayName = "Stepper.Title";
-
-export { Title };
+		const content = render ? render(merged as React.ComponentPropsWithoutRef<"h4">) : children;
+		return React.createElement("h4", merged, content);
+	};
+}

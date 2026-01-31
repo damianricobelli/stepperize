@@ -1,47 +1,16 @@
 import * as React from "react";
-import { usePrimitiveContext } from "./context";
+import type { Step } from "@stepperize/core";
 import type { ListProps } from "./types";
 
-/**
- * List primitive that contains step items.
- * Renders as an `<ol>` by default for semantic correctness.
- *
- * @example
- * ```tsx
- * <List>
- *   {stepper.steps.map((stepInfo) => (
- *     <Item key={step.id} step={step.id}>
- *       <Trigger />
- *     </Item>
- *   ))}
- * </List>
- * ```
- */
-const List = React.forwardRef<HTMLOListElement, ListProps>(
-	({ render, children, ...props }, ref) => {
-		const { config } = usePrimitiveContext();
-
-		const dataAttributes = {
-			"data-orientation": config.orientation,
-			"data-stepper-list": "",
+export function createList<Steps extends Step[]>() {
+	return function List(props: ListProps<Steps>) {
+		const { orientation, render, children, ...rest } = props;
+		const merged = {
+			"data-component": "stepper-list",
+			"data-orientation": orientation,
+			...rest,
 		};
-
-		const elementProps = {
-			role: "tablist",
-			"aria-orientation": config.orientation,
-			...dataAttributes,
-			...props,
-			ref,
-		};
-
-		if (render) {
-			return render(elementProps) ?? <ol {...elementProps}>{children}</ol>;
-		}
-
-		return <ol {...elementProps}>{children}</ol>;
-	},
-);
-
-List.displayName = "Stepper.List";
-
-export { List };
+		const content = render ? render(merged as React.ComponentPropsWithoutRef<"ol">) : children;
+		return React.createElement("ol", merged, content);
+	};
+}
