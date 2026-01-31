@@ -1,8 +1,8 @@
 import type { Get, Step, Stepper } from "@stepperize/core";
 import * as React from "react";
 
-/** Step status for UI state (active, completed, inactive). Use "success" in data-status for completed so CSS like data-[status=success] works. */
-export type StepStatus = "active" | "completed" | "inactive" | "success";
+/** Step status for UI: active (current), success (past), inactive (future) */
+export type StepStatus = "active" | "inactive" | "success";
 
 export type StepInfo<S extends Step = Step> = {
 	data: S;
