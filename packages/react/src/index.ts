@@ -5,7 +5,6 @@
 export type {
 	BaseStepStatus,
 	Get,
-	HistoryEntry,
 	Initial,
 	InitialState,
 	Step,

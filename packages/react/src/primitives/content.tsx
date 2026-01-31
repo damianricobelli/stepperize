@@ -1,4 +1,4 @@
-import type { Get, Step } from "@stepperize/core";
+import type { Step } from "@stepperize/core";
 import * as React from "react";
 import {
 	useMaybeStepItemContext,

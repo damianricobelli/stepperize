@@ -1,14 +1,11 @@
 import type {
 	BaseStepStatus,
 	Get,
-	HistoryEntry,
 	Initial,
 	InitialState,
 	Step,
 	StepMetadata,
-	StepperConfig,
 	StepStatus,
-	StepStatuses,
 	TransitionContext,
 	Utils,
 } from "@stepperize/core";
@@ -115,10 +112,6 @@ export type StepperInstance<Steps extends Step[]> = {
 	readonly isFirst: boolean;
 	/** `true` if the current step is the last step (derived). */
 	readonly isLast: boolean;
-	/** Progress percentage (0-100) based on completed steps (derived). */
-	readonly progress: number;
-	/** Array of completed steps (derived). */
-	readonly completedSteps: StepInfo<Steps, Get.Id<Steps>>[];
 
 	// -------------------------------------------------------------------------
 	// Navigation
@@ -239,21 +232,6 @@ export type StepperInstance<Steps extends Step[]> = {
 		state: State,
 		matches: Get.Switch<Steps, R>,
 	) => R | null;
-
-	// -------------------------------------------------------------------------
-	// History (Undo/Redo)
-	// -------------------------------------------------------------------------
-
-	/** `true` if there's a previous state to undo to. */
-	readonly canUndo: boolean;
-	/** `true` if there's a next state to redo to. */
-	readonly canRedo: boolean;
-	/** Navigate to the previous state in history. */
-	undo: () => void;
-	/** Navigate to the next state in history. */
-	redo: () => void;
-	/** The navigation history stack. */
-	readonly history: HistoryEntry<Steps>[];
 
 	// -------------------------------------------------------------------------
 	// Initialization Status

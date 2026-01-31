@@ -180,18 +180,6 @@ export type StepperConfig<Steps extends Step[]> = {
 // =============================================================================
 
 /**
- * History entry for undo/redo functionality.
- */
-export type HistoryEntry<Steps extends Step[]> = {
-	/** The step at this point in history. */
-	step: Steps[number];
-	/** The step index at this point in history. */
-	index: number;
-	/** Timestamp of when this entry was created. */
-	timestamp: number;
-};
-
-/**
  * The main stepper instance returned by `useStepper`.
  * Provides all methods and state for controlling the stepper.
  *
@@ -216,13 +204,6 @@ export type Stepper<Steps extends Step[] = Step[]> = {
 	readonly metadata: StepMetadata<Steps>;
 	/** Status of all steps. */
 	readonly statuses: StepStatuses<Steps>;
-	/**
-	 * Progress percentage (0-100).
-	 * Calculated based on completed steps.
-	 */
-	readonly progress: number;
-	/** Array of completed steps. */
-	readonly completedSteps: Steps[number][];
 
 	// -------------------------------------------------------------------------
 	// Navigation
@@ -383,21 +364,6 @@ export type Stepper<Steps extends Step[] = Step[]> = {
 		state: State,
 		matches: Get.Switch<Steps, R>,
 	) => R | null;
-
-	// -------------------------------------------------------------------------
-	// History (Undo/Redo)
-	// -------------------------------------------------------------------------
-
-	/** `true` if there's a previous state to undo to. */
-	readonly canUndo: boolean;
-	/** `true` if there's a next state to redo to. */
-	readonly canRedo: boolean;
-	/** Navigate to the previous state in history. */
-	undo: () => void;
-	/** Navigate to the next state in history. */
-	redo: () => void;
-	/** The navigation history stack. */
-	readonly history: HistoryEntry<Steps>[];
 };
 
 // =============================================================================

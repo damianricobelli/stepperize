@@ -1,7 +1,6 @@
 import type {
 	BaseStepStatus,
 	Get,
-	HistoryEntry,
 	InitialState,
 	Step,
 	StepMetadata,
@@ -169,10 +168,6 @@ function createStepperDefinition<Steps extends Step[]>(
 		const [statuses, setStatuses] = React.useState<StepStatuses<Steps>>(() =>
 			getInitialStatuses(steps, mergedInitial.statuses),
 		);
-		const [history, setHistory] = React.useState<HistoryEntry<Steps>[]>(() => [
-			{ step: steps[initialStepIndex], index: initialStepIndex, timestamp: Date.now() },
-		]);
-		const [historyIndex, setHistoryIndex] = React.useState(0);
 		const [isTransitioning, setIsTransitioning] = React.useState(false);
 		const transitioningRef = React.useRef(0);
 
@@ -190,8 +185,6 @@ function createStepperDefinition<Steps extends Step[]>(
 				if (state.step) {
 					const newIndex = getInitialStepIndex(steps, state.step);
 					setCurrentIndex(newIndex);
-					setHistory([{ step: steps[newIndex], index: newIndex, timestamp: Date.now() }]);
-					setHistoryIndex(0);
 				}
 
 				// Merge metadata (loaded values take precedence)
@@ -306,13 +299,6 @@ function createStepperDefinition<Steps extends Step[]>(
 		const current = stepsArray[currentIndex];
 		const isFirst = currentIndex === 0;
 		const isLast = currentIndex === steps.length - 1;
-		const progress = React.useMemo(() => {
-			const completed = stepsArray.filter((s) => s.isCompleted).length;
-			return steps.length > 0 ? Math.round((completed / steps.length) * 100) : 0;
-		}, [stepsArray, steps.length]);
-		const completedSteps = React.useMemo(() => {
-			return stepsArray.filter((s) => s.isCompleted);
-		}, [stepsArray]);
 
 		// Step lookup map for O(1) access
 		const stepsMap = React.useMemo(() => {
@@ -385,16 +371,6 @@ function createStepperDefinition<Steps extends Step[]>(
 					// Update state
 					setCurrentIndex(targetIndex);
 
-					// Update history
-					setHistory((prev) => {
-						const newHistory = [
-							...prev.slice(0, historyIndex + 1),
-							{ step: steps[targetIndex], index: targetIndex, timestamp: Date.now() },
-						];
-						return newHistory;
-					});
-					setHistoryIndex((prev) => prev + 1);
-
 					// Execute onAfterTransition callback
 					if (mergedConfig.onAfterTransition) {
 						const ctx = createContext(targetIndex, direction);
@@ -407,7 +383,7 @@ function createStepperDefinition<Steps extends Step[]>(
 					}
 				}
 			},
-			[currentIndex, statuses, historyIndex, createContext, mergedConfig],
+			[currentIndex, statuses, createContext, mergedConfig],
 		);
 
 		// Build the stepper instance
@@ -419,8 +395,6 @@ function createStepperDefinition<Steps extends Step[]>(
 				currentIndex,
 				isFirst,
 				isLast,
-				progress,
-				completedSteps,
 
 				// Navigation
 				next() {
@@ -446,9 +420,6 @@ function createStepperDefinition<Steps extends Step[]>(
 					if (!options.keepStatuses) {
 						setStatuses(getInitialStatuses(steps, mergedInitial.statuses));
 					}
-
-					setHistory([{ step: steps[newIndex], index: newIndex, timestamp: Date.now() }]);
-					setHistoryIndex(0);
 				},
 
 				// Step access
@@ -564,27 +535,6 @@ function createStepperDefinition<Steps extends Step[]>(
 				// Conditional rendering
 				...generateCommonStepperUseFns(steps, current.data, currentIndex),
 
-				// History
-				canUndo: historyIndex > 0,
-				canRedo: historyIndex < history.length - 1,
-				undo() {
-					if (historyIndex > 0) {
-						const newHistoryIndex = historyIndex - 1;
-						const entry = history[newHistoryIndex];
-						setCurrentIndex(entry.index);
-						setHistoryIndex(newHistoryIndex);
-					}
-				},
-				redo() {
-					if (historyIndex < history.length - 1) {
-						const newHistoryIndex = historyIndex + 1;
-						const entry = history[newHistoryIndex];
-						setCurrentIndex(entry.index);
-						setHistoryIndex(newHistoryIndex);
-					}
-				},
-				history,
-
 				// Initialization Status
 				initStatus: status,
 				error,
@@ -599,10 +549,6 @@ function createStepperDefinition<Steps extends Step[]>(
 			currentIndex,
 			isFirst,
 			isLast,
-			progress,
-			completedSteps,
-			history,
-			historyIndex,
 			navigateTo,
 			initialStepIndex,
 			mergedInitial,

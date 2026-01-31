@@ -132,32 +132,6 @@ const MyStepperComponent = () => {
 };
 ```
 
-### progress, completedSteps
-
-Track completion progress:
-
-```tsx twoslash
-import * as React from "react";
-import { defineStepper } from "@stepperize/react";
-
-const { useStepper } = defineStepper([
-  { id: "first", title: "First step" },
-  { id: "second", title: "Second step" }
-]);
-
-const MyStepperComponent = () => {
-  const stepper = useStepper();
-
-  return (
-    <div>
-      <progress value={stepper.progress} max={100} />
-      <p>{stepper.progress}% complete</p>
-      <p>{stepper.completedSteps.length} of {stepper.steps.length} steps completed</p>
-    </div>
-  );
-};
-```
-
 ## Navigation Methods
 
 ### next, prev, goTo
@@ -1081,34 +1055,6 @@ function ResetButton() {
 }
 ```
 
-## History (Undo/Redo)
-
-```tsx twoslash
-import * as React from "react";
-import { defineStepper } from "@stepperize/react";
-
-const { useStepper } = defineStepper([
-  { id: "first", title: "First step" },
-  { id: "second", title: "Second step" }
-]);
-
-const MyStepperComponent = () => {
-  const stepper = useStepper();
-
-  return (
-    <div>
-      <button onClick={() => stepper.undo()} disabled={!stepper.canUndo}>
-        Undo
-      </button>
-      <button onClick={() => stepper.redo()} disabled={!stepper.canRedo}>
-        Redo
-      </button>
-      <p>History: {stepper.history.length} entries</p>
-    </div>
-  );
-};
-```
-
 ## Initialization Status
 
 Handle async initialization:
@@ -1189,8 +1135,6 @@ const MyStepperComponent = () => {
 | `currentIndex` | `number` | Index of the current step |
 | `isFirst` | `boolean` | `true` if current step is the first step |
 | `isLast` | `boolean` | `true` if current step is the last step |
-| `progress` | `number` | Progress percentage (0-100) |
-| `completedSteps` | `StepInfo[]` | Array of completed steps |
 
 ### Navigation Methods
 
@@ -1231,16 +1175,6 @@ const MyStepperComponent = () => {
 | Name | Type | Description |
 | ---- | ---- | ----------- |
 | `resetMetadata` | `(keepInitial?) => void` | Reset all metadata |
-
-### History
-
-| Name | Type | Description |
-| ---- | ---- | ----------- |
-| `canUndo` | `boolean` | Can navigate back in history |
-| `canRedo` | `boolean` | Can navigate forward in history |
-| `undo` | `() => void` | Go back in history |
-| `redo` | `() => void` | Go forward in history |
-| `history` | `HistoryEntry[]` | Navigation history |
 
 ### Status
 

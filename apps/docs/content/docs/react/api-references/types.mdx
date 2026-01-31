@@ -224,20 +224,6 @@ Direction of a step transition:
 type TransitionDirection = "next" | "prev" | "goTo";
 ```
 
-## History Types
-
-### HistoryEntry
-
-Entry in the navigation history (used for undo/redo):
-
-```tsx
-type HistoryEntry<Steps> = {
-  step: Steps[number];  // The step at this point
-  index: number;        // The step index
-  timestamp: number;    // When this entry was created
-};
-```
-
 ## Step Types
 
 ### Step
