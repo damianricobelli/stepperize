@@ -13,7 +13,7 @@ Types are exported from `@stepperize/core` and `@stepperize/react`.
 type Step = { id: string } & Record<string, any>;
 ```
 
-Steps must have a unique `id`; other properties are free.
+Steps must have a unique `id`; other properties are free. In core, `Step` is generic (`Step<Id, Data>`) for stricter inference; the simplified form above is enough for most usage.
 
 ### Metadata
 
@@ -31,7 +31,7 @@ The stepper instance type has five namespaces plus transition state:
 - **flow**: `StepperFlow<Steps>` — `is`, `when`, `switch`, `match`
 - **metadata**: `StepperMetadata<Steps>` — `values`, `set`, `get`, `reset`
 
-Plus top-level: `isTransitioning`, and `lifecycle.onBeforeTransition` / `lifecycle.onAfterTransition`. See [Hook](./hook#transition-hooks).
+Transition state lives under **state** (`state.isTransitioning`) and **lifecycle** (`lifecycle.onBeforeTransition` / `lifecycle.onAfterTransition`). See [Hook](./hook#transition-hooks).
 
 ### StepperLookup / Utils
 

@@ -10,7 +10,7 @@ The horizontal stepper is the most common and straightforward implementation of 
 Key features:
 
 - Horizontal layout
-- Simple navigation using the `switch` method
+- Navigation with `stepper.navigation.next()` / `prev()` and content per step with `stepper.flow.switch()`
 
 ### Live Demo
 
@@ -47,7 +47,7 @@ Key features:
 
 ## Usage Tips
 
-- Use the `switch` method to programmatically change steps
+- Use `stepper.flow.switch({ stepId: () => <Content /> })` to render content per step; use `stepper.navigation.next()`, `prev()`, and `goTo(id)` to change steps
 - Customize the appearance using CSS, Tailwind CSS, or any other styling library
 - Combine with form libraries for complex multi-step forms
-- Implement validation logic between steps for guided user experiences
+- Implement validation logic between steps (e.g. with `stepper.lifecycle.onBeforeTransition`) for guided user experiences

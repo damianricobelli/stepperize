@@ -141,5 +141,5 @@ const { useStepper } = defineStepper(
 ```
 
 <Callout type="info">
-  Steps are plain objects. If you add a `schema` property, access it as `stepper.state.current.data.schema` or `stepper.lookup.get(id)?.schema`. The last step can have an empty schema or no schema; check for existence when needed.
+  Steps are plain objects. The `Step` type does not define `schema`—it's a custom property you add for your own validation. Access it as `stepper.state.current.data.schema` or `stepper.lookup.get(id)?.schema`. The last step can have an empty schema or no schema; check for existence when needed.
 </Callout>

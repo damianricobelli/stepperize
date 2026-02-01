@@ -46,3 +46,7 @@ const MySteps = () => {
 ### Add `all` property
 
 The `all` property has been added to the object returned by the `useStepper` hook. This property contains all the steps in the stepper.
+
+<Callout type="info">
+  In v6, state and flow are namespaced: use `stepper.state.current` (not `stepper.current`), `stepper.state.all` (not `stepper.all`), and `stepper.flow.switch(...)` (not `stepper.switch(...)`). See [Migrating to v6](./migrating-to-v6).
+</Callout>

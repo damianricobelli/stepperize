@@ -163,7 +163,7 @@ const CustomTrigger = () => {
 Container component that provides context for all primitives. Internally uses `Scoped` to manage stepper state.
 
 ```tsx
-<Stepper.Root orientation="horizontal" tracking={false}>
+<Stepper.Root orientation="horizontal">
   {({ stepper }) => (
     <div>Current: {stepper.state.current.data.title}</div>
   )}
@@ -175,16 +175,16 @@ Container component that provides context for all primitives. Internally uses `S
 | Prop | Type | Default | Description |
 | ---- | ---- | ------- | ----------- |
 | `orientation` | `"horizontal" \| "vertical"` | `"horizontal"` | Layout orientation |
+| `initialStep` | `Get.Id<Steps>` | — | Initial active step (passed to Scoped) |
+| `initialMetadata` | `Partial<Record<Get.Id<Steps>, Metadata>>` | — | Initial metadata (passed to Scoped) |
 | `children` | `ReactNode \| (({ stepper }) => ReactNode)` | — | Content or render function |
-
-Initial state is set via `Scoped` or `useStepper({ initialStep, initialMetadata })`, not on Root.
 
 ### Data Attributes
 
 | Attribute | Value |
 | --------- | ----- |
+| `data-component` | `"stepper"` |
 | `data-orientation` | `"horizontal"` or `"vertical"` |
-| `data-stepper-root` | Present on root element |
 
 ---
 
@@ -213,8 +213,8 @@ Ordered list container for step items. Renders as `<ol>` by default.
 
 | Attribute | Value |
 | --------- | ----- |
+| `data-component` | `"stepper-list"` |
 | `data-orientation` | `"horizontal"` or `"vertical"` |
-| `data-stepper-list` | Present on list element |
 
 ### Accessibility
 
@@ -228,7 +228,7 @@ Ordered list container for step items. Renders as `<ol>` by default.
 Wrapper for a single step. Provides context for nested primitives.
 
 ```tsx
-<Stepper.Item step="shipping" disabled={false}>
+<Stepper.Item step="shipping">
   <Stepper.Trigger>
     <Stepper.Indicator />
     <Stepper.Title>Shipping</Stepper.Title>
@@ -242,7 +242,6 @@ Wrapper for a single step. Provides context for nested primitives.
 | Prop | Type | Default | Description |
 | ---- | ---- | ------- | ----------- |
 | `step` | `StepId` | **Required** | The step ID this item represents |
-| `disabled` | `boolean` | `false` | Disable this step item |
 | `render` | `(props) => ReactElement` | `undefined` | Custom render function |
 | `children` | `ReactNode` | — | Trigger, separator, etc. |
 
@@ -250,13 +249,8 @@ Wrapper for a single step. Provides context for nested primitives.
 
 | Attribute | Value |
 | --------- | ----- |
+| `data-component` | `"stepper-item"` |
 | `data-status` | `"active"`, `"success"`, or `"inactive"` |
-| `data-disabled` | Present when disabled |
-| `data-first` | Present on first step |
-| `data-last` | Present on last step |
-| `data-step` | The step ID |
-| `data-index` | The step index (0-based) |
-| `data-orientation` | `"horizontal"` or `"vertical"` |
 
 ---
 
@@ -305,11 +299,11 @@ Same as `Stepper.Item`.
 
 ## Stepper.Indicator
 
-Visual indicator showing step number, icon, or status. Must be used within `Stepper.Item`.
+Visual indicator for the step (e.g. number or icon). Must be used within `Stepper.Item`. Renders whatever you pass as `children` or via `render`; there is no built-in default content.
 
 ```tsx
-{/* Default: shows step number (1, 2, 3...) */}
-<Stepper.Indicator />
+{/* Custom: show step index via useStepItemContext or children */}
+<Stepper.Indicator>{item.index + 1}</Stepper.Indicator>
 
 {/* Custom: show icon */}
 <Stepper.Indicator>
@@ -322,7 +316,7 @@ Visual indicator showing step number, icon, or status. Must be used within `Step
 | Prop | Type | Default | Description |
 | ---- | ---- | ------- | ----------- |
 | `render` | `(props) => ReactElement` | `undefined` | Custom render function |
-| `children` | `ReactNode` | Step number | Custom content (icon, etc.) |
+| `children` | `ReactNode` | — | Content (e.g. number, icon) |
 
 ### Data Attributes
 
@@ -415,7 +409,7 @@ Visual separator line between steps. Automatically hidden on the last step.
 
 | Attribute | Value |
 | --------- | ----- |
-| `data-status` | `"active"`, `"success"`, `"inactive"`, `"loading"`, `"error"`, or `"skipped"` (when inside Item) |
+| `data-status` | `"active"`, `"success"`, or `"inactive"` (when passed explicitly or inside Item) |
 | `data-orientation` | `"horizontal"` or `"vertical"` |
 
 ### Accessibility
@@ -427,7 +421,7 @@ Visual separator line between steps. Automatically hidden on the last step.
 
 ## Stepper.Content
 
-Panel that displays content for a specific step. Hidden when step is not active.
+Panel that displays content for a specific step. Hidden when that step is not the current step.
 
 ```tsx
 <Stepper.Content step="shipping">
@@ -447,7 +441,7 @@ Panel that displays content for a specific step. Hidden when step is not active.
 
 | Prop | Type | Default | Description |
 | ---- | ---- | ------- | ----------- |
-| `step` | `StepId` | Current step | The step ID this content is for |
+| `step` | `StepId` | **Required** | The step ID this content is for (shown only when current step matches) |
 | `render` | `(props) => ReactElement` | `undefined` | Custom render function |
 | `children` | `ReactNode` | — | Content to display |
 
@@ -607,7 +601,7 @@ The `render` function receives all props including data attributes, event handle
 
 ## Styling with Data Attributes
 
-Use data attributes for CSS styling:
+Use data attributes for CSS styling. Step status is one of `"active"`, `"success"`, or `"inactive"`:
 
 ```css
 /* Active step (current) */
@@ -615,7 +609,7 @@ Use data attributes for CSS styling:
   color: blue;
 }
 
-/* Completed step */
+/* Completed step (past) */
 [data-status="success"] {
   color: green;
 }
@@ -625,22 +619,7 @@ Use data attributes for CSS styling:
   color: gray;
 }
 
-/* Loading step */
-[data-status="loading"] {
-  animation: pulse 1s infinite;
-}
-
-/* Error step */
-[data-status="error"] {
-  color: red;
-}
-
-/* Skipped step */
-[data-status="skipped"] {
-  text-decoration: line-through;
-}
-
-/* Disabled step */
+/* Disabled (e.g. Prev/Next when at first/last step) */
 [data-disabled] {
   opacity: 0.5;
   cursor: not-allowed;
