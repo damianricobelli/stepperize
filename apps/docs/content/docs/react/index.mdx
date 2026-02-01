@@ -20,10 +20,11 @@ Stepperize is a versatile React library designed to streamline the creation of S
 
 ## Quick Start
 
-```tsx
+```tsx twoslash
+import * as React from "react"
 import { defineStepper } from "@stepperize/react";
 
-const { Stepper, useStepper } = defineStepper(
+const { Stepper } = defineStepper(
   { id: "shipping", title: "Shipping" },
   { id: "payment", title: "Payment" },
   { id: "confirmation", title: "Confirmation" }
@@ -35,7 +36,7 @@ function Checkout() {
       {({ stepper }) => (
         <>
           <Stepper.List>
-            {stepper.all.map((step) => (
+            {stepper.state.all.map((step) => (
               <Stepper.Item key={step.id} step={step.id}>
                 <Stepper.Trigger>
                   <Stepper.Indicator />
@@ -46,10 +47,10 @@ function Checkout() {
             ))}
           </Stepper.List>
 
-          {stepper.switch({
-            shipping: () => <ShippingForm />,
-            payment: () => <PaymentForm />,
-            confirmation: () => <Confirmation />
+          {stepper.flow.switch({
+            shipping: () => <div>Shipping form here</div>,
+            payment: () => <div>Payment form here</div>,
+            confirmation: () => <div>Confirmation here</div>
           })}
 
           <Stepper.Actions>
@@ -100,12 +101,12 @@ Stepperize goes beyond linear progressions, enabling:
 const stepper = useStepper();
 
 // Current step (the step object: { id, title, ... })
-stepper.current;
+stepper.state.current.data;
 
 // Metadata per step
-stepper.getMetadata("shipping");
-stepper.setMetadata("shipping", { address: "..." });
-stepper.resetMetadata(true); // optional: keep initial metadata
+stepper.metadata.get("shipping");
+stepper.metadata.set("shipping", { address: "..." });
+stepper.metadata.reset(true); // optional: keep initial metadata
 ```
 
 ### Navigation
@@ -114,10 +115,10 @@ Multiple ways to navigate:
 
 ```tsx
 // Basic navigation
-stepper.next();
-stepper.prev();
-stepper.goTo("payment");
-stepper.reset();
+stepper.navigation.next();
+stepper.navigation.prev();
+stepper.navigation.goTo("payment");
+stepper.navigation.reset();
 
 // With transition hooks (on the stepper returned by useStepper)
 const stepper = useStepper();

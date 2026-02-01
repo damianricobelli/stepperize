@@ -14,9 +14,9 @@ export function createPrev<Steps extends Step[]>(
 		const domProps = {
 			"data-component": "stepper-prev",
 			type: "button" as const,
-			disabled: stepper.isFirst,
+			disabled: stepper.state.isFirst,
 			onClick: (e: React.MouseEvent<HTMLButtonElement>) => {
-				stepper.prev();
+				stepper.navigation.prev();
 				rest.onClick?.(e);
 			},
 			...rest,

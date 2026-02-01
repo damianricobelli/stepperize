@@ -14,9 +14,9 @@ export function createNext<Steps extends Step[]>(
 		const domProps = {
 			"data-component": "stepper-next",
 			type: "button" as const,
-			disabled: stepper.isLast,
+			disabled: stepper.state.isLast,
 			onClick: (e: React.MouseEvent<HTMLButtonElement>) => {
-				stepper.next();
+				stepper.navigation.next();
 				rest.onClick?.(e);
 			},
 			...rest,

@@ -35,13 +35,12 @@ export type ScopedProviderProps<Steps extends Step[]> = React.PropsWithChildren<
 
 export function createStepperPrimitives<Steps extends Step[]>(
 	StepperContext: React.Context<Stepper<Steps> | null>,
-	utils: Utils<Steps>,
 	ScopedProvider: (props: ScopedProviderProps<Steps>) => React.ReactElement,
 ): StepperPrimitives<Steps> {
 	return {
 		Root: createRoot(StepperContext, ScopedProvider),
 		List: createList(),
-		Item: createItem(StepperContext, utils),
+		Item: createItem(StepperContext),
 		Trigger: createTrigger(StepperContext),
 		Title: createTitle(),
 		Description: createDescription(),

@@ -418,16 +418,22 @@ export function StepperWithForm() {
 	return (
 		<Stepper.Root className="w-full space-y-4" orientation="horizontal">
 			{({ stepper }) => {
-				const formData: FormData = (stepper.current.metadata as FormData) ?? {};
+				const stored = (id: "personal" | "contact" | "address") =>
+					stepper.metadata.get(id) as FormData | undefined;
+				const formData: FormData = {
+					personal: stored("personal")?.personal,
+					contact: stored("contact")?.contact,
+					address: stored("address")?.address,
+				};
 
 				return (
 					<>
 						<Stepper.List className="flex list-none gap-2 flex-row items-center justify-between">
-							{stepper.all.map((stepData, index) => {
-								const currentIndex = stepper.all.findIndex((s) => s.id === stepper.current.id);
+							{stepper.state.all.map((stepData, index) => {
+								const currentIndex = stepper.state.current.index;
 								const status = index < currentIndex ? "success" : index === currentIndex ? "active" : "inactive";
 								const isLast =
-									index === stepper.all.length - 1;
+									index === stepper.state.all.length - 1;
 								const data = stepData as {
 									id: string;
 									title: string;
@@ -463,16 +469,16 @@ export function StepperWithForm() {
 						</Stepper.List>
 
 						<div className="min-h-[280px] rounded border bg-card p-6">
-							{stepper.switch({
+							{stepper.flow.switch({
 								personal: () => (
 									<PersonalInfoForm
-										defaultValues={stepper.current.metadata?.personal as PersonalInfo | undefined}
+										defaultValues={formData.personal}
 										onNext={(data) => {
-											stepper.current.setMetadata({
+											stepper.metadata.set("personal", {
 												...formData,
 												personal: data,
 											});
-											stepper.next();
+											stepper.navigation.next();
 										}}
 									/>
 								),
@@ -480,36 +486,36 @@ export function StepperWithForm() {
 									<ContactInfoForm
 										defaultValues={formData.contact}
 										onNext={(data) => {
-											stepper.current.setMetadata({
+											stepper.metadata.set("contact", {
 												...formData,
 												contact: data,
 											});
-											stepper.next();
+											stepper.navigation.next();
 										}}
-										onPrev={() => stepper.prev()}
+										onPrev={() => stepper.navigation.prev()}
 									/>
 								),
 								address: () => (
 									<AddressForm
 										defaultValues={formData.address}
 										onNext={(data) => {
-											stepper.current.setMetadata({
+											stepper.metadata.set("address", {
 												...formData,
 												address: data,
 											});
-											stepper.next();
+											stepper.navigation.next();
 										}}
-										onPrev={() => stepper.prev()}
+										onPrev={() => stepper.navigation.prev()}
 									/>
 								),
 								complete: () => (
 									<CompleteStep
 										formData={formData}
 										onReset={() => {
-											stepper.current.setMetadata({});
-											stepper.reset();
+											stepper.metadata.reset();
+											stepper.navigation.reset();
 										}}
-										onPrev={() => stepper.prev()}
+										onPrev={() => stepper.navigation.prev()}
 									/>
 								),
 							})}

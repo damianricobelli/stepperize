@@ -11,7 +11,7 @@ export function createContent<Steps extends Step[]>(
 		if (!stepper) {
 			throw new Error("Stepper.Content must be used within Stepper.Root.");
 		}
-		const isActive = stepper.current.id === step;
+		const isActive = stepper.state.current.data.id === step;
 		if (!isActive) {
 			return null;
 		}

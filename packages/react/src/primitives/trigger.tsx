@@ -14,9 +14,9 @@ export function createTrigger<Steps extends Step[]>(
 			throw new Error("Stepper.Trigger must be used within Stepper.Root.");
 		}
 		const stepId = item.data.id;
-		const isActive = stepper.current.id === stepId;
-		const stepIndex = stepper.all.findIndex((s) => s.id === stepId);
-		const handleClick = () => stepper.goTo(stepId as import("@stepperize/core").Get.Id<Steps>);
+		const isActive = stepper.state.current.data.id === stepId;
+		const stepIndex = stepper.state.all.findIndex((s) => s.id === stepId);
+		const handleClick = () => stepper.navigation.goTo(stepId as import("@stepperize/core").Get.Id<Steps>);
 		const domProps = {
 			...rest,
 			id: `step-${stepId}`,
@@ -27,7 +27,7 @@ export function createTrigger<Steps extends Step[]>(
 			"aria-controls": `step-panel-${stepId}`,
 			"aria-current": isActive ? ("step" as const) : undefined,
 			"aria-posinset": stepIndex + 1,
-			"aria-setsize": stepper.all.length,
+			"aria-setsize": stepper.state.all.length,
 			"aria-selected": isActive,
 			onClick: (e: React.MouseEvent<HTMLButtonElement>) => {
 				handleClick();

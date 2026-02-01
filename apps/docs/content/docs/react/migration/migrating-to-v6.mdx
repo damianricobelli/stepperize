@@ -9,18 +9,19 @@ This page summarizes the current API. For full details see [Define](/docs/react/
 ## defineStepper
 
 - **Signature:** `defineStepper(...steps)` — only the steps array (or spread steps). No second config argument.
-- **Returns:** `{ steps, utils, Scoped, useStepper, Stepper }`.
+- **Returns:** `{ steps, Scoped, useStepper, Stepper }`.
 
 ## useStepper
 
 - **Config:** `useStepper({ initialStep?, initialMetadata? })` — optional. No `initial`, `mode`, or global transition callbacks.
-- **Returns:** Stepper object with:
-  - **State:** `all`, `current`, `isFirst`, `isLast`, `isTransitioning`, `metadata`
-  - **Navigation:** `next()`, `prev()`, `goTo(id)`, `reset()`
-  - **Step lookup:** `get(id)`
-  - **Metadata:** `setMetadata(id, values)`, `getMetadata(id)`, `resetMetadata(keepInitial?)`
-  - **Rendering:** `when()`, `switch()`, `match()`
+- **Returns:** Stepper object with five namespaces plus transition state:
+  - **state:** `all`, `current` (data, index, status, metadata: get/set/reset), `isFirst`, `isLast`, `isTransitioning`
+  - **navigation:** `next()`, `prev()`, `goTo(id)`, `reset()`
+  - **query:** `getAll()`, `get(id)`, `getIndex(id)`, `getByIndex(i)`, `getFirst`, `getLast`, `getNext`, `getPrev`, `getNeighbors(id)`
+  - **flow:** `when()`, `switch()`, `match()`
+  - **metadata:** `values`, `set(id, values)`, `get(id)`, `reset(keepInitial?)`
   - **Transition hooks:** `onBeforeTransition(cb)`, `onAfterTransition(cb)` — call these to register callbacks; they run on every `next`/`prev`/`goTo`. Return `false` from the before callback to cancel.
+  - **Top-level:** `isTransitioning`
 
 ## Scoped
 
@@ -28,11 +29,12 @@ This page summarizes the current API. For full details see [Define](/docs/react/
 
 ## Step and current
 
-- `stepper.current` is the **step object** (e.g. `{ id, title }`), not a wrapper with `.data` or `.status`.
-- Use `stepper.all` for the list of steps (not `stepper.steps`).
-- Use `stepper.get(id)` to get a step by ID (not `stepper.step(id)`).
+- `stepper.state.current.data` is the **step object** (e.g. `{ id, title }`).
+- `stepper.state.current.index` is the current step index.
+- Use `stepper.state.all` for the list of steps (not `stepper.steps`).
+- Use `stepper.query.get(id)` to get a step by ID (not `stepper.get(id)` at top level).
 - Step-level UI status (`active` / `success` / `inactive`) comes from primitives (e.g. `useStepItemContext().status`), not from a global status record.
 
 ## Core package
 
-`@stepperize/core` exports types (`Step`, `Stepper`, `Utils`, `Get`) and pure helpers (`generateStepperUtils`, `getInitialStepIndex`, `getInitialMetadata`, `generateCommonStepperUseFns`, `updateStepIndex`). The React package uses these; you typically use `@stepperize/react` only.
+`@stepperize/core` exports types (`Step`, `Stepper`, `StepperState`, `StepperNavigation`, `StepperQuery`, `StepperFlow`, `StepperMetadata`, `Get`, `Utils`) and pure helpers (`generateStepperUtils`, `getInitialStepIndex`, `getInitialMetadata`, `generateCommonStepperUseFns`, `updateStepIndex`). The React package uses these; you typically use `@stepperize/react` only. Use `generateStepperUtils(...steps)` when you need step lookup without a stepper instance (see [Query](/docs/react/api-references/query)).

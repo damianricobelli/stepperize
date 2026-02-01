@@ -67,10 +67,10 @@ export function StepperDemo() {
 						<Stepper.List
 							className="flex list-none gap-2 data-[orientation=horizontal]:flex-row data-[orientation=horizontal]:items-center data-[orientation=horizontal]:justify-between data-[orientation=vertical]:flex-col"
 						>
-							{stepper.all.map((stepData, index) => {
-								const currentIndex = stepper.all.findIndex((s) => s.id === stepper.current.id);
+							{stepper.state.all.map((stepData, index) => {
+								const currentIndex = stepper.state.current.index;
 								const status = index < currentIndex ? "success" : index === currentIndex ? "active" : "inactive";
-								const isLast = index === stepper.all.length - 1;
+								const isLast = index === stepper.state.all.length - 1;
 								return (
 									<React.Fragment key={stepData.id}>
 										<Stepper.Item
@@ -87,7 +87,7 @@ export function StepperDemo() {
 								);
 							})}
 						</Stepper.List>
-					{stepper.switch({
+					{stepper.flow.switch({
 						"step-1": (data) => <Content id={data.id} />,
 						"step-2": (data) => <Content id={data.id} />,
 						"step-3": (data) => <Content id={data.id} />,
@@ -95,15 +95,15 @@ export function StepperDemo() {
 					<Stepper.Actions
 						className="flex justify-end gap-4"
 					>
-						{!stepper.isLast && (
+						{!stepper.state.isLast && (
 							<Stepper.Prev render={(domProps) => (
 								<Button type="button" variant="secondary" {...domProps}>Previous</Button>
 							)} />
 						)}
-						{stepper.isLast ? (
+						{stepper.state.isLast ? (
 							<Button
 								type="button"
-								onClick={() => stepper.reset()}
+								onClick={() => stepper.navigation.reset()}
 							>
 								Reset
 							</Button>

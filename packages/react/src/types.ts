@@ -37,14 +37,6 @@ export type StepperReturn<Steps extends Step[]> = {
 	/** The steps of the stepper. */
 	steps: Steps;
 	/**
-	 * `utils` provides helper functions to interact with steps in the stepper.
-	 * These functions allow you to get steps by their ID or index, get the first and last steps,
-	 * and navigate through the steps by retrieving neighbors or adjacent steps.
-	 *
-	 * @returns An object containing utility methods to interact with the steps
-	 */
-	utils: Utils<Steps>;
-	/**
 	 * `Scoped` component is a wrapper that provides the stepper context to its children.
 	 * It uses the `Context` to pass the stepper instance to the children.
 	 *

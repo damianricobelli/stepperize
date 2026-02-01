@@ -1,4 +1,4 @@
-import type { Get, Metadata, Step, Stepper } from "@stepperize/core";
+import type { Get, Metadata, Step, Stepper, StepStatus } from "@stepperize/core";
 import {
 	generateCommonStepperUseFns,
 	generateStepperUtils,
@@ -21,8 +21,6 @@ export const defineStepper = <const Steps extends Step[]>(...steps: Steps): Step
 	const Context = React.createContext<
 			(Stepper<Steps> & TransitionMethods<Steps> & TransitionState) | null
 		>(null);
-
-	const utils = generateStepperUtils(...steps);
 
 	const useStepper = (config?: {
 		initialStep?: Get.Id<Steps>;
@@ -74,66 +72,89 @@ export const defineStepper = <const Steps extends Step[]>(...steps: Steps): Step
 			const current = steps[stepIndex];
 			const isLast = stepIndex === steps.length - 1;
 			const isFirst = stepIndex === 0;
+			const status: StepStatus = "active";
+
+			const next = () => {
+				const toIndex = stepIndex + 1;
+				if (onBeforeRef.current != null || onAfterRef.current != null) {
+					if (toIndex >= steps.length) return;
+					return performTransition(stepIndex, toIndex, "next");
+				}
+				updateStepIndex(steps, toIndex, setStepIndex);
+			};
+			const prev = () => {
+				const toIndex = stepIndex - 1;
+				if (onBeforeRef.current != null || onAfterRef.current != null) {
+					if (toIndex < 0) return;
+					return performTransition(stepIndex, toIndex, "prev");
+				}
+				updateStepIndex(steps, toIndex, setStepIndex);
+			};
+			const goTo = (id: Get.Id<Steps>) => {
+				const toIndex = steps.findIndex((s) => s.id === id);
+				if (toIndex === -1) throw new Error(`Step with id "${id}" not found.`);
+				if (toIndex === stepIndex) return;
+				if (onBeforeRef.current != null || onAfterRef.current != null) {
+					return performTransition(stepIndex, toIndex, "goTo");
+				}
+				setStepIndex(toIndex);
+			};
+			const reset = () => {
+				updateStepIndex(steps, getInitialStepIndex(steps, initialStep), setStepIndex);
+			};
 
 			return {
-				all: steps,
-				current,
-				isLast,
-				isFirst,
-				isTransitioning,
-				metadata,
-				setMetadata(id, data) {
-					setMetadata((prev) => {
-						if (prev[id] === data) return prev;
-						return { ...prev, [id]: data };
-					});
+				state: {
+					all: steps,
+					current: {
+						data: current,
+						index: stepIndex,
+						status,
+						metadata: {
+							get: () => metadata[current.id as Get.Id<Steps>],
+							set: (values) => {
+								setMetadata((prev) =>
+									prev[current.id as Get.Id<Steps>] === values
+										? prev
+										: { ...prev, [current.id as Get.Id<Steps>]: values },
+								);
+							},
+							reset: (keepInitialMetadata?: boolean) => {
+								setMetadata(
+									getInitialMetadata(steps, keepInitialMetadata ? initialMetadata : undefined),
+								);
+							},
+						},
+					},
+					isLast,
+					isFirst,
+					isTransitioning,
 				},
-				getMetadata(id) {
-					return metadata[id];
+				navigation: { next, prev, goTo, reset },
+				query: generateStepperUtils(...steps),
+				flow: generateCommonStepperUseFns(steps, current, stepIndex),
+				metadata: {
+					get values() {
+						return metadata;
+					},
+					set: (id, values) => {
+						setMetadata((prev) => (prev[id] === values ? prev : { ...prev, [id]: values }));
+					},
+					get: (id) => metadata[id],
+					reset: (keepInitialMetadata?: boolean) => {
+						setMetadata(
+							getInitialMetadata(steps, keepInitialMetadata ? initialMetadata : undefined),
+						);
+					},
 				},
-				resetMetadata(keepInitialMetadata) {
-					setMetadata(getInitialMetadata(steps, keepInitialMetadata ? initialMetadata : undefined));
+				lifecycle: {
+					onBeforeTransition(cb) {
+						onBeforeRef.current = cb;
+					},
+					onAfterTransition(cb) {
+						onAfterRef.current = cb;
+					},
 				},
-				next() {
-					const toIndex = stepIndex + 1;
-					if (onBeforeRef.current != null || onAfterRef.current != null) {
-						if (toIndex >= steps.length) return;
-						return performTransition(stepIndex, toIndex, "next");
-					}
-					updateStepIndex(steps, toIndex, setStepIndex);
-				},
-				prev() {
-					const toIndex = stepIndex - 1;
-					if (onBeforeRef.current != null || onAfterRef.current != null) {
-						if (toIndex < 0) return;
-						return performTransition(stepIndex, toIndex, "prev");
-					}
-					updateStepIndex(steps, toIndex, setStepIndex);
-				},
-				get(id) {
-					return steps.find((step) => step.id === id);
-				},
-				goTo(id) {
-					const toIndex = steps.findIndex((s) => s.id === id);
-					if (toIndex === -1) throw new Error(`Step with id "${id}" not found.`);
-					if (toIndex === stepIndex) return;
-					if (onBeforeRef.current != null || onAfterRef.current != null) {
-						return performTransition(stepIndex, toIndex, "goTo");
-					}
-					setStepIndex(toIndex);
-				},
-				reset() {
-					updateStepIndex(steps, getInitialStepIndex(steps, initialStep), (newIndex) => {
-						setStepIndex(newIndex);
-					});
-				},
-				onBeforeTransition(cb: (ctx: TransitionContext<Steps>) => void | Promise<void | false>) {
-					onBeforeRef.current = cb;
-				},
-				onAfterTransition(cb: (ctx: TransitionContext<Steps>) => void | Promise<void>) {
-					onAfterRef.current = cb;
-				},
-				...generateCommonStepperUseFns(steps, current, stepIndex),
 			} as Stepper<Steps> & TransitionMethods<Steps> & TransitionState;
 		}, [stepIndex, metadata, isTransitioning, performTransition]);
 
@@ -149,13 +170,11 @@ export const defineStepper = <const Steps extends Step[]>(...steps: Steps): Step
 
 	const Stepper = createStepperPrimitives(
 		Context as React.Context<Stepper<Steps> | null>,
-		utils,
 		ScopedProvider,
 	);
 
 	return {
 		steps,
-		utils,
 		Scoped: ScopedProvider,
 		useStepper: (props = {}) => React.useContext(Context) ?? useStepper(props),
 		Stepper,

@@ -147,6 +147,22 @@ type StepperFlow<Steps extends Step[] = Step[]> = {
 	 * @returns The result of the matched function or null if no match is found.
 	 */
 	match: <State extends Get.Id<Steps>, R>(state: State, matches: Get.Switch<Steps, R>) => R | null;
+	/**
+	 * Returns whether the current step has the given ID. Use for conditionals (e.g. `stepper.flow.is("payment")`).
+	 *
+	 * @param id - Step ID to check (e.g. `"shipping"`, `"payment"`).
+	 * @returns `true` if the current step's id equals `id`, otherwise `false`.
+	 *
+	 * @example
+	 * ```ts
+	 * if (stepper.flow.is("payment")) {
+	 *   return <PaymentForm />;
+	 * }
+	 * // or in JSX
+	 * {stepper.flow.is("confirmation") && <Summary />}
+	 * ```
+	 */
+	is: <Id extends Get.Id<Steps>>(id: Id) => boolean;
 };
 
 type StepperMetadata<Steps extends Step[] = Step[]> = {
@@ -174,13 +190,94 @@ type StepperMetadata<Steps extends Step[] = Step[]> = {
 	reset: (keepInitialMetadata?: boolean) => void;
 };
 
-type Stepper<Steps extends Step[] = Step[]> = {
-	state: StepperState<Steps>;
-	navigation: StepperNavigation<Steps>;
-	query: StepperQuery<Steps>;
-	flow: StepperFlow<Steps>;
-	metadata: StepperMetadata<Steps>;
+type StepperLifecycle<Steps extends Step[] = Step[]> = {
+	/**
+	 * Called before a transition occurs.
+	 * @param cb - The callback to call before the transition occurs.
+	 */
+	onBeforeTransition: (cb: (ctx: TransitionContext<Steps>) => void | Promise<void | false>) => void;
+	/**
+	 * Called after a transition occurs.
+	 */
+	onAfterTransition: (cb: (ctx: TransitionContext<Steps>) => void | Promise<void>) => void;
 };
+
+type TransitionContext<Steps extends Step[] = Step[]> = {
+	/**
+	 * The step being transitioned from.
+	 */
+	from: Steps[number];
+	/**
+	 * The step being transitioned to.
+	 */
+	to: Steps[number];
+	/**
+	 * The metadata for the transition.
+	 */
+	metadata: Record<Get.Id<Steps>, Metadata>;
+	/**
+	 * The statuses for the transition.
+	 */
+	statuses: Record<Get.Id<Steps>, StepStatus>;
+	/**
+	 * The direction of the transition.
+	 */
+	direction: "next" | "prev" | "goTo";
+	/**
+	 * The index of the step being transitioned from.
+	 */
+	fromIndex: number;
+	/**
+	 * The index of the step being transitioned to.
+	 */
+	toIndex: number;
+};
+
+/**
+ * Full stepper API returned by `useStepper` / `defineStepper`. Gives you state, navigation, query helpers, flow branching, and step-scoped metadata.
+ *
+ * @example
+ * ```ts
+ * const stepper = useStepper({ steps: [{ id: "a" }, { id: "b" }] });
+ * stepper.state.current.data;   // current step
+ * stepper.navigation.next();    // go next
+ * stepper.query.get("b");       // get step by id
+ * stepper.flow.when("a", () => "on A", () => "else");  // branch by step
+ * stepper.metadata.set("a", { count: 1 });            // step metadata
+ * ```
+ */
+type Stepper<Steps extends Step[] = Step[]> = {
+	/**
+	 * Read-only state: current step data, index, status (active/inactive/success), and metadata get/set for the active step.
+	 * @example `stepper.state.current.data` — current step; `stepper.state.current.metadata.get()` — current step metadata
+	 */
+	state: StepperState<Steps>;
+	/**
+	 * Imperative navigation: `next()`, `prev()`, `goTo(id)`, `reset()`.
+	 * @example `stepper.navigation.next()` — advance; `stepper.navigation.goTo("confirm")` — jump to step by id
+	 */
+	navigation: StepperNavigation<Steps>;
+	/**
+	 * Read steps without navigating: `getAll()`, `get(id)`, `getIndex(id)`, `getByIndex(i)`, `getFirst` / `getLast` / `getNext` / `getPrev` / `getNeighbors(id)`.
+	 * @example `stepper.query.get("summary")` — get step by id; `stepper.query.getNext(stepper.state.current.data.id)` — next step
+	 */
+	query: StepperQuery<Steps>;
+	/**
+	 * Branch by step id: `when(id, whenFn, elseFn?)`, `switch(when)`, `match(state, matches)`.
+	 * @example `stepper.flow.when("payment", () => <Payment />)` — render by step; `stepper.flow.switch({ payment: () => 1, done: () => 2 })` — switch by id
+	 */
+	flow: StepperFlow<Steps>;
+	/**
+	 * Step-scoped metadata: `values`, `set(id, values)`, `get(id)`, `reset()`.
+	 * @example `stepper.metadata.set("form", { draft: true })` — persist data per step; `stepper.metadata.get("form")` — read it
+	 */
+	metadata: StepperMetadata<Steps>;
+	/**
+	 * Lifecycle hooks: `onBeforeTransition()`, `onAfterTransition()`.
+	 * @example `stepper.lifecycle.onBeforeTransition(() => { console.log("before transition") });` — before transition; `stepper.lifecycle.onAfterTransition(() => { console.log("after transition") });` — after transition
+	 */
+	lifecycle: StepperLifecycle<Steps>;
+}
 
 namespace Get {
 	/** Returns a union of possible IDs from the given Steps. */
@@ -197,6 +294,9 @@ namespace Get {
 		[Id in Get.Id<Steps>]?: (step: Get.StepById<Steps, Id>) => R;
 	};
 }
+
+/** Alias for StepperQuery (return type of generateStepperUtils). */
+export type Utils<Steps extends Step[] = Step[]> = StepperQuery<Steps>;
 
 export type {
 	Step,

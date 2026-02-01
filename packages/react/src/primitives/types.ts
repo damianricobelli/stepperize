@@ -1,6 +1,8 @@
 import type { Get, Metadata, Step, Stepper, StepStatus } from "@stepperize/core";
 import * as React from "react";
 
+export type { StepStatus };
+
 export type StepInfo<S extends Step = Step> = {
 	data: S;
 	status: StepStatus;

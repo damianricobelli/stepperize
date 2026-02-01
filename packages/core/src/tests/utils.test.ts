@@ -118,6 +118,15 @@ describe("generateCommonStepperUseFns", () => {
 		const result = fns.match("unknown" as any, {});
 		expect(result).toBeNull();
 	});
+
+	it("is returns true when current step id matches", () => {
+		expect(fns.is("second")).toBe(true);
+	});
+
+	it("is returns false when current step id does not match", () => {
+		expect(fns.is("first")).toBe(false);
+		expect(fns.is("third")).toBe(false);
+	});
 });
 
 describe("updateStepIndex", () => {

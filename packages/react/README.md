@@ -48,10 +48,10 @@ function StepperComponent() {
 
   return (
     <div>
-      <h2>{stepper.current.title}</h2>
-      <p>{stepper.current.description}</p>
-      <button onClick={() => stepper.prev()}>Previous</button>
-      <button onClick={() => stepper.next()}>Next</button>
+      <h2>{stepper.state.current.data.title}</h2>
+      <p>{stepper.state.current.data.description}</p>
+      <button onClick={() => stepper.navigation.prev()}>Previous</button>
+      <button onClick={() => stepper.navigation.next()}>Next</button>
     </div>
   );
 }

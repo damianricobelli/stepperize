@@ -28,8 +28,8 @@ const StepContent = () => {
   const stepper = useStepper();
   return (
     <div>
-      {stepper.when("first", (step) => <p>Starting with {step.title}</p>)}
-      {stepper.when("second", (step) => <p>In the middle: {step.title}</p>)}
+      {stepper.flow.when("first", (step) => <p>Starting with {step.title}</p>)}
+      {stepper.flow.when("second", (step) => <p>In the middle: {step.title}</p>)}
     </div>
   );
 };
@@ -37,8 +37,8 @@ const StepContent = () => {
 const StepNavigation = () => {
   const stepper = useStepper();
   return (
-    <button onClick={stepper.isLast ? () => stepper.reset() : () => stepper.next()}>
-      {stepper.when("last", () => "Reset", () => "Next")}
+    <button onClick={stepper.state.isLast ? () => stepper.navigation.reset() : () => stepper.navigation.next()}>
+      {stepper.flow.when("last", () => "Reset", () => "Next")}
     </button>
   );
 };
@@ -73,7 +73,7 @@ export const MyScopedStepper = () => (
 
 const StepContent = () => {
   const stepper = useStepper();
-  return <div>Current: {stepper.current.title}</div>;
+  return <div>Current: {stepper.state.current.data.title}</div>;
 };
 ```
 
@@ -107,12 +107,12 @@ export const NestedSteppers = () => (
 
 const GlobalStepContent = () => {
   const stepper = GlobalStepper.useStepper();
-  return <div>Global: {stepper.current.title}</div>;
+  return <div>Global: {stepper.state.current.data.title}</div>;
 };
 
 const LocalStepContent = () => {
   const stepper = LocalStepper.useStepper();
-  return <div>Local: {stepper.current.title}</div>;
+  return <div>Local: {stepper.state.current.data.title}</div>;
 };
 ```
 
@@ -133,8 +133,8 @@ export const MyStepper = () => (
   <Stepper.Root>
     {({ stepper }) => (
       <div>
-        <p>Current: {stepper.current.title}</p>
-        <button onClick={() => stepper.next()}>Next</button>
+        <p>Current: {stepper.state.current.data.title}</p>
+        <button onClick={() => stepper.navigation.next()}>Next</button>
       </div>
     )}
   </Stepper.Root>

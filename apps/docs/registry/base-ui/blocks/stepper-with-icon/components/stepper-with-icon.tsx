@@ -120,10 +120,10 @@ export function StepperWithIcon() {
 			{({ stepper }) => (
 				<>
 					<Stepper.List className="flex list-none gap-2 flex-row items-center justify-between">
-						{stepper.all.map((stepData, index) => {
-							const currentIndex = stepper.all.findIndex((s) => s.id === stepper.current.id);
+						{stepper.state.all.map((stepData, index) => {
+							const currentIndex = stepper.state.current.index;
 							const status = index < currentIndex ? "success" : index === currentIndex ? "active" : "inactive";
-							const isLast = index === stepper.all.length - 1;
+							const isLast = index === stepper.state.all.length - 1;
 							const data = stepData as StepData;
 							return (
 								<React.Fragment key={stepData.id}>
@@ -152,14 +152,14 @@ export function StepperWithIcon() {
 							);
 						})}
 					</Stepper.List>
-					{stepper.switch({
+					{stepper.flow.switch({
 						cart: (data) => <Content id={data.id} />,
 						shipping: (data) => <Content id={data.id} />,
 						payment: (data) => <Content id={data.id} />,
 						confirmation: (data) => <Content id={data.id} />,
 					})}
 					<Stepper.Actions className="flex justify-end gap-4">
-						{!stepper.isLast && (
+						{!stepper.state.isLast && (
 							<Stepper.Prev
 								render={(domProps) => (
 									<Button
@@ -172,10 +172,10 @@ export function StepperWithIcon() {
 								)}
 							/>
 						)}
-						{stepper.isLast ? (
+						{stepper.state.isLast ? (
 							<Button
 								type="button"
-								onClick={() => stepper.reset()}
+								onClick={() => stepper.navigation.reset()}
 							>
 								Place New Order
 							</Button>
@@ -183,8 +183,8 @@ export function StepperWithIcon() {
 							<Stepper.Next
 								render={(domProps) => (
 									<Button type="button" {...domProps}>
-										{stepper.all.findIndex((s) => s.id === stepper.current.id) ===
-										stepper.all.length - 2
+										{stepper.state.current.index ===
+										stepper.state.all.length - 2
 											? "Confirm Order"
 											: "Continue"}
 									</Button>

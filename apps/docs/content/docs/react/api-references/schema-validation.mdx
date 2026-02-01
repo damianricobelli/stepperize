@@ -20,11 +20,9 @@ const Schema = z.object({
 
 type MyFormValues = z.infer<typeof Schema>;
 
-const stepperInstance = defineStepper({
-  id: "personal",
-  label: "Personal Information",
-  schema: Schema,
-});
+const { useStepper } = defineStepper(
+  { id: "personal", label: "Personal Information", schema: Schema }
+);
 ```
 
 ## ValiBot
@@ -40,11 +38,9 @@ const Schema = v.object({
 
 type MyFormValues = v.InferInput<typeof Schema>;
 
-const stepperInstance = defineStepper({
-  id: "personal",
-  label: "Personal Information",
-  schema: Schema,
-});
+const { useStepper } = defineStepper(
+  { id: "personal", label: "Personal Information", schema: Schema }
+);
 ```
 
 ## ArkType
@@ -60,11 +56,9 @@ const Schema = type({
 
 type MyFormValues = typeof Schema.infer;
 
-const stepperInstance = defineStepper({
-  id: "personal",
-  label: "Personal Information",
-  schema: Schema,
-});
+const { useStepper } = defineStepper(
+  { id: "personal", label: "Personal Information", schema: Schema }
+);
 ```
 
 ## Accessing schemas
@@ -95,10 +89,10 @@ function MyForm() {
   const stepper = useStepper();
 
   // Current step object (includes schema if you added it)
-  const currentSchema = stepper.current.schema;
+  const currentSchema = stepper.state.current.data.schema;
 
   // Step by ID
-  const personalStep = stepper.get("personal");
+  const personalStep = stepper.query.get("personal");
   const personalSchema = personalStep?.schema;
 
   return <div>Schema available: {currentSchema ? "Yes" : "No"}</div>;
@@ -127,7 +121,7 @@ const SecondStepSchema = z.object({
 
 const ThirdStepSchema = z.object({});
 
-const stepperInstance = defineStepper(
+const { useStepper } = defineStepper(
   {
     id: "personal-info",
     label: "Personal Information",
@@ -147,5 +141,5 @@ const stepperInstance = defineStepper(
 ```
 
 <Callout type="info">
-  Steps are plain objects. If you add a `schema` property, access it as `stepper.current.schema` or `stepper.get(id)?.schema`. The last step can have an empty schema or no schema; check for existence when needed.
+  Steps are plain objects. If you add a `schema` property, access it as `stepper.state.current.data.schema` or `stepper.query.get(id)?.schema`. The last step can have an empty schema or no schema; check for existence when needed.
 </Callout>

@@ -96,10 +96,10 @@ export function StepperWithLabelOrientation() {
 			{({ stepper }) => (
 				<>
 					<Stepper.List className="flex list-none gap-2 flex-row items-center justify-between">
-						{stepper.all.map((stepData, index) => {
-							const currentIndex = stepper.all.findIndex((s) => s.id === stepper.current.id);
+						{stepper.state.all.map((stepData, index) => {
+							const currentIndex = stepper.state.current.index;
 							const status = index < currentIndex ? "success" : index === currentIndex ? "active" : "inactive";
-							const isLast = index === stepper.all.length - 1;
+							const isLast = index === stepper.state.all.length - 1;
 							const data = stepData as { id: string; title: string; description?: string };
 							return (
 								<Stepper.Item
@@ -124,14 +124,14 @@ export function StepperWithLabelOrientation() {
 							);
 						})}
 					</Stepper.List>
-					{stepper.switch({
+					{stepper.flow.switch({
 						"step-1": (data) => <Content id={data.id} />,
 						"step-2": (data) => <Content id={data.id} />,
 						"step-3": (data) => <Content id={data.id} />,
 						"step-4": (data) => <Content id={data.id} />,
 					})}
 					<Stepper.Actions className="flex justify-end gap-4">
-						{!stepper.isLast && (
+						{!stepper.state.isLast && (
 							<Stepper.Prev
 								render={(domProps) => (
 									<Button
@@ -144,10 +144,10 @@ export function StepperWithLabelOrientation() {
 								)}
 							/>
 						)}
-						{stepper.isLast ? (
+						{stepper.state.isLast ? (
 							<Button
 								type="button"
-								onClick={() => stepper.reset()}
+								onClick={() => stepper.navigation.reset()}
 							>
 								Reset
 							</Button>

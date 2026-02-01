@@ -54,12 +54,12 @@ const DemoContent = () => {
 
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault();
-		if (!methods.isLast) {
-			methods.next();
+		if (!methods.state.isLast) {
+			methods.navigation.next();
 		}
 	};
 
-	const isComplete = methods.isLast;
+	const isComplete = methods.state.isLast;
 
 	return (
 		<div className="max-w-2xl mx-auto">
@@ -71,7 +71,7 @@ const DemoContent = () => {
 				<div className="p-6">
 					<form onSubmit={handleSubmit}>
 						<AnimatePresence mode="wait">
-							{methods.when("personal-info", () => (
+							{methods.flow.when("personal-info", () => (
 								<motion.div
 									key="step1"
 									variants={slideVariants}
@@ -83,7 +83,7 @@ const DemoContent = () => {
 									<PersonalInfoStep formData={formData} handleChange={handleChange} />
 								</motion.div>
 							))}
-							{methods.when("address", () => (
+							{methods.flow.when("address", () => (
 								<motion.div
 									key="step2"
 									variants={slideVariants}
@@ -95,7 +95,7 @@ const DemoContent = () => {
 									<AddressStep formData={formData} handleChange={handleChange} />
 								</motion.div>
 							))}
-							{methods.when("payment", () => (
+							{methods.flow.when("payment", () => (
 								<motion.div
 									key="step3"
 									variants={slideVariants}
@@ -107,7 +107,7 @@ const DemoContent = () => {
 									<PaymentStep formData={formData} handleChange={handleChange} />
 								</motion.div>
 							))}
-							{methods.when("success", () => (
+							{methods.flow.when("success", () => (
 								<motion.div
 									key="step4"
 									variants={slideVariants}
@@ -118,17 +118,17 @@ const DemoContent = () => {
 								>
 									<CompletionScreen
 										onReset={() => {
-											methods.reset();
+											methods.navigation.reset();
 										}}
 									/>
 								</motion.div>
 							))}
 						</AnimatePresence>
 						<div className="mt-6 flex justify-between">
-							{!methods.isFirst && (
+							{!methods.state.isFirst && (
 								<button
 									type="button"
-									onClick={methods.prev}
+									onClick={methods.navigation.prev}
 									className="px-3 py-2 text-sm font-medium rounded-lg border border-gray-7 text-gray-12 hover:bg-gray-4 transition-colors"
 								>
 									Back
@@ -197,10 +197,10 @@ const StepperHeader = ({
 	methods: ReturnType<typeof stepper.useStepper>;
 	isComplete: boolean;
 }) => {
-	const steps = methods.all;
-	const currentIndex = steps.findIndex((s) => s.id === methods.current.id);
+	const steps = methods.state.all;
+	const currentIndex = methods.state.current.index;
 	const progress =
-		methods.current.id === steps[steps.length - 1].id || isComplete
+		methods.state.current.data.id === steps[steps.length - 1].id || isComplete
 			? "100%"
 			: `${(currentIndex / (steps.length - 1)) * 100}%`;
 
@@ -215,7 +215,7 @@ const StepperHeader = ({
 					/>
 				</div>
 				{steps.map((step, index) => {
-					const isActive = step.id === methods.current.id;
+					const isActive = step.id === methods.state.current.data.id;
 					const isPast = index < currentIndex;
 					return (
 						<li
@@ -224,7 +224,7 @@ const StepperHeader = ({
 						>
 							<button
 								type="button"
-								onClick={() => !isComplete && methods.goTo(step.id)}
+								onClick={() => !isComplete && methods.navigation.goTo(step.id)}
 								className={cn(
 									"size-9 rounded-full flex items-center justify-center transition-colors shrink-0",
 									isPast || (isComplete && index < steps.length - 1)

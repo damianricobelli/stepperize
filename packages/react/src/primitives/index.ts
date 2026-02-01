@@ -23,8 +23,8 @@
  *         {({ stepper }) => (
  *           <>
  *             <Stepper.List>
- *               {stepper.all.map((stepData, index) => {
- *                 const currentIndex = stepper.all.findIndex((s) => s.id === stepper.current.id);
+ *               {stepper.state.all.map((stepData, index) => {
+ *                 const currentIndex = stepper.state.current.index;
  *                 const status = index < currentIndex ? "success" : index === currentIndex ? "active" : "inactive";
  *                 return (
  *                   <React.Fragment key={stepData.id}>
@@ -32,14 +32,14 @@
  *                       <Stepper.Trigger render={(domProps) => <button {...domProps}><Stepper.Indicator /></button>} />
  *                       <Stepper.Title render={(domProps) => <h4 {...domProps}>{stepData.title}</h4>} />
  *                     </Stepper.Item>
- *                     {index < stepper.all.length - 1 && (
+ *                     {index < stepper.state.all.length - 1 && (
  *                       <Stepper.Separator orientation="horizontal" data-status={status} />
  *                     )}
  *                   </React.Fragment>
  *                 );
  *               })}
  *             </Stepper.List>
- *             {stepper.switch({
+ *             {stepper.flow.switch({
  *               shipping: () => <Stepper.Content step="shipping" render={(props) => <div {...props}>Shipping form...</div>} />,
  *               payment: () => <Stepper.Content step="payment" render={(props) => <div {...props}>Payment form...</div>} />,
  *               review: () => <Stepper.Content step="review" render={(props) => <div {...props}>Review...</div>} />,

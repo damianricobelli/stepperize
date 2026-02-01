@@ -23,7 +23,7 @@ function CheckoutStepper() {
       {({ stepper }) => (
         <>
           <Stepper.List>
-            {stepper.all.map((step) => (
+            {stepper.state.all.map((step) => (
               <Stepper.Item key={step.id} step={step.id}>
                 <Stepper.Trigger>
                   <Stepper.Indicator />
@@ -86,12 +86,12 @@ The root accepts a function `{({ stepper }) => (...)}` that receives the full st
 <Stepper.Root>
   {({ stepper }) => (
     <>
-      <div>Current: {stepper.current.title}</div>
+      <div>Current: {stepper.state.current.data.title}</div>
       <Stepper.List>...</Stepper.List>
       <Stepper.Content step="shipping">...</Stepper.Content>
       <Stepper.Actions>
         <Stepper.Prev />
-        <Stepper.Next>{stepper.isLast ? "Finish" : "Next"}</Stepper.Next>
+        <Stepper.Next>{stepper.state.isLast ? "Finish" : "Next"}</Stepper.Next>
       </Stepper.Actions>
     </>
   )}
@@ -109,8 +109,8 @@ function ShippingForm() {
   const stepper = useStepper();
   return (
     <Stepper.Content step="shipping">
-      <p>Step: {stepper.current.title}</p>
-      <button onClick={() => stepper.next()}>Continue</button>
+      <p>Step: {stepper.state.current.data.title}</p>
+      <button onClick={() => stepper.navigation.next()}>Continue</button>
     </Stepper.Content>
   );
 }
@@ -163,7 +163,7 @@ Container component that provides context for all primitives. Internally uses `S
 ```tsx
 <Stepper.Root orientation="horizontal" tracking={false}>
   {({ stepper }) => (
-    <div>Current: {stepper.current.title}</div>
+    <div>Current: {stepper.state.current.data.title}</div>
   )}
 </Stepper.Root>
 ```
@@ -192,7 +192,7 @@ Ordered list container for step items. Renders as `<ol>` by default.
 
 ```tsx
 <Stepper.List>
-  {stepper.all.map((step) => (
+  {stepper.state.all.map((step) => (
     <Stepper.Item key={step.id} step={step.id}>
       {/* ... */}
     </Stepper.Item>
@@ -511,7 +511,7 @@ Button to navigate to the previous step. Automatically disabled on first step.
 {/* Custom click handler */}
 <Stepper.Prev onClick={() => {
   console.log("Going back");
-  stepper.prev();
+  stepper.navigation.prev();
 }}>
   Previous
 </Stepper.Prev>
@@ -522,7 +522,7 @@ Button to navigate to the previous step. Automatically disabled on first step.
 | Prop | Type | Default | Description |
 | ---- | ---- | ------- | ----------- |
 | `onClick` | `MouseEventHandler` | `undefined` | Called after default prev() |
-| `disabled` | `boolean` | `false` | Manually disable (default: disabled when `stepper.isFirst`) |
+| `disabled` | `boolean` | `false` | Manually disable (default: disabled when `stepper.state.isFirst`) |
 | `render` | `(props) => ReactElement` | `undefined` | Custom render function |
 | `children` | `ReactNode` | — | Button content |
 
@@ -549,14 +549,14 @@ Button to navigate to the next step. Automatically disabled on last step.
 
 {/* Dynamic label */}
 <Stepper.Next>
-  {stepper.isLast ? "Finish" : "Next"}
+  {stepper.state.isLast ? "Finish" : "Next"}
 </Stepper.Next>
 
 {/* Custom click with validation */}
 <Stepper.Next onClick={async () => {
   const isValid = await validateCurrentStep();
   if (isValid) {
-    stepper.next();
+    stepper.navigation.next();
   }
 }}>
   Continue
@@ -568,7 +568,7 @@ Button to navigate to the next step. Automatically disabled on last step.
 | Prop | Type | Default | Description |
 | ---- | ---- | ------- | ----------- |
 | `onClick` | `MouseEventHandler` | `undefined` | Called after default next() |
-| `disabled` | `boolean` | `false` | Manually disable (default: disabled when `stepper.isLast`) |
+| `disabled` | `boolean` | `false` | Manually disable (default: disabled when `stepper.state.isLast`) |
 | `render` | `(props) => ReactElement` | `undefined` | Custom render function |
 | `children` | `ReactNode` | — | Button content |
 
@@ -678,7 +678,7 @@ function OnboardingStepper() {
         <div className="stepper-container">
           {/* Step list */}
           <Stepper.List className="stepper-list">
-            {stepper.all.map((step) => (
+            {stepper.state.all.map((step) => (
               <Stepper.Item
                 key={step.id}
                 step={step.id}
@@ -724,7 +724,7 @@ function OnboardingStepper() {
               Previous
             </Stepper.Prev>
             <Stepper.Next className="stepper-next">
-              {stepper.isLast ? "Finish" : "Next"}
+              {stepper.state.isLast ? "Finish" : "Next"}
             </Stepper.Next>
           </Stepper.Actions>
         </div>

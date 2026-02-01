@@ -22,15 +22,15 @@ const stepper = defineStepper(
 );
 
 const StepperDemo = () => {
-  const methods = stepper.useStepper();
+  const stepperApi = stepper.useStepper();
 
   return (
     <div className="flex flex-col gap-4">
       <div className="flex gap-4">
-        <button onClick={() => methods.next()}>Next</button>
-        <button onClick={() => methods.prev()}>Prev</button>
+        <button onClick={() => stepperApi.navigation.next()}>Next</button>
+        <button onClick={() => stepperApi.navigation.prev()}>Prev</button>
       </div>
-      {methods.switch({
+      {stepperApi.flow.switch({
         "step-1": (step) => <span>First: {step.title}</span>,
         "step-2": (step) => (
           <div className="flex flex-col gap-4">

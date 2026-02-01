@@ -23,11 +23,19 @@ type Metadata = Record<string, any> | null;
 
 ### Stepper
 
-The stepper instance type: `all`, `current`, `isLast`, `isFirst`, `next`, `prev`, `get`, `goTo`, `reset`, `when`, `switch`, `match`, `metadata`, `setMetadata`, `getMetadata`, `resetMetadata`. See [Hook](./hook#api-summary).
+The stepper instance type has five namespaces plus transition state:
 
-### Utils
+- **state**: `StepperState<Steps>` — `all`, `current` (data, index, status, metadata), `isFirst`, `isLast`, `isTransitioning`
+- **navigation**: `StepperNavigation<Steps>` — `next`, `prev`, `goTo`, `reset`
+- **query**: `StepperQuery<Steps>` — `getAll`, `get`, `getIndex`, `getByIndex`, `getFirst`, `getLast`, `getNext`, `getPrev`, `getNeighbors`
+- **flow**: `StepperFlow<Steps>` — `is`, `when`, `switch`, `match`
+- **metadata**: `StepperMetadata<Steps>` — `values`, `set`, `get`, `reset`
 
-Pure step helpers: `getAll`, `get`, `getIndex`, `getByIndex`, `getFirst`, `getLast`, `getNext`, `getPrev`, `getNeighbors`.
+Plus top-level: `isTransitioning`, `onBeforeTransition`, `onAfterTransition`. See [Hook](./hook#api-summary).
+
+### StepperQuery / Utils
+
+`StepperQuery<Steps>` (exported as `Utils<Steps>`) is the type of step lookup: `getAll`, `get`, `getIndex`, `getByIndex`, `getFirst`, `getLast`, `getNext`, `getPrev`, `getNeighbors`. Return type of `generateStepperUtils(...steps)`.
 
 ### Get namespace
 
@@ -36,7 +44,7 @@ Pure step helpers: `getAll`, `get`, `getIndex`, `getByIndex`, `getFirst`, `getLa
 | `Get.Id<Steps>` | Union of step IDs |
 | `Get.StepById<Steps, Id>` | Step type for given ID |
 | `Get.StepSansId<Steps, Id>` | Union of steps that are not `Id` |
-| `Get.Switch<Steps, R>` | Object type for `switch` handlers: `{ [Id in Get.Id<Steps>]?: (step: Get.StepById<Steps, Id>) => R }` |
+| `Get.Switch<Steps, R>` | Object type for `flow.switch` handlers: `{ [Id in Get.Id<Steps>]?: (step: Get.StepById<Steps, Id>) => R }` |
 
 ```tsx twoslash
 import { defineStepper, Get } from "@stepperize/react";
@@ -95,7 +103,7 @@ type TransitionState = {
 
 ### StepStatus (primitives)
 
-Used in primitives for UI state: `"active" | "inactive" | "success"` (current step, future step, past step).
+Used in primitives for UI state: `"active" | "inactive" | "success"` (current step, future step, past step). Re-exported from `@stepperize/core` in `@stepperize/react/primitives`.
 
 ### ScopedProps
 
@@ -103,4 +111,4 @@ Props for `Scoped`: `initialStep?`, `initialMetadata?`, `children`.
 
 ### StepperReturn
 
-Return type of `defineStepper`: `steps`, `utils`, `Scoped`, `useStepper`, `Stepper`.
+Return type of `defineStepper`: `steps`, `Scoped`, `useStepper`, `Stepper`.

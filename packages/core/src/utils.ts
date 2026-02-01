@@ -101,6 +101,9 @@ export function generateCommonStepperUseFns<const Steps extends Step[]>(
 			const matchFn = matches[state as keyof typeof matches];
 			return matchFn?.(step as any) ?? null;
 		},
+		is(id) {
+			return currentStep.id === id;
+		},
 	} as StepperFlow<Steps>;
 }
 

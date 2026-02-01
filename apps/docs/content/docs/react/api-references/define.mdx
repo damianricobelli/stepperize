@@ -3,14 +3,14 @@ title: Define
 description: Create a fully-typed stepper with defineStepper
 ---
 
-`defineStepper` creates a stepper from your step definitions. It takes only the steps array and returns typed components, hook, and utilities.
+`defineStepper` creates a stepper from your step definitions. It takes only the steps array and returns typed components and hook.
 
 ## Basic usage
 
 ```tsx twoslash
 import { defineStepper } from "@stepperize/react";
 
-const { Stepper, Scoped, useStepper, steps, utils } = defineStepper(
+const { Stepper, Scoped, useStepper, steps } = defineStepper(
   { id: "shipping", title: "Shipping", description: "Enter your address" },
   { id: "payment", title: "Payment", description: "Payment details" },
   { id: "confirmation", title: "Confirmation", description: "Review order" }
@@ -24,14 +24,13 @@ Each step must have a unique `id`. You can add any custom properties (`title`, `
 | Property | Type | Description |
 | -------- | ---- | ----------- |
 | `steps` | `Steps` | The array of step objects you passed |
-| `utils` | `Utils<Steps>` | Pure helpers for steps ([Utils](./utils)) |
-| `useStepper` | `(props?) => Stepper & TransitionMethods & TransitionState` | Hook for state and navigation ([Hook](./hook)) |
+| `useStepper` | `(props?) => Stepper & TransitionMethods & TransitionState` | Hook for state, navigation, query, flow, metadata ([Hook](./hook)) |
 | `Scoped` | `Component` | Provider for stepper context ([Scoped](./scoped)) |
 | `Stepper` | `StepperPrimitives<Steps>` | Type-safe UI primitives ([Primitives](./primitives)) |
 
 ## Next steps
 
 - [Primitives](./primitives) – Build the stepper UI
-- [useStepper](./hook) – State and navigation
+- [useStepper](./hook) – State, navigation, query, flow, metadata
 - [Scoped](./scoped) – Share stepper state
-- [Utils](./utils) – Pure step helpers
+- [Query](./query) – Step lookup (via `stepper.query` or `generateStepperUtils` from core)

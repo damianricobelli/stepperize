@@ -3,7 +3,7 @@ title: Hook
 description: Access and control your stepper with the useStepper hook
 ---
 
-The `useStepper` hook returns the stepper instance: state, navigation, metadata, and transition hooks. Use it with or without the [`Scoped`](./scoped) component.
+The `useStepper` hook returns the stepper instance with a structured API: **state**, **navigation**, **query**, **flow**, and **metadata**. Use it with or without the [`Scoped`](./scoped) component.
 
 ## Usage
 
@@ -20,9 +20,9 @@ const MyStepperComponent = () => {
   const stepper = useStepper();
   return (
     <div>
-      <h1>{stepper.current.title}</h1>
-      <button onClick={() => stepper.next()} disabled={stepper.isLast}>Next</button>
-      <button onClick={() => stepper.prev()} disabled={stepper.isFirst}>Previous</button>
+      <h1>{stepper.state.current.data.title}</h1>
+      <button onClick={() => stepper.navigation.next()} disabled={stepper.state.isLast}>Next</button>
+      <button onClick={() => stepper.navigation.prev()} disabled={stepper.state.isFirst}>Previous</button>
     </div>
   );
 };
@@ -51,62 +51,93 @@ const MyComponent = () => {
     initialStep: "second",
     initialMetadata: { first: { value: "saved" } }
   });
-  return <div>{stepper.current.title}</div>;
+  return <div>{stepper.state.current.data.title}</div>;
 };
 ```
 
-## State
+## API structure
+
+The stepper has five main namespaces plus transition hooks and top-level `isTransitioning`.
+
+### state
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `all` | `Steps` | Array of all step objects |
-| `current` | `Steps[number]` | Current step object (e.g. `{ id, title }`) |
-| `isFirst` | `boolean` | `true` if on the first step |
-| `isLast` | `boolean` | `true` if on the last step |
-| `isTransitioning` | `boolean` | `true` while a transition (with callbacks) is in progress |
-| `metadata` | `Record<Get.Id<Steps>, Metadata>` | Metadata for all steps |
+| `state.all` | `Steps` | Array of all step objects |
+| `state.current` | `{ data, index, status, metadata }` | Current step: `data` (step object), `index`, `status` (`"active"`), `metadata` (get/set/reset for current step only) |
+| `state.isFirst` | `boolean` | `true` if on the first step |
+| `state.isLast` | `boolean` | `true` if on the last step |
+| `state.isTransitioning` | `boolean` | `true` while a transition (with callbacks) is in progress |
 
-There is no `currentIndex` on the stepper; use `utils.getIndex(stepper.current.id)` from the `utils` returned by `defineStepper`.
-
-## Navigation
+### navigation
 
 | Method | Description |
 | ------ | ----------- |
-| `next()` | Go to next step. Returns `void` or `Promise<void>` when transition callbacks are used. |
-| `prev()` | Go to previous step. |
-| `goTo(id)` | Go to step by ID. |
-| `reset()` | Reset to initial step (and clear metadata unless you call `resetMetadata` separately with `true`). |
+| `navigation.next()` | Go to next step. Returns `void` or `Promise<void>` when transition callbacks are used. |
+| `navigation.prev()` | Go to previous step. |
+| `navigation.goTo(id)` | Go to step by ID. |
+| `navigation.reset()` | Reset to initial step. |
 
-## Step lookup
+### query
 
-| Method | Description |
-| ------ | ----------- |
-| `get(id)` | Get step object by ID. |
-
-## Metadata
+Step lookup (same shape as `generateStepperUtils` from `@stepperize/core`):
 
 | Method | Description |
 | ------ | ----------- |
-| `setMetadata(id, values)` | Set metadata for a step. |
-| `getMetadata(id)` | Get metadata for a step. |
-| `resetMetadata(keepInitialMetadata?)` | Reset all metadata; pass `true` to keep initial metadata from config. |
+| `query.getAll()` | All steps |
+| `query.get(id)` | Step object by ID |
+| `query.getIndex(id)` | Index of step by ID |
+| `query.getByIndex(index)` | Step at index |
+| `query.getFirst()` / `query.getLast()` | First / last step |
+| `query.getNext(id)` / `query.getPrev(id)` | Next / previous step after `id` |
+| `query.getNeighbors(id)` | `{ prev, next }` for step `id` |
 
-## Rendering helpers
+Current step index: use `stepper.state.current.index`. Step by ID: `stepper.query.get(id)`.
 
-| Method | Description |
-| ------ | ----------- |
-| `when(id, whenFn, elseFn?)` | Run `whenFn(step)` if current step matches `id`, else `elseFn(step)`. First arg can be `[id, ...conditions]` (conditions must be truthy). |
-| `switch(when)` | Object map of step ID → `(step) => R`. Runs the handler for the current step. |
-| `match(state, matches)` | Same shape as `switch` but `state` is any step ID (e.g. from URL or server). |
+### flow
 
-## Transition hooks (on stepper)
-
-Register callbacks that run on every `next()`, `prev()`, or `goTo()`. Call these methods on the stepper (e.g. in `useEffect`):
+Rendering helpers and checks by step ID:
 
 | Method | Description |
 | ------ | ----------- |
-| `onBeforeTransition(cb)` | Register callback before transition. Callback receives `TransitionContext`; return `false` (or Promise resolving to `false`) to cancel. |
-| `onAfterTransition(cb)` | Register callback after transition. |
+| `flow.is(id)` | Returns `true` if the current step's ID equals `id`. Use for simple conditionals (e.g. `stepper.flow.is("payment")`). |
+| `flow.when(id, whenFn, elseFn?)` | Run `whenFn(step)` if current step matches `id`, else `elseFn(step)`. First arg can be `[id, ...conditions]`. |
+| `flow.switch(when)` | Object map of step ID → `(step) => R`. Runs the handler for the current step. |
+| `flow.match(state, matches)` | Same shape as `switch` but `state` is any step ID (e.g. from URL). |
+
+**Example — `flow.is`:**
+
+```tsx
+// Conditional render
+{stepper.flow.is("confirmation") && <OrderSummary />}
+
+// In conditionals
+if (stepper.flow.is("payment")) {
+  return <PaymentForm />;
+}
+```
+
+### metadata
+
+Step-scoped metadata (all steps):
+
+| Property / Method | Description |
+| ----------------- | ----------- |
+| `metadata.values` | Record of all metadata per step ID |
+| `metadata.set(id, values)` | Set metadata for a step |
+| `metadata.get(id)` | Get metadata for a step |
+| `metadata.reset(keepInitialMetadata?)` | Reset all metadata; pass `true` to keep initial from config |
+
+Current step metadata only: use `state.current.metadata.get()`, `state.current.metadata.set(values)`, `state.current.metadata.reset()`.
+
+## Transition hooks
+
+Register callbacks that run on every `next()`, `prev()`, or `goTo()`. Call these on the stepper (e.g. in `useEffect`):
+
+| Method | Description |
+| ------ | ----------- |
+| `onBeforeTransition(cb)` | Callback before transition. Receives `TransitionContext`; return `false` (or Promise resolving to `false`) to cancel. |
+| `onAfterTransition(cb)` | Callback after transition. |
 
 **TransitionContext** has: `from`, `to`, `metadata`, `statuses`, `direction` (`"next" \| "prev" \| "goTo"`), `fromIndex`, `toIndex`.
 
@@ -125,7 +156,6 @@ function MyStepper() {
   React.useEffect(() => {
     stepper.onBeforeTransition(async (ctx) => {
       if (ctx.direction === "prev" && !window.confirm("Go back?")) return false;
-      // allow: return nothing (void)
     });
     stepper.onAfterTransition((ctx) => {
       console.log(`${ctx.from.id} → ${ctx.to.id}`);
@@ -134,7 +164,7 @@ function MyStepper() {
 
   return (
     <div>
-      <button onClick={() => stepper.next()} disabled={stepper.isTransitioning || stepper.isLast}>
+      <button onClick={() => stepper.navigation.next()} disabled={stepper.isTransitioning || stepper.state.isLast}>
         {stepper.isTransitioning ? "..." : "Next"}
       </button>
     </div>
@@ -146,22 +176,11 @@ function MyStepper() {
 
 | Name | Type | Description |
 | ---- | ---- | ----------- |
-| `all` | `Steps` | All steps |
-| `current` | `Steps[number]` | Current step |
-| `isFirst` | `boolean` | On first step |
-| `isLast` | `boolean` | On last step |
-| `isTransitioning` | `boolean` | Transition in progress |
-| `metadata` | `Record<Id, Metadata>` | All metadata |
-| `next` | `() => void \| Promise<void>` | Next step |
-| `prev` | `() => void \| Promise<void>` | Previous step |
-| `goTo` | `(id) => void \| Promise<void>` | Go to step |
-| `reset` | `() => void` | Reset to initial |
-| `get` | `(id) => Step \| undefined` | Get step by ID |
-| `setMetadata` | `(id, values) => void` | Set step metadata |
-| `getMetadata` | `(id) => Metadata` | Get step metadata |
-| `resetMetadata` | `(keepInitial?) => void` | Reset metadata |
-| `when` | `(id, whenFn, elseFn?) => R` | Conditional by step |
-| `switch` | `(when) => R \| undefined` | Switch by current step |
-| `match` | `(state, matches) => R \| null` | Match external state |
+| `state` | `StepperState<Steps>` | `all`, `current` (data, index, status, metadata), `isFirst`, `isLast`, `isTransitioning` |
+| `navigation` | `StepperNavigation<Steps>` | `next`, `prev`, `goTo`, `reset` |
+| `query` | `StepperQuery<Steps>` | `getAll`, `get`, `getIndex`, `getByIndex`, `getFirst`, `getLast`, `getNext`, `getPrev`, `getNeighbors` |
+| `flow` | `StepperFlow<Steps>` | `is`, `when`, `switch`, `match` |
+| `metadata` | `StepperMetadata<Steps>` | `values`, `set`, `get`, `reset` |
+| `isTransitioning` | `boolean` | Transition in progress (also on `state.isTransitioning`) |
 | `onBeforeTransition` | `(cb) => void` | Register before callback |
 | `onAfterTransition` | `(cb) => void` | Register after callback |

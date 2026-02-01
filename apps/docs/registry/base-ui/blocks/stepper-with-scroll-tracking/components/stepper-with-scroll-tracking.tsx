@@ -108,11 +108,11 @@ export function StepperWithScrollTracking() {
 				{({ stepper }) => (
 					<>
 						<Stepper.List className="flex list-none flex-col">
-							{stepper.all.map((stepData, index) => {
-								const currentIndex = stepper.all.findIndex((s) => s.id === stepper.current.id);
+							{stepper.state.all.map((stepData, index) => {
+								const currentIndex = stepper.state.current.index;
 								const status = index < currentIndex ? "success" : index === currentIndex ? "active" : "inactive";
 								const isLast =
-									index === stepper.all.length - 1;
+									index === stepper.state.all.length - 1;
 								const data = stepData as {
 									id: string;
 									title: string;
@@ -161,7 +161,7 @@ export function StepperWithScrollTracking() {
 							})}
 						</Stepper.List>
 						<Stepper.Actions className="flex justify-end gap-4 sticky bottom-0 bg-background py-4">
-							{!stepper.isLast && (
+							{!stepper.state.isLast && (
 								<Stepper.Prev
 									render={(domProps) => (
 										<Button
@@ -174,10 +174,10 @@ export function StepperWithScrollTracking() {
 									)}
 								/>
 							)}
-							{stepper.isLast ? (
+							{stepper.state.isLast ? (
 								<Button
 									type="button"
-									onClick={() => stepper.reset()}
+									onClick={() => stepper.navigation.reset()}
 								>
 									Start Over
 								</Button>
