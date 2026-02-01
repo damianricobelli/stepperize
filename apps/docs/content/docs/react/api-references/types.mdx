@@ -27,15 +27,15 @@ The stepper instance type has five namespaces plus transition state:
 
 - **state**: `StepperState<Steps>` — `all`, `current` (data, index, status, metadata), `isFirst`, `isLast`, `isTransitioning`
 - **navigation**: `StepperNavigation<Steps>` — `next`, `prev`, `goTo`, `reset`
-- **query**: `StepperQuery<Steps>` — `getAll`, `get`, `getIndex`, `getByIndex`, `getFirst`, `getLast`, `getNext`, `getPrev`, `getNeighbors`
+- **lookup**: `StepperLookup<Steps>` — `getAll`, `get`, `getIndex`, `getByIndex`, `getFirst`, `getLast`, `getNext`, `getPrev`, `getNeighbors`
 - **flow**: `StepperFlow<Steps>` — `is`, `when`, `switch`, `match`
 - **metadata**: `StepperMetadata<Steps>` — `values`, `set`, `get`, `reset`
 
 Plus top-level: `isTransitioning`, and `lifecycle.onBeforeTransition` / `lifecycle.onAfterTransition`. See [Hook](./hook#transition-hooks).
 
-### StepperQuery / Utils
+### StepperLookup / Utils
 
-`StepperQuery<Steps>` (exported as `Utils<Steps>`) is the type of step lookup: `getAll`, `get`, `getIndex`, `getByIndex`, `getFirst`, `getLast`, `getNext`, `getPrev`, `getNeighbors`. Return type of `generateStepperUtils(...steps)`.
+`StepperLookup<Steps>` (exported as `Utils<Steps>`) is the type of step lookup: `getAll`, `get`, `getIndex`, `getByIndex`, `getFirst`, `getLast`, `getNext`, `getPrev`, `getNeighbors`. Return type of `generateStepperUtils(...steps)`.
 
 ### Get namespace
 

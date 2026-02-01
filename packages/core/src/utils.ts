@@ -1,4 +1,4 @@
-import type { Get, Metadata, Step, StepperFlow, StepperQuery } from "./types";
+import type { Get, Metadata, Step, StepperFlow, StepperLookup } from "./types";
 
 /**
  * Generate stepper utils.
@@ -35,7 +35,7 @@ export function generateStepperUtils<const Steps extends Step[]>(...steps: Steps
 				next: index < steps.length - 1 ? steps[index + 1] : null,
 			};
 		},
-	} satisfies StepperQuery<Steps>;
+	} satisfies StepperLookup<Steps>;
 }
 
 /**

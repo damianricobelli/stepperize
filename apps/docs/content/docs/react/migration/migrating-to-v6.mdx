@@ -17,7 +17,7 @@ This page summarizes the current API. For full details see [Define](/docs/react/
 - **Returns:** Stepper object with five namespaces plus transition state:
   - **state:** `all`, `current` (data, index, status, metadata: get/set/reset), `isFirst`, `isLast`, `isTransitioning`
   - **navigation:** `next()`, `prev()`, `goTo(id)`, `reset()`
-  - **query:** `getAll()`, `get(id)`, `getIndex(id)`, `getByIndex(i)`, `getFirst`, `getLast`, `getNext`, `getPrev`, `getNeighbors(id)`
+  - **lookup:** `getAll()`, `get(id)`, `getIndex(id)`, `getByIndex(i)`, `getFirst`, `getLast`, `getNext`, `getPrev`, `getNeighbors(id)`
   - **flow:** `when()`, `switch()`, `match()`
   - **metadata:** `values`, `set(id, values)`, `get(id)`, `reset(keepInitial?)`
   - **Transition hooks:** Register via `stepper.lifecycle.onBeforeTransition(cb)` and `stepper.lifecycle.onAfterTransition(cb)`; they run on every `next`/`prev`/`goTo`. Return `false` from the before callback to cancel.
@@ -32,9 +32,9 @@ This page summarizes the current API. For full details see [Define](/docs/react/
 - `stepper.state.current.data` is the **step object** (e.g. `{ id, title }`).
 - `stepper.state.current.index` is the current step index.
 - Use `stepper.state.all` for the list of steps (not `stepper.steps`).
-- Use `stepper.query.get(id)` to get a step by ID (not `stepper.get(id)` at top level).
+- Use `stepper.lookup.get(id)` to get a step by ID (not `stepper.get(id)` at top level).
 - Step-level UI status (`active` / `success` / `inactive`) comes from primitives (e.g. `useStepItemContext().status`), not from a global status record.
 
 ## Core package
 
-`@stepperize/core` exports types (`Step`, `Stepper`, `StepperState`, `StepperNavigation`, `StepperQuery`, `StepperFlow`, `StepperMetadata`, `Get`, `Utils`) and pure helpers (`generateStepperUtils`, `getInitialStepIndex`, `getInitialMetadata`, `generateCommonStepperUseFns`, `updateStepIndex`). The React package uses these; you typically use `@stepperize/react` only. Use `generateStepperUtils(...steps)` when you need step lookup without a stepper instance (see [Query](/docs/react/api-references/query)).
+`@stepperize/core` exports types (`Step`, `Stepper`, `StepperState`, `StepperNavigation`, `StepperLookup`, `StepperFlow`, `StepperMetadata`, `Get`, `Utils`) and pure helpers (`generateStepperUtils`, `getInitialStepIndex`, `getInitialMetadata`, `generateCommonStepperUseFns`, `updateStepIndex`). The React package uses these; you typically use `@stepperize/react` only. Use `generateStepperUtils(...steps)` when you need step lookup without a stepper instance (see [Lookup](/docs/react/api-references/lookup)).

@@ -3,7 +3,7 @@ title: Hook
 description: Access and control your stepper with the useStepper hook
 ---
 
-The `useStepper` hook returns the stepper instance with a structured API: **state**, **navigation**, **query**, **flow**, and **metadata**. Use it with or without the [`Scoped`](./scoped) component.
+The `useStepper` hook returns the stepper instance with a structured API: **state**, **navigation**, **lookup**, **flow**, and **metadata**. Use it with or without the [`Scoped`](./scoped) component.
 
 ## Usage
 
@@ -57,7 +57,7 @@ const MyComponent = () => {
 
 ## API structure
 
-The stepper has five namespaces (`state`, `navigation`, `query`, `flow`, `metadata`) plus `lifecycle` for transition callbacks.
+The stepper has five namespaces (`state`, `navigation`, `lookup`, `flow`, `metadata`) plus `lifecycle` for transition callbacks.
 
 ### state
 
@@ -78,21 +78,21 @@ The stepper has five namespaces (`state`, `navigation`, `query`, `flow`, `metada
 | `navigation.goTo(id)` | Go to step by ID. |
 | `navigation.reset()` | Reset to initial step. |
 
-### query
+### lookup
 
 Step lookup (same shape as `generateStepperUtils` from `@stepperize/core`):
 
 | Method | Description |
 | ------ | ----------- |
-| `query.getAll()` | All steps |
-| `query.get(id)` | Step object by ID |
-| `query.getIndex(id)` | Index of step by ID |
-| `query.getByIndex(index)` | Step at index |
-| `query.getFirst()` / `query.getLast()` | First / last step |
-| `query.getNext(id)` / `query.getPrev(id)` | Next / previous step after `id` |
-| `query.getNeighbors(id)` | `{ prev, next }` for step `id` |
+| `lookup.getAll()` | All steps |
+| `lookup.get(id)` | Step object by ID |
+| `lookup.getIndex(id)` | Index of step by ID |
+| `lookup.getByIndex(index)` | Step at index |
+| `lookup.getFirst()` / `lookup.getLast()` | First / last step |
+| `lookup.getNext(id)` / `lookup.getPrev(id)` | Next / previous step after `id` |
+| `lookup.getNeighbors(id)` | `{ prev, next }` for step `id` |
 
-Current step index: use `stepper.state.current.index`. Step by ID: `stepper.query.get(id)`.
+Current step index: use `stepper.state.current.index`. Step by ID: `stepper.lookup.get(id)`.
 
 ### flow
 
@@ -173,7 +173,7 @@ function MyStepper() {
 | ---- | ---- | ----------- |
 | `state` | `StepperState<Steps>` | `all`, `current` (data, index, status, metadata), `isFirst`, `isLast`, `isTransitioning` |
 | `navigation` | `StepperNavigation<Steps>` | `next()`, `prev()`, `goTo(id)`, `reset()` |
-| `query` | `StepperQuery<Steps>` | `getAll()`, `get(id)`, `getIndex(id)`, `getByIndex(index)`, `getFirst()` / `getLast()`, `getNext(id)` / `getPrev(id)`, `getNeighbors(id)` |
+| `lookup` | `StepperLookup<Steps>` | `getAll()`, `get(id)`, `getIndex(id)`, `getByIndex(index)`, `getFirst()` / `getLast()`, `getNext(id)` / `getPrev(id)`, `getNeighbors(id)` |
 | `flow` | `StepperFlow<Steps>` | `is(id)`, `when(id, whenFn, elseFn?)`, `switch(when)`, `match(state, matches)` |
 | `metadata` | `StepperMetadata<Steps>` | `values`, `set(id, values)`, `get(id)`, `reset(keepInitialMetadata?)` |
 | `lifecycle` | `{ onBeforeTransition, onAfterTransition }` | `onBeforeTransition(cb)`, `onAfterTransition(cb)` — register callbacks for every transition; return `false` from before to cancel |

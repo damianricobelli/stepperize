@@ -67,7 +67,7 @@ type StepperNavigation<Steps extends Step[] = Step[]> = {
 	reset: () => void;
 };
 
-type StepperQuery<Steps extends Step[] = Step[]> = {
+type StepperLookup<Steps extends Step[] = Step[]> = {
 	/**
 	 * Retrieves all steps.
 	 * @returns An array of all steps.
@@ -234,14 +234,14 @@ type TransitionContext<Steps extends Step[] = Step[]> = {
 };
 
 /**
- * Full stepper API returned by `useStepper` / `defineStepper`. Gives you state, navigation, query helpers, flow branching, and step-scoped metadata.
+ * Full stepper API returned by `useStepper` / `defineStepper`. Gives you state, navigation, lookup helpers, flow branching, and step-scoped metadata.
  *
  * @example
  * ```ts
  * const stepper = useStepper({ steps: [{ id: "a" }, { id: "b" }] });
  * stepper.state.current.data;   // current step
  * stepper.navigation.next();    // go next
- * stepper.query.get("b");       // get step by id
+ * stepper.lookup.get("b");      // get step by id
  * stepper.flow.when("a", () => "on A", () => "else");  // branch by step
  * stepper.metadata.set("a", { count: 1 });            // step metadata
  * ```
@@ -258,10 +258,10 @@ type Stepper<Steps extends Step[] = Step[]> = {
 	 */
 	navigation: StepperNavigation<Steps>;
 	/**
-	 * Read steps without navigating: `getAll()`, `get(id)`, `getIndex(id)`, `getByIndex(i)`, `getFirst` / `getLast` / `getNext` / `getPrev` / `getNeighbors(id)`.
-	 * @example `stepper.query.get("summary")` — get step by id; `stepper.query.getNext(stepper.state.current.data.id)` — next step
+	 * Step lookup: `getAll()`, `get(id)`, `getIndex(id)`, `getByIndex(i)`, `getFirst` / `getLast` / `getNext` / `getPrev` / `getNeighbors(id)`.
+	 * @example `stepper.lookup.get("summary")` — get step by id; `stepper.lookup.getNext(stepper.state.current.data.id)` — next step
 	 */
-	query: StepperQuery<Steps>;
+	lookup: StepperLookup<Steps>;
 	/**
 	 * Branch by step id: `when(id, whenFn, elseFn?)`, `switch(when)`, `match(state, matches)`.
 	 * @example `stepper.flow.when("payment", () => <Payment />)` — render by step; `stepper.flow.switch({ payment: () => 1, done: () => 2 })` — switch by id
@@ -295,8 +295,8 @@ namespace Get {
 	};
 }
 
-/** Alias for StepperQuery (return type of generateStepperUtils). */
-export type Utils<Steps extends Step[] = Step[]> = StepperQuery<Steps>;
+/** Alias for StepperLookup (return type of generateStepperUtils). */
+export type Utils<Steps extends Step[] = Step[]> = StepperLookup<Steps>;
 
 export type {
 	Step,
@@ -304,7 +304,7 @@ export type {
 	StepStatus,
 	StepperState,
 	StepperNavigation,
-	StepperQuery,
+	StepperLookup,
 	StepperFlow,
 	StepperMetadata,
 	Stepper,

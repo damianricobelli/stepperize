@@ -131,7 +131,7 @@ export const defineStepper = <const Steps extends Step[]>(...steps: Steps): Step
 					isTransitioning,
 				},
 				navigation: { next, prev, goTo, reset },
-				query: generateStepperUtils(...steps),
+				lookup: generateStepperUtils(...steps),
 				flow: generateCommonStepperUseFns(steps, current, stepIndex),
 				metadata: {
 					get values() {

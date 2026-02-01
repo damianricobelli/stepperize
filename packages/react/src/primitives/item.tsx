@@ -12,11 +12,11 @@ export function createItem<Steps extends Step[]>(
 		if (!stepper) {
 			throw new Error("Stepper.Item must be used within Stepper.Root.");
 		}
-		const stepIndex = stepper.query.getIndex(step);
+		const stepIndex = stepper.lookup.getIndex(step);
 		const currentIndex = stepper.state.current.index;
 		const status: StepStatus =
 			stepIndex < currentIndex ? "success" : stepIndex === currentIndex ? "active" : "inactive";
-		const stepData = stepper.query.get(step as Get.Id<Steps>);
+		const stepData = stepper.lookup.get(step as Get.Id<Steps>);
 		const itemValue = React.useMemo(
 			(): StepItemValue<Get.StepById<Steps, Get.Id<Steps>>> => ({
 				data: stepData,

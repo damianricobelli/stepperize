@@ -24,13 +24,13 @@ Each step must have a unique `id`. You can add any custom properties (`title`, `
 | Property | Type | Description |
 | -------- | ---- | ----------- |
 | `steps` | `Steps` | The array of step objects you passed |
-| `useStepper` | `(props?) => Stepper` | Hook for state, navigation, query, flow, metadata ([Hook](./hook)) |
+| `useStepper` | `(props?) => Stepper` | Hook for state, navigation, lookup, flow, metadata ([Hook](./hook)) |
 | `Scoped` | `Component` | Provider for stepper context ([Scoped](./scoped)) |
 | `Stepper` | `StepperPrimitives<Steps>` | Type-safe UI primitives ([Primitives](./primitives)) |
 
 ## Next steps
 
 - [Primitives](./primitives) – Build the stepper UI
-- [useStepper](./hook) – State, navigation, query, flow, metadata
+- [useStepper](./hook) – State, navigation, lookup, flow, metadata
 - [Scoped](./scoped) – Share stepper state
-- [Query](./query) – Step lookup (via `stepper.query` or `generateStepperUtils` from core)
+- [Lookup](./lookup) – Step lookup (via `stepper.lookup` or `generateStepperUtils` from core)
