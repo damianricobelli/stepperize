@@ -34,7 +34,9 @@ export function createTrigger<Steps extends Step[]>(
 				rest.onClick?.(e);
 			},
 		};
-		const content = render ? render(domProps) : children;
-		return React.createElement("button", { type: "button", ...domProps }, content);
+		if (render) {
+			return render(domProps);
+		}
+		return React.createElement("button", { type: "button", ...domProps }, children);
 	};
 }

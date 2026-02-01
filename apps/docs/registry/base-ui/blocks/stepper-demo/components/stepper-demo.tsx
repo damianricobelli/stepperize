@@ -34,7 +34,9 @@ const StepperTriggerWrapper = () => {
 				size="icon"
 				{...domProps}
 			>
-				<Stepper.Indicator />
+				<Stepper.Indicator>
+					{item.index + 1}
+				</Stepper.Indicator>
 			</Button>
 		)} />
 	);
