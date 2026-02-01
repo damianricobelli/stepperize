@@ -31,7 +31,7 @@ The stepper instance type has five namespaces plus transition state:
 - **flow**: `StepperFlow<Steps>` — `is`, `when`, `switch`, `match`
 - **metadata**: `StepperMetadata<Steps>` — `values`, `set`, `get`, `reset`
 
-Plus top-level: `isTransitioning`, `onBeforeTransition`, `onAfterTransition`. See [Hook](./hook#api-summary).
+Plus top-level: `isTransitioning`, and `lifecycle.onBeforeTransition` / `lifecycle.onAfterTransition`. See [Hook](./hook#transition-hooks).
 
 ### StepperQuery / Utils
 
@@ -80,25 +80,6 @@ type TransitionContext<Steps> = {
 
 ```ts
 type TransitionDirection = "next" | "prev" | "goTo";
-```
-
-### TransitionMethods
-
-Methods on the stepper returned by `useStepper()`:
-
-```ts
-type TransitionMethods<Steps> = {
-  onBeforeTransition: (cb: (ctx: TransitionContext<Steps>) => void | Promise<void | false>) => void;
-  onAfterTransition: (cb: (ctx: TransitionContext<Steps>) => void | Promise<void>) => void;
-};
-```
-
-### TransitionState
-
-```ts
-type TransitionState = {
-  isTransitioning: boolean;
-};
 ```
 
 ### StepStatus (primitives)

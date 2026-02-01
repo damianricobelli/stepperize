@@ -120,9 +120,9 @@ stepper.navigation.prev();
 stepper.navigation.goTo("payment");
 stepper.navigation.reset();
 
-// With transition hooks (on the stepper returned by useStepper)
+// With transition hooks (via lifecycle)
 const stepper = useStepper();
-stepper.onBeforeTransition(async (ctx) => (await validateForm()) || false);
+stepper.lifecycle.onBeforeTransition(async (ctx) => (await validateForm()) || false);
 ```
 
 ## What's Next

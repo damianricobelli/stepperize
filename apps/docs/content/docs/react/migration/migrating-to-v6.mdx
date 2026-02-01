@@ -20,7 +20,7 @@ This page summarizes the current API. For full details see [Define](/docs/react/
   - **query:** `getAll()`, `get(id)`, `getIndex(id)`, `getByIndex(i)`, `getFirst`, `getLast`, `getNext`, `getPrev`, `getNeighbors(id)`
   - **flow:** `when()`, `switch()`, `match()`
   - **metadata:** `values`, `set(id, values)`, `get(id)`, `reset(keepInitial?)`
-  - **Transition hooks:** `onBeforeTransition(cb)`, `onAfterTransition(cb)` — call these to register callbacks; they run on every `next`/`prev`/`goTo`. Return `false` from the before callback to cancel.
+  - **Transition hooks:** Register via `stepper.lifecycle.onBeforeTransition(cb)` and `stepper.lifecycle.onAfterTransition(cb)`; they run on every `next`/`prev`/`goTo`. Return `false` from the before callback to cancel.
   - **Top-level:** `isTransitioning`
 
 ## Scoped

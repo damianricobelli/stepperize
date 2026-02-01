@@ -63,7 +63,7 @@ const StepperSeparatorWithStatus = ({ status, isLast }: { status: StepStatus; is
 
 export function StepperDemo() {
 	return (
-		<Stepper.Root className="w-full space-y-4" orientation="horizontal">
+		<Stepper.Root className="w-full space-y-4" orientation="horizontal"> 
 			{({ stepper }) => (
 				<>
 						<Stepper.List

@@ -57,7 +57,7 @@ const MyComponent = () => {
 
 ## API structure
 
-The stepper has five main namespaces plus transition hooks and top-level `isTransitioning`.
+The stepper has five namespaces (`state`, `navigation`, `query`, `flow`, `metadata`) plus `lifecycle` for transition callbacks.
 
 ### state
 
@@ -132,12 +132,7 @@ Current step metadata only: use `state.current.metadata.get()`, `state.current.m
 
 ## Transition hooks
 
-Register callbacks that run on every `next()`, `prev()`, or `goTo()`. Call these on the stepper (e.g. in `useEffect`):
-
-| Method | Description |
-| ------ | ----------- |
-| `onBeforeTransition(cb)` | Callback before transition. Receives `TransitionContext`; return `false` (or Promise resolving to `false`) to cancel. |
-| `onAfterTransition(cb)` | Callback after transition. |
+Register callbacks via `stepper.lifecycle.onBeforeTransition(cb)` and `stepper.lifecycle.onAfterTransition(cb)`. They run on every `next()`, `prev()`, or `goTo()`.
 
 **TransitionContext** has: `from`, `to`, `metadata`, `statuses`, `direction` (`"next" \| "prev" \| "goTo"`), `fromIndex`, `toIndex`.
 
@@ -154,18 +149,18 @@ function MyStepper() {
   const stepper = useStepper();
 
   React.useEffect(() => {
-    stepper.onBeforeTransition(async (ctx) => {
+    stepper.lifecycle.onBeforeTransition(async (ctx) => {
       if (ctx.direction === "prev" && !window.confirm("Go back?")) return false;
     });
-    stepper.onAfterTransition((ctx) => {
+    stepper.lifecycle.onAfterTransition((ctx) => {
       console.log(`${ctx.from.id} → ${ctx.to.id}`);
     });
   }, [stepper]);
 
   return (
     <div>
-      <button onClick={() => stepper.navigation.next()} disabled={stepper.isTransitioning || stepper.state.isLast}>
-        {stepper.isTransitioning ? "..." : "Next"}
+      <button onClick={() => stepper.navigation.next()} disabled={stepper.state.isTransitioning || stepper.state.isLast}>
+        {stepper.state.isTransitioning ? "..." : "Next"}
       </button>
     </div>
   );
@@ -177,10 +172,8 @@ function MyStepper() {
 | Name | Type | Description |
 | ---- | ---- | ----------- |
 | `state` | `StepperState<Steps>` | `all`, `current` (data, index, status, metadata), `isFirst`, `isLast`, `isTransitioning` |
-| `navigation` | `StepperNavigation<Steps>` | `next`, `prev`, `goTo`, `reset` |
-| `query` | `StepperQuery<Steps>` | `getAll`, `get`, `getIndex`, `getByIndex`, `getFirst`, `getLast`, `getNext`, `getPrev`, `getNeighbors` |
-| `flow` | `StepperFlow<Steps>` | `is`, `when`, `switch`, `match` |
-| `metadata` | `StepperMetadata<Steps>` | `values`, `set`, `get`, `reset` |
-| `isTransitioning` | `boolean` | Transition in progress (also on `state.isTransitioning`) |
-| `onBeforeTransition` | `(cb) => void` | Register before callback |
-| `onAfterTransition` | `(cb) => void` | Register after callback |
+| `navigation` | `StepperNavigation<Steps>` | `next()`, `prev()`, `goTo(id)`, `reset()` |
+| `query` | `StepperQuery<Steps>` | `getAll()`, `get(id)`, `getIndex(id)`, `getByIndex(index)`, `getFirst()` / `getLast()`, `getNext(id)` / `getPrev(id)`, `getNeighbors(id)` |
+| `flow` | `StepperFlow<Steps>` | `is(id)`, `when(id, whenFn, elseFn?)`, `switch(when)`, `match(state, matches)` |
+| `metadata` | `StepperMetadata<Steps>` | `values`, `set(id, values)`, `get(id)`, `reset(keepInitialMetadata?)` |
+| `lifecycle` | `{ onBeforeTransition, onAfterTransition }` | `onBeforeTransition(cb)`, `onAfterTransition(cb)` — register callbacks for every transition; return `false` from before to cancel |

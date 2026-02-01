@@ -5,8 +5,6 @@ export type {
 	ScopedProps,
 	TransitionContext,
 	TransitionDirection,
-	TransitionMethods,
-	TransitionState,
 } from "./types";
 // Define Stepper
 export * from "./define-stepper";

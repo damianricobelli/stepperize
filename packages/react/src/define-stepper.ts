@@ -8,7 +8,7 @@ import {
 } from "@stepperize/core";
 import * as React from "react";
 import { createStepperPrimitives } from "./primitives/create-stepper-primitives";
-import type { ScopedProps, StepperReturn, TransitionContext, TransitionMethods, TransitionState } from "./types";
+import type { ScopedProps, StepperReturn, TransitionContext } from "./types";
 import { getStatuses } from "./utils";
 
 /**
@@ -19,7 +19,7 @@ import { getStatuses } from "./utils";
  */
 export const defineStepper = <const Steps extends Step[]>(...steps: Steps): StepperReturn<Steps> => {
 	const Context = React.createContext<
-			(Stepper<Steps> & TransitionMethods<Steps> & TransitionState) | null
+			Stepper<Steps> | null
 		>(null);
 
 	const useStepper = (config?: {
@@ -155,7 +155,7 @@ export const defineStepper = <const Steps extends Step[]>(...steps: Steps): Step
 						onAfterRef.current = cb;
 					},
 				},
-			} as Stepper<Steps> & TransitionMethods<Steps> & TransitionState;
+			} as Stepper<Steps>;
 		}, [stepIndex, metadata, isTransitioning, performTransition]);
 
 		return stepper;
