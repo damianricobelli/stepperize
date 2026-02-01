@@ -116,14 +116,16 @@ function ShippingForm() {
 }
 ```
 
-### 3. `useStepItemContext()` — this item's step and status
+### 3. `useStepItemContext()` — this item's step (same shape as `useStepper().state.current`)
 
-Components that render **inside `Stepper.Item`** (e.g. custom trigger wrappers, indicators) can use `useStepItemContext()` from `@stepperize/react/primitives`. It returns data for **that specific item** only:
+Components that render **inside `Stepper.Item`** (e.g. custom trigger wrappers, indicators) can use `useStepItemContext()` from `@stepperize/react/primitives`. It returns the **same type** as `useStepper().state.current`, but for **that specific item**:
 
 | Value | Type | Description |
 | ----- | ---- | ----------- |
 | `data` | `Step` | The step object (id, title, etc.) for this item |
+| `index` | `number` | Index of this step in the stepper |
 | `status` | `StepStatus` | Resolved from position: `"active"` (current), `"success"` (past), `"inactive"` (future) |
+| `metadata` | `{ get, set, reset }` | Step-scoped metadata for this item (same API as `state.current.metadata`) |
 
 **When to use it:** When you need to style or behave based on "this step's status" without passing props—e.g. different button variant for inactive steps, or showing an icon only when completed.
 

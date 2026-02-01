@@ -1,7 +1,7 @@
 import * as React from "react";
-import type { Get, Step, Stepper } from "@stepperize/core";
+import type { Get, Metadata, Step, Stepper } from "@stepperize/core";
 import type { ItemProps, StepStatus } from "./types";
-import { StepItemProvider } from "./context";
+import { StepItemProvider, type StepItemValue } from "./context";
 
 export function createItem<Steps extends Step[]>(
 	StepperContext: React.Context<Stepper<Steps> | null>,
@@ -17,7 +17,21 @@ export function createItem<Steps extends Step[]>(
 		const status: StepStatus =
 			stepIndex < currentIndex ? "success" : stepIndex === currentIndex ? "active" : "inactive";
 		const stepData = stepper.query.get(step as Get.Id<Steps>);
-		const itemValue = React.useMemo(() => ({ status, data: stepData }), [status, stepData]);
+		const itemValue = React.useMemo(
+			(): StepItemValue<Get.StepById<Steps, Get.Id<Steps>>> => ({
+				data: stepData,
+				index: stepIndex,
+				status,
+				metadata: {
+					get: () => stepper.metadata.get(step as Get.Id<Steps>),
+					set: <M extends Metadata>(values: M) =>
+						stepper.metadata.set(step as Get.Id<Steps>, values),
+					reset: (keepInitialMetadata?: boolean) =>
+						stepper.metadata.reset(keepInitialMetadata),
+				},
+			}),
+			[step, stepData, stepIndex, status, stepper],
+		);
 		const domProps = {
 			"data-component": "stepper-item",
 			"data-status": status,

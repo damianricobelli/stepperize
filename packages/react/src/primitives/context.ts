@@ -1,11 +1,8 @@
 import * as React from "react";
-import type { Step } from "@stepperize/core";
-import type { StepStatus } from "./types";
+import type { Step, StepperState } from "@stepperize/core";
 
-export type StepItemValue<S extends Step = Step> = {
-	status: StepStatus;
-	data: S;
-};
+/** Same shape as `useStepper().state.current` — data, index, status, metadata. */
+export type StepItemValue<S extends Step = Step> = StepperState<[S]>["current"];
 
 const StepItemContext = React.createContext<StepItemValue | null>(null);
 
