@@ -48,8 +48,8 @@ const StepperTriggerWrapper = () => {
 					{...domProps}
 				>
 					<Stepper.Indicator>
-					{item.index + 1}
-				</Stepper.Indicator>
+						{item.index + 1}
+					</Stepper.Indicator>
 				</Button>
 			)}
 		/>
@@ -102,101 +102,99 @@ const StepperSeparatorVertical = ({
 
 export function StepperWithScrollTracking() {
 	return (
-		<div className="h-[500px] overflow-y-auto rounded-lg border p-4">
-			<Stepper.Root
-				className="w-full space-y-4"
-				orientation="vertical"
-			>
-				{({ stepper }) => (
-					<>
-						<Stepper.List className="flex list-none flex-col">
-							{stepper.state.all.map((stepData, index) => {
-								const currentIndex = stepper.state.current.index;
-								const status = index < currentIndex ? "success" : index === currentIndex ? "active" : "inactive";
-								const isLast =
-									index === stepper.state.all.length - 1;
-								const data = stepData as {
-									id: string;
-									title: string;
-									description?: string;
-								};
+		<Stepper.Root
+			className="w-full space-y-4"
+			orientation="vertical"
+		>
+			{({ stepper }) => (
+				<>
+					<Stepper.List className="flex list-none flex-col">
+						{stepper.state.all.map((stepData, index) => {
+							const currentIndex = stepper.state.current.index;
+							const status = index < currentIndex ? "success" : index === currentIndex ? "active" : "inactive";
+							const isLast =
+								index === stepper.state.all.length - 1;
+							const data = stepData as {
+								id: string;
+								title: string;
+								description?: string;
+							};
 
-								return (
-									<React.Fragment key={stepData.id}>
-										<Stepper.Item
-											step={stepData.id}
-											className="group peer relative flex items-center gap-2"
-										>
-											<StepperTriggerWrapper />
-											<div className="flex flex-col items-start gap-1">
-												<StepperTitleWrapper
-													title={data.title}
-												/>
-												<StepperDescriptionWrapper
-													description={
-														data.description
-													}
-												/>
-											</div>
-										</Stepper.Item>
-										<div className="flex gap-4">
-											<StepperSeparatorVertical
-												status={status}
-												isLast={isLast}
+							return (
+								<React.Fragment key={stepData.id}>
+									<Stepper.Item
+										step={stepData.id}
+										className="group peer relative flex items-center gap-2"
+									>
+										<StepperTriggerWrapper />
+										<div className="flex flex-col items-start gap-1">
+											<StepperTitleWrapper
+												title={data.title}
 											/>
-											<div className="flex-1 ps-4 py-2">
-												<ContentWithTracking
-													id={
-														stepData
-															.id as Get.Id<
+											<StepperDescriptionWrapper
+												description={
+													data.description
+												}
+											/>
+										</div>
+									</Stepper.Item>
+									<div className="flex gap-4">
+										<StepperSeparatorVertical
+											status={status}
+											isLast={isLast}
+										/>
+										<div className="flex-1 ps-4 py-2">
+											<ContentWithTracking
+												id={
+													stepData
+														.id as Get.Id<
 															typeof stepperDefinition.steps
 														>
-													}
-													isActive={
-														status === "active"
-													}
-												/>
-											</div>
+												}
+												isActive={
+													status === "active"
+												}
+											/>
 										</div>
-									</React.Fragment>
-								);
-							})}
-						</Stepper.List>
-						<Stepper.Actions className="flex justify-end gap-4 sticky bottom-0 bg-background py-4">
-							{!stepper.state.isLast && (
-								<Stepper.Prev
-									render={(domProps) => (
-										<Button
-											type="button"
-											variant="secondary"
-											{...domProps}
-										>
-											Previous
-										</Button>
-									)}
-								/>
-							)}
-							{stepper.state.isLast ? (
-								<Button
-									type="button"
-									onClick={() => stepper.navigation.reset()}
-								>
-									Start Over
-								</Button>
-							) : (
-								<Stepper.Next
-									render={(domProps) => (
-										<Button type="button" {...domProps}>
-											Next
-										</Button>
-									)}
-								/>
-							)}
-						</Stepper.Actions>
-					</>
-				)}
-			</Stepper.Root>
-		</div>
+									</div>
+								</React.Fragment>
+							);
+						})}
+					</Stepper.List>
+					<Stepper.Actions className="flex justify-end gap-4 sticky bottom-0 bg-background py-4">
+						{!stepper.state.isLast && (
+							<Stepper.Prev
+								render={(domProps) => (
+									<Button
+										type="button"
+										variant="secondary"
+										{...domProps}
+									>
+										Previous
+									</Button>
+								)}
+							/>
+						)}
+						{stepper.state.isLast ? (
+							<Button
+								type="button"
+								onClick={() => stepper.navigation.reset()}
+							>
+								Start Over
+							</Button>
+						) : (
+							<Stepper.Next
+								render={(domProps) => (
+									<Button type="button" {...domProps}>
+										Next
+									</Button>
+								)}
+							/>
+						)}
+					</Stepper.Actions>
+				</>
+			)}
+		</Stepper.Root>
 	);
 }
 
