@@ -1,4 +1,4 @@
-import type { Get, Metadata, Step, Stepper, Utils } from "./types";
+import type { Get, Metadata, Step, StepperFlow, StepperQuery } from "./types";
 
 /**
  * Generate stepper utils.
@@ -35,7 +35,7 @@ export function generateStepperUtils<const Steps extends Step[]>(...steps: Steps
 				next: index < steps.length - 1 ? steps[index + 1] : null,
 			};
 		},
-	} satisfies Utils<Steps>;
+	} satisfies StepperQuery<Steps>;
 }
 
 /**
@@ -81,7 +81,7 @@ export function generateCommonStepperUseFns<const Steps extends Step[]>(
 	steps: Steps,
 	currentStep: Steps[number],
 	stepIndex: number,
-) {
+): StepperFlow<Steps> {
 	return {
 		switch(when) {
 			const whenFn = when[currentStep.id as keyof typeof when];
@@ -101,7 +101,7 @@ export function generateCommonStepperUseFns<const Steps extends Step[]>(
 			const matchFn = matches[state as keyof typeof matches];
 			return matchFn?.(step as any) ?? null;
 		},
-	} as Pick<Stepper<Steps>, "switch" | "when" | "match">;
+	} as StepperFlow<Steps>;
 }
 
 /**
