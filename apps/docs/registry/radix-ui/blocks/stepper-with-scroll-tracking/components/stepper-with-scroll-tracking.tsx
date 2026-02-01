@@ -107,7 +107,7 @@ export function StepperWithScrollTracking() {
 			>
 				{({ stepper }) => (
 					<>
-						<Stepper.List className="flex flex-col">
+						<Stepper.List className="flex list-none flex-col">
 							{stepper.all.map((stepData, index) => {
 								const currentIndex = stepper.all.findIndex((s) => s.id === stepper.current.id);
 								const status = index < currentIndex ? "success" : index === currentIndex ? "active" : "inactive";

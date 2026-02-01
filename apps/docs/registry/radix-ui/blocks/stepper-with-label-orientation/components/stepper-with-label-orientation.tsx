@@ -95,7 +95,7 @@ export function StepperWithLabelOrientation() {
 		<Stepper.Root className="w-full space-y-4" orientation="horizontal">
 			{({ stepper }) => (
 				<>
-					<Stepper.List className="flex gap-2 flex-row items-center justify-between">
+					<Stepper.List className="flex list-none gap-2 flex-row items-center justify-between">
 						{stepper.all.map((stepData, index) => {
 							const currentIndex = stepper.all.findIndex((s) => s.id === stepper.current.id);
 							const status = index < currentIndex ? "success" : index === currentIndex ? "active" : "inactive";

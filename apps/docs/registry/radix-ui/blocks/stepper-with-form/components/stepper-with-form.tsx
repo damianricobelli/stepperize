@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { defineStepper } from "@stepperize/react";
-import { useStepItemContext } from "@stepperize/react/primitives";
+import { StepStatus, useStepItemContext } from "@stepperize/react/primitives";
 import { Controller, useForm } from "react-hook-form";
 import * as z from "zod";
 
@@ -109,14 +109,14 @@ const StepperDescriptionWrapper = ({
 const StepperSeparatorWithStatus = ({
 	status,
 	isLast,
-}: { status: string; isLast: boolean }) => {
+}: { status: StepStatus; isLast: boolean }) => {
 	if (isLast) return null;
 
 	return (
 		<Stepper.Separator
 			orientation="horizontal"
 			data-status={status}
-			className="bg-muted data-[status=success]:bg-primary data-[disabled]:opacity-50 transition-all duration-300 ease-in-out data-[orientation=horizontal]:h-0.5 data-[orientation=horizontal]:flex-1"
+			className="self-center bg-muted data-[status=success]:bg-primary data-[disabled]:opacity-50 transition-all duration-300 ease-in-out data-[orientation=horizontal]:h-0.5 data-[orientation=horizontal]:min-w-4 data-[orientation=horizontal]:flex-1"
 		/>
 	);
 };
@@ -422,7 +422,7 @@ export function StepperWithForm() {
 
 				return (
 					<>
-						<Stepper.List className="flex gap-2 flex-row items-center justify-between">
+						<Stepper.List className="flex list-none gap-2 flex-row items-center justify-between">
 							{stepper.all.map((stepData, index) => {
 								const currentIndex = stepper.all.findIndex((s) => s.id === stepper.current.id);
 								const status = index < currentIndex ? "success" : index === currentIndex ? "active" : "inactive";
@@ -438,7 +438,7 @@ export function StepperWithForm() {
 									<React.Fragment key={stepData.id}>
 										<Stepper.Item
 											step={stepData.id}
-											className="group peer relative flex items-center gap-2"
+											className="group peer relative flex shrink-0 items-center gap-2"
 										>
 											<StepperTriggerWrapper />
 											<div className="flex flex-col items-start gap-1">

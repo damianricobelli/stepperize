@@ -1,7 +1,7 @@
 "use client";
 
 import { defineStepper, Get } from "@stepperize/react";
-import { useStepItemContext } from "@stepperize/react/primitives";
+import { StepStatus, useStepItemContext } from "@stepperize/react/primitives";
 import * as React from "react";
 
 import { Button } from "@/registry/base-ui/ui/button";
@@ -84,7 +84,7 @@ const StepperDescriptionWrapper = ({
 const StepperSeparatorVertical = ({
 	status,
 	isLast,
-}: { status: string; isLast: boolean }) => {
+}: { status: StepStatus; isLast: boolean }) => {
 	if (isLast) return null;
 
 	return (
@@ -107,7 +107,7 @@ export function StepperWithScrollTracking() {
 			>
 				{({ stepper }) => (
 					<>
-						<Stepper.List className="flex flex-col">
+						<Stepper.List className="flex list-none flex-col">
 							{stepper.all.map((stepData, index) => {
 								const currentIndex = stepper.all.findIndex((s) => s.id === stepper.current.id);
 								const status = index < currentIndex ? "success" : index === currentIndex ? "active" : "inactive";

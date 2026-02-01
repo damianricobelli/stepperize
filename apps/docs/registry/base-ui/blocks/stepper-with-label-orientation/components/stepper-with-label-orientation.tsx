@@ -1,7 +1,7 @@
 "use client";
 
 import { defineStepper, Get } from "@stepperize/react";
-import { useStepItemContext } from "@stepperize/react/primitives";
+import { StepStatus, useStepItemContext } from "@stepperize/react/primitives";
 
 import { Button } from "@/registry/base-ui/ui/button";
 
@@ -78,7 +78,7 @@ const StepperDescriptionWrapper = ({
 const StepperSeparatorWithLabelOrientation = ({
 	status,
 	isLast,
-}: { status: string; isLast: boolean }) => {
+}: { status: StepStatus; isLast: boolean }) => {
 	if (isLast) return null;
 
 	return (
@@ -95,7 +95,7 @@ export function StepperWithLabelOrientation() {
 		<Stepper.Root className="w-full space-y-4" orientation="horizontal">
 			{({ stepper }) => (
 				<>
-					<Stepper.List className="flex gap-2 flex-row items-center justify-between">
+					<Stepper.List className="flex list-none gap-2 flex-row items-center justify-between">
 						{stepper.all.map((stepData, index) => {
 							const currentIndex = stepper.all.findIndex((s) => s.id === stepper.current.id);
 							const status = index < currentIndex ? "success" : index === currentIndex ? "active" : "inactive";

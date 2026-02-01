@@ -78,7 +78,7 @@ const StepperSeparatorWithStatus = ({
 		<Stepper.Separator
 			orientation="horizontal"
 			data-status={status}
-			className="bg-muted data-[status=success]:bg-primary data-[disabled]:opacity-50 transition-all duration-300 ease-in-out data-[orientation=horizontal]:h-0.5 data-[orientation=horizontal]:flex-1 data-[orientation=vertical]:h-full data-[orientation=vertical]:w-0.5"
+			className="self-center bg-muted data-[status=success]:bg-primary data-[disabled]:opacity-50 transition-all duration-300 ease-in-out data-[orientation=horizontal]:h-0.5 data-[orientation=horizontal]:min-w-4 data-[orientation=horizontal]:flex-1 data-[orientation=vertical]:h-full data-[orientation=vertical]:w-0.5"
 		/>
 	);
 };
@@ -89,7 +89,7 @@ export function StepperWithDescription() {
 			{({ stepper }) => (
 				<>
 					<Stepper.List
-						className="flex gap-2 data-[orientation=horizontal]:flex-row data-[orientation=horizontal]:items-center data-[orientation=horizontal]:justify-between data-[orientation=vertical]:flex-col"
+						className="flex list-none gap-2 data-[orientation=horizontal]:flex-row data-[orientation=horizontal]:items-center data-[orientation=horizontal]:justify-between data-[orientation=vertical]:flex-col"
 					>
 						{stepper.all.map((stepData, index) => {
 							const currentIndex = stepper.all.findIndex((s) => s.id === stepper.current.id);
@@ -100,7 +100,7 @@ export function StepperWithDescription() {
 								<React.Fragment key={stepData.id}>
 									<Stepper.Item
 										step={stepData.id}
-										className="group peer relative flex items-center gap-2"
+										className="group peer relative flex shrink-0 items-center gap-2"
 									>
 										<StepperTriggerWrapper />
 										<div className="flex flex-col items-start gap-1">

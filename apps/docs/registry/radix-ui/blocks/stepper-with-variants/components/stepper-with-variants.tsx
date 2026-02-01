@@ -1,7 +1,7 @@
 "use client";
 
 import { defineStepper, Get } from "@stepperize/react";
-import { useStepItemContext } from "@stepperize/react/primitives";
+import { StepStatus, useStepItemContext } from "@stepperize/react/primitives";
 import * as React from "react";
 
 import { cn } from "@/lib/utils";
@@ -86,7 +86,7 @@ const StepperSeparator = ({
 	orientation,
 	labelOrientation,
 }: {
-	status: string;
+	status: StepStatus;
 	isLast: boolean;
 	orientation: Orientation;
 	labelOrientation: LabelOrientation;
@@ -102,7 +102,7 @@ const StepperSeparator = ({
 			data-status={status}
 			className={cn(
 				"bg-muted data-[status=success]:bg-primary data-[disabled]:opacity-50 transition-all duration-300 ease-in-out",
-				orientation === "horizontal" && "h-0.5 flex-1",
+				orientation === "horizontal" && "self-center h-0.5 min-w-4 flex-1",
 				orientation === "vertical" && "w-0.5 h-full",
 				isVerticalLabel &&
 					"absolute left-[calc(50%+30px)] right-[calc(-50%+20px)] top-5 block shrink-0",
@@ -205,7 +205,7 @@ export function StepperWithVariants() {
 					<>
 						<Stepper.List
 							className={cn(
-								"flex gap-2",
+								"flex list-none gap-2",
 								orientation === "horizontal" &&
 									"flex-row items-center justify-between",
 								orientation === "vertical" && "flex-col",
@@ -221,7 +221,7 @@ export function StepperWithVariants() {
 										<React.Fragment key={stepData.id}>
 											<Stepper.Item
 												step={stepData.id}
-												className="group peer relative flex items-center gap-2"
+												className="group peer relative flex shrink-0 items-center gap-2"
 											>
 												<StepperTriggerWrapper />
 												<div className="flex flex-col items-start gap-1">
@@ -301,7 +301,7 @@ export function StepperWithVariants() {
 										<Stepper.Item
 											key={stepData.id}
 											step={stepData.id}
-											className="group peer relative flex items-center gap-2"
+											className="group peer relative flex shrink-0 items-center gap-2"
 										>
 											<StepperTriggerWrapper />
 											<div className="flex flex-col items-start gap-1">
