@@ -4,11 +4,11 @@ import type { TitleProps } from "./types";
 export function createTitle() {
 	return function Title(props: TitleProps) {
 		const { render, children, ...rest } = props;
-		const merged = {
+		const domProps = {
 			"data-component": "stepper-title",
 			...rest,
 		};
-		const content = render ? render(merged as React.ComponentPropsWithoutRef<"h4">) : children;
-		return React.createElement("h4", merged, content);
+		if (render) return render(domProps)
+		return React.createElement("h4", domProps, children);
 	};
 }

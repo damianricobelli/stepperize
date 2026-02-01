@@ -23,7 +23,7 @@ export function createContent<Steps extends Step[]>(
 			"aria-hidden": false,
 			...rest,
 		};
-		const content = render ? render(domProps as React.ComponentPropsWithoutRef<"div">) : children;
-		return React.createElement("div", domProps, content);
+		if (render) return render(domProps)
+		return React.createElement("div", domProps, children);
 	};
 }

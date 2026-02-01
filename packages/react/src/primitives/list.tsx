@@ -4,12 +4,12 @@ import type { ListProps } from "./types";
 export function createList() {
 	return function List(props: ListProps) {
 		const { orientation, render, children, ...rest } = props;
-		const merged = {
+		const domProps = {
 			"data-component": "stepper-list",
 			"data-orientation": orientation,
 			...rest,
 		};
-		const content = render ? render(merged as React.ComponentPropsWithoutRef<"ol">) : children;
-		return React.createElement("ol", merged, content);
+		if (render) return render(domProps)
+		return React.createElement("ol", domProps, children);
 	};
 }

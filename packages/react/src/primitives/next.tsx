@@ -21,7 +21,7 @@ export function createNext<Steps extends Step[]>(
 			},
 			...rest,
 		};
-		const content = render ? render(domProps) : children;
-		return React.createElement("button", domProps, content);
+		if (render) return render(domProps)
+		return React.createElement("button", domProps, children);
 	};
 }

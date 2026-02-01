@@ -5,11 +5,11 @@ import type { DescriptionProps } from "./types";
 export function createDescription<Steps extends Step[]>() {
 	return function Description(props: DescriptionProps) {
 		const { render, children, ...rest } = props;
-		const merged = {
+		const domProps = {
 			"data-component": "stepper-description",
 			...rest,
 		};
-		const content = render ? render(merged as React.ComponentPropsWithoutRef<"p">) : children;
-		return React.createElement("p", merged, content);
+		if (render) return render(domProps)
+		return React.createElement("p", domProps, children);
 	};
 }

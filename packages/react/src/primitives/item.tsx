@@ -17,20 +17,23 @@ export function createItem<Steps extends Step[]>(
 		const currentIndex = utils.getIndex(stepper.current.id);
 		const status: StepStatus =
 			stepIndex < currentIndex ? "success" : stepIndex === currentIndex ? "active" : "inactive";
-		const stepData = stepper.all[stepIndex];
-		const itemValue = React.useMemo(
-			() => ({ status, data: stepData }),
-			[status, stepData],
-		);
-		const merged = {
+		// Use stepper.get(id) so we always get the full step from the same source as stepper.current
+		const stepData = stepper.get(step as Get.Id<Steps>);
+		const itemValue = React.useMemo(() => ({ status, data: stepData }), [status, stepData]);
+		const domProps = {
 			"data-component": "stepper-item",
 			"data-status": status,
 			...rest,
 		};
-		const content = render ? render(merged as React.ComponentPropsWithoutRef<"li">) : children;
+		if (render) {
+			return React.createElement(StepItemProvider, {
+				value: itemValue,
+				children: render(domProps)
+			});
+		}
 		return React.createElement(
 			StepItemProvider,
-			{ value: itemValue, children: React.createElement("li", merged, content) },
+			{ value: itemValue, children: React.createElement("li", domProps, children) },
 		);
 	};
 }

@@ -35,7 +35,14 @@ export function createRoot<Steps extends Step[]>(
 		const { initialStep, initialMetadata, children, ...rootInnerProps } = props;
 		return React.createElement(
 			ScopedProvider,
-			{ initialStep, initialMetadata, children: React.createElement(RootInner, rootInnerProps as Omit<RootProps<Steps>, "initialStep" | "initialMetadata">) },
+			{
+				initialStep,
+				initialMetadata,
+				children: React.createElement(RootInner, {
+					...rootInnerProps,
+					children,
+				} as Omit<RootProps<Steps>, "initialStep" | "initialMetadata">),
+			},
 		);
 	};
 }
