@@ -50,6 +50,14 @@ describe("generateStepperUtils", () => {
 		expect(utils.getNeighbors("first")).toEqual({ prev: null, next: steps[1] });
 		expect(utils.getNeighbors("third")).toEqual({ prev: steps[1], next: null });
 	});
+
+	it("getNext returns undefined for last step", () => {
+		expect(utils.getNext("third")).toBeUndefined();
+	});
+
+	it("getPrev returns undefined for first step", () => {
+		expect(utils.getPrev("first")).toBeUndefined();
+	});
 });
 
 describe("getInitialStepIndex", () => {
@@ -105,6 +113,27 @@ describe("generateCommonStepperUseFns", () => {
 			() => "fallback",
 		);
 		expect(result).toBe("fallback");
+	});
+
+	it("when with array id executes whenFn only when id and all conditions match", () => {
+		const resultMatch = fns.when(
+			["second", true, true],
+			(s: (typeof steps)[0]) => s.label,
+			() => "nope",
+		);
+		expect(resultMatch).toBe("Step 2");
+		const resultNoMatchId = fns.when(
+			["first", true, true],
+			() => "ok",
+			() => "fallback",
+		);
+		expect(resultNoMatchId).toBe("fallback");
+		const resultNoMatchCond = fns.when(
+			["second", false, true],
+			() => "ok",
+			() => "fallback",
+		);
+		expect(resultNoMatchCond).toBe("fallback");
 	});
 
 	it("match executes function associated with the state", () => {
