@@ -25,15 +25,16 @@ type Metadata = Record<string, any> | null;
 
 ### Stepper
 
-The stepper instance type has five namespaces plus transition state:
+The stepper instance type has six namespaces:
 
 - **state**: `StepperState<Steps>` — `all`, `current` (data, index, status, metadata), `isFirst`, `isLast`, `isTransitioning`
 - **navigation**: `StepperNavigation<Steps>` — `next`, `prev`, `goTo`, `reset`
 - **lookup**: `StepperLookup<Steps>` — `getAll`, `get`, `getIndex`, `getByIndex`, `getFirst`, `getLast`, `getNext`, `getPrev`, `getNeighbors`
 - **flow**: `StepperFlow<Steps>` — `is`, `when`, `switch`, `match`
 - **metadata**: `StepperMetadata<Steps>` — `values`, `set`, `get`, `reset`
+- **lifecycle**: `StepperLifecycle<Steps>` — `onBeforeTransition`, `onAfterTransition`
 
-Transition state lives under **state** (`state.isTransitioning`) and **lifecycle** (`lifecycle.onBeforeTransition` / `lifecycle.onAfterTransition`). See [Hook](./hook#transition-hooks).
+Transition state is `state.isTransitioning`. See [Hook](./hook#transition-hooks).
 
 ### StepperLookup / Utils
 

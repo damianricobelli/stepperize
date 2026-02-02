@@ -20,6 +20,7 @@
 		"radix-ui": "^1.4.3",
 		"@base-ui/react": "^1.1.0",
 		"@radix-ui/colors": "^3.0.0",
+		"@stepperize/core": "workspace:*",
 		"@stepperize/react": "workspace:*",
 		"@tanstack/react-form": "^1.28.0",
 		"arktype": "^2.1.29",

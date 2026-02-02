@@ -47,7 +47,7 @@ export type StepperReturn<Steps extends Step[]> = {
 	useStepper: (props?: {
 		initialStep?: Get.Id<Steps>;
 		initialMetadata?: Partial<Record<Get.Id<Steps>, Metadata>>;
-	}) => Stepper<Steps>
+	}) => Stepper<Steps>;
 	/**
 	 * Type-safe primitive components (Root, List, Item, Trigger, Title, Description, Indicator, Separator, Content, Actions, Prev, Next).
 	 * Use within Scoped. Root children can be a function receiving `{ stepper }`.

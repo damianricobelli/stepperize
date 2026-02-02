@@ -23,10 +23,10 @@ Each step must have a unique `id`. You can add any custom properties (`title`, `
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `steps` | `Steps` | The array of step objects you passed |
-| `useStepper` | `(config?) => Stepper` | Hook for state, navigation, lookup, flow, metadata. Optional config: `initialStep`, `initialMetadata` ([Hook](./hook)) |
-| `Scoped` | `Component` | Provider for stepper context ([Scoped](./scoped)) |
-| `Stepper` | `StepperPrimitives<Steps>` | Type-safe UI primitives ([Primitives](./primitives)) |
+| `steps` | `Steps` | The array of step objects you passed (same order as arguments) |
+| `useStepper` | `(props?: { initialStep?, initialMetadata? }) => Stepper<Steps>` | Hook for state, navigation, lookup, flow, metadata, lifecycle ([Hook](./hook)) |
+| `Scoped` | `(props: ScopedProps<Steps>) => ReactElement` | Provider for stepper context; props: `initialStep?`, `initialMetadata?`, `children` ([Scoped](./scoped)) |
+| `Stepper` | `StepperPrimitives<Steps>` | Type-safe UI primitives: Root, List, Item, Trigger, Title, Description, Indicator, Separator, Content, Actions, Prev, Next ([Primitives](./primitives)) |
 
 ## Next steps
 

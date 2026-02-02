@@ -318,7 +318,7 @@ Container component that provides context for all primitives. Internally uses `S
 
 | Prop | Type | Default | Description |
 | ---- | ---- | ------- | ----------- |
-| `orientation` | `"horizontal" \| "vertical"` | `"horizontal"` | Layout orientation |
+| `orientation` | `"horizontal" \| "vertical"` | — | Layout orientation; used for `data-orientation` and ARIA |
 | `initialStep` | `Get.Id<Steps>` | — | Initial active step (passed to Scoped) |
 | `initialMetadata` | `Partial<Record<Get.Id<Steps>, Metadata>>` | — | Initial metadata (passed to Scoped) |
 | `children` | `ReactNode \| (({ stepper }) => ReactNode)` | — | Content or render function |
@@ -328,7 +328,7 @@ Container component that provides context for all primitives. Internally uses `S
 | Attribute | Value |
 | --------- | ----- |
 | `data-component` | `"stepper"` |
-| `data-orientation` | `"horizontal"` or `"vertical"` |
+| `data-orientation` | Value of `orientation` prop (if passed) |
 
 ---
 
@@ -516,20 +516,18 @@ Same as `Stepper.Item` when used inside an Item.
 
 ## Stepper.Separator
 
-Visual separator line between steps. Automatically hidden on the last step.
+Visual separator line between steps. Renders between items; hide the last separator in your layout (e.g. by rendering it only when not the last item in the list) or style it via CSS if needed.
 
 ```tsx
-{/* Within Item (auto-hides on last step) */}
-<Stepper.Item step="step-1">
-  <Stepper.Trigger>Step 1</Stepper.Trigger>
-  <Stepper.Separator />
-</Stepper.Item>
-
-{/* Outside Item (manual control) */}
 <Stepper.List>
-  <Stepper.Item step="step-1">...</Stepper.Item>
-  <Stepper.Separator />
-  <Stepper.Item step="step-2">...</Stepper.Item>
+  {stepper.state.all.map((step, index) => (
+    <React.Fragment key={step.id}>
+      <Stepper.Item step={step.id}>
+        <Stepper.Trigger>...</Stepper.Trigger>
+      </Stepper.Item>
+      {index < stepper.state.all.length - 1 && <Stepper.Separator />}
+    </React.Fragment>
+  ))}
 </Stepper.List>
 ```
 
@@ -618,7 +616,6 @@ Container for navigation buttons. Provides semantic grouping.
 | Attribute | Value |
 | --------- | ----- |
 | `data-component` | `"stepper-actions"` |
-| `data-orientation` | `"horizontal"` or `"vertical"` (when passed via props) |
 
 ### Accessibility
 
@@ -659,8 +656,8 @@ Button to navigate to the previous step. Automatically disabled on first step.
 
 | Attribute | Value |
 | --------- | ----- |
+| `data-component` | `"stepper-prev"` |
 | `data-disabled` | Present when disabled |
-| `data-orientation` | `"horizontal"` or `"vertical"` |
 
 ### Accessibility
 
@@ -705,8 +702,8 @@ Button to navigate to the next step. Automatically disabled on last step.
 
 | Attribute | Value |
 | --------- | ----- |
+| `data-component` | `"stepper-next"` |
 | `data-disabled` | Present when disabled |
-| `data-orientation` | `"horizontal"` or `"vertical"` |
 
 ### Accessibility
 

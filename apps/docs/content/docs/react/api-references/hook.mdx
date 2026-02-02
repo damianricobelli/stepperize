@@ -3,12 +3,12 @@ title: Hook
 description: Access and control your stepper with the useStepper hook
 ---
 
-The `useStepper` hook returns the stepper instance with a structured API: **state**, **navigation**, **lookup**, **flow**, and **metadata**. Inside `<Scoped>` or `Stepper.Root`, `useStepper()` reads from context. Used in a component with no provider, it creates its own stepper state for that component.
+The `useStepper` hook returns the stepper instance with a structured API: **state**, **navigation**, **lookup**, **flow**, **metadata**, and **lifecycle**. Inside `<Scoped>` or `Stepper.Root`, `useStepper()` (with no arguments) reads from context. In a component with no provider, `useStepper()` creates its own stepper state for that component. You can still pass config when outside a provider to set `initialStep` and `initialMetadata`.
 
-The hook accepts an optional configuration object with the following properties:
+The hook accepts an optional single argument: a config object with:
 
-- **`initialStep`** — The ID of the initial step to display
-- **`initialMetadata`** — The initial metadata to set for the steps
+- **`initialStep`** — The ID of the initial step (must be one of your step IDs).
+- **`initialMetadata`** — Partial record of step ID → metadata; used to seed `metadata.get(id)` and `state.current.metadata` per step.
 
 ## Usage
 

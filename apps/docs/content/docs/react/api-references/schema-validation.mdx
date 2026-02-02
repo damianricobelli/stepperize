@@ -3,7 +3,7 @@ title: Schema Validation
 description: Learn how to validate your stepper with any schema library
 ---
 
-You can attach a schema (or any validation shape) to each step as a custom property. Stepperize does not run validation; you read the schema (e.g. `stepper.state.current.data.schema`) and use it with React Hook Form, Conform, Zod, etc. Below: examples with Zod, ValiBot, and ArkType.
+You can attach a schema (or any validation shape) to each step as a custom property. Stepperize does not run validation; you read the schema (e.g. `stepper.state.current.data.schema`) and use it with React Hook Form, Conform, Zod, etc. Below: examples with Zod (v4; for Zod 3 use `z.string().email()` instead of `z.email()`), ValiBot, and ArkType.
 
 ## Zod
 
