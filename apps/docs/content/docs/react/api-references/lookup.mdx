@@ -3,7 +3,7 @@ title: Lookup
 description: Step lookup via stepper.lookup or generateStepperUtils from core
 ---
 
-Step lookup is available on the stepper as **`stepper.lookup`** (from `useStepper()`). The same API is exposed as pure helpers from `@stepperize/core` when you need them without a stepper instance.
+Step lookup is available on the stepper as **`stepper.lookup`** (from `useStepper()`). The same API is exposed as pure helpers from `@stepperize/core` when you need them without a stepper instance (e.g. in Node for SSR, in shared validation, or in layout logic that only has the steps array).
 
 ## On the stepper: `stepper.lookup`
 

@@ -86,7 +86,7 @@ type TransitionDirection = "next" | "prev" | "goTo";
 
 ### StepStatus (primitives)
 
-Used in primitives for UI state: `"active" | "inactive" | "success"` (current step, future step, past step). Re-exported from `@stepperize/core` in `@stepperize/react/primitives`.
+Used by primitives (e.g. `Stepper.Item`, `Stepper.Trigger`) and `useStepItemContext().status` to style or label the active, completed, or upcoming step: `"active" | "inactive" | "success"`. Re-exported from `@stepperize/core` in `@stepperize/react/primitives`.
 
 ### ScopedProps
 

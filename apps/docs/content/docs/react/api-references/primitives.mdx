@@ -3,7 +3,7 @@ title: Primitives
 description: Type-safe primitive components for building stepper UIs
 ---
 
-The `Stepper` object returned by `defineStepper` provides a set of primitive components that are type-safe and bound to your step definitions. These components handle accessibility, state management, and data attributes automatically.
+The `Stepper` object returned by `defineStepper` provides a set of primitive components that are type-safe and bound to your step definitions. They handle ARIA attributes, keyboard navigation, and data attributes automatically; stepper state is provided by Scoped or Stepper.Root.
 
 ## Overview
 
@@ -82,7 +82,7 @@ The primitives implement the [WAI-ARIA Tabs pattern](https://www.w3.org/WAI/ARIA
 
 | Component | Role / ARIA | Description |
 | --------- | ----------- | ----------- |
-| **Stepper.Root** | `role="group"`, `aria-label="Stepper"` | Groups the widget; override with your own `aria-label` if needed. |
+| **Stepper.Root** | `role="group"`, `aria-label="Stepper"` | Groups the widget. You can override it by passing `aria-label` on Stepper.Root (e.g. `aria-label="Checkout steps"`). |
 | **Stepper.List** | `role="tablist"`, `aria-orientation` | Container for the tabs; orientation is `horizontal` or `vertical` from the `orientation` prop. |
 | **Stepper.Trigger** | `role="tab"`, `id="step-{stepId}"`, `aria-controls="step-panel-{stepId}"`, `aria-current="step"` (when active), `aria-selected` (true/false), `aria-posinset`, `aria-setsize` | Each trigger is a tab; roving tabindex (only the active tab has `tabIndex={0}`). |
 | **Stepper.Content** | `role="tabpanel"`, `id="step-panel-{stepId}"`, `aria-labelledby="step-{stepId}"`, `tabIndex={0}` | Panel for the current step; `tabIndex={0}` keeps it in the tab order when it has no focusable children. |
@@ -96,8 +96,8 @@ When focus is on a **tab** (trigger) inside the list:
 
 | Key | Action |
 | --- | ------ |
-| **ArrowRight** / **ArrowDown** | Move focus and activation to the next step (wraps at end for arrows only when you implement it; current behavior: no wrap). |
-| **ArrowLeft** / **ArrowUp** | Move focus and activation to the previous step. |
+| **ArrowRight** / **ArrowDown** | Move focus and activation to the next step. Focus does not wrap: on the last step, ArrowRight/ArrowDown has no effect. |
+| **ArrowLeft** / **ArrowUp** | Move focus and activation to the previous step. On the first step, ArrowLeft/ArrowUp has no effect. |
 | **Home** | Move focus and activation to the first step. |
 | **End** | Move focus and activation to the last step. |
 | **Tab** | Move focus out of the tablist (e.g. to the active tabpanel or the next focusable element). |
@@ -119,7 +119,7 @@ You can get step data in three ways when using primitives:
 
 ### Render prop on `Stepper.Root`
 
-The root accepts a function `{({ stepper }) => (...)}` that receives the full stepper instance. Use it when you need global state (current step, navigation, etc.) in the same place you render the list and content:
+The root accepts a function `{({ stepper }) => (...)}` that receives the full stepper instance. Use it when you need current step, navigation, flow, lookup, and metadata in the same place you render the list and content:
 
 ```tsx
 <Stepper.Root>
@@ -351,7 +351,7 @@ Ordered list container for step items. Renders as `<ol>` by default.
 | Prop | Type | Default | Description |
 | ---- | ---- | ------- | ----------- |
 | `render` | `(props) => ReactElement` | `undefined` | Custom render function |
-| `children` | `ReactNode` | — | Step items |
+| `children` | `ReactNode` | — | Typically one or more `Stepper.Item` |
 
 ### Data Attributes
 
@@ -415,8 +415,8 @@ Clickable button to navigate to a step. Must be used within `Stepper.Item`.
 
 | Prop | Type | Default | Description |
 | ---- | ---- | ------- | ----------- |
-| `onClick` | `MouseEventHandler` | `undefined` | Override default click behavior |
-| `disabled` | `boolean` | `false` | Disable the trigger |
+| `onClick` | `MouseEventHandler` | `undefined` | Called after the default navigation to the step; use for analytics or side effects. The step still changes. |
+| `disabled` | `boolean` | `false` | When true, the trigger does not navigate and is not focusable (tabIndex=-1). |
 | `render` | `(props) => ReactElement` | `undefined` | Custom render function |
 | `children` | `ReactNode` | — | Indicator, title, etc. |
 
@@ -583,10 +583,10 @@ Panel that displays content for a specific step. Hidden when that step is not th
 
 | Attribute | Value |
 | --------- | ----- |
-| `data-status` | The step's resolved status |
-| `data-step` | The step ID |
-| `data-index` | The step index (0-based) |
-| `data-orientation` | `"horizontal"` or `"vertical"` |
+| `data-component` | `"stepper-content"` |
+| `id` | `"step-panel-{step}"` (for `aria-controls` from the trigger) |
+
+The component does not set `data-status`, `data-step`, `data-index`, or `data-orientation` by default; pass them via props if needed.
 
 ### Accessibility
 
@@ -617,12 +617,12 @@ Container for navigation buttons. Provides semantic grouping.
 
 | Attribute | Value |
 | --------- | ----- |
-| `data-orientation` | `"horizontal"` or `"vertical"` |
+| `data-component` | `"stepper-actions"` |
+| `data-orientation` | `"horizontal"` or `"vertical"` (when passed via props) |
 
 ### Accessibility
 
-- `role="group"`
-- `aria-label="Step navigation"`
+- No default role or aria-label; add `role="group"` and `aria-label` via props if you want the actions region announced.
 
 ---
 
@@ -728,7 +728,7 @@ All primitives support the `render` prop for full control over the rendered elem
 />
 ```
 
-The `render` function receives all props including data attributes, event handlers, and ARIA attributes.
+The `render` function receives all props including data attributes, event handlers, and ARIA attributes. Spread them onto your element (e.g. `<button {...props} />`) so ARIA and keyboard behavior are preserved.
 
 ---
 

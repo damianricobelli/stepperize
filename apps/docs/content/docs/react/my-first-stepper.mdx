@@ -25,11 +25,11 @@ const { useStepper } = defineStepper(
 
 ## 2. Use the hook in your component
 
-**[useStepper](/docs/react/api-references/hook)** returns the stepper instance. From the returned `stepper` you get:
+**[useStepper](/docs/react/api-references/hook)** returns the stepper instance. Call it **inside** the component that renders your UI (not at module top level), because the hook uses React state. From the returned `stepper` you get:
 
 - **state** — `state.current` (current step object), `state.isFirst`, `state.isLast`
 - **flow** — `flow.switch({ ... })` to render content per step (one branch per step id)
-- **navigation** — `navigation.next()`, `navigation.prev()`, `navigation.reset()`, etc.
+- **navigation** — `navigation.next()`, `navigation.prev()`, `navigation.goTo(id)`, `navigation.reset()`
 
 ## Full example
 
@@ -72,6 +72,9 @@ export function MyFirstStepper() {
 }
 ```
 
+- **defineStepper** — defines your steps and returns `useStepper` (and optionally `Scoped`, `Stepper`).
+- **useStepper()** — returns the stepper instance; when called in a component with no provider, that component owns the stepper state.
+- No provider is required: you don't need `Scoped` or `Stepper.Root` for this pattern.
 
 ## Result
 

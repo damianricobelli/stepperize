@@ -3,7 +3,7 @@ title: Scoped
 description: Share stepper state with the Scoped component
 ---
 
-`Scoped` is the provider for the stepper. Children can use `useStepper()` (from the same `defineStepper` result) to access the same stepper instance.
+`Scoped` is the provider for the stepper. Wrap your tree with `<Scoped>` so any descendant can call `useStepper()` from the same `defineStepper` and receive the same stepper instance. Without Scoped (or Stepper.Root), there is no shared stepper context.
 
 ## Basic usage
 
@@ -118,7 +118,7 @@ const LocalStepContent = () => {
 
 ## With Stepper.Root
 
-`Stepper.Root` wraps content and provides the stepper via context (it uses `Scoped` internally). You can pass `initialStep` and `initialMetadata` to `Stepper.Root` if your primitives support them; otherwise set initial state via `Scoped` or `useStepper({ ... })` when not using Root.
+`Stepper.Root` wraps content and provides the stepper via context (it uses `Scoped` internally). `Stepper.Root` accepts `initialStep` and `initialMetadata` and passes them to Scoped internally; use either Root or Scoped to set initial state.
 
 ```tsx twoslash
 import * as React from "react";

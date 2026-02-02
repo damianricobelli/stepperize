@@ -4,13 +4,13 @@ description: Guide to migrating from v5 to Stepperize v6
 icon: CircleFadingArrowUp
 ---
 
-v6 simplifies the API: a single state shape, explicit lifecycle hooks, no persistence or progress tracking, and typed primitives with render props. This guide walks through the changes and how to update your code.
+v6 simplifies the API: a single state shape, explicit lifecycle hooks, no persistence or progress tracking, and typed primitives with render props. There is no built-in persistence (e.g. localStorage) or progress tracking; implement yourself if needed. This guide walks through the changes and how to update your code.
 
 ## defineStepper
 
-**Before (v5):** Possibly a second config argument in some setups.
+**Before (v5):** v5 may have accepted an optional second argument in some setups.
 
-**Now:** Only steps. No second argument.
+**Now:** Only step objects. No second argument.
 
 ```tsx
 const { steps, Scoped, useStepper, Stepper } = defineStepper(

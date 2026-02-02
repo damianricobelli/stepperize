@@ -21,9 +21,9 @@ const { Stepper, Scoped } = defineStepper(
 );
 ```
 
-### 2. Wrap with Scoped and Stepper.Root
+### 2. Wrap with Stepper.Root
 
-`Scoped` provides the stepper context. `Stepper.Root` gives you the stepper via a render prop. Use `orientation="horizontal"` (default) for a horizontal layout.
+`Stepper.Root` provides the stepper context (it uses Scoped internally) and passes the stepper to your render function. Use `orientation="horizontal"` (default) for a horizontal layout.
 
 ```tsx twoslash
 import * as React from "react";

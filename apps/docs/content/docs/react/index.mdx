@@ -11,10 +11,10 @@ Stepperize is a versatile React library designed to streamline the creation of S
 ## Key Features
 
 - **Type-Safe Primitives**: Fully typed components for building accessible stepper UIs
-- **Flexible Step Management**: Navigate with next/prev/goTo and optional transition callbacks
+- **Flexible Step Management**: Navigate with next/prev/goTo and optional `onBeforeTransition` / `onAfterTransition` callbacks to validate or run logic on step change
 - **Headless Component**: Full control over styling and UI
 - **React Native Compatible**: Build steppers for web and mobile apps
-- **Conditional Rendering**: Dynamically adjust content based on user input
+- **Conditional Rendering**: Step-based content with `flow.switch()`, `Stepper.Content`, or `flow.is(id)`
 - **State Management**: Built-in tools for handling step state, metadata, and status
 - **Async Support**: Optional async onBeforeTransition / onAfterTransition callbacks
 
@@ -49,6 +49,8 @@ Stepperize goes beyond linear progressions, enabling:
 - Personalized user experiences
 - State-dependent UI changes
 - Multi-path processes
+
+Use `stepper.flow.switch({ stepId: () => <Panel /> })` or `stepper.flow.is('payment')` to render by step.
 
 
 ## What's Next

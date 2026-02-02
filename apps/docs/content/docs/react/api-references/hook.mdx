@@ -3,7 +3,7 @@ title: Hook
 description: Access and control your stepper with the useStepper hook
 ---
 
-The `useStepper` hook returns the stepper instance with a structured API: **state**, **navigation**, **lookup**, **flow**, and **metadata**. Use it with or without the [`Scoped`](./scoped) component.
+The `useStepper` hook returns the stepper instance with a structured API: **state**, **navigation**, **lookup**, **flow**, and **metadata**. Inside `<Scoped>` or `Stepper.Root`, `useStepper()` reads from context. Used in a component with no provider, it creates its own stepper state for that component.
 
 ## Usage
 
@@ -64,7 +64,7 @@ The stepper has five namespaces (`state`, `navigation`, `lookup`, `flow`, `metad
 | Property | Type | Description |
 | -------- | ---- | ----------- |
 | `state.all` | `Steps` | Array of all step objects |
-| `state.current` | `{ data, index, status, metadata }` | Current step: `data` (step object), `index`, `status` (`"active"`), `metadata` (get/set/reset for current step only) |
+| `state.current` | `{ data, index, status, metadata }` | Current step: `data` (step object), `index`, `status` (always `"active"` for the current step in the global stepper; the active/success/inactive distinction is for primitives via `useStepItemContext().status`), `metadata` (get/set/reset for current step only) |
 | `state.isFirst` | `boolean` | `true` if on the first step |
 | `state.isLast` | `boolean` | `true` if on the last step |
 | `state.isTransitioning` | `boolean` | `true` while a transition (with callbacks) is in progress |
@@ -103,7 +103,7 @@ Rendering helpers and checks by step ID:
 | `flow.is(id)` | Returns `true` if the current step's ID equals `id`. Use for simple conditionals (e.g. `stepper.flow.is("payment")`). |
 | `flow.when(id, whenFn, elseFn?)` | Run `whenFn(step)` if current step matches `id`, else `elseFn(step)`. First arg can be `[id, ...conditions]`. |
 | `flow.switch(when)` | Object map of step ID → `(step) => R`. Runs the handler for the current step. |
-| `flow.match(state, matches)` | Same shape as `switch` but `state` is any step ID (e.g. from URL). |
+| `flow.match(state, matches)` | First argument is a step ID (e.g. from URL or external state) to match against; second is the same shape as `flow.switch`. |
 
 **Example — `flow.is`:**
 
@@ -132,7 +132,7 @@ Current step metadata only: use `state.current.metadata.get()`, `state.current.m
 
 ## Transition hooks
 
-Register callbacks via `stepper.lifecycle.onBeforeTransition(cb)` and `stepper.lifecycle.onAfterTransition(cb)`. They run on every `next()`, `prev()`, or `goTo()`.
+Register callbacks via `stepper.lifecycle.onBeforeTransition(cb)` and `stepper.lifecycle.onAfterTransition(cb)`. They run on every `next()`, `prev()`, or `goTo()`. `onBeforeTransition` runs before the step index updates; return `false` to cancel. `onAfterTransition` runs after the update.
 
 **TransitionContext** has: `from`, `to`, `metadata`, `statuses`, `direction` (`"next" \| "prev" \| "goTo"`), `fromIndex`, `toIndex`.
 
