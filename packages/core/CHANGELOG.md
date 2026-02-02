@@ -1,5 +1,11 @@
 # @stepperize/core
 
+## 2.0.0
+
+### Major Changes
+
+- [#165](https://github.com/damianricobelli/stepperize/pull/165) [`515a9e5`](https://github.com/damianricobelli/stepperize/commit/515a9e528cdede71851860b125f9bf12a1fe1663) Thanks [@damianricobelli](https://github.com/damianricobelli)! - Stepperize v6
+
 ## 1.2.7
 
 ### Patch Changes
