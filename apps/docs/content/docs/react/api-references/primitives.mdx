@@ -116,45 +116,150 @@ function ShippingForm() {
 }
 ```
 
-### 3. `useStepItemContext()` — this item's step (same shape as `useStepper().state.current`)
+### 3. `useStepItemContext()` — this item's step
 
-Components that render **inside `Stepper.Item`** (e.g. custom trigger wrappers, indicators) can use `useStepItemContext()` from `@stepperize/react/primitives`. It returns the **same type** as `useStepper().state.current`, but for **that specific item**:
+`useStepItemContext()` returns the step data, index, status, and metadata for **the `Stepper.Item` that wraps the component** that calls the hook. Use it when you need to read or style based on "this step" (e.g. this item's status or index) without passing the step id as a prop.
 
-| Value | Type | Description |
-| ----- | ---- | ----------- |
-| `data` | `Step` | The step object (id, title, etc.) for this item |
-| `index` | `number` | Index of this step in the stepper |
-| `status` | `StepStatus` | Resolved from position: `"active"` (current), `"success"` (past), `"inactive"` (future) |
-| `metadata` | `{ get, set, reset }` | Step-scoped metadata for this item (same API as `state.current.metadata`) |
-
-**When to use it:** When you need to style or behave based on "this step's status" without passing props—e.g. different button variant for inactive steps, or showing an icon only when completed.
+**Import:** `useStepItemContext` is exported from `@stepperize/react/primitives` (not from the main `@stepperize/react` entry).
 
 ```tsx
 import { useStepItemContext } from "@stepperize/react/primitives";
+```
 
-const CustomTrigger = () => {
+**Same type as `useStepper().state.current`, different value:**
+
+- **`useStepper().state.current`** — The **active** step (the one the user is on). One value for the whole stepper; it changes when you navigate.
+- **`useStepItemContext()`** — **This item's** step. Each `Stepper.Item` has its own step; the hook returns that step's `data` and its computed `status` (active/success/inactive). For example, inside `<Stepper.Item step="payment">` you get payment's data and payment's status (e.g. `"inactive"` if the user is still on shipping).
+
+**When to use:** Inside custom trigger wrappers, indicators, titles, or any component rendered **inside `Stepper.Item`** that needs this step's `data`, `index`, `status`, or `metadata` without receiving the step id from the parent.
+
+**When not to use:** For global stepper state (which step is active, navigation, flow) use `useStepper()`. For content panels use `Stepper.Content` or `stepper.flow.switch()`; those live outside items.
+
+**Requirement:** The hook must be called from a component that is a descendant of `Stepper.Item`. Otherwise it throws. For components outside items, use `useStepper()` instead.
+
+#### Return value
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `data` | `Step` | The step object (`{ id, ... }`) for this item |
+| `index` | `number` | Zero-based index of this step in the stepper |
+| `status` | `"active" \| "success" \| "inactive"` | `"active"` = current step, `"success"` = past step, `"inactive"` = future step |
+| `metadata` | `{ get, set, reset }` | Get/set/reset metadata for this step (same API as `state.current.metadata`) |
+
+#### Example: custom indicator with step number
+
+Use `item.index` to show a numeric indicator (1, 2, 3) without passing the step id:
+
+```tsx twoslash
+import * as React from "react";
+import { defineStepper } from "@stepperize/react";
+import { useStepItemContext } from "@stepperize/react/primitives";
+
+const { Stepper } = defineStepper(
+  { id: "shipping", title: "Shipping" },
+  { id: "payment", title: "Payment" },
+  { id: "review", title: "Review" }
+);
+
+function StepNumber() {
   const item = useStepItemContext();
-  const isInactive = item.status === "inactive";
+  return <span>{item.index + 1}</span>;
+}
+
+function MyStepper() {
+  return (
+    <Stepper.Root>
+      {({ stepper }) => (
+        <Stepper.List>
+          {stepper.state.all.map((step) => (
+            <Stepper.Item key={step.id} step={step.id}>
+              <Stepper.Trigger>
+                <Stepper.Indicator>
+                  <StepNumber />
+                </Stepper.Indicator>
+                <Stepper.Title>{step.title}</Stepper.Title>
+              </Stepper.Trigger>
+              <Stepper.Separator />
+            </Stepper.Item>
+          ))}
+        </Stepper.List>
+      )}
+    </Stepper.Root>
+  );
+}
+```
+
+#### Example: style trigger by status
+
+Use `item.status` to change the trigger's appearance (e.g. active vs inactive) without comparing step ids yourself:
+
+```tsx twoslash
+import * as React from "react";
+import { defineStepper } from "@stepperize/react";
+import { useStepItemContext } from "@stepperize/react/primitives";
+
+const { Stepper } = defineStepper(
+  { id: "shipping", title: "Shipping" },
+  { id: "payment", title: "Payment" }
+);
+
+function CustomTrigger({ children }: { children: React.ReactNode }) {
+  const item = useStepItemContext();
+  const isActive = item.status === "active";
 
   return (
     <Stepper.Trigger
       render={(props) => (
-        <Button variant={isInactive ? "secondary" : "default"} {...props}>
-          <Stepper.Indicator />
-        </Button>
+        <button
+          type="button"
+          {...props}
+          className={isActive ? "border-blue-500 bg-blue-50" : "border-gray-300 bg-white"}
+        >
+          {children}
+        </button>
       )}
-    />
+    >
+      {children}
+    </Stepper.Trigger>
   );
-};
+}
 
 // Use inside Item
-<Stepper.Item step="shipping">
-  <CustomTrigger />
-  <Stepper.Separator />
-</Stepper.Item>
+// <Stepper.Item step="shipping">
+//   <CustomTrigger>
+//     <Stepper.Indicator />
+//     <Stepper.Title>Shipping</Stepper.Title>
+//   </CustomTrigger>
+// </Stepper.Item>
 ```
 
-**Important:** `useStepItemContext()` must be used within a `Stepper.Item`. For components that live outside items (e.g. inside `Stepper.Content`), use `useStepper()` instead.
+#### Example: show icon only when step is completed
+
+Use `item.status === "success"` to display a checkmark or icon for past steps:
+
+```tsx
+const item = useStepItemContext();
+const isCompleted = item.status === "success";
+
+return (
+  <Stepper.Trigger render={(props) => (
+    <button {...props}>
+      {isCompleted ? <CheckIcon /> : <Stepper.Indicator />}
+      <Stepper.Title>{item.data.title}</Stepper.Title>
+    </button>
+  )}>
+    ...
+  </Stepper.Trigger>
+);
+```
+
+#### Summary
+
+| Need | Use |
+| ---- | --- |
+| This item's step data, index, status, or metadata | `useStepItemContext()` (inside `Stepper.Item`) |
+| Which step is active; navigation; flow | `useStepper()` |
+| Current step in the same place you render list/content | Render prop on `Stepper.Root`: `{({ stepper }) => ...}` |
 
 ---
 

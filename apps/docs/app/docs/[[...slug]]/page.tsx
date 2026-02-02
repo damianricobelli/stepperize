@@ -8,6 +8,9 @@ import defaultMdxComponents from "fumadocs-ui/mdx";
 import { DocsBody, DocsDescription, DocsPage, DocsTitle } from "fumadocs-ui/page";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { BasicCustomIndicatorPreview } from "@/components/demos/basic-custom-indicator-preview";
+import { BasicHorizontalPreview } from "@/components/demos/basic-horizontal-preview";
+import { BasicVerticalPreview } from "@/components/demos/basic-vertical-preview";
 import { DemoViewer } from "@/components/demo-viewer";
 import { OpenInV0 } from "@/components/open-in-v0";
 import { createMetadata } from "@/lib/metadata";
@@ -71,6 +74,9 @@ export default async function Page(props: { params: Promise<{ slug?: string[] }>
 						Steps,
 						Step,
 						DemoViewer,
+						BasicHorizontalPreview,
+						BasicVerticalPreview,
+						BasicCustomIndicatorPreview,
 						StepperDemo,
 						StepperWithDescription,
 						StepperWithForm,
