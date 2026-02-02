@@ -1,19 +1,231 @@
 ---
 title: Scoped Stepper
-description: Use the Stepper component with scoped children for a more customized experience.
+description: Step-by-step guide to build a stepper with Scoped and useStepper, without primitives.
 ---
 
-The Scoped Stepper allows you to create a multi-step process with custom content for each step. This example demonstrates how to use the Stepper component with scoped children, giving you more control over the content and layout of each step.
+A **Scoped Stepper** uses `Scoped` and `useStepper()` so any descendant component can read and control the same stepper. No primitives (`Stepper.List`, `Stepper.Item`, `Stepper.Trigger`, etc.)—just `defineStepper`, `Scoped`, and `useStepper` with your own UI.
 
-Key Features
+## 1. Define your steps and get Scoped and useStepper
 
-- Custom content for each step
-- Flexible layout options
-- Easy integration with your React components
+Use `defineStepper` with one object per step. Destructure `Scoped` and `useStepper`; you will wrap your tree with `Scoped` and call `useStepper()` inside child components.
 
-## Live Demo
+```tsx twoslash
+import * as React from "react";
+import { defineStepper } from "@stepperize/react";
 
-<DemoViewer
-  className="h-[400px]"
-  src="https://stackblitz.com/edit/vitejs-vite-7ya4ty?embed=1&file=src%2FApp.tsx&hideNavigation=1&view=preview"
-/>
+const { Scoped, useStepper } = defineStepper(
+  { id: "info", title: "Info" },
+  { id: "review", title: "Review" },
+  { id: "done", title: "Done" }
+);
+```
+
+## 2. Wrap your UI with Scoped
+
+`Scoped` is the provider: it holds the stepper state and makes it available to the tree. Any component rendered inside `<Scoped>` can call `useStepper()` and get the same stepper instance.
+
+```tsx twoslash
+import * as React from "react";
+import { defineStepper } from "@stepperize/react";
+
+const { Scoped, useStepper } = defineStepper(
+  { id: "info", title: "Info" },
+  { id: "review", title: "Review" },
+  { id: "done", title: "Done" }
+);
+
+function ScopedStepper() {
+  return (
+    <Scoped>
+      <StepContent />
+      <StepNavigation />
+    </Scoped>
+  );
+}
+
+function StepContent() {
+  const stepper = useStepper();
+  return <div>{/* content per step */}</div>;
+}
+
+function StepNavigation() {
+  const stepper = useStepper();
+  return <div>{/* buttons */}</div>;
+}
+```
+
+## 3. Render content per step with flow.switch or flow.when
+
+Inside a child component, call `useStepper()` and use `stepper.flow.switch({ ... })` to render different content for each step. Alternatively use `flow.when(id, fn)` for a single step or `flow.is(id)` for conditionals.
+
+```tsx twoslash
+import * as React from "react";
+import { defineStepper } from "@stepperize/react";
+
+const { Scoped, useStepper } = defineStepper(
+  { id: "info", title: "Info" },
+  { id: "review", title: "Review" },
+  { id: "done", title: "Done" }
+);
+
+function StepContent() {
+  const stepper = useStepper();
+  return (
+    <div>
+      {stepper.flow.switch({
+        info: (step) => <p>Step: {step.title}. Enter your info.</p>,
+        review: (step) => <p>Review your data.</p>,
+        done: (step) => <p>All done!</p>,
+      })}
+    </div>
+  );
+}
+```
+
+## 4. Add navigation with useStepper
+
+In another child component, call `useStepper()` and use `stepper.state.isFirst`, `stepper.state.isLast`, and `stepper.navigation.next()`, `prev()`, `reset()` to build Back / Next / Reset buttons.
+
+```tsx twoslash
+import * as React from "react";
+import { defineStepper } from "@stepperize/react";
+
+const { Scoped, useStepper } = defineStepper(
+  { id: "info", title: "Info" },
+  { id: "review", title: "Review" },
+  { id: "done", title: "Done" }
+);
+
+function StepNavigation() {
+  const stepper = useStepper();
+  return (
+    <div>
+      {stepper.state.isLast ? (
+        <button type="button" onClick={() => stepper.navigation.reset()}>
+          Reset
+        </button>
+      ) : (
+        <>
+          {!stepper.state.isFirst && (
+            <button type="button" onClick={() => stepper.navigation.prev()}>
+              Back
+            </button>
+          )}
+          <button type="button" onClick={() => stepper.navigation.next()}>
+            Next
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
+```
+
+## 5. Optional: set initial step or metadata
+
+Pass `initialStep` and/or `initialMetadata` to `Scoped` to set the starting step and initial metadata per step.
+
+```tsx twoslash
+import * as React from "react";
+import { defineStepper } from "@stepperize/react";
+
+const { Scoped, useStepper } = defineStepper(
+  { id: "info", title: "Info" },
+  { id: "review", title: "Review" },
+  { id: "done", title: "Done" }
+);
+
+function StepContent() {
+  const stepper = useStepper();
+  return <div>{/* content per step */}</div>;
+}
+
+function StepNavigation() {
+  const stepper = useStepper();
+  return <div>{/* buttons */}</div>;
+}
+
+function Example() {
+  return (
+    <Scoped
+      initialStep="review"
+      initialMetadata={{ info: { name: "Jane" } }}
+    >
+      <StepContent />
+      <StepNavigation />
+    </Scoped>
+  );
+}
+```
+
+## Live preview
+
+<ScopedPreview />
+
+## Full example
+
+```tsx twoslash
+import * as React from "react";
+import { defineStepper } from "@stepperize/react";
+
+const { Scoped, useStepper } = defineStepper(
+  { id: "info", title: "Info" },
+  { id: "review", title: "Review" },
+  { id: "done", title: "Done" }
+);
+
+function StepContent() {
+  const stepper = useStepper();
+  return (
+    <div>
+      <p>Current: {stepper.state.current.data.title}</p>
+      {stepper.flow.switch({
+        info: () => <p>Enter your info.</p>,
+        review: () => <p>Review your data.</p>,
+        done: () => <p>All done!</p>,
+      })}
+    </div>
+  );
+}
+
+function StepNavigation() {
+  const stepper = useStepper();
+  return (
+    <div>
+      {stepper.state.isLast ? (
+        <button type="button" onClick={() => stepper.navigation.reset()}>
+          Reset
+        </button>
+      ) : (
+        <>
+          {!stepper.state.isFirst && (
+            <button type="button" onClick={() => stepper.navigation.prev()}>
+              Back
+            </button>
+          )}
+          <button type="button" onClick={() => stepper.navigation.next()}>
+            Next
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
+
+export function ScopedStepper() {
+  return (
+    <Scoped>
+      <StepContent />
+      <StepNavigation />
+    </Scoped>
+  );
+}
+```
+
+## Summary
+
+- **Scoped** — Wrap your tree so any descendant can call `useStepper()` and get the same stepper.
+- **useStepper()** — Use in child components for `state.current`, `state.isFirst` / `state.isLast`, `flow.switch`, `navigation.next()` / `prev()` / `reset()`.
+- No primitives — Build your own step list, content panels, and buttons; Stepperize only provides state and navigation.
+
+For nesting two steppers (e.g. global wizard + local sub-steps), see [Multi-scoped Stepper](/docs/react/examples/multi-scoped).

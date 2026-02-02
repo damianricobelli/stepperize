@@ -1,14 +1,276 @@
 ---
 title: React Hook Form
-description: Stepperize with React Hook Form library.
+description: Step-by-step guide to use Stepperize with React Hook Form for validated multi-step forms.
 ---
 
-This example demonstrates how to use `@stepperize/react` with `react-hook-form` to create a stepperized form.
+This example shows how to combine `@stepperize/react` with [React Hook Form](https://react-hook-form.com/) to build a multi-step form where each step has its own Zod schema and RHF handles validation and form state. No primitives—use `Scoped`, `useStepper`, and RHF's `useForm` with a Zod resolver and your own UI.
 
-## Live Demo
+Install React Hook Form, Zod, and the Zod resolver:
 
-<DemoViewer src="https://stackblitz.com/edit/vitejs-vite-wjw7by?embed=1&file=src%2FApp.tsx&hideNavigation=1&view=preview" />
+```bash
+pnpm add react-hook-form @hookform/resolvers zod
+```
 
-## Additional Resources
+## 1. Define steps with Zod schemas
 
-- [React Hook Form Documentation](https://react-hook-form.com/)
+Use `defineStepper` with one object per step. Attach a Zod schema to each step as a custom property (e.g. `schema`). Stepperize does not run validation; you will pass the current step's schema to RHF's resolver.
+
+```tsx
+import { z } from "zod";
+import { defineStepper } from "@stepperize/react";
+
+const PersonalSchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  email: z.string().email("Invalid email"),
+});
+
+const AddressSchema = z.object({
+  street: z.string().min(1, "Street is required"),
+  city: z.string().min(1, "City is required"),
+});
+
+const { Scoped, useStepper } = defineStepper(
+  { id: "personal", title: "Personal", schema: PersonalSchema },
+  { id: "address", title: "Address", schema: AddressSchema },
+  { id: "done", title: "Done", schema: undefined }
+);
+```
+
+## 2. Wrap the form with Scoped
+
+Wrap your form tree with `<Scoped>` so child components can call `useStepper()` and access the current step and its schema.
+
+```tsx
+import * as React from "react";
+import { defineStepper } from "@stepperize/react";
+
+const { Scoped, useStepper } = defineStepper(
+  { id: "personal", title: "Personal", schema: null },
+  { id: "address", title: "Address", schema: null },
+  { id: "done", title: "Done", schema: undefined }
+);
+
+function StepperForm() {
+  return (
+    <Scoped>
+      <StepForm />
+      <StepNavigation />
+    </Scoped>
+  );
+}
+
+function StepForm() {
+  const stepper = useStepper();
+  return <form>{/* RHF form */}</form>;
+}
+
+function StepNavigation() {
+  const stepper = useStepper();
+  return <div>{/* Next / Back */}</div>;
+}
+```
+
+## 3. Use useForm (RHF) with the current step's schema
+
+In your form component, call `useStepper()` and read the current step's schema from `stepper.state.current.data.schema`. Use RHF's `useForm` with `zodResolver(schema)` (and optionally `defaultValues` from metadata). Call `handleSubmit(onValid)` so that when the user submits, you only advance to the next step if validation passes.
+
+```tsx
+import * as React from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { defineStepper } from "@stepperize/react";
+
+const PersonalSchema = z.object({ name: z.string().min(1), email: z.string().email() });
+const AddressSchema = z.object({ street: z.string().min(1), city: z.string().min(1) });
+
+const { Scoped, useStepper } = defineStepper(
+  { id: "personal", title: "Personal", schema: PersonalSchema },
+  { id: "address", title: "Address", schema: AddressSchema },
+  { id: "done", title: "Done", schema: undefined }
+);
+
+function StepForm() {
+  const stepper = useStepper();
+  const schema = stepper.state.current.data.schema;
+
+  const form = useForm({
+    resolver: schema ? zodResolver(schema) : undefined,
+    defaultValues: { name: "", email: "", street: "", city: "" },
+  });
+
+  const onValid = () => {
+    if (!stepper.state.isLast) stepper.navigation.next();
+  };
+
+  if (stepper.flow.is("done")) {
+    return <p>All done!</p>;
+  }
+
+  return (
+    <form onSubmit={form.handleSubmit(onValid)}>
+      {stepper.flow.switch({
+        personal: () => (
+          <>
+            <input {...form.register("name")} />
+            {form.formState.errors.name && <span>{form.formState.errors.name.message}</span>}
+            <input {...form.register("email")} type="email" />
+            {form.formState.errors.email && <span>{form.formState.errors.email.message}</span>}
+          </>
+        ),
+        address: () => (
+          <>
+            <input {...form.register("street")} />
+            <input {...form.register("city")} />
+          </>
+        ),
+        done: () => null,
+      })}
+      <button type="submit">Next</button>
+    </form>
+  );
+}
+```
+
+## 4. Reset or revalidate when the step changes
+
+When the user goes Back, the form should show the previous step's fields and validation. Use `stepper.state.current.data.id` (or the step id) as a key on the form component, or call `form.reset(defaultValues)` in a `useEffect` when the current step id changes, so RHF state matches the active step.
+
+```tsx
+React.useEffect(() => {
+  form.reset(stepper.state.current.metadata.get() ?? {});
+}, [stepper.state.current.data.id]);
+```
+
+Optional: persist values in `stepper.state.current.metadata` or `stepper.metadata.set(stepId, values)` when moving to the next step, and use that as `defaultValues` or in `reset()` when returning to a step.
+
+## 5. Add navigation (Back / Next / Reset)
+
+Use `useStepper()` in a sibling component to render Back and Reset. Next is usually the form submit button; when validation passes, `handleSubmit(onValid)` runs and you call `stepper.navigation.next()`.
+
+```tsx
+function StepNavigation() {
+  const stepper = useStepper();
+  return (
+    <div>
+      {!stepper.state.isFirst && (
+        <button type="button" onClick={() => stepper.navigation.prev()}>
+          Back
+        </button>
+      )}
+      {stepper.state.isLast && (
+        <button type="button" onClick={() => stepper.navigation.reset()}>
+          Reset
+        </button>
+      )}
+    </div>
+  );
+}
+```
+
+## Live preview
+
+<ReactHookFormPreview />
+
+## Full example
+
+```tsx
+import * as React from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { defineStepper } from "@stepperize/react";
+
+const PersonalSchema = z.object({
+  name: z.string().min(1, "Name required"),
+  email: z.string().email("Invalid email"),
+});
+
+const AddressSchema = z.object({
+  street: z.string().min(1, "Street required"),
+  city: z.string().min(1, "City required"),
+});
+
+const { Scoped, useStepper } = defineStepper(
+  { id: "personal", title: "Personal", schema: PersonalSchema },
+  { id: "address", title: "Address", schema: AddressSchema },
+  { id: "done", title: "Done", schema: undefined }
+);
+
+type PersonalValues = z.infer<typeof PersonalSchema>;
+type AddressValues = z.infer<typeof AddressSchema>;
+
+function StepForm() {
+  const stepper = useStepper();
+  const schema = stepper.state.current.data.schema as z.ZodObject<Record<string, z.ZodTypeAny>> | undefined;
+
+  const form = useForm<PersonalValues & AddressValues>({
+    resolver: schema ? zodResolver(schema) : undefined,
+    defaultValues: { name: "", email: "", street: "", city: "" },
+  });
+
+  const onValid = () => {
+    if (!stepper.state.isLast) stepper.navigation.next();
+  };
+
+  if (stepper.flow.is("done")) return <p>All done!</p>;
+
+  return (
+    <form onSubmit={form.handleSubmit(onValid)}>
+      {stepper.flow.switch({
+        personal: () => (
+          <>
+            <div><label>Name</label><input {...form.register("name")} /></div>
+            {form.formState.errors.name && <span>{form.formState.errors.name.message}</span>}
+            <div><label>Email</label><input {...form.register("email")} type="email" /></div>
+            {form.formState.errors.email && <span>{form.formState.errors.email.message}</span>}
+          </>
+        ),
+        address: () => (
+          <>
+            <div><label>Street</label><input {...form.register("street")} /></div>
+            <div><label>City</label><input {...form.register("city")} /></div>
+          </>
+        ),
+        done: () => null,
+      })}
+      <button type="submit">Next</button>
+    </form>
+  );
+}
+
+function StepNavigation() {
+  const stepper = useStepper();
+  return (
+    <div>
+      {!stepper.state.isFirst && (
+        <button type="button" onClick={() => stepper.navigation.prev()}>Back</button>
+      )}
+      {stepper.state.isLast && (
+        <button type="button" onClick={() => stepper.navigation.reset()}>Reset</button>
+      )}
+    </div>
+  );
+}
+
+export function RHFStepperForm() {
+  return (
+    <Scoped>
+      <StepForm />
+      <StepNavigation />
+    </Scoped>
+  );
+}
+```
+
+## Summary
+
+- **defineStepper** — One object per step; add a `schema` (Zod) property to each step that has a form.
+- **Scoped** — Wrap the form so `useStepper()` and the current step's schema are available in children.
+- **useForm (RHF)** — Use the current step's schema (`stepper.state.current.data.schema`) with `zodResolver(schema)`; call `stepper.navigation.next()` inside `handleSubmit(onValid)` so you only advance when validation succeeds.
+- **Step changes** — Use `form.reset()` or key the form by step id when the current step changes so RHF state matches the active step; optionally persist values in `stepper.metadata`.
+
+## Additional resources
+
+- [React Hook Form documentation](https://react-hook-form.com/)
+- [Schema validation (Stepperize)](/docs/react/api-references/schema-validation) — Attaching schemas to steps

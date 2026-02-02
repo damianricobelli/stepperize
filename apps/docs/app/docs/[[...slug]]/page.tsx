@@ -11,7 +11,11 @@ import { notFound } from "next/navigation";
 import { BasicCustomIndicatorPreview } from "@/components/demos/basic-custom-indicator-preview";
 import { BasicHorizontalPreview } from "@/components/demos/basic-horizontal-preview";
 import { BasicVerticalPreview } from "@/components/demos/basic-vertical-preview";
+import { ConformReactPreview } from "@/components/demos/conform-react-preview";
 import { FirstStepperPreview } from "@/components/demos/first-stepper-preview";
+import { MultiScopedPreview } from "@/components/demos/multi-scoped-preview";
+import { ReactHookFormPreview } from "@/components/demos/react-hook-form-preview";
+import { ScopedPreview } from "@/components/demos/scoped-preview";
 import { DemoViewer } from "@/components/demo-viewer";
 import { OpenInV0 } from "@/components/open-in-v0";
 import { createMetadata } from "@/lib/metadata";
@@ -78,7 +82,11 @@ export default async function Page(props: { params: Promise<{ slug?: string[] }>
 						BasicHorizontalPreview,
 						BasicVerticalPreview,
 						BasicCustomIndicatorPreview,
+						ConformReactPreview,
 						FirstStepperPreview,
+						MultiScopedPreview,
+						ReactHookFormPreview,
+						ScopedPreview,
 						StepperDemo,
 						StepperWithDescription,
 						StepperWithForm,
