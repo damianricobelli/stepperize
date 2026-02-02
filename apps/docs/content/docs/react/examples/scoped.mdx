@@ -5,11 +5,14 @@ description: Build a stepper with Scoped and useStepper (single or nested multi-
 
 Use **Scoped** and **useStepper()** so any descendant can read and control the same stepper—no primitives, just your own UI. You can use a **single Scoped** (one stepper) or **nest two or more Scoped** providers (e.g. global wizard + local sub-steps). The tabs below switch between the single-scope and multi-scoped patterns.
 
-## 1. Define your steps (and get Scoped / useStepper)
+<Steps>
+  <Step>
+
+### Define your steps (and get Scoped / useStepper)
 
 Use `defineStepper` with one object per step. For a single stepper you destructure `Scoped` and `useStepper`. For multi-scoped you create two (or more) steppers; each has its own `Scoped` and `useStepper`.
 
-<Tabs groupId="scoped-define" items={["Single scope", "Multi-scoped"]} defaultValue={0}>
+<Tabs groupId="scoped-define" items={["Single scope", "Multi-scoped"]} defaultIndex={0}>
   <Tab value="Single scope">
 
 One stepper: wrap your tree with `<Scoped>` and call `useStepper()` in children.
@@ -48,11 +51,14 @@ const LocalStepper = defineStepper(
   </Tab>
 </Tabs>
 
-## 2. Wrap your UI with Scoped
+  </Step>
+  <Step>
+
+### Wrap your UI with Scoped
 
 `Scoped` is the provider: it holds the stepper state. Any component inside it can call the matching `useStepper()` and get that stepper instance. For multi-scoped, nest the local `Scoped` inside the global one so inner components can use both.
 
-<Tabs groupId="scoped-wrap" items={["Single scope", "Multi-scoped"]} defaultValue={0}>
+<Tabs groupId="scoped-wrap" items={["Single scope", "Multi-scoped"]} defaultIndex={0}>
   <Tab value="Single scope">
 
 ```tsx twoslash
@@ -158,13 +164,16 @@ function LocalStepNavigation() {
   </Tab>
 </Tabs>
 
-## 3. Render content per step (flow.switch / flow.when)
+  </Step>
+  <Step>
+
+### Render content per step (flow.switch / flow.when)
 
 Inside a child component, call `useStepper()` (or `GlobalStepper.useStepper()` / `LocalStepper.useStepper()` in multi-scoped) and use `stepper.flow.switch({ ... })` to render different content per step. You can also use `flow.when(id, fn)` or `flow.is(id)`.
 
 For **single scope** the pattern is the same in every child. For **multi-scoped**, global content uses the global stepper's `flow.switch`; local content uses the local stepper's `flow.switch`. Each stepper has its own state.
 
-<Tabs groupId="scoped-content" items={["Single scope", "Multi-scoped"]} defaultValue={0}>
+<Tabs groupId="scoped-content" items={["Single scope", "Multi-scoped"]} defaultIndex={0}>
   <Tab value="Single scope">
 
 ```tsx twoslash
@@ -199,11 +208,14 @@ Global content uses `GlobalStepper.useStepper()` and its `flow.switch`. Inside t
   </Tab>
 </Tabs>
 
-## 4. Add navigation (next / prev / reset)
+  </Step>
+  <Step>
+
+### Add navigation (next / prev / reset)
 
 In another child component, call the same `useStepper()` (or the matching one in multi-scoped) and use `stepper.state.isFirst`, `stepper.state.isLast`, and `stepper.navigation.next()`, `prev()`, `reset()`.
 
-<Tabs groupId="scoped-nav" items={["Single scope", "Multi-scoped"]} defaultValue={0}>
+<Tabs groupId="scoped-nav" items={["Single scope", "Multi-scoped"]} defaultIndex={0}>
   <Tab value="Single scope">
 
 ```tsx twoslash
@@ -249,9 +261,12 @@ Use `GlobalStepper.useStepper()` for global nav (Back / Next / Reset) and `Local
   </Tab>
 </Tabs>
 
-## 5. Optional: initial step, metadata, or local scope only on one global step
+  </Step>
+  <Step>
 
-<Tabs groupId="scoped-optional" items={["Single scope", "Multi-scoped"]} defaultValue={0}>
+### Optional: initial step, metadata, or local scope only on one global step
+
+<Tabs groupId="scoped-optional" items={["Single scope", "Multi-scoped"]} defaultIndex={0}>
   <Tab value="Single scope">
 
 Pass `initialStep` and/or `initialMetadata` to `Scoped` to set the starting step and initial metadata per step.
@@ -317,9 +332,12 @@ function GlobalStepGate({ children }: { children: React.ReactNode }) {
   </Tab>
 </Tabs>
 
+  </Step>
+</Steps>
+
 ## Live preview
 
-<Tabs groupId="scoped-preview" items={["Single scope", "Multi-scoped"]} defaultValue={0}>
+<Tabs groupId="scoped-preview" items={["Single scope", "Multi-scoped"]} defaultIndex={0}>
   <Tab value="Single scope">
     <ScopedPreview />
   </Tab>
@@ -330,7 +348,7 @@ function GlobalStepGate({ children }: { children: React.ReactNode }) {
 
 ## Full example
 
-<Tabs groupId="scoped-full" items={["Single scope", "Multi-scoped"]} defaultValue={0}>
+<Tabs groupId="scoped-full" items={["Single scope", "Multi-scoped"]} defaultIndex={0}>
   <Tab value="Single scope">
 
 ```tsx twoslash

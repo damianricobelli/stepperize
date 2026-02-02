@@ -7,7 +7,10 @@ description: Step-by-step guides to build horizontal, vertical, and custom stepp
 
 A horizontal stepper shows steps in a row. Here’s how to build one from scratch.
 
-### 1. Define your steps
+<Steps>
+  <Step>
+
+### Define your steps
 
 Use `defineStepper` with one object per step. Each step needs a unique `id`; add any extra fields (e.g. `title`) for your UI.
 
@@ -21,7 +24,10 @@ const { Stepper, Scoped } = defineStepper(
 );
 ```
 
-### 2. Wrap with Stepper.Root
+  </Step>
+  <Step>
+
+### Wrap with Stepper.Root
 
 `Stepper.Root` provides the stepper context (it uses Scoped internally) and passes the stepper to your render function. Use `orientation="horizontal"` (default) for a horizontal layout.
 
@@ -48,7 +54,10 @@ function HorizontalStepper() {
 }
 ```
 
-### 3. Render the step list
+  </Step>
+  <Step>
+
+### Render the step list
 
 Map over `stepper.state.all` and render one `Stepper.Item` per step. Each item needs a `Trigger` (and optionally `Title`, `Indicator`, `Separator`).
 
@@ -85,7 +94,10 @@ function StepList() {
 }
 ```
 
-### 4. Show content per step
+  </Step>
+  <Step>
+
+### Show content per step
 
 Use `Stepper.Content` with a `step` prop so each panel is visible only when that step is current.
 
@@ -114,9 +126,15 @@ function StepContent() {
 }
 ```
 
-### 5. Add Prev / Next buttons
+  </Step>
+  <Step>
+
+### Add Prev / Next buttons
 
 Put `Stepper.Prev` and `Stepper.Next` inside `Stepper.Actions`. They call `navigation.prev()` and `navigation.next()` and are disabled on first/last step automatically.
+
+  </Step>
+</Steps>
 
 ### Live preview
 
@@ -189,9 +207,15 @@ export function HorizontalStepper() {
 
 Same structure as the horizontal stepper; only the orientation changes. Pass `orientation="vertical"` to `Stepper.Root` and `Stepper.List`.
 
-### 1. Use vertical orientation
+<Steps>
+  <Step>
+
+### Use vertical orientation
 
 Pass `orientation="vertical"` to `Stepper.Root` and `Stepper.List`. Use a custom separator (e.g. a line) between items since `Stepper.Separator` supports vertical layout.
+
+  </Step>
+</Steps>
 
 ### Live preview
 
@@ -273,7 +297,10 @@ export function VerticalStepper() {
 
 By default, `Stepper.Indicator` has no built-in content. You control what it shows via `children` or the `render` prop. For example, show the step index (1, 2, 3) using `useStepItemContext()` from the primitives entry.
 
-### 1. Custom indicator with step index
+<Steps>
+  <Step>
+
+### Custom indicator with step index
 
 ```tsx twoslash
 import * as React from "react";
@@ -316,7 +343,10 @@ function StepperWithNumberedIndicator() {
 }
 ```
 
-### 2. Alternative: render prop on Indicator
+  </Step>
+  <Step>
+
+### Alternative: render prop on Indicator
 
 You can also use the `render` prop to receive DOM props and render a custom element (e.g. for styling the “circle” later).
 
@@ -347,6 +377,9 @@ function CustomIndicator() {
 //   <Stepper.Title>{step.title}</Stepper.Title>
 // </Stepper.Trigger>
 ```
+
+  </Step>
+</Steps>
 
 ### Live preview
 

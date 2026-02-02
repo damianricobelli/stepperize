@@ -6,7 +6,10 @@ icon: Sparkles
 
 This page walks you through building a minimal stepper **without primitives** (no `Stepper.List`, `Stepper.Item`, `Stepper.Trigger`, etc.) and **without Scoped or Stepper.Root**. You only need **[defineStepper](/docs/react/api-references/define)** and **[useStepper](/docs/react/api-references/hook)**. When you call `useStepper()` directly in a component, the hook owns the stepper state—no provider required.
 
-## 1. Define your steps
+<Steps>
+  <Step>
+
+### Define your steps
 
 **[defineStepper](/docs/react/api-references/define)** is the entry point. You pass one object per step (each with at least a unique `id`) and get back a typed stepper: `useStepper`, and optionally `Scoped`, `Stepper` (primitives). For this example we only use `useStepper`.
 
@@ -23,7 +26,12 @@ const { useStepper } = defineStepper(
 );
 ```
 
-## 2. Use the hook in your component
+  </Step>
+  <Step>
+
+<div>
+
+### Use the hook in your component
 
 **[useStepper](/docs/react/api-references/hook)** returns the stepper instance. Call it **inside** the component that renders your UI (not at module top level), because the hook uses React state. From the returned `stepper` you get:
 
@@ -31,9 +39,43 @@ const { useStepper } = defineStepper(
 - **flow** — `flow.switch({ ... })` to render content per step (one branch per step id)
 - **navigation** — `navigation.next()`, `navigation.prev()`, `navigation.goTo(id)`, `navigation.reset()`
 
+```tsx
+function MyStepper() {
+  const stepper = useStepper();
+  return (
+    <>
+      <p>Step: {stepper.state.current.data.title}</p>
+      <div>
+        {stepper.flow.switch({
+          name: () => <p>What is your name?</p>,
+          email: () => <p>What is your email?</p>,
+          confirm: () => <p>Confirm.</p>,
+          done: () => <p>All done!</p>,
+        })}
+      </div>
+      <div>
+        {!stepper.state.isFirst && (
+          <button onClick={() => stepper.navigation.prev()}>Back</button>
+        )}
+        {stepper.state.isLast ? (
+          <button onClick={() => stepper.navigation.reset()}>Reset</button>
+        ) : (
+          <button onClick={() => stepper.navigation.next()}>Next</button>
+        )}
+      </div>
+    </>
+  );
+}
+```
+
+</div>
+
+  </Step>
+</Steps>
+
 ## Full example
 
-```tsx
+```tsx twoslash
 import * as React from "react";
 import { defineStepper } from "@stepperize/react";
 
@@ -58,14 +100,14 @@ export function MyFirstStepper() {
         })}
       </div>
       <div>
-{stepper.state.isLast ? (
-              <button onClick={() => stepper.navigation.reset()}>Reset</button>
-            ) : (
-              <>
-                <button onClick={() => stepper.navigation.prev()} disabled={stepper.state.isFirst}>Back</button>
-                <button onClick={() => stepper.navigation.next()}>Next</button>
-              </>
-            )}
+        {stepper.state.isLast ? (
+          <button onClick={() => stepper.navigation.reset()}>Reset</button>
+        ) : (
+          <>
+            <button onClick={() => stepper.navigation.prev()} disabled={stepper.state.isFirst}>Back</button>
+            <button onClick={() => stepper.navigation.next()}>Next</button>
+          </>
+        )}
       </div>
     </>
   );

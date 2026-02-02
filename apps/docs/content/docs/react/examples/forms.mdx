@@ -7,7 +7,7 @@ Stepperize works with any form library. This guide uses the same multi-step flow
 
 Install the form library you choose (and Zod for validation):
 
-<Tabs groupId="forms-install" items={["Conform", "React Hook Form", "TanStack Form"]} defaultValue={0}>
+<Tabs groupId="forms-install" items={["Conform", "React Hook Form", "TanStack Form"]} defaultIndex={0}>
   <Tab value="Conform">
 
 ```bash
@@ -31,7 +31,10 @@ pnpm add @tanstack/react-form zod
   </Tab>
 </Tabs>
 
-## 1. Define steps with Zod schemas
+<Steps>
+  <Step>
+
+### Define steps with Zod schemas
 
 Use `defineStepper` with one object per step. Attach a Zod schema to each step (e.g. `schema`). Stepperize does not run validation; you pass the current step's schema to your form library.
 
@@ -56,7 +59,10 @@ const { Scoped, useStepper } = defineStepper(
 );
 ```
 
-## 2. Wrap the form with Scoped
+  </Step>
+  <Step>
+
+### Wrap the form with Scoped
 
 Wrap your form tree with `<Scoped>` so child components can call `useStepper()` and access the current step and its schema.
 
@@ -81,11 +87,14 @@ function StepNavigation() {
 }
 ```
 
-## 3. Form hook and validation (per library)
+  </Step>
+  <Step>
+
+### Form hook and validation (per library)
 
 In your form component, call `useStepper()` and read the current step's schema from `stepper.state.current.data.schema`. Then use your form library's hook: only the hook usage and field bindings differ; the stepper logic (flow.switch, navigation.next on success) is the same.
 
-<Tabs groupId="forms-hook" items={["Conform", "React Hook Form", "TanStack Form"]} defaultValue={0}>
+<Tabs groupId="forms-hook" items={["Conform", "React Hook Form", "TanStack Form"]} defaultIndex={0}>
   <Tab value="Conform">
 
 Conform: `useForm` with `onValidate` / `onSubmit` using `parseWithZod(formData, { schema })`. Spread `getFormProps(form)` on the form. Use `fields.name`, `fields.email`, etc. for inputs and errors.
@@ -276,7 +285,10 @@ function StepForm() {
   </Tab>
 </Tabs>
 
-## 4. Navigation
+  </Step>
+  <Step>
+
+### Navigation
 
 Use `useStepper()` in a sibling component for Back and Reset. Next is the form submit button; when validation passes, advance with `stepper.navigation.next()` (inside your form library's submit handler).
 
@@ -300,9 +312,12 @@ function StepNavigation() {
 }
 ```
 
+  </Step>
+</Steps>
+
 ## Live preview
 
-<Tabs groupId="forms-preview" items={["Conform", "React Hook Form", "TanStack Form"]} defaultValue={0}>
+<Tabs groupId="forms-preview" items={["Conform", "React Hook Form", "TanStack Form"]} defaultIndex={0}>
   <Tab value="Conform">
     <ConformReactPreview />
   </Tab>
@@ -316,7 +331,7 @@ function StepNavigation() {
 
 ## Full example
 
-<Tabs groupId="forms-full" items={["Conform", "React Hook Form", "TanStack Form"]} defaultValue={0}>
+<Tabs groupId="forms-full" items={["Conform", "React Hook Form", "TanStack Form"]} defaultIndex={0}>
   <Tab value="Conform">
 
 ```tsx
