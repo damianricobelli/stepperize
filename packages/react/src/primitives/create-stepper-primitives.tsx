@@ -39,7 +39,7 @@ export function createStepperPrimitives<Steps extends Step[]>(
 ): StepperPrimitives<Steps> {
 	return {
 		Root: createRoot(StepperContext, ScopedProvider),
-		List: createList(),
+		List: createList(StepperContext),
 		Item: createItem(StepperContext),
 		Trigger: createTrigger(StepperContext),
 		Title: createTitle(),

@@ -8,6 +8,7 @@ export function createSeparator() {
 			"data-component": "stepper-separator",
 			"data-orientation": orientation,
 			"data-status": dataStatus,
+			"aria-hidden": true,
 			tabIndex: -1,
 			...rest,
 		};

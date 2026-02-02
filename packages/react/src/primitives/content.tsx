@@ -21,6 +21,7 @@ export function createContent<Steps extends Step[]>(
 			role: "tabpanel" as const,
 			"aria-labelledby": `step-${step}`,
 			"aria-hidden": false,
+			tabIndex: 0,
 			...rest,
 		};
 		if (render) return render(domProps)

@@ -28,7 +28,7 @@ export function createTrigger<Steps extends Step[]>(
 			"aria-current": isActive ? ("step" as const) : undefined,
 			"aria-posinset": stepIndex + 1,
 			"aria-setsize": stepper.state.all.length,
-			"aria-selected": isActive,
+			"aria-selected": isActive ? true : false,
 			onClick: (e: React.MouseEvent<HTMLButtonElement>) => {
 				handleClick();
 				rest.onClick?.(e);

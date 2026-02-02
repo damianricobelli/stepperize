@@ -15,6 +15,7 @@ export function createPrev<Steps extends Step[]>(
 			"data-component": "stepper-prev",
 			type: "button" as const,
 			disabled: stepper.state.isFirst,
+			"aria-disabled": stepper.state.isFirst,
 			onClick: (e: React.MouseEvent<HTMLButtonElement>) => {
 				stepper.navigation.prev();
 				rest.onClick?.(e);

@@ -25,6 +25,8 @@ export function createRoot<Steps extends Step[]>(
 			{
 				"data-component": "stepper",
 				"data-orientation": orientation,
+				role: "group",
+				"aria-label": "Stepper",
 				...rest,
 			},
 			typeof children === "function" ? children({ stepper }) : children,

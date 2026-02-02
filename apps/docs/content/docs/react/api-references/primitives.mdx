@@ -74,11 +74,50 @@ Stepper.Root
 
 ---
 
+## Accessibility
+
+The primitives implement the [WAI-ARIA Tabs pattern](https://www.w3.org/WAI/ARIA/apg/patterns/tabs/) so the stepper is announced and operable with keyboard and assistive technologies. The step list is exposed as a **tablist**, each step trigger as a **tab**, and each step content as a **tabpanel**. Stepper semantics are added with `aria-current="step"` on the active tab.
+
+### Roles and attributes by component
+
+| Component | Role / ARIA | Description |
+| --------- | ----------- | ----------- |
+| **Stepper.Root** | `role="group"`, `aria-label="Stepper"` | Groups the widget; override with your own `aria-label` if needed. |
+| **Stepper.List** | `role="tablist"`, `aria-orientation` | Container for the tabs; orientation is `horizontal` or `vertical` from the `orientation` prop. |
+| **Stepper.Trigger** | `role="tab"`, `id="step-{stepId}"`, `aria-controls="step-panel-{stepId}"`, `aria-current="step"` (when active), `aria-selected` (true/false), `aria-posinset`, `aria-setsize` | Each trigger is a tab; roving tabindex (only the active tab has `tabIndex={0}`). |
+| **Stepper.Content** | `role="tabpanel"`, `id="step-panel-{stepId}"`, `aria-labelledby="step-{stepId}"`, `tabIndex={0}` | Panel for the current step; `tabIndex={0}` keeps it in the tab order when it has no focusable children. |
+| **Stepper.Indicator** | `aria-hidden="true"` | Treated as decorative; the trigger’s accessible name comes from the title/content. |
+| **Stepper.Separator** | `aria-hidden="true"`, `tabIndex={-1}` | Decorative; not in tab order and hidden from assistive tech. |
+| **Stepper.Prev** / **Stepper.Next** | `disabled` and `aria-disabled` when at first/last step | Buttons are disabled and announced as disabled. |
+
+### Keyboard interaction
+
+When focus is on a **tab** (trigger) inside the list:
+
+| Key | Action |
+| --- | ------ |
+| **ArrowRight** / **ArrowDown** | Move focus and activation to the next step (wraps at end for arrows only when you implement it; current behavior: no wrap). |
+| **ArrowLeft** / **ArrowUp** | Move focus and activation to the previous step. |
+| **Home** | Move focus and activation to the first step. |
+| **End** | Move focus and activation to the last step. |
+| **Tab** | Move focus out of the tablist (e.g. to the active tabpanel or the next focusable element). |
+
+The **tabpanel** (content) has `tabIndex={0}` so that when it has no focusable children, users can still Tab into it and then Tab out to the next region.
+
+### References
+
+- [WAI-ARIA Authoring Practices Guide (APG) – Tabs](https://www.w3.org/WAI/ARIA/apg/patterns/tabs/)
+- [ARIA: tab role (MDN)](https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Roles/tab_role)
+- [ARIA: tablist role (MDN)](https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Roles/tablist_role)
+- [ARIA: tabpanel role (MDN)](https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Roles/tabpanel_role)
+
+---
+
 ## Accessing step data
 
 You can get step data in three ways when using primitives:
 
-### 1. Render prop on `Stepper.Root`
+### Render prop on `Stepper.Root`
 
 The root accepts a function `{({ stepper }) => (...)}` that receives the full stepper instance. Use it when you need global state (current step, navigation, etc.) in the same place you render the list and content:
 
@@ -98,7 +137,7 @@ The root accepts a function `{({ stepper }) => (...)}` that receives the full st
 </Stepper.Root>
 ```
 
-### 2. `useStepper()` — global stepper in any child
+### `useStepper()` — global stepper in any child
 
 Any component inside `Stepper.Root` can call `useStepper()` (from your `defineStepper` result) to access the full stepper: current step, `next()`, `prev()`, `goTo()`, `when()`, `switch()`, etc. Use it for content panels, navigation logic, or any component that needs to know "where we are" and control the flow.
 
@@ -116,7 +155,7 @@ function ShippingForm() {
 }
 ```
 
-### 3. `useStepItemContext()` — this item's step
+### `useStepItemContext()` — this item's step
 
 `useStepItemContext()` returns the step data, index, status, and metadata for **the `Stepper.Item` that wraps the component** that calls the hook. Use it when you need to read or style based on "this step" (e.g. this item's status or index) without passing the step id as a prop.
 
@@ -323,8 +362,8 @@ Ordered list container for step items. Renders as `<ol>` by default.
 
 ### Accessibility
 
-- `role="tablist"`
-- `aria-orientation` set based on orientation
+- `role="tablist"`, `aria-orientation` from `orientation` prop
+- Keyboard: Arrow keys (prev/next step), Home (first), End (last) — see [Accessibility (ARIA)](#accessibility-aria)
 
 ---
 
@@ -387,18 +426,9 @@ Same as `Stepper.Item`.
 
 ### Accessibility
 
-- `role="tab"`
-- `aria-selected` reflects active state
-- `aria-controls` linked to content panel
-- `aria-current="step"` when active
-- Keyboard navigation with Arrow keys
-
-### Keyboard Navigation
-
-| Key | Action |
-| --- | ------ |
-| `ArrowRight` / `ArrowDown` | Focus next step (based on orientation) |
-| `ArrowLeft` / `ArrowUp` | Focus previous step (based on orientation) |
+- `role="tab"`, `id="step-{stepId}"`, `aria-controls`, `aria-current="step"` (when active), `aria-selected`, `aria-posinset`, `aria-setsize`
+- Roving tabindex: only the active tab has `tabIndex={0}`; inactive tabs have `tabIndex={-1}`
+- Keyboard: Arrow keys, Home, End — handled by `Stepper.List`; see [Accessibility (ARIA)](#accessibility-aria)
 
 ---
 
@@ -519,8 +549,7 @@ Visual separator line between steps. Automatically hidden on the last step.
 
 ### Accessibility
 
-- `role="separator"`
-- `aria-orientation` set based on orientation
+- `aria-hidden="true"`, `tabIndex={-1}` — decorative; not in tab order and hidden from assistive tech
 
 ---
 
@@ -561,9 +590,8 @@ Panel that displays content for a specific step. Hidden when that step is not th
 
 ### Accessibility
 
-- `role="tabpanel"`
-- `aria-labelledby` linked to trigger
-- `hidden` attribute when not active
+- `role="tabpanel"`, `id="step-panel-{stepId}"`, `aria-labelledby` linked to the trigger, `tabIndex={0}` so the panel is in the tab order when it has no focusable children
+- Only the panel for the current step is rendered; inactive steps do not render content
 
 ---
 
@@ -636,7 +664,7 @@ Button to navigate to the previous step. Automatically disabled on first step.
 
 ### Accessibility
 
-- `aria-label="Go to previous step"`
+- `disabled` and `aria-disabled` when on the first step; provide visible label via `children` (e.g. "Previous", "Back")
 
 ---
 
@@ -682,7 +710,7 @@ Button to navigate to the next step. Automatically disabled on last step.
 
 ### Accessibility
 
-- `aria-label="Go to next step"`
+- `disabled` and `aria-disabled` when on the last step; provide visible label via `children` (e.g. "Next", "Finish")
 
 ---
 
