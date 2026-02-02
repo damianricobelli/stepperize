@@ -63,9 +63,9 @@ Step-by-ID lookup is under **lookup**, not at the top level: use `stepper.lookup
 
 See [Hook](/docs/react/api-references/hook) for the full structure.
 
-## Lookup (formerly "query")
+## Lookup
 
-**Before:** If you used `stepper.query` or similar helpers.
+**Before:** `utils` from `defineStepper`
 
 **Now:** `stepper.lookup` with the same idea, clearer name:
 
@@ -133,15 +133,6 @@ if (stepper.flow.is("payment")) {
 
 `flow.when`, `flow.switch`, and `flow.match` continue to work as before.
 
-## Removed in v6
-
-The following are no longer part of the API:
-
-- **Persistence / persist** — no built-in persist layer.
-- **History** — no history stack or back/forward API.
-- **Progress** — no dedicated progress-tracking API (derive from `state.current.index` and `state.all.length` if needed).
-- **Initial statuses** — you can’t set initial statuses; status is derived from position (active / success / inactive) and is available via primitives (e.g. `useStepItemContext().status`) or when rendering the list yourself.
-
 ## Primitives
 
 v6 introduces a full set of typed primitives under `Stepper`:
@@ -169,8 +160,7 @@ See [Primitives](/docs/react/api-references/primitives) for the full reference.
 | Scoped props | `initial` object | `initialStep?`, `initialMetadata?` |
 | Transition callbacks | Config or global | `lifecycle.onBeforeTransition` / `onAfterTransition` |
 | Conditional by step | `when` / `switch` | + `flow.is(id)` |
-| Persist / history / progress | If present | Removed |
-| UI components | Varies | `Stepper.Root`, `.List`, `.Item`, etc. |
+| UI components | -- | `Stepper.Root`, `.List`, `.Item`, etc. |
 
 ## Full API reference
 

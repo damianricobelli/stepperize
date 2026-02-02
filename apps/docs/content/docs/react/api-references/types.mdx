@@ -10,7 +10,9 @@ Types are exported from `@stepperize/core` and `@stepperize/react`.
 ### Step
 
 ```ts
-type Step = { id: string } & Record<string, any>;
+type Step<Id extends string = string, Data extends object = {}> = {
+    id: Id;
+} & Data;
 ```
 
 Steps must have a unique `id`; other properties are free. In core, `Step` is generic (`Step<Id, Data>`) for stricter inference; the simplified form above is enough for most usage.
