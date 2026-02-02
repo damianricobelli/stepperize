@@ -21,7 +21,7 @@ import { defineStepper } from "@stepperize/react";
 
 const PersonalSchema = z.object({
   name: z.string().min(1, "Name is required"),
-  email: z.string().email("Invalid email"),
+  email: z.email("Invalid email"),
 });
 
 const AddressSchema = z.object({
@@ -81,7 +81,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { defineStepper } from "@stepperize/react";
 
-const PersonalSchema = z.object({ name: z.string().min(1), email: z.string().email() });
+const PersonalSchema = z.object({ name: z.string().min(1), email: z.email() });
 const AddressSchema = z.object({ street: z.string().min(1), city: z.string().min(1) });
 
 const { Scoped, useStepper } = defineStepper(
@@ -183,7 +183,7 @@ import { defineStepper } from "@stepperize/react";
 
 const PersonalSchema = z.object({
   name: z.string().min(1, "Name required"),
-  email: z.string().email("Invalid email"),
+  email: z.email("Invalid email"),
 });
 
 const AddressSchema = z.object({

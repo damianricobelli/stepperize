@@ -16,6 +16,7 @@ import { FirstStepperPreview } from "@/components/demos/first-stepper-preview";
 import { MultiScopedPreview } from "@/components/demos/multi-scoped-preview";
 import { ReactHookFormPreview } from "@/components/demos/react-hook-form-preview";
 import { ScopedPreview } from "@/components/demos/scoped-preview";
+import { TanstackFormPreview } from "@/components/demos/tanstack-form-preview";
 import { DemoViewer } from "@/components/demo-viewer";
 import { OpenInV0 } from "@/components/open-in-v0";
 import { createMetadata } from "@/lib/metadata";
@@ -87,6 +88,7 @@ export default async function Page(props: { params: Promise<{ slug?: string[] }>
 						MultiScopedPreview,
 						ReactHookFormPreview,
 						ScopedPreview,
+						TanstackFormPreview,
 						StepperDemo,
 						StepperWithDescription,
 						StepperWithForm,

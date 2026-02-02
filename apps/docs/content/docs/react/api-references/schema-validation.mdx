@@ -12,7 +12,7 @@ import { z } from "zod";
 import { defineStepper } from "@stepperize/react";
 
 const Schema = z.object({
-  email: z.string().email(),
+  email: z.email(),
   password: z.string().min(8),
 });
 
@@ -70,7 +70,7 @@ import { defineStepper } from "@stepperize/react";
 
 const PersonalSchema = z.object({
   name: z.string().min(1),
-  email: z.string().email(),
+  email: z.email(),
 });
 
 const AddressSchema = z.object({
@@ -113,7 +113,7 @@ const FirstStepSchema = z.object({
 });
 
 const SecondStepSchema = z.object({
-  email: z.string().email(),
+  email: z.email(),
   password: z.string().min(8),
 });
 

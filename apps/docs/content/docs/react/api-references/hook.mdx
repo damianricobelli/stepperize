@@ -5,6 +5,11 @@ description: Access and control your stepper with the useStepper hook
 
 The `useStepper` hook returns the stepper instance with a structured API: **state**, **navigation**, **lookup**, **flow**, and **metadata**. Inside `<Scoped>` or `Stepper.Root`, `useStepper()` reads from context. Used in a component with no provider, it creates its own stepper state for that component.
 
+The hook accepts an optional configuration object with the following properties:
+
+- **`initialStep`** — The ID of the initial step to display
+- **`initialMetadata`** — The initial metadata to set for the steps
+
 ## Usage
 
 ```tsx twoslash
@@ -28,59 +33,209 @@ const MyStepperComponent = () => {
 };
 ```
 
-## Hook config
+## Rendering methods
 
-Optional object passed to `useStepper({ ... })`:
+The stepper exposes **`flow`** with helpers to render content by step: **`flow.is`**, **`flow.when`**, **`flow.switch`**, and **`flow.match`**.
 
-| Property | Type | Description |
-| -------- | ---- | ----------- |
-| `initialStep` | `Get.Id<Steps>` | Initial active step ID |
-| `initialMetadata` | `Partial<Record<Get.Id<Steps>, Metadata>>` | Initial metadata per step |
+### when
+
+The `flow.when` method allows rendering content conditionally based on the current step. It takes a step ID (string or array of ID plus conditions), a `whenFn` (the function to run if the step matches), and an optional `elseFn` (run when it does not match).
 
 ```tsx twoslash
 import * as React from "react";
 import { defineStepper } from "@stepperize/react";
 
 const { useStepper } = defineStepper(
-  { id: "first", title: "First" },
-  { id: "second", title: "Second" }
+  { id: "first", title: "First step" },
+  { id: "second", title: "Second step" }
 );
 
-const MyComponent = () => {
-  const stepper = useStepper({
-    initialStep: "second",
-    initialMetadata: { first: { value: "saved" } }
-  });
-  return <div>{stepper.state.current.data.title}</div>;
+const MyStepperComponent = () => {
+  const stepper = useStepper();
+  return (
+    <div>
+      {stepper.flow.when("first", (step) => (
+        <p>First step: {step.title}</p>
+      ))}
+      {stepper.flow.when("second", (step) => (
+        <p>Second step: {step.title}</p>
+      ))}
+    </div>
+  );
 };
 ```
 
-## API structure
+You can pass an optional `elseFn` to render when the current step does not match:
 
-The stepper has five namespaces (`state`, `navigation`, `lookup`, `flow`, `metadata`) plus `lifecycle` for transition callbacks.
+```tsx twoslash
+import * as React from "react";
+import { defineStepper } from "@stepperize/react";
 
-### state
+const { useStepper } = defineStepper(
+  { id: "info", title: "Info" },
+  { id: "review", title: "Review" },
+  { id: "done", title: "Done" }
+);
 
-| Property | Type | Description |
-| -------- | ---- | ----------- |
-| `state.all` | `Steps` | Array of all step objects |
-| `state.current` | `{ data, index, status, metadata }` | Current step: `data` (step object), `index`, `status` (always `"active"` for the current step in the global stepper; the active/success/inactive distinction is for primitives via `useStepItemContext().status`), `metadata` (get/set/reset for current step only) |
-| `state.isFirst` | `boolean` | `true` if on the first step |
-| `state.isLast` | `boolean` | `true` if on the last step |
-| `state.isTransitioning` | `boolean` | `true` while a transition (with callbacks) is in progress |
+function Content() {
+  const stepper = useStepper();
+  return (
+    <div>
+      {stepper.flow.when(
+        "review",
+        (step) => <p>You're on review: {step.title}</p>,
+        (step) => <p>Other step: {step.title}</p>
+      )}
+    </div>
+  );
+}
+```
 
-### navigation
+You can also use an array as the first argument: the first element is the step ID, the rest are boolean conditions. The step matches only when the ID matches and all conditions are `true`. This allows multi-condition logic (e.g. step + feature flag or validation state).
 
-| Method | Description |
-| ------ | ----------- |
-| `navigation.next()` | Go to next step. Returns `void` or `Promise<void>` when transition callbacks are used. |
-| `navigation.prev()` | Go to previous step. |
-| `navigation.goTo(id)` | Go to step by ID. |
-| `navigation.reset()` | Reset to initial step. |
+```tsx twoslash
+import * as React from "react";
+import { defineStepper } from "@stepperize/react";
 
-### lookup
+const { useStepper } = defineStepper(
+  { id: "first", title: "First step" },
+  { id: "second", title: "Second step" }
+);
 
-Step lookup (same shape as `generateStepperUtils` from `@stepperize/core`):
+const MyStepperComponent = () => {
+  const stepper = useStepper();
+  const canEdit = true;
+  const isReady = true;
+  return (
+    <div>
+      {stepper.flow.when(["first", canEdit, isReady], (step) => (
+        <p>First step (editable): {step.title}</p>
+      ))}
+      {stepper.flow.when("second", (step) => (
+        <p>Second step: {step.title}</p>
+      ))}
+    </div>
+  );
+};
+```
+
+### switch
+
+The `flow.switch` method lets you render content based on the current step ID in a switch-case style. It is a cleaner and more scalable way to handle many steps without multiple `when` conditions.
+
+```tsx twoslash
+import * as React from "react";
+import { defineStepper } from "@stepperize/react";
+
+const { useStepper } = defineStepper(
+  { id: "first", title: "First step" },
+  { id: "second", title: "Second step" }
+);
+
+const MyStepperComponent = () => {
+  const stepper = useStepper();
+  return (
+    <div>
+      {stepper.flow.switch({
+        first: (step) => <p>First: {step.title}</p>,
+        second: (step) => <p>Second: {step.title}</p>,
+      })}
+    </div>
+  );
+};
+```
+
+### match
+
+The `flow.match` method lets you render content based on an **external** step ID (e.g. from the server, URL, or other state). Unlike `flow.switch`, which uses the stepper’s current step, `flow.match` takes that ID as the first argument. Useful for frameworks like Remix with server-side state or when driving the UI from a URL param.
+
+```tsx twoslash
+import * as React from "react";
+import { defineStepper } from "@stepperize/react";
+
+const { useStepper } = defineStepper(
+  { id: "first", title: "First step" },
+  { id: "second", title: "Second step" }
+);
+
+const MyStepperComponent = () => {
+  const stepper = useStepper();
+  const state = "first"; // e.g. from server or URL
+  return (
+    <div>
+      {stepper.flow.match(state, {
+        first: (step) => <p>First: {step.title}</p>,
+        second: (step) => <p>Second: {step.title}</p>,
+      })}
+    </div>
+  );
+};
+```
+
+### is
+
+For simple conditionals, use `flow.is(id)`. It returns `true` when the current step’s ID equals `id`.
+
+```tsx twoslash
+import * as React from "react";
+import { defineStepper } from "@stepperize/react";
+
+const { useStepper } = defineStepper(
+  { id: "form", title: "Form" },
+  { id: "confirmation", title: "Confirmation" }
+);
+
+function Content() {
+  const stepper = useStepper();
+  return (
+    <div>
+      {stepper.flow.is("confirmation") && <p>Order summary here.</p>}
+      {stepper.flow.is("form") && <p>Fill the form.</p>}
+    </div>
+  );
+}
+```
+
+## State and navigation
+
+| Property / Method | Description |
+| ----------------- | ----------- |
+| `state.all` | Array of all step objects |
+| `state.current` | `{ data, index, status, metadata }` — current step; use `state.current.metadata.get/set/reset` for current step only |
+| `state.isFirst` / `state.isLast` | `true` when on first or last step |
+| `state.isTransitioning` | `true` while a transition (with lifecycle callbacks) is in progress |
+| `navigation.next()` | Go to next step |
+| `navigation.prev()` | Go to previous step |
+| `navigation.goTo(id)` | Go to step by ID |
+| `navigation.reset()` | Reset to initial step |
+
+```tsx twoslash
+import * as React from "react";
+import { defineStepper } from "@stepperize/react";
+
+const { useStepper } = defineStepper(
+  { id: "info", title: "Info" },
+  { id: "review", title: "Review" },
+  { id: "done", title: "Done" }
+);
+
+function NavExample() {
+  const stepper = useStepper();
+  return (
+    <div>
+      <p>Step {stepper.state.current.index + 1}: {stepper.state.current.data.title}</p>
+      <button type="button" onClick={() => stepper.navigation.prev()} disabled={stepper.state.isFirst}>Back</button>
+      <button type="button" onClick={() => stepper.navigation.next()} disabled={stepper.state.isLast}>Next</button>
+      <button type="button" onClick={() => stepper.navigation.goTo("review")}>Jump to Review</button>
+      <button type="button" onClick={() => stepper.navigation.reset()}>Reset</button>
+    </div>
+  );
+}
+```
+
+## Lookup
+
+Step lookup helpers (same shape as `generateStepperUtils` from `@stepperize/core`):
 
 | Method | Description |
 | ------ | ----------- |
@@ -92,49 +247,35 @@ Step lookup (same shape as `generateStepperUtils` from `@stepperize/core`):
 | `lookup.getNext(id)` / `lookup.getPrev(id)` | Next / previous step after `id` |
 | `lookup.getNeighbors(id)` | `{ prev, next }` for step `id` |
 
-Current step index: use `stepper.state.current.index`. Step by ID: `stepper.lookup.get(id)`.
+```tsx twoslash
+import * as React from "react";
+import { defineStepper } from "@stepperize/react";
 
-### flow
+const { useStepper } = defineStepper(
+  { id: "info", title: "Info" },
+  { id: "review", title: "Review" },
+  { id: "done", title: "Done" }
+);
 
-Rendering helpers and checks by step ID:
-
-| Method | Description |
-| ------ | ----------- |
-| `flow.is(id)` | Returns `true` if the current step's ID equals `id`. Use for simple conditionals (e.g. `stepper.flow.is("payment")`). |
-| `flow.when(id, whenFn, elseFn?)` | Run `whenFn(step)` if current step matches `id`, else `elseFn(step)`. First arg can be `[id, ...conditions]`. |
-| `flow.switch(when)` | Object map of step ID → `(step) => R`. Runs the handler for the current step. |
-| `flow.match(state, matches)` | First argument is a step ID (e.g. from URL or external state) to match against; second is the same shape as `flow.switch`. |
-
-**Example — `flow.is`:**
-
-```tsx
-// Conditional render
-{stepper.flow.is("confirmation") && <OrderSummary />}
-
-// In conditionals
-if (stepper.flow.is("payment")) {
-  return <PaymentForm />;
+function LookupExample() {
+  const stepper = useStepper();
+  const step = stepper.lookup.get("review");
+  const neighbors = stepper.lookup.getNeighbors(stepper.state.current.data.id);
+  return (
+    <p>Review: {step?.title}; neighbors: {neighbors.prev?.id ?? "none"} → {neighbors.next?.id ?? "none"}</p>
+  );
 }
 ```
 
-### metadata
+## Transition hooks (before / after)
 
-Step-scoped metadata (all steps):
+For actions before or after a transition (e.g. validation, analytics), use **`stepper.lifecycle.onBeforeTransition(cb)`** and **`stepper.lifecycle.onAfterTransition(cb)`**. They run on every `next()`, `prev()`, and `goTo()`. Return `false` (or a promise that resolves to `false`) from `onBeforeTransition` to cancel the transition.
 
-| Property / Method | Description |
-| ----------------- | ----------- |
-| `metadata.values` | Record of all metadata per step ID |
-| `metadata.set(id, values)` | Set metadata for a step |
-| `metadata.get(id)` | Get metadata for a step |
-| `metadata.reset(keepInitialMetadata?)` | Reset all metadata; pass `true` to keep initial from config |
+The callback receives a **TransitionContext** with: `from`, `to`, `metadata`, `statuses`, `direction` (`"next"` | `"prev"` | `"goTo"`), `fromIndex`, `toIndex`. Use `direction` to branch (e.g. run logic only before "next" or "prev").
 
-Current step metadata only: use `state.current.metadata.get()`, `state.current.metadata.set(values)`, `state.current.metadata.reset()`.
+### onBeforeTransition
 
-## Transition hooks
-
-Register callbacks via `stepper.lifecycle.onBeforeTransition(cb)` and `stepper.lifecycle.onAfterTransition(cb)`. They run on every `next()`, `prev()`, or `goTo()`. `onBeforeTransition` runs before the step index updates; return `false` to cancel. `onAfterTransition` runs after the update.
-
-**TransitionContext** has: `from`, `to`, `metadata`, `statuses`, `direction` (`"next" \| "prev" \| "goTo"`), `fromIndex`, `toIndex`.
+Runs before the step index updates. Return `false` to cancel.
 
 ```tsx twoslash
 import * as React from "react";
@@ -147,27 +288,110 @@ const { useStepper } = defineStepper(
 
 function MyStepper() {
   const stepper = useStepper();
-
   React.useEffect(() => {
     stepper.lifecycle.onBeforeTransition(async (ctx) => {
       if (ctx.direction === "prev" && !window.confirm("Go back?")) return false;
     });
-    stepper.lifecycle.onAfterTransition((ctx) => {
-      console.log(`${ctx.from.id} → ${ctx.to.id}`);
-    });
   }, [stepper]);
-
   return (
-    <div>
-      <button onClick={() => stepper.navigation.next()} disabled={stepper.state.isTransitioning || stepper.state.isLast}>
-        {stepper.state.isTransitioning ? "..." : "Next"}
-      </button>
-    </div>
+    <button type="button" onClick={() => stepper.navigation.next()} disabled={stepper.state.isLast}>
+      Next
+    </button>
   );
 }
 ```
 
-## API summary
+### onAfterTransition
+
+Runs after the step index has updated.
+
+```tsx twoslash
+import * as React from "react";
+import { defineStepper } from "@stepperize/react";
+
+const { useStepper } = defineStepper(
+  { id: "first", title: "First" },
+  { id: "second", title: "Second" }
+);
+
+function MyStepper() {
+  const stepper = useStepper();
+  React.useEffect(() => {
+    stepper.lifecycle.onAfterTransition((ctx) => {
+      console.log(`${ctx.from.id} → ${ctx.to.id}`);
+    });
+  }, [stepper]);
+  return (
+    <button type="button" onClick={() => stepper.navigation.next()} disabled={stepper.state.isLast}>
+      Next
+    </button>
+  );
+}
+```
+
+## Metadata
+
+Metadata lets you attach custom data per step (e.g. form drafts, values from the server). You can set initial metadata in the hook config and read/write it at runtime.
+
+### Initial metadata
+
+Pass **`initialMetadata`** in `useStepper({ ... })` to seed metadata per step:
+
+```tsx twoslash
+import * as React from "react";
+import { defineStepper } from "@stepperize/react";
+
+const { useStepper } = defineStepper(
+  { id: "first", title: "First step" },
+  { id: "second", title: "Second step" }
+);
+
+const MyStepperComponent = () => {
+  const stepper = useStepper({
+    initialMetadata: {
+      first: { value: "1" },
+    },
+  });
+  const firstMeta = stepper.metadata.get("first");
+  return <p>First step: {firstMeta?.value}</p>;
+};
+```
+
+### set / get / reset
+
+- **`metadata.set(id, values)`** — Set metadata for a step.
+- **`metadata.get(id)`** — Get metadata for a step.
+- **`metadata.reset(keepInitialMetadata?)`** — Reset all metadata; pass `true` to keep initial values from config.
+
+Current step only: **`state.current.metadata.get()`**, **`state.current.metadata.set(values)`**, **`state.current.metadata.reset()`**.
+
+```tsx twoslash
+import * as React from "react";
+import { defineStepper } from "@stepperize/react";
+
+const { useStepper } = defineStepper(
+  { id: "first", title: "First step" },
+  { id: "second", title: "Second step" },
+  { id: "last", title: "Last step" }
+);
+
+const MyStepperComponent = () => {
+  const stepper = useStepper();
+  const handleSave = () => {
+    stepper.metadata.set("first", { value: "saved" });
+  };
+  const meta = stepper.metadata.get("first");
+  return (
+    <div>
+      <button type="button" onClick={handleSave}>Save</button>
+      <p>First step: {meta?.value}</p>
+      <button type="button" onClick={() => stepper.metadata.reset(true)}>Reset metadata</button>
+    </div>
+  );
+};
+```
+
+## API reference
 
 | Name | Type | Description |
 | ---- | ---- | ----------- |
@@ -176,4 +400,4 @@ function MyStepper() {
 | `lookup` | `StepperLookup<Steps>` | `getAll()`, `get(id)`, `getIndex(id)`, `getByIndex(index)`, `getFirst()` / `getLast()`, `getNext(id)` / `getPrev(id)`, `getNeighbors(id)` |
 | `flow` | `StepperFlow<Steps>` | `is(id)`, `when(id, whenFn, elseFn?)`, `switch(when)`, `match(state, matches)` |
 | `metadata` | `StepperMetadata<Steps>` | `values`, `set(id, values)`, `get(id)`, `reset(keepInitialMetadata?)` |
-| `lifecycle` | `{ onBeforeTransition, onAfterTransition }` | `onBeforeTransition(cb)`, `onAfterTransition(cb)` — register callbacks for every transition; return `false` from before to cancel |
+| `lifecycle` | `{ onBeforeTransition, onAfterTransition }` | Register callbacks for every transition; return `false` from `onBeforeTransition` to cancel |

@@ -14,11 +14,14 @@
 		"clean": "rm -rf .turbo .next node_modules"
 	},
 	"dependencies": {
+		"@conform-to/react": "^1.16.0",
+		"@conform-to/zod": "^1.16.0",
 		"@hookform/resolvers": "^5.2.2",
 		"radix-ui": "^1.4.3",
 		"@base-ui/react": "^1.1.0",
 		"@radix-ui/colors": "^3.0.0",
 		"@stepperize/react": "workspace:*",
+		"@tanstack/react-form": "^1.28.0",
 		"arktype": "^2.1.29",
 		"class-variance-authority": "^0.7.1",
 		"clsx": "^2.1.1",

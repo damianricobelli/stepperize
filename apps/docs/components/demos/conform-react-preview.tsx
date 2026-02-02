@@ -1,6 +1,7 @@
 "use client";
 
-import * as React from "react";
+import { getFormProps, useForm } from "@conform-to/react";
+import { parseWithZod } from "@conform-to/zod/v4";
 import { z } from "zod";
 import { defineStepper } from "@stepperize/react";
 
@@ -17,44 +18,31 @@ const AddressSchema = z.object({
 const { Scoped, useStepper } = defineStepper(
   { id: "personal", title: "Personal", schema: PersonalSchema },
   { id: "address", title: "Address", schema: AddressSchema },
-  { id: "done", title: "Done" },
+  { id: "done", title: "Done", schema: z.object({}) },
 );
-
-type Schema = typeof PersonalSchema | typeof AddressSchema;
-
-function parseStepForm(formData: FormData, schema: Schema) {
-  const raw = Object.fromEntries(formData.entries()) as Record<string, string>;
-  return schema.safeParse(raw);
-}
 
 function StepForm() {
   const stepper = useStepper();
-  const schema =
-    "schema" in stepper.state.current.data
-      ? (stepper.state.current.data.schema as Schema)
-      : null;
-  const [errors, setErrors] = React.useState<Record<string, string>>({});
+  const stepData = stepper.state.current.data;
+  const schema = stepData.schema;
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (!schema) return;
-    const formData = new FormData(e.currentTarget);
-    const result = parseStepForm(formData, schema);
-    if (result.success && !stepper.state.isLast) {
-      setErrors({});
-      stepper.navigation.next();
-    } else if (!result.success) {
-      const err: Record<string, string> = {};
-      for (const issue of result.error.issues) {
-        const key = issue.path[0]?.toString();
-        if (key) err[key] = issue.message;
+  const [form, fields] = useForm({
+    onValidate({ formData }) {
+      return parseWithZod(formData, { schema })
+    },
+    onSubmit(e, { formData }) {
+      e.preventDefault();
+      const result = parseWithZod(formData, { schema })
+      if (result.status === "success" && !stepper.state.isLast) {
+        stepper.navigation.next();
       }
-      setErrors(err);
-    }
-  };
+    },
+  });
 
   if (stepper.flow.is("done")) {
-    return <p className="m-0 text-gray-900 dark:text-gray-100">All done!</p>;
+    return (
+      <p className="m-0 text-gray-900 dark:text-gray-100">All done!</p>
+    );
   }
 
   const fieldClass =
@@ -62,41 +50,82 @@ function StepForm() {
   const errorClass = "m-0 text-xs text-red-600 dark:text-red-400";
 
   return (
-    <form method="post" onSubmit={handleSubmit} className="space-y-2">
+    <form method="post" {...getFormProps(form)} className="space-y-2">
       {stepper.flow.switch({
         personal: () => (
           <>
             <div>
-              <label className="block text-sm text-gray-600 dark:text-gray-400">
+              <label
+                htmlFor={fields.name.id}
+                className="block text-sm text-gray-600 dark:text-gray-400"
+              >
                 Name
               </label>
-              <input name="name" className={fieldClass} />
-              {errors.name && <p className={errorClass}>{errors.name}</p>}
+              <input
+                id={fields.name.id}
+                name={fields.name.name}
+                defaultValue={fields.name.initialValue}
+                className={fieldClass}
+              />
+              {fields.name.errors?.[0] && (
+                <p className={errorClass}>{fields.name.errors[0]}</p>
+              )}
             </div>
             <div>
-              <label className="block text-sm text-gray-600 dark:text-gray-400">
+              <label
+                htmlFor={fields.email.id}
+                className="block text-sm text-gray-600 dark:text-gray-400"
+              >
                 Email
               </label>
-              <input name="email" type="email" className={fieldClass} />
-              {errors.email && <p className={errorClass}>{errors.email}</p>}
+              <input
+                id={fields.email.id}
+                name={fields.email.name}
+                type="email"
+                defaultValue={fields.email.initialValue}
+                className={fieldClass}
+              />
+              {fields.email.errors?.[0] && (
+                <p className={errorClass}>{fields.email.errors[0]}</p>
+              )}
             </div>
           </>
         ),
         address: () => (
           <>
             <div>
-              <label className="block text-sm text-gray-600 dark:text-gray-400">
+              <label
+                htmlFor={fields.street.id}
+                className="block text-sm text-gray-600 dark:text-gray-400"
+              >
                 Street
               </label>
-              <input name="street" className={fieldClass} />
-              {errors.street && <p className={errorClass}>{errors.street}</p>}
+              <input
+                id={fields.street.id}
+                name={fields.street.name}
+                defaultValue={fields.street.initialValue}
+                className={fieldClass}
+              />
+              {fields.street.errors?.[0] && (
+                <p className={errorClass}>{fields.street.errors[0]}</p>
+              )}
             </div>
             <div>
-              <label className="block text-sm text-gray-600 dark:text-gray-400">
+              <label
+                htmlFor={fields.city.id}
+                className="block text-sm text-gray-600 dark:text-gray-400"
+              >
                 City
               </label>
-              <input name="city" className={fieldClass} />
-              {errors.city && <p className={errorClass}>{errors.city}</p>}
+              <input
+                id={fields.city.id}
+                name={fields.city.name}
+                defaultValue={fields.city.initialValue}
+                className={fieldClass}
+              />
+              {fields.city.errors?.[0] && (
+                <p className={errorClass}>{fields.city.errors[0]}</p>
+              )}
             </div>
           </>
         ),

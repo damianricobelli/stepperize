@@ -21,7 +21,7 @@ import { defineStepper } from "@stepperize/react";
 
 const PersonalSchema = z.object({
   name: z.string().min(1, "Name is required"),
-  email: z.string().email("Invalid email"),
+  email: z.email("Invalid email"),
 });
 
 const AddressSchema = z.object({
@@ -77,11 +77,11 @@ In your form component, call `useStepper()` and read the current step's schema f
 ```tsx
 import * as React from "react";
 import { useForm } from "@conform-to/react";
-import { parseWithZod } from "@conform-to/zod";
+import { parseWithZod } from "@conform-to/zod/v4/future";
 import { z } from "zod";
 import { defineStepper } from "@stepperize/react";
 
-const PersonalSchema = z.object({ name: z.string().min(1), email: z.string().email() });
+const PersonalSchema = z.object({ name: z.string().min(1), email: z.email() });
 const AddressSchema = z.object({ street: z.string().min(1), city: z.string().min(1) });
 
 const { Scoped, useStepper } = defineStepper(
@@ -176,13 +176,13 @@ Use `stepper.state.current.metadata` or `stepper.metadata.get(id)` to store per-
 ```tsx
 zimport * as React from "react";
 import { useForm } from "@conform-to/react";
-import { parseWithZod } from "@conform-to/zod";
+import { parseWithZod } from "@conform-to/zod/v4/future";
 import { z } from "zod";
 import { defineStepper } from "@stepperize/react";
 
 const PersonalSchema = z.object({
   name: z.string().min(1, "Name required"),
-  email: z.string().email("Invalid email"),
+  email: z.email("Invalid email"),
 });
 
 const AddressSchema = z.object({
