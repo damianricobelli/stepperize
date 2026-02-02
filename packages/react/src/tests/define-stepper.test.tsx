@@ -7,7 +7,7 @@ const steps = [
 	{ id: "first", title: "First" },
 	{ id: "second", title: "Second" },
 	{ id: "third", title: "Third" },
-];
+] as const;
 
 describe("defineStepper", () => {
 	it("returns steps, Scoped, useStepper, Stepper", () => {
@@ -54,6 +54,16 @@ describe("defineStepper", () => {
 		expect(result.current.state.current.data.id).toBe("third");
 		expect(result.current.state.current.index).toBe(2);
 		expect(result.current.state.isLast).toBe(true);
+	});
+
+	it("useStepper with initialMetadata seeds metadata per step", () => {
+		const { useStepper } = defineStepper(...steps);
+		const { result } = renderHook(() =>
+			useStepper({ initialMetadata: { first: { saved: true }, second: { count: 2 } } }),
+		);
+		expect(result.current.metadata.get("first")).toEqual({ saved: true });
+		expect(result.current.metadata.get("second")).toEqual({ count: 2 });
+		expect(result.current.metadata.get("third")).toBeNull();
 	});
 
 	it("navigation.next advances step", () => {
@@ -174,6 +184,96 @@ describe("defineStepper", () => {
 		expect(childStepper).not.toBeNull();
 		expect(childStepper!.state.current.data.id).toBe("first");
 		expect(screen.getByTestId("child").textContent).toBe("first");
+	});
+
+	it("Scoped with initialStep provides that step to children", () => {
+		const { Scoped, useStepper } = defineStepper(...steps);
+		let childStepper: ReturnType<typeof useStepper> | null = null;
+		function Child() {
+			childStepper = useStepper();
+			return <span data-testid="child">{childStepper!.state.current.data.id}</span>;
+		}
+		render(
+			<Scoped initialStep="second">
+				<Child />
+			</Scoped>,
+		);
+		expect(childStepper!.state.current.data.id).toBe("second");
+		expect(screen.getByTestId("child").textContent).toBe("second");
+	});
+
+	it("flow.when returns whenFn when step matches, elseFn otherwise", () => {
+		const { useStepper } = defineStepper(...steps);
+		const { result } = renderHook(() => useStepper());
+		expect(
+			result.current.flow.when(
+				"first",
+				(s) => s.title,
+				() => "else",
+			),
+		).toBe("First");
+		expect(
+			result.current.flow.when(
+				"second",
+				() => "when",
+				() => "else",
+			),
+		).toBe("else");
+		act(() => result.current.navigation.next());
+		expect(
+			result.current.flow.when(
+				"second",
+				(s) => s.title,
+				() => "else",
+			),
+		).toBe("Second");
+	});
+
+	it("flow.match returns result for given state id", () => {
+		const { useStepper } = defineStepper(...steps);
+		const { result } = renderHook(() => useStepper());
+		const out = result.current.flow.match("second", {
+			first: (s) => s.title,
+			second: (s) => s.title,
+			third: (s) => s.title,
+		});
+		expect(out).toBe("Second");
+		expect(result.current.flow.match("missing" as any, {})).toBeNull();
+	});
+
+	it("metadata.reset clears metadata; keepInitialMetadata restores initial", () => {
+		const { useStepper } = defineStepper(...steps);
+		const { result } = renderHook(() =>
+			useStepper({ initialMetadata: { first: { x: 1 } } }),
+		);
+		act(() => result.current.metadata.set("second", { y: 2 }));
+		expect(result.current.metadata.get("first")).toEqual({ x: 1 });
+		expect(result.current.metadata.get("second")).toEqual({ y: 2 });
+		act(() => result.current.metadata.reset(false));
+		expect(result.current.metadata.get("first")).toBeNull();
+		expect(result.current.metadata.get("second")).toBeNull();
+		act(() => result.current.metadata.set("first", { x: 1 }));
+		act(() => result.current.metadata.set("second", { y: 2 }));
+		act(() => result.current.metadata.reset(true));
+		expect(result.current.metadata.get("first")).toEqual({ x: 1 });
+		expect(result.current.metadata.get("second")).toBeNull();
+	});
+
+	it("Stepper.Root provides stepper to children render prop", () => {
+		const { Stepper, useStepper } = defineStepper(...steps);
+		type StepperInstance = ReturnType<typeof useStepper>;
+		let receivedStepper: StepperInstance | null = null;
+		render(
+			<Stepper.Root>
+				{({ stepper }) => {
+					receivedStepper = stepper;
+					return <span data-testid="root-child">{stepper.state.current.data.id}</span>;
+				}}
+			</Stepper.Root>,
+		);
+		expect(receivedStepper).not.toBeNull();
+		expect(receivedStepper!.state.current.data.id).toBe("first");
+		expect(screen.getByTestId("root-child").textContent).toBe("first");
 	});
 
 	it("onBeforeTransition return false cancels transition", async () => {

@@ -24,6 +24,10 @@ describe("generateStepperUtils", () => {
 		expect(utils.get("second")).toEqual({ id: "second", label: "Step 2" });
 	});
 
+	it("get returns undefined for nonexistent id", () => {
+		expect(utils.get("nonexistent" as any)).toBeUndefined();
+	});
+
 	it("getIndex returns index by id", () => {
 		expect(utils.getIndex("third")).toBe(2);
 	});
