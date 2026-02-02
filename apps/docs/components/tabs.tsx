@@ -1,6 +1,6 @@
 "use client";
 
-import type { TabsContentProps, TabsProps as BaseProps } from "@radix-ui/react-tabs";
+import type { Tabs as TabsPrimitive } from "radix-ui";
 import { useMemo, useState, createContext, useContext, useLayoutEffect, useId, useEffect } from "react";
 import { cn } from "../lib/cn";
 import * as Primitive from "./ui/tabs";
@@ -25,7 +25,7 @@ function removeChangeListener(id: string, listener: ChangeListener): void {
 	);
 }
 
-export interface TabsProps extends BaseProps {
+export interface TabsProps extends TabsPrimitive.TabsProps {
 	/**
 	 * Identifier for Sharing value of tabs
 	 */
@@ -142,11 +142,11 @@ function toValue(v: string): string {
 	return v.toLowerCase().replace(/\s/, "-");
 }
 
-export type TabProps = Omit<TabsContentProps, "value"> & {
+export type TabProps = Omit<TabsPrimitive.TabsContentProps, "value"> & {
 	/**
 	 * Value of tab, detect from index if unspecified.
 	 */
-	value?: TabsContentProps["value"];
+	value?: TabsPrimitive.TabsContentProps["value"];
 };
 
 export function Tab({ value, className, ...props }: TabProps) {

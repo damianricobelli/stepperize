@@ -1,0 +1,631 @@
+---
+title: Forms
+description: Multi-step forms with Stepperize and your favorite form library (Conform, React Hook Form, or TanStack Form).
+---
+
+Stepperize works with any form library. This guide uses the same multi-step flow (Personal → Address → Done) with **Conform**, **React Hook Form**, or **TanStack Form**. The stepper setup (steps, Scoped, useStepper, flow.switch, navigation) is identical; only the form hook and validation API differ. Use the tabs below to switch between libraries.
+
+Install the form library you choose (and Zod for validation):
+
+<Tabs groupId="forms-install" items={["Conform", "React Hook Form", "TanStack Form"]} defaultIndex={0}>
+  <Tab value="Conform">
+
+```bash
+pnpm add @conform-to/react @conform-to/zod zod
+```
+
+  </Tab>
+  <Tab value="React Hook Form">
+
+```bash
+pnpm add react-hook-form @hookform/resolvers zod
+```
+
+  </Tab>
+  <Tab value="TanStack Form">
+
+```bash
+pnpm add @tanstack/react-form zod
+```
+
+  </Tab>
+</Tabs>
+
+<Steps>
+  <Step>
+
+### Define steps with Zod schemas
+
+Use `defineStepper` with one object per step. Attach a Zod schema to each step (e.g. `schema`). Stepperize does not run validation; you pass the current step's schema to your form library.
+
+```tsx
+import { z } from "zod";
+import { defineStepper } from "@stepperize/react";
+
+const PersonalSchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  email: z.email("Invalid email"),
+});
+
+const AddressSchema = z.object({
+  street: z.string().min(1, "Street is required"),
+  city: z.string().min(1, "City is required"),
+});
+
+const { Scoped, useStepper } = defineStepper(
+  { id: "personal", title: "Personal", schema: PersonalSchema },
+  { id: "address", title: "Address", schema: AddressSchema },
+  { id: "done", title: "Done" }
+);
+```
+
+  </Step>
+  <Step>
+
+### Wrap the form with Scoped
+
+Wrap your form tree with `<Scoped>` so child components can call `useStepper()` and access the current step and its schema.
+
+```tsx
+function StepperForm() {
+  return (
+    <Scoped>
+      <StepForm />
+      <StepNavigation />
+    </Scoped>
+  );
+}
+
+function StepForm() {
+  const stepper = useStepper();
+  return <form>{/* Form hook + fields per library */}</form>;
+}
+
+function StepNavigation() {
+  const stepper = useStepper();
+  return <div>{/* Back / Reset */}</div>;
+}
+```
+
+  </Step>
+  <Step>
+
+### Form hook and validation (per library)
+
+In your form component, call `useStepper()` and read the current step's schema from `stepper.state.current.data.schema`. Then use your form library's hook: only the hook usage and field bindings differ; the stepper logic (flow.switch, navigation.next on success) is the same.
+
+<Tabs groupId="forms-hook" items={["Conform", "React Hook Form", "TanStack Form"]} defaultIndex={0}>
+  <Tab value="Conform">
+
+Conform: `useForm` with `onValidate` / `onSubmit` using `parseWithZod(formData, { schema })`. Spread `getFormProps(form)` on the form. Use `fields.name`, `fields.email`, etc. for inputs and errors.
+
+```tsx
+import { getFormProps, useForm } from "@conform-to/react";
+import { parseWithZod } from "@conform-to/zod/v4/future";
+import { z } from "zod";
+import { defineStepper } from "@stepperize/react";
+
+// ... schemas + defineStepper ...
+
+function StepForm() {
+  const stepper = useStepper();
+  const schema = "schema" in stepper.state.current.data && stepper.state.current.data.schema
+    ? stepper.state.current.data.schema
+    : undefined;
+
+  const [form, fields] = useForm({
+    onValidate({ formData }) {
+      return schema ? parseWithZod(formData, { schema }) : parseWithZod(formData, { schema: z.object({}) });
+    },
+    onSubmit(e, { formData }) {
+      e.preventDefault();
+      const result = schema ? parseWithZod(formData, { schema }) : parseWithZod(formData, { schema: z.object({}) });
+      if (result.status === "success" && !stepper.state.isLast) stepper.navigation.next();
+    },
+  });
+
+  if (stepper.flow.is("done")) return <p>All done!</p>;
+
+  return (
+    <form method="post" {...getFormProps(form)}>
+      {stepper.flow.switch({
+        personal: () => (
+          <>
+            <input name={fields.name.name} defaultValue={fields.name.initialValue as string} />
+            {fields.name.errors?.[0] && <em>{fields.name.errors[0]}</em>}
+            <input name={fields.email.name} type="email" defaultValue={fields.email.initialValue as string} />
+            {fields.email.errors?.[0] && <em>{fields.email.errors[0]}</em>}
+          </>
+        ),
+        address: () => (
+          <>
+            <input name={fields.street.name} defaultValue={fields.street.initialValue as string} />
+            {fields.street.errors?.[0] && <em>{fields.street.errors[0]}</em>}
+            <input name={fields.city.name} defaultValue={fields.city.initialValue as string} />
+            {fields.city.errors?.[0] && <em>{fields.city.errors[0]}</em>}
+          </>
+        ),
+        done: () => null,
+      })}
+      <button type="submit">Next</button>
+    </form>
+  );
+}
+```
+
+  </Tab>
+  <Tab value="React Hook Form">
+
+React Hook Form: `useForm` with `resolver: zodResolver(schema)` and `defaultValues`. Call `form.handleSubmit(onValid)`; in `onValid` run `stepper.navigation.next()`. Use `form.register("name")` and `form.formState.errors.name` for fields.
+
+```tsx
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { defineStepper } from "@stepperize/react";
+
+// ... schemas + defineStepper ...
+
+function StepForm() {
+  const stepper = useStepper();
+  const schema = stepper.state.current.data.schema as z.ZodObject<Record<string, z.ZodTypeAny>> | undefined;
+
+  const form = useForm({
+    resolver: schema ? zodResolver(schema) : undefined,
+    defaultValues: { name: "", email: "", street: "", city: "" },
+  });
+
+  const onValid = () => {
+    if (!stepper.state.isLast) stepper.navigation.next();
+  };
+
+  if (stepper.flow.is("done")) return <p>All done!</p>;
+
+  return (
+    <form onSubmit={form.handleSubmit(onValid)}>
+      {stepper.flow.switch({
+        personal: () => (
+          <>
+            <input {...form.register("name")} />
+            {form.formState.errors.name && <span>{form.formState.errors.name.message}</span>}
+            <input {...form.register("email")} type="email" />
+            {form.formState.errors.email && <span>{form.formState.errors.email.message}</span>}
+          </>
+        ),
+        address: () => (
+          <>
+            <input {...form.register("street")} />
+            <input {...form.register("city")} />
+          </>
+        ),
+        done: () => null,
+      })}
+      <button type="submit">Next</button>
+    </form>
+  );
+}
+```
+
+  </Tab>
+  <Tab value="TanStack Form">
+
+TanStack Form: `useForm` with `validators: { onChange: schema }` and `onSubmit: ({ value }) => { ... stepper.navigation.next(); }`. Use `form.Field name="..."` with a render prop; bind `field.state.value`, `field.handleChange`, `field.handleBlur`, and show `field.state.meta.errors`.
+
+```tsx
+import { useForm } from "@tanstack/react-form";
+import { z } from "zod";
+import { defineStepper } from "@stepperize/react";
+
+// ... schemas + defineStepper ...
+
+type FormValues = { name: string; email: string; street: string; city: string };
+
+function StepForm() {
+  const stepper = useStepper();
+  const stepData = stepper.state.current.data;
+  const schema = "schema" in stepData && stepData.schema ? (stepData.schema as z.ZodType<FormValues>) : z.object({});
+
+  const form = useForm<FormValues>({
+    defaultValues: { name: "", email: "", street: "", city: "" },
+    validators: { onChange: schema },
+    onSubmit: ({ value }) => {
+      if (!stepper.state.isLast) stepper.navigation.next();
+    },
+  });
+
+  if (stepper.flow.is("done")) return <p>All done!</p>;
+
+  return (
+    <form onSubmit={(e) => { e.preventDefault(); e.stopPropagation(); form.handleSubmit(); }}>
+      {stepper.flow.switch({
+        personal: () => (
+          <div>
+            <form.Field name="name" children={(field) => (
+              <div>
+                <label htmlFor={field.name}>Name</label>
+                <input id={field.name} name={field.name} value={field.state.value} onBlur={field.handleBlur} onChange={(e) => field.handleChange(e.target.value)} />
+                {field.state.meta.isTouched && field.state.meta.errors?.length && <em>{field.state.meta.errors.map((e) => (typeof e === "object" && e && "message" in e ? (e as { message: string }).message : String(e))).join(", ")}</em>}
+              </div>
+            )} />
+            <form.Field name="email" children={(field) => (
+              <div>
+                <label htmlFor={field.name}>Email</label>
+                <input id={field.name} name={field.name} type="email" value={field.state.value} onBlur={field.handleBlur} onChange={(e) => field.handleChange(e.target.value)} />
+                {field.state.meta.isTouched && field.state.meta.errors?.length && <em>{field.state.meta.errors.map((e) => (typeof e === "object" && e && "message" in e ? (e as { message: string }).message : String(e))).join(", ")}</em>}
+              </div>
+            )} />
+          </div>
+        ),
+        address: () => (
+          <div>
+            <form.Field name="street" children={(field) => (
+              <div>
+                <label htmlFor={field.name}>Street</label>
+                <input id={field.name} name={field.name} value={field.state.value} onBlur={field.handleBlur} onChange={(e) => field.handleChange(e.target.value)} />
+                {field.state.meta.isTouched && field.state.meta.errors?.length && <em>{field.state.meta.errors.map((e) => (typeof e === "object" && e && "message" in e ? (e as { message: string }).message : String(e))).join(", ")}</em>}
+              </div>
+            )} />
+            <form.Field name="city" children={(field) => (
+              <div>
+                <label htmlFor={field.name}>City</label>
+                <input id={field.name} name={field.name} value={field.state.value} onBlur={field.handleBlur} onChange={(e) => field.handleChange(e.target.value)} />
+                {field.state.meta.isTouched && field.state.meta.errors?.length && <em>{field.state.meta.errors.map((e) => (typeof e === "object" && e && "message" in e ? (e as { message: string }).message : String(e))).join(", ")}</em>}
+              </div>
+            )} />
+          </div>
+        ),
+        done: () => null,
+      })}
+      <button type="submit">Next</button>
+    </form>
+  );
+}
+```
+
+  </Tab>
+</Tabs>
+
+  </Step>
+  <Step>
+
+### Navigation
+
+Use `useStepper()` in a sibling component for Back and Reset. Next is the form submit button; when validation passes, advance with `stepper.navigation.next()` (inside your form library's submit handler).
+
+```tsx
+function StepNavigation() {
+  const stepper = useStepper();
+  return (
+    <div>
+      {!stepper.state.isFirst && (
+        <button type="button" onClick={() => stepper.navigation.prev()}>
+          Back
+        </button>
+      )}
+      {stepper.state.isLast && (
+        <button type="button" onClick={() => stepper.navigation.reset()}>
+          Reset
+        </button>
+      )}
+    </div>
+  );
+}
+```
+
+  </Step>
+</Steps>
+
+## Live preview
+
+<Tabs groupId="forms-preview" items={["Conform", "React Hook Form", "TanStack Form"]} defaultIndex={0}>
+  <Tab value="Conform">
+    <ConformReactPreview />
+  </Tab>
+  <Tab value="React Hook Form">
+    <ReactHookFormPreview />
+  </Tab>
+  <Tab value="TanStack Form">
+    <TanstackFormPreview />
+  </Tab>
+</Tabs>
+
+## Full example
+
+<Tabs groupId="forms-full" items={["Conform", "React Hook Form", "TanStack Form"]} defaultIndex={0}>
+  <Tab value="Conform">
+
+```tsx
+"use client";
+
+import { getFormProps, useForm } from "@conform-to/react";
+import { parseWithZod } from "@conform-to/zod/v4/future";
+import { z } from "zod";
+import { defineStepper } from "@stepperize/react";
+
+const PersonalSchema = z.object({
+  name: z.string().min(1, "Name required"),
+  email: z.email("Invalid email"),
+});
+const AddressSchema = z.object({
+  street: z.string().min(1, "Street required"),
+  city: z.string().min(1, "City required"),
+});
+
+const { Scoped, useStepper } = defineStepper(
+  { id: "personal", title: "Personal", schema: PersonalSchema },
+  { id: "address", title: "Address", schema: AddressSchema },
+  { id: "done", title: "Done" }
+);
+
+function StepForm() {
+  const stepper = useStepper();
+  const stepData = stepper.state.current.data;
+  const schema = "schema" in stepData && stepData.schema ? stepData.schema : undefined;
+
+  const [form, fields] = useForm({
+    onValidate({ formData }) {
+      return schema ? parseWithZod(formData, { schema }) : parseWithZod(formData, { schema: z.object({}) });
+    },
+    onSubmit(e, { formData }) {
+      e.preventDefault();
+      const result = schema ? parseWithZod(formData, { schema }) : parseWithZod(formData, { schema: z.object({}) });
+      if (result.status === "success" && !stepper.state.isLast) stepper.navigation.next();
+    },
+  });
+
+  if (stepper.flow.is("done")) return <p>All done!</p>;
+
+  return (
+    <form method="post" {...getFormProps(form)}>
+      {stepper.flow.switch({
+        personal: () => (
+          <>
+            <div><label>Name</label><input name={fields.name.name} /></div>
+            <div><label>Email</label><input name={fields.email.name} type="email" /></div>
+          </>
+        ),
+        address: () => (
+          <>
+            <div><label>Street</label><input name={fields.street.name} /></div>
+            <div><label>City</label><input name={fields.city.name} /></div>
+          </>
+        ),
+        done: () => null,
+      })}
+      <button type="submit">Next</button>
+    </form>
+  );
+}
+
+function StepNavigation() {
+  const stepper = useStepper();
+  return (
+    <div>
+      {!stepper.state.isFirst && <button type="button" onClick={() => stepper.navigation.prev()}>Back</button>}
+      {stepper.state.isLast && <button type="button" onClick={() => stepper.navigation.reset()}>Reset</button>}
+    </div>
+  );
+}
+
+export function ConformStepperForm() {
+  return (
+    <Scoped>
+      <StepForm />
+      <StepNavigation />
+    </Scoped>
+  );
+}
+```
+
+  </Tab>
+  <Tab value="React Hook Form">
+
+```tsx
+"use client";
+
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { defineStepper } from "@stepperize/react";
+
+const PersonalSchema = z.object({
+  name: z.string().min(1, "Name required"),
+  email: z.email("Invalid email"),
+});
+const AddressSchema = z.object({
+  street: z.string().min(1, "Street required"),
+  city: z.string().min(1, "City required"),
+});
+
+const { Scoped, useStepper } = defineStepper(
+  { id: "personal", title: "Personal", schema: PersonalSchema },
+  { id: "address", title: "Address", schema: AddressSchema },
+  { id: "done", title: "Done", schema: undefined }
+);
+
+type PersonalValues = z.infer<typeof PersonalSchema>;
+type AddressValues = z.infer<typeof AddressSchema>;
+
+function StepForm() {
+  const stepper = useStepper();
+  const schema = stepper.state.current.data.schema as z.ZodObject<Record<string, z.ZodTypeAny>> | undefined;
+
+  const form = useForm<PersonalValues & AddressValues>({
+    resolver: schema ? zodResolver(schema) : undefined,
+    defaultValues: { name: "", email: "", street: "", city: "" },
+  });
+
+  const onValid = () => {
+    if (!stepper.state.isLast) stepper.navigation.next();
+  };
+
+  if (stepper.flow.is("done")) return <p>All done!</p>;
+
+  return (
+    <form onSubmit={form.handleSubmit(onValid)}>
+      {stepper.flow.switch({
+        personal: () => (
+          <>
+            <div><label>Name</label><input {...form.register("name")} /></div>
+            {form.formState.errors.name && <span>{form.formState.errors.name.message}</span>}
+            <div><label>Email</label><input {...form.register("email")} type="email" /></div>
+            {form.formState.errors.email && <span>{form.formState.errors.email.message}</span>}
+          </>
+        ),
+        address: () => (
+          <>
+            <div><label>Street</label><input {...form.register("street")} /></div>
+            <div><label>City</label><input {...form.register("city")} /></div>
+          </>
+        ),
+        done: () => null,
+      })}
+      <button type="submit">Next</button>
+    </form>
+  );
+}
+
+function StepNavigation() {
+  const stepper = useStepper();
+  return (
+    <div>
+      {!stepper.state.isFirst && <button type="button" onClick={() => stepper.navigation.prev()}>Back</button>}
+      {stepper.state.isLast && <button type="button" onClick={() => stepper.navigation.reset()}>Reset</button>}
+    </div>
+  );
+}
+
+export function RHFStepperForm() {
+  return (
+    <Scoped>
+      <StepForm />
+      <StepNavigation />
+    </Scoped>
+  );
+}
+```
+
+  </Tab>
+  <Tab value="TanStack Form">
+
+```tsx
+"use client";
+
+import { useForm } from "@tanstack/react-form";
+import { z } from "zod";
+import { defineStepper } from "@stepperize/react";
+
+const PersonalSchema = z.object({
+  name: z.string().min(1, "Name required"),
+  email: z.email("Invalid email"),
+});
+const AddressSchema = z.object({
+  street: z.string().min(1, "Street required"),
+  city: z.string().min(1, "City required"),
+});
+
+const { Scoped, useStepper } = defineStepper(
+  { id: "personal", title: "Personal", schema: PersonalSchema },
+  { id: "address", title: "Address", schema: AddressSchema },
+  { id: "done", title: "Done" }
+);
+
+type FormValues = { name: string; email: string; street: string; city: string };
+
+function StepForm() {
+  const stepper = useStepper();
+  const stepData = stepper.state.current.data;
+  const schema = "schema" in stepData && stepData.schema ? (stepData.schema as z.ZodType<FormValues>) : z.object({});
+
+  const form = useForm<FormValues>({
+    defaultValues: { name: "", email: "", street: "", city: "" },
+    validators: { onChange: schema },
+    onSubmit: ({ value }) => {
+      if (!stepper.state.isLast) stepper.navigation.next();
+    },
+  });
+
+  if (stepper.flow.is("done")) return <p>All done!</p>;
+
+  return (
+    <form onSubmit={(e) => { e.preventDefault(); e.stopPropagation(); form.handleSubmit(); }}>
+      {stepper.flow.switch({
+        personal: () => (
+          <div>
+            <form.Field name="name" children={(field) => (
+              <div>
+                <label htmlFor={field.name}>Name</label>
+                <input id={field.name} name={field.name} value={field.state.value} onBlur={field.handleBlur} onChange={(e) => field.handleChange(e.target.value)} />
+                {field.state.meta.isTouched && field.state.meta.errors?.length ? <em>{field.state.meta.errors.map((e) => (typeof e === "object" && e && "message" in e ? (e as { message: string }).message : String(e))).join(", ")}</em> : null}
+              </div>
+            )} />
+            <form.Field name="email" children={(field) => (
+              <div>
+                <label htmlFor={field.name}>Email</label>
+                <input id={field.name} name={field.name} type="email" value={field.state.value} onBlur={field.handleBlur} onChange={(e) => field.handleChange(e.target.value)} />
+                {field.state.meta.isTouched && field.state.meta.errors?.length ? <em>{field.state.meta.errors.map((e) => (typeof e === "object" && e && "message" in e ? (e as { message: string }).message : String(e))).join(", ")}</em> : null}
+              </div>
+            )} />
+          </div>
+        ),
+        address: () => (
+          <div>
+            <form.Field name="street" children={(field) => (
+              <div>
+                <label htmlFor={field.name}>Street</label>
+                <input id={field.name} name={field.name} value={field.state.value} onBlur={field.handleBlur} onChange={(e) => field.handleChange(e.target.value)} />
+                {field.state.meta.isTouched && field.state.meta.errors?.length ? <em>{field.state.meta.errors.map((e) => (typeof e === "object" && e && "message" in e ? (e as { message: string }).message : String(e))).join(", ")}</em> : null}
+              </div>
+            )} />
+            <form.Field name="city" children={(field) => (
+              <div>
+                <label htmlFor={field.name}>City</label>
+                <input id={field.name} name={field.name} value={field.state.value} onBlur={field.handleBlur} onChange={(e) => field.handleChange(e.target.value)} />
+                {field.state.meta.isTouched && field.state.meta.errors?.length ? <em>{field.state.meta.errors.map((e) => (typeof e === "object" && e && "message" in e ? (e as { message: string }).message : String(e))).join(", ")}</em> : null}
+              </div>
+            )} />
+          </div>
+        ),
+        done: () => null,
+      })}
+      <button type="submit">Next</button>
+    </form>
+  );
+}
+
+function StepNavigation() {
+  const stepper = useStepper();
+  return (
+    <div>
+      {!stepper.state.isFirst && <button type="button" onClick={() => stepper.navigation.prev()}>Back</button>}
+      {stepper.state.isLast && <button type="button" onClick={() => stepper.navigation.reset()}>Reset</button>}
+    </div>
+  );
+}
+
+export function TanStackStepperForm() {
+  return (
+    <Scoped>
+      <StepForm />
+      <StepNavigation />
+    </Scoped>
+  );
+}
+```
+
+  </Tab>
+</Tabs>
+
+## Summary
+
+- **defineStepper** — One object per step; add a `schema` (Zod) to each step that has a form.
+- **Scoped** — Wrap the form so `useStepper()` and the current step's schema are available in children.
+- **Form hook** — Conform: `useForm` + `parseWithZod` in onValidate/onSubmit. RHF: `useForm` + `zodResolver(schema)` + `handleSubmit(onValid)`. TanStack: `useForm` + `validators: { onChange: schema }` + `onSubmit`.
+- **Navigation** — Back / Reset with `stepper.navigation.prev()` and `stepper.navigation.reset()`; Next is the form submit; advance with `stepper.navigation.next()` only when validation succeeds.
+
+## Additional resources
+
+- [Conform](https://conform.guide/)
+- [React Hook Form](https://react-hook-form.com/)
+- [TanStack Form](https://tanstack.com/form/latest)
+- [Schema validation (Stepperize)](/docs/react/api-references/schema-validation) — Attaching schemas to steps

@@ -1,0 +1,98 @@
+---
+title: Types
+description: Exported types and type utilities
+---
+
+Types are exported from `@stepperize/core` and `@stepperize/react`.
+
+## From @stepperize/core
+
+### Step
+
+```ts
+type Step<Id extends string = string, Data extends object = {}> = {
+    id: Id;
+} & Data;
+```
+
+Steps must have a unique `id`; other properties are free. In core, `Step` is generic (`Step<Id, Data>`) for stricter inference; the simplified form above is enough for most usage.
+
+### Metadata
+
+```ts
+type Metadata = Record<string, any> | null;
+```
+
+### Stepper
+
+The stepper instance type has six namespaces:
+
+- **state**: `StepperState<Steps>` — `all`, `current` (data, index, status, metadata), `isFirst`, `isLast`, `isTransitioning`
+- **navigation**: `StepperNavigation<Steps>` — `next`, `prev`, `goTo`, `reset`
+- **lookup**: `StepperLookup<Steps>` — `getAll`, `get`, `getIndex`, `getByIndex`, `getFirst`, `getLast`, `getNext`, `getPrev`, `getNeighbors`
+- **flow**: `StepperFlow<Steps>` — `is`, `when`, `switch`, `match`
+- **metadata**: `StepperMetadata<Steps>` — `values`, `set`, `get`, `reset`
+- **lifecycle**: `StepperLifecycle<Steps>` — `onBeforeTransition`, `onAfterTransition`
+
+Transition state is `state.isTransitioning`. See [Hook](./hook#transition-hooks).
+
+### StepperLookup / Utils
+
+`StepperLookup<Steps>` (exported as `Utils<Steps>`) is the type of step lookup: `getAll`, `get`, `getIndex`, `getByIndex`, `getFirst`, `getLast`, `getNext`, `getPrev`, `getNeighbors`. Return type of `generateStepperUtils(...steps)`.
+
+### Get namespace
+
+| Type | Description |
+| ---- | ----------- |
+| `Get.Id<Steps>` | Union of step IDs |
+| `Get.StepById<Steps, Id>` | Step type for given ID |
+| `Get.StepSansId<Steps, Id>` | Union of steps that are not `Id` |
+| `Get.Switch<Steps, R>` | Object type for `flow.switch` handlers: `{ [Id in Get.Id<Steps>]?: (step: Get.StepById<Steps, Id>) => R }` |
+
+```tsx twoslash
+import { defineStepper, Get } from "@stepperize/react";
+
+const { steps } = defineStepper(
+  { id: "shipping", title: "Shipping" },
+  { id: "payment", title: "Payment" }
+);
+
+type StepId = Get.Id<typeof steps>;           // "shipping" | "payment"
+type ShippingStep = Get.StepById<typeof steps, "shipping">;  // { id: "shipping"; title: string }
+```
+
+## From @stepperize/react
+
+### TransitionContext
+
+Passed to `onBeforeTransition` / `onAfterTransition` callbacks:
+
+```ts
+type TransitionContext<Steps> = {
+  readonly from: Steps[number];
+  readonly to: Steps[number];
+  readonly metadata: Record<Get.Id<Steps>, Metadata>;
+  readonly statuses: Record<Get.Id<Steps>, StepStatus>;
+  readonly direction: TransitionDirection;
+  readonly fromIndex: number;
+  readonly toIndex: number;
+};
+```
+
+### TransitionDirection
+
+```ts
+type TransitionDirection = "next" | "prev" | "goTo";
+```
+
+### StepStatus (primitives)
+
+Used by primitives (e.g. `Stepper.Item`, `Stepper.Trigger`) and `useStepItemContext().status` to style or label the active, completed, or upcoming step: `"active" | "inactive" | "success"`. Re-exported from `@stepperize/core` in `@stepperize/react/primitives`.
+
+### ScopedProps
+
+Props for `Scoped`: `initialStep?`, `initialMetadata?`, `children`.
+
+### StepperReturn
+
+Return type of `defineStepper`: `steps`, `Scoped`, `useStepper`, `Stepper`.

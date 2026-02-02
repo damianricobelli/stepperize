@@ -1,53 +1,465 @@
 ---
-title: Basic Examples
-description: Explore various usage patterns of Stepperize in React applications.
+title: Basic
+description: Step-by-step guides to build horizontal, vertical, and custom steppers with minimal code.
 ---
 
 ## Horizontal Stepper
 
-The horizontal stepper is the most common and straightforward implementation of Stepperize. It provides a linear progression through a series of steps, ideal for workflows or multi-step forms.
+A horizontal stepper shows steps in a row. Here’s how to build one from scratch.
 
-Key features:
+<Steps>
+  <Step>
 
-- Horizontal layout
-- Simple navigation using the `switch` method
+### Define your steps
 
-### Live Demo
+Use `defineStepper` with one object per step. Each step needs a unique `id`; add any extra fields (e.g. `title`) for your UI.
 
-<DemoViewer src="https://stackblitz.com/edit/vitejs-vite-rgfwjw?embed=1&file=src%2FApp.tsx&hideNavigation=1&view=preview" />
+```tsx twoslash
+import { defineStepper } from "@stepperize/react";
+
+const { Stepper, Scoped } = defineStepper(
+  { id: "account", title: "Account" },
+  { id: "profile", title: "Profile" },
+  { id: "done", title: "Done" }
+);
+```
+
+  </Step>
+  <Step>
+
+### Wrap with Stepper.Root
+
+`Stepper.Root` provides the stepper context (it uses Scoped internally) and passes the stepper to your render function. Use `orientation="horizontal"` (default) for a horizontal layout.
+
+```tsx twoslash
+import * as React from "react";
+import { defineStepper } from "@stepperize/react";
+
+const { Stepper } = defineStepper(
+  { id: "account", title: "Account" },
+  { id: "profile", title: "Profile" },
+  { id: "done", title: "Done" }
+);
+
+function HorizontalStepper() {
+  return (
+    <Stepper.Root>
+      {({ stepper }) => (
+        <>
+          {/* list and content go here */}
+        </>
+      )}
+    </Stepper.Root>
+  );
+}
+```
+
+  </Step>
+  <Step>
+
+### Render the step list
+
+Map over `stepper.state.all` and render one `Stepper.Item` per step. Each item needs a `Trigger` (and optionally `Title`, `Indicator`, `Separator`).
+
+```tsx twoslash
+import * as React from "react";
+import { defineStepper } from "@stepperize/react";
+
+const { Stepper } = defineStepper(
+  { id: "account", title: "Account" },
+  { id: "profile", title: "Profile" },
+  { id: "done", title: "Done" }
+);
+
+function StepList() {
+  return (
+    <Stepper.Root>
+      {({ stepper }) => (
+        <Stepper.List>
+          {stepper.state.all.map((step) => (
+            <React.Fragment key={step.id}>
+              <Stepper.Item step={step.id}>
+                <Stepper.Trigger>
+                  <Stepper.Indicator />
+                  <Stepper.Title>{step.title}</Stepper.Title>
+                </Stepper.Trigger>
+                <Stepper.Separator />
+              </Stepper.Item>
+            </React.Fragment>
+          ))}
+        </Stepper.List>
+      )}
+    </Stepper.Root>
+  );
+}
+```
+
+  </Step>
+  <Step>
+
+### Show content per step
+
+Use `Stepper.Content` with a `step` prop so each panel is visible only when that step is current.
+
+```tsx twoslash
+import * as React from "react";
+import { defineStepper } from "@stepperize/react";
+
+const { Stepper } = defineStepper(
+  { id: "account", title: "Account" },
+  { id: "profile", title: "Profile" },
+  { id: "done", title: "Done" }
+);
+
+function StepContent() {
+  return (
+    <Stepper.Root>
+      {({ stepper }) => (
+        <>
+          <Stepper.Content step="account"><p>Account form</p></Stepper.Content>
+          <Stepper.Content step="profile"><p>Profile form</p></Stepper.Content>
+          <Stepper.Content step="done"><p>All done!</p></Stepper.Content>
+        </>
+      )}
+    </Stepper.Root>
+  );
+}
+```
+
+  </Step>
+  <Step>
+
+### Add Prev / Next buttons
+
+Put `Stepper.Prev` and `Stepper.Next` inside `Stepper.Actions`. They call `navigation.prev()` and `navigation.next()` and are disabled on first/last step automatically.
+
+  </Step>
+</Steps>
+
+### Live preview
+
+<BasicHorizontalPreview />
+
+### Full example
+
+```tsx twoslash
+import * as React from "react";
+import { defineStepper } from "@stepperize/react";
+
+const { Stepper } = defineStepper(
+  { id: "account", title: "Account" },
+  { id: "profile", title: "Profile" },
+  { id: "done", title: "Done" }
+);
+
+function Trigger({ children }: { children: React.ReactNode }) {
+  return (
+    <Stepper.Trigger className="border border-gray-300 bg-white px-2 py-1 text-sm data-[status=active]:bg-blue-100 dark:data-[status=active]:bg-blue-900/40">
+      {children}
+    </Stepper.Trigger>
+  );
+}
+
+export function HorizontalStepper() {
+  return (
+    <Stepper.Root>
+      {({ stepper }) => (
+        <>
+          <Stepper.List className="m-0 flex list-none flex-wrap gap-2 p-0">
+            {stepper.state.all.map((step) => (
+              <React.Fragment key={step.id}>
+                <Stepper.Item step={step.id}>
+                  <Trigger>
+                    <Stepper.Title render={(props) => <span {...props}>{step.title}</span>} />
+                  </Trigger>
+                </Stepper.Item>
+                {step.id !== "done" && <span className="self-center text-gray-400">→</span>}
+              </React.Fragment>
+            ))}
+          </Stepper.List>
+          <div className="mt-4 min-h-12">
+            <Stepper.Content step="account"><p>Account form</p></Stepper.Content>
+            <Stepper.Content step="profile"><p>Profile form</p></Stepper.Content>
+            <Stepper.Content step="done"><p>All done!</p></Stepper.Content>
+          </div>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {stepper.state.isLast ? (
+              <button type="button" onClick={() => stepper.navigation.reset()}>
+                Reset
+              </button>
+            ) : (
+              <>
+                <Stepper.Prev>Previous</Stepper.Prev>
+                <Stepper.Next>Next</Stepper.Next>
+              </>
+            )}
+          </div>
+        </>
+      )}
+    </Stepper.Root>
+  );
+}
+```
+
+---
 
 ## Vertical Stepper
 
-For interfaces with limited horizontal space or when you need to display more detailed information for each step, the vertical stepper is an excellent choice.
+Same structure as the horizontal stepper; only the orientation changes. Pass `orientation="vertical"` to `Stepper.Root` and `Stepper.List`.
 
-Key features:
+<Steps>
+  <Step>
 
-- Vertical layout
-- Suitable for mobile interfaces or sidebars
+### Use vertical orientation
 
-### Live Demo
+Pass `orientation="vertical"` to `Stepper.Root` and `Stepper.List`. Use a custom separator (e.g. a line) between items since `Stepper.Separator` supports vertical layout.
 
-<DemoViewer
-  className="h-[700px]"
-  src="https://stackblitz.com/edit/vitejs-vite-fvq5wk?embed=1&file=src%2FApp.tsx&hideNavigation=1&view=preview"
-/>
+  </Step>
+</Steps>
 
-## Custom Circular Stepper
+### Live preview
 
-Stepperize allows for extensive customization. This example showcases a circular stepper design, demonstrating how you can tailor the appearance to match your application's aesthetic.
+<BasicVerticalPreview />
 
-Key features:
+### Full example
 
-- Custom circular step indicators
-- Flexible layout options
+```tsx twoslash
+import * as React from "react";
+import { defineStepper } from "@stepperize/react";
 
-### Live Demo
+const { Stepper } = defineStepper(
+  { id: "one", title: "Step 1" },
+  { id: "two", title: "Step 2" },
+  { id: "three", title: "Step 3" }
+);
 
-<DemoViewer src="https://stackblitz.com/edit/vitejs-vite-d5abqg?embed=1&file=src%2FApp.tsx&hideNavigation=1&view=preview" />
+function Trigger({ children }: { children: React.ReactNode }) {
+  return (
+    <Stepper.Trigger className="border border-gray-300 bg-white px-2 py-1 text-sm data-[status=active]:bg-blue-100 dark:data-[status=active]:bg-blue-900/40">
+      {children}
+    </Stepper.Trigger>
+  );
+}
 
-## Usage Tips
+function VerticalLine() {
+  return <div className="ml-3 h-3 w-px bg-gray-300 dark:bg-gray-600" />;
+}
 
-- Use the `switch` method to programmatically change steps
-- Customize the appearance using CSS, Tailwind CSS, or any other styling library
-- Combine with form libraries for complex multi-step forms
-- Implement validation logic between steps for guided user experiences
+export function VerticalStepper() {
+  return (
+    <Stepper.Root orientation="vertical">
+      {({ stepper }) => (
+        <>
+          <Stepper.List
+            orientation="vertical"
+            className="m-0 flex w-fit list-none flex-col items-stretch gap-0 p-0"
+          >
+            {stepper.state.all.map((step, index) => (
+              <React.Fragment key={step.id}>
+                <Stepper.Item step={step.id}>
+                  <Trigger>
+                    <Stepper.Title render={(props) => <span {...props}>{step.title}</span>} />
+                  </Trigger>
+                </Stepper.Item>
+                {index < stepper.state.all.length - 1 && <VerticalLine />}
+              </React.Fragment>
+            ))}
+          </Stepper.List>
+          <div className="mt-4 min-h-10">
+            {stepper.state.all.map((step) => (
+              <Stepper.Content key={step.id} step={step.id}>
+                <p>Content for {step.title}</p>
+              </Stepper.Content>
+            ))}
+          </div>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {stepper.state.isLast ? (
+              <button type="button" onClick={() => stepper.navigation.reset()}>
+                Reset
+              </button>
+            ) : (
+              <>
+                <Stepper.Prev>Back</Stepper.Prev>
+                <Stepper.Next>Continue</Stepper.Next>
+              </>
+            )}
+          </div>
+        </>
+      )}
+    </Stepper.Root>
+  );
+}
+```
+
+---
+
+## Custom step indicator
+
+By default, `Stepper.Indicator` has no built-in content. You control what it shows via `children` or the `render` prop. For example, show the step index (1, 2, 3) using `useStepItemContext()` from the primitives entry.
+
+<Steps>
+  <Step>
+
+### Custom indicator with step index
+
+```tsx twoslash
+import * as React from "react";
+import { defineStepper } from "@stepperize/react";
+import { useStepItemContext } from "@stepperize/react/primitives";
+
+const { Stepper } = defineStepper(
+  { id: "a", title: "First" },
+  { id: "b", title: "Second" },
+  { id: "c", title: "Third" }
+);
+
+function StepNumber() {
+  const item = useStepItemContext();
+  return <span>{item.index + 1}</span>;
+}
+
+function StepperWithNumberedIndicator() {
+  return (
+    <Stepper.Root>
+      {({ stepper }) => (
+        <Stepper.List>
+          {stepper.state.all.map((step) => (
+            <React.Fragment key={step.id}>
+              <Stepper.Item step={step.id}>
+                <Stepper.Trigger>
+                  <Stepper.Indicator>
+                    <StepNumber />
+                  </Stepper.Indicator>
+                  <Stepper.Title>{step.title}</Stepper.Title>
+                </Stepper.Trigger>
+                <Stepper.Separator />
+              </Stepper.Item>
+            </React.Fragment>
+          ))}
+        </Stepper.List>
+      )}
+    </Stepper.Root>
+  );
+}
+```
+
+  </Step>
+  <Step>
+
+### Alternative: render prop on Indicator
+
+You can also use the `render` prop to receive DOM props and render a custom element (e.g. for styling the “circle” later).
+
+```tsx twoslash
+import * as React from "react";
+import { defineStepper } from "@stepperize/react";
+import { useStepItemContext } from "@stepperize/react/primitives";
+
+const { Stepper } = defineStepper(
+  { id: "x", title: "Step X" },
+  { id: "y", title: "Step Y" }
+);
+
+function CustomIndicator() {
+  const item = useStepItemContext();
+  return (
+    <Stepper.Indicator
+      render={(props) => (
+        <span {...props}>{item.index + 1}</span>
+      )}
+    />
+  );
+}
+
+// Use inside Stepper.Item:
+// <Stepper.Trigger>
+//   <CustomIndicator />
+//   <Stepper.Title>{step.title}</Stepper.Title>
+// </Stepper.Trigger>
+```
+
+  </Step>
+</Steps>
+
+### Live preview
+
+<BasicCustomIndicatorPreview />
+
+### Full example
+
+```tsx twoslash
+import * as React from "react";
+import { defineStepper } from "@stepperize/react";
+import { useStepItemContext } from "@stepperize/react/primitives";
+
+const { Stepper } = defineStepper(
+  { id: "a", title: "First" },
+  { id: "b", title: "Second" },
+  { id: "c", title: "Third" }
+);
+
+function StepNumber() {
+  const item = useStepItemContext();
+  return <span>{item.index + 1}</span>;
+}
+
+function Trigger({ children }: { children: React.ReactNode }) {
+  return (
+    <Stepper.Trigger className="rounded-full border border-gray-300 bg-white px-2 py-1 text-sm data-[status=active]:bg-blue-100 dark:data-[status=active]:bg-blue-900/40">
+      {children}
+    </Stepper.Trigger>
+  );
+}
+
+export function StepperWithNumberedIndicator() {
+  return (
+    <Stepper.Root>
+      {({ stepper }) => (
+        <>
+          <Stepper.List className="m-0 flex list-none flex-wrap gap-2 p-0">
+            {stepper.state.all.map((step) => (
+              <React.Fragment key={step.id}>
+                <Stepper.Item step={step.id}>
+                  <Trigger>
+                    <Stepper.Indicator className="inline-flex size-4 items-center justify-center rounded-full bg-inherit text-xs font-semibold">
+                      <StepNumber />
+                    </Stepper.Indicator>
+                    <Stepper.Title render={(props) => <span {...props}>{step.title}</span>} />
+                  </Trigger>
+                </Stepper.Item>
+                {step.id !== "c" && <span className="self-center text-gray-400">→</span>}
+              </React.Fragment>
+            ))}
+          </Stepper.List>
+          <div className="mt-4 min-h-10">
+            <Stepper.Content step="a"><p>First step content</p></Stepper.Content>
+            <Stepper.Content step="b"><p>Second step content</p></Stepper.Content>
+            <Stepper.Content step="c"><p>Third step content</p></Stepper.Content>
+          </div>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {stepper.state.isLast ? (
+              <button type="button" onClick={() => stepper.navigation.reset()}>
+                Reset
+              </button>
+            ) : (
+              <>
+                <Stepper.Prev>Previous</Stepper.Prev>
+                <Stepper.Next>Next</Stepper.Next>
+              </>
+            )}
+          </div>
+        </>
+      )}
+    </Stepper.Root>
+  );
+}
+```
+
+---
+
+## Usage tips
+
+- Use `stepper.flow.switch({ stepId: () => <Content /> })` to render content per step, or `Stepper.Content step="stepId"` for a declarative panel per step.
+- Use `stepper.navigation.next()`, `prev()`, and `goTo(id)` to change steps; `Stepper.Prev` and `Stepper.Next` do this for you when used inside `Stepper.Actions`.
+- Add validation between steps with `stepper.lifecycle.onBeforeTransition`; return `false` (or a promise resolving to `false`) to cancel the transition.
+- Style with CSS or Tailwind using `data-component`, `data-status`, and `data-orientation` on the primitives.

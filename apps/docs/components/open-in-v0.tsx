@@ -1,15 +1,34 @@
-import { Button } from "@/registry/new-york/ui/button";
+import { Button } from "@/registry/radix-ui/ui/button";
 
-export const OpenInV0 = ({ name, children }: { name: string; children: React.ReactNode }) => {
+const REGISTRY_BASE = process.env.NEXT_PUBLIC_BASE_URL ?? "";
+
+export const OpenInV0 = ({
+	name,
+	registry = "radix-ui",
+	children,
+}: {
+	name: string;
+	registry?: "radix-ui" | "base-ui";
+	children: React.ReactNode;
+}) => {
+	const rPath = `${registry}/${name}`;
 	return (
 		<div className="not-prose flex flex-col gap-4 border rounded-lg p-4 min-h-[450px] relative bg-background">
-			<OpenInV0Button name={name} />
+			<OpenInV0Button name={name} registry={registry} rPath={rPath} />
 			<div className="flex items-center justify-center min-h-[400px] relative">{children}</div>
 		</div>
 	);
 };
 
-function OpenInV0Button({ name }: { name: string }) {
+function OpenInV0Button({
+	name,
+	registry,
+	rPath,
+}: {
+	name: string;
+	registry: "radix-ui" | "base-ui";
+	rPath: string;
+}) {
 	return (
 		<Button
 			aria-label="Open in v0"
@@ -17,7 +36,7 @@ function OpenInV0Button({ name }: { name: string }) {
 			asChild
 		>
 			<a
-				href={`https://v0.dev/chat/api/open?url=${process.env.NEXT_PUBLIC_BASE_URL}/r/${name}.json`}
+				href={`https://v0.dev/chat/api/open?url=${REGISTRY_BASE}/r/${rPath}.json`}
 				target="_blank"
 				rel="noreferrer"
 			>

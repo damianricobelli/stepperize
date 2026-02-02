@@ -31,7 +31,7 @@ For more information, see the [Define](/docs/react/api-references/define) sectio
 The `Stepper` component has been removed. Use `Scoped` from `defineStepper` object instead if you want to use with 1 or more Scopes of steps.
 
 - We don't need to pass the array of steps to the component anymore.
-- The `Stepper` component only accepts one prop, `initialStep`, which is the initial step to be active initially.
+- The `Scoped` component accepts an `initial` prop to configure the initial state.
 
 ```tsx
 const { Scoped } = defineStepper(
@@ -58,3 +58,7 @@ const { useStepper } = defineStepper(
 ```
 
 For more information, see the [Hook](/docs/react/api-references/hook) section.
+
+<Callout type="info">
+  In v6, `Scoped` uses `initialStep` and `initialMetadata` instead of `initial`. See [Migrating to v6](./migrating-to-v6) when upgrading from v2 to v6.
+</Callout>

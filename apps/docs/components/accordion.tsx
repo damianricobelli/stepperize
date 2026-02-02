@@ -1,7 +1,6 @@
 "use client";
 
-import * as AccordionPrimitive from "@radix-ui/react-accordion";
-import type { AccordionMultipleProps, AccordionSingleProps } from "@radix-ui/react-accordion";
+import { Accordion as AccordionPrimitive } from "radix-ui";
 import { Check, ChevronRight, LinkIcon } from "lucide-react";
 import { forwardRef, type ComponentPropsWithoutRef, useState, useEffect } from "react";
 import { cn } from "../lib/cn";
@@ -10,7 +9,7 @@ import { buttonVariants } from "./ui/button";
 
 export const Accordions = forwardRef<
 	HTMLDivElement,
-	Omit<AccordionSingleProps, "value" | "onValueChange"> | Omit<AccordionMultipleProps, "value" | "onValueChange">
+	Omit<AccordionPrimitive.AccordionSingleProps, "value" | "onValueChange"> | Omit<AccordionPrimitive.AccordionMultipleProps, "value" | "onValueChange">
 >(({ type = "single", className, defaultValue, ...props }, ref) => {
 	const [value, setValue] = useState<string | string[]>(
 		type === "single" ? (defaultValue ?? "") : (defaultValue ?? []),

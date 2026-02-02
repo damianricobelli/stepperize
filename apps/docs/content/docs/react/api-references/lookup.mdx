@@ -1,0 +1,85 @@
+---
+title: Lookup
+description: Step lookup via stepper.lookup or generateStepperUtils from core
+---
+
+Step lookup is available on the stepper as **`stepper.lookup`** (from `useStepper()`). The same API is exposed as pure helpers from `@stepperize/core` when you need them without a stepper instance (e.g. in Node for SSR, in shared validation, or in layout logic that only has the steps array).
+
+## On the stepper: `stepper.lookup`
+
+When you have a stepper (from `useStepper()` or the render prop on `Stepper.Root`), use `stepper.lookup`:
+
+| Method | Description | Returns |
+| ------ | ----------- | ------- |
+| `lookup.getAll()` | All steps | `Steps` |
+| `lookup.get(id)` | Step by ID | `Get.StepById<Steps, Id>` |
+| `lookup.getIndex(id)` | Index of step by ID | `number` |
+| `lookup.getByIndex(index)` | Step at index | `Steps[Index]` |
+| `lookup.getFirst()` | First step | `Steps[number]` |
+| `lookup.getLast()` | Last step | `Steps[number]` |
+| `lookup.getNext(id)` | Next step after `id` | `Steps[number]` |
+| `lookup.getPrev(id)` | Previous step before `id` | `Steps[number]` |
+| `lookup.getNeighbors(id)` | `{ prev, next }` for step `id` | `{ prev: Steps[number] \| null; next: Steps[number] \| null }` |
+
+There is no `has` or `count`; use `stepper.lookup.get(id) != null` and `stepper.lookup.getAll().length` if needed.
+
+## Usage with useStepper
+
+```tsx twoslash
+import * as React from "react";
+import { defineStepper } from "@stepperize/react";
+
+const { useStepper } = defineStepper(
+  { id: "step1", title: "Step 1" },
+  { id: "step2", title: "Step 2" },
+  { id: "step3", title: "Step 3" }
+);
+
+function StepNavigator() {
+  const stepper = useStepper();
+
+  const allSteps = stepper.lookup.getAll();
+  const currentIndex = stepper.state.current.index;
+  const firstStep = stepper.lookup.getFirst();
+  const lastStep = stepper.lookup.getLast();
+  const stepById = stepper.lookup.get("step2");
+  const nextStep = stepper.lookup.getNext(stepper.state.current.data.id);
+  const { prev, next } = stepper.lookup.getNeighbors(stepper.state.current.data.id);
+
+  return (
+    <div>
+      <p>Step {currentIndex + 1} of {allSteps.length}</p>
+      <p>Current: {stepper.state.current.data.title}</p>
+      {next && <button onClick={() => stepper.navigation.goTo(next.id)}>Go to {next.title}</button>}
+    </div>
+  );
+}
+```
+
+## Without a stepper: `generateStepperUtils` from core
+
+When you need step lookup **without** React or current state (e.g. SSR, validation, layout logic), use `generateStepperUtils` from `@stepperize/core`. Install the core package if needed: `pnpm add @stepperize/core`.
+
+```tsx twoslash
+import { generateStepperUtils } from "@stepperize/core";
+
+const steps = [
+  { id: "a", title: "A" },
+  { id: "b", title: "B" },
+  { id: "c", title: "C" },
+] as const;
+
+const utils = generateStepperUtils(...steps);
+
+utils.getAll();        // steps
+utils.get("b");        // { id: "b", title: "B" }
+utils.getIndex("b");   // 1
+utils.getByIndex(0);   // { id: "a", title: "A" }
+utils.getFirst();      // first step
+utils.getLast();       // last step
+utils.getNext("a");    // step "b"
+utils.getPrev("b");    // step "a"
+utils.getNeighbors("b"); // { prev: step "a", next: step "c" }
+```
+
+The return type of `generateStepperUtils` is `StepperLookup<Steps>` (exported as `Utils<Steps>` from core).

@@ -1,11 +1,11 @@
 "use client";
 import { Check, Copy } from "lucide-react";
 import { type ButtonHTMLAttributes, type HTMLAttributes, type ReactNode, forwardRef, useCallback, useRef } from "react";
-import { cn } from "../lib/cn";
+import { cn } from "@/lib/utils";
 import { ScrollArea, ScrollBar, ScrollViewport } from "./ui/scroll-area";
-import { useCopyButton } from "../lib/use-copy-button";
+import { useCopyButton } from "@/lib/use-copy-button";
 import { buttonVariants } from "./ui/button";
-import type { ScrollAreaViewportProps } from "@radix-ui/react-scroll-area";
+import { ScrollArea as ScrollAreaPrimitive } from "radix-ui";
 
 export type CodeBlockProps = HTMLAttributes<HTMLElement> & {
 	/**
@@ -29,7 +29,7 @@ export type CodeBlockProps = HTMLAttributes<HTMLElement> & {
 	 */
 	keepBackground?: boolean;
 
-	viewportProps?: ScrollAreaViewportProps;
+	viewportProps?: ScrollAreaPrimitive.ScrollAreaProps;
 };
 
 export const Pre = forwardRef<HTMLPreElement, HTMLAttributes<HTMLPreElement>>(({ className, ...props }, ref) => {

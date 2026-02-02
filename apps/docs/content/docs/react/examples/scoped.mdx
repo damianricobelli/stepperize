@@ -1,19 +1,506 @@
 ---
-title: Scoped Stepper
-description: Use the Stepper component with scoped children for a more customized experience.
+title: Scoped
+description: Build a stepper with Scoped and useStepper (single or nested multi-scoped) without primitives.
 ---
 
-The Scoped Stepper allows you to create a multi-step process with custom content for each step. This example demonstrates how to use the Stepper component with scoped children, giving you more control over the content and layout of each step.
+Use **Scoped** and **useStepper()** so any descendant can read and control the same stepper—no primitives, just your own UI. You can use a **single Scoped** (one stepper) or **nest two or more Scoped** providers (e.g. global wizard + local sub-steps). The tabs below switch between the single-scope and multi-scoped patterns.
 
-Key Features
+<Steps>
+  <Step>
 
-- Custom content for each step
-- Flexible layout options
-- Easy integration with your React components
+### Define your steps (and get Scoped / useStepper)
 
-## Live Demo
+Use `defineStepper` with one object per step. For a single stepper you destructure `Scoped` and `useStepper`. For multi-scoped you create two (or more) steppers; each has its own `Scoped` and `useStepper`.
 
-<DemoViewer
-  className="h-[400px]"
-  src="https://stackblitz.com/edit/vitejs-vite-7ya4ty?embed=1&file=src%2FApp.tsx&hideNavigation=1&view=preview"
-/>
+<Tabs groupId="scoped-define" items={["Single scope", "Multi-scoped"]} defaultIndex={0}>
+  <Tab value="Single scope">
+
+One stepper: wrap your tree with `<Scoped>` and call `useStepper()` in children.
+
+```tsx twoslash
+import * as React from "react";
+import { defineStepper } from "@stepperize/react";
+
+const { Scoped, useStepper } = defineStepper(
+  { id: "info", title: "Info" },
+  { id: "review", title: "Review" },
+  { id: "done", title: "Done" }
+);
+```
+
+  </Tab>
+  <Tab value="Multi-scoped">
+
+Two steppers: a global (e.g. wizard) and a local one (sub-steps). Each has its own `Scoped` and `useStepper`.
+
+```tsx twoslash
+import { defineStepper } from "@stepperize/react";
+
+const GlobalStepper = defineStepper(
+  { id: "start", title: "Start" },
+  { id: "middle", title: "Middle" },
+  { id: "end", title: "End" }
+);
+
+const LocalStepper = defineStepper(
+  { id: "sub1", title: "Sub-step 1" },
+  { id: "sub2", title: "Sub-step 2" }
+);
+```
+
+  </Tab>
+</Tabs>
+
+  </Step>
+  <Step>
+
+### Wrap your UI with Scoped
+
+`Scoped` is the provider: it holds the stepper state. Any component inside it can call the matching `useStepper()` and get that stepper instance. For multi-scoped, nest the local `Scoped` inside the global one so inner components can use both.
+
+<Tabs groupId="scoped-wrap" items={["Single scope", "Multi-scoped"]} defaultIndex={0}>
+  <Tab value="Single scope">
+
+```tsx twoslash
+import * as React from "react";
+import { defineStepper } from "@stepperize/react";
+
+const { Scoped, useStepper } = defineStepper(
+  { id: "info", title: "Info" },
+  { id: "review", title: "Review" },
+  { id: "done", title: "Done" }
+);
+
+function ScopedStepper() {
+  return (
+    <Scoped>
+      <StepContent />
+      <StepNavigation />
+    </Scoped>
+  );
+}
+
+function StepContent() {
+  const stepper = useStepper();
+  return <div>{/* content per step */}</div>;
+}
+
+function StepNavigation() {
+  const stepper = useStepper();
+  return <div>{/* buttons */}</div>;
+}
+```
+
+  </Tab>
+  <Tab value="Multi-scoped">
+
+```tsx twoslash
+import * as React from "react";
+import { defineStepper } from "@stepperize/react";
+
+const GlobalStepper = defineStepper(
+  { id: "start", title: "Start" },
+  { id: "middle", title: "Middle" },
+  { id: "end", title: "End" }
+);
+
+const LocalStepper = defineStepper(
+  { id: "sub1", title: "Sub-step 1" },
+  { id: "sub2", title: "Sub-step 2" }
+);
+
+export function MultiScopedStepper() {
+  return (
+    <GlobalStepper.Scoped>
+      <GlobalStepContent />
+      <LocalStepper.Scoped>
+        <LocalStepContent />
+        <LocalStepNavigation />
+      </LocalStepper.Scoped>
+      <GlobalStepNavigation />
+    </GlobalStepper.Scoped>
+  );
+}
+
+function GlobalStepContent() {
+  const stepper = GlobalStepper.useStepper();
+  return <div>Global: {stepper.state.current.data.title}</div>;
+}
+
+function GlobalStepNavigation() {
+  const stepper = GlobalStepper.useStepper();
+  return (
+    <div>
+      {!stepper.state.isFirst && (
+        <button type="button" onClick={() => stepper.navigation.prev()}>Back</button>
+      )}
+      {!stepper.state.isLast && (
+        <button type="button" onClick={() => stepper.navigation.next()}>Next</button>
+      )}
+    </div>
+  );
+}
+
+function LocalStepContent() {
+  const stepper = LocalStepper.useStepper();
+  return <div>Local: {stepper.state.current.data.title}</div>;
+}
+
+function LocalStepNavigation() {
+  const stepper = LocalStepper.useStepper();
+  return (
+    <div>
+      <button type="button" onClick={() => stepper.navigation.prev()} disabled={stepper.state.isFirst}>
+        Prev sub
+      </button>
+      <button type="button" onClick={() => stepper.navigation.next()} disabled={stepper.state.isLast}>
+        Next sub
+      </button>
+    </div>
+  );
+}
+```
+
+  </Tab>
+</Tabs>
+
+  </Step>
+  <Step>
+
+### Render content per step (flow.switch / flow.when)
+
+Inside a child component, call `useStepper()` (or `GlobalStepper.useStepper()` / `LocalStepper.useStepper()` in multi-scoped) and use `stepper.flow.switch({ ... })` to render different content per step. You can also use `flow.when(id, fn)` or `flow.is(id)`.
+
+For **single scope** the pattern is the same in every child. For **multi-scoped**, global content uses the global stepper's `flow.switch`; local content uses the local stepper's `flow.switch`. Each stepper has its own state.
+
+<Tabs groupId="scoped-content" items={["Single scope", "Multi-scoped"]} defaultIndex={0}>
+  <Tab value="Single scope">
+
+```tsx twoslash
+import * as React from "react";
+import { defineStepper } from "@stepperize/react";
+
+const { Scoped, useStepper } = defineStepper(
+  { id: "info", title: "Info" },
+  { id: "review", title: "Review" },
+  { id: "done", title: "Done" }
+);
+
+function StepContent() {
+  const stepper = useStepper();
+  return (
+    <div>
+      {stepper.flow.switch({
+        info: (step) => <p>Step: {step.title}. Enter your info.</p>,
+        review: (step) => <p>Review your data.</p>,
+        done: (step) => <p>All done!</p>,
+      })}
+    </div>
+  );
+}
+```
+
+  </Tab>
+  <Tab value="Multi-scoped">
+
+Global content uses `GlobalStepper.useStepper()` and its `flow.switch`. Inside the local `Scoped`, local content uses `LocalStepper.useStepper()` and its `flow.switch`. You can show the local scope only on a given global step (e.g. "middle") by conditionally rendering the local `Scoped` when `globalStepper.flow.is("middle")`.
+
+  </Tab>
+</Tabs>
+
+  </Step>
+  <Step>
+
+### Add navigation (next / prev / reset)
+
+In another child component, call the same `useStepper()` (or the matching one in multi-scoped) and use `stepper.state.isFirst`, `stepper.state.isLast`, and `stepper.navigation.next()`, `prev()`, `reset()`.
+
+<Tabs groupId="scoped-nav" items={["Single scope", "Multi-scoped"]} defaultIndex={0}>
+  <Tab value="Single scope">
+
+```tsx twoslash
+import * as React from "react";
+import { defineStepper } from "@stepperize/react";
+
+const { Scoped, useStepper } = defineStepper(
+  { id: "info", title: "Info" },
+  { id: "review", title: "Review" },
+  { id: "done", title: "Done" }
+);
+
+function StepNavigation() {
+  const stepper = useStepper();
+  return (
+    <div>
+      {stepper.state.isLast ? (
+        <button type="button" onClick={() => stepper.navigation.reset()}>
+          Reset
+        </button>
+      ) : (
+        <div>
+          {!stepper.state.isFirst && (
+            <button type="button" onClick={() => stepper.navigation.prev()}>
+              Back
+            </button>
+          )}
+          <button type="button" onClick={() => stepper.navigation.next()}>
+            Next
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+```
+
+  </Tab>
+  <Tab value="Multi-scoped">
+
+Use `GlobalStepper.useStepper()` for global nav (Back / Next / Reset) and `LocalStepper.useStepper()` for local nav (Prev sub / Next sub). Advancing one stepper does not change the other.
+
+  </Tab>
+</Tabs>
+
+  </Step>
+  <Step>
+
+### Optional: initial step, metadata, or local scope only on one global step
+
+<Tabs groupId="scoped-optional" items={["Single scope", "Multi-scoped"]} defaultIndex={0}>
+  <Tab value="Single scope">
+
+Pass `initialStep` and/or `initialMetadata` to `Scoped` to set the starting step and initial metadata per step.
+
+```tsx twoslash
+import * as React from "react";
+import { defineStepper } from "@stepperize/react";
+
+const { Scoped, useStepper } = defineStepper(
+  { id: "info", title: "Info" },
+  { id: "review", title: "Review" },
+  { id: "done", title: "Done" }
+);
+
+function StepContent() {
+  const stepper = useStepper();
+  return <div>{/* content per step */}</div>;
+}
+
+function StepNavigation() {
+  const stepper = useStepper();
+  return <div>{/* buttons */}</div>;
+}
+
+function Example() {
+  return (
+    <Scoped
+      initialStep="review"
+      initialMetadata={{ info: { name: "Jane" } }}
+    >
+      <StepContent />
+      <StepNavigation />
+    </Scoped>
+  );
+}
+```
+
+  </Tab>
+  <Tab value="Multi-scoped">
+
+You can show the local `Scoped` (and local step UI) only when the global stepper is on a specific step. Use a wrapper that calls `GlobalStepper.useStepper()` and returns the local scope only when `stepper.flow.is("middle")`.
+
+```tsx
+function GlobalStepGate({ children }: { children: React.ReactNode }) {
+  const globalStepper = GlobalStepper.useStepper();
+  if (!globalStepper.flow.is("middle")) return null;
+  return <>{children}</>;
+}
+
+// In your tree:
+<GlobalStepper.Scoped>
+  <GlobalStepContent />
+  <GlobalStepGate>
+    <LocalStepper.Scoped>
+      <LocalStepContent />
+      <LocalStepNavigation />
+    </LocalStepper.Scoped>
+  </GlobalStepGate>
+  <GlobalStepNavigation />
+</GlobalStepper.Scoped>
+```
+
+  </Tab>
+</Tabs>
+
+  </Step>
+</Steps>
+
+## Live preview
+
+<Tabs groupId="scoped-preview" items={["Single scope", "Multi-scoped"]} defaultIndex={0}>
+  <Tab value="Single scope">
+    <ScopedPreview />
+  </Tab>
+  <Tab value="Multi-scoped">
+    <MultiScopedPreview />
+  </Tab>
+</Tabs>
+
+## Full example
+
+<Tabs groupId="scoped-full" items={["Single scope", "Multi-scoped"]} defaultIndex={0}>
+  <Tab value="Single scope">
+
+```tsx twoslash
+import * as React from "react";
+import { defineStepper } from "@stepperize/react";
+
+const { Scoped, useStepper } = defineStepper(
+  { id: "info", title: "Info" },
+  { id: "review", title: "Review" },
+  { id: "done", title: "Done" }
+);
+
+function StepContent() {
+  const stepper = useStepper();
+  return (
+    <div>
+      <p>Current: {stepper.state.current.data.title}</p>
+      {stepper.flow.switch({
+        info: () => <p>Enter your info.</p>,
+        review: () => <p>Review your data.</p>,
+        done: () => <p>All done!</p>,
+      })}
+    </div>
+  );
+}
+
+function StepNavigation() {
+  const stepper = useStepper();
+  return (
+    <div>
+      {stepper.state.isLast ? (
+        <button type="button" onClick={() => stepper.navigation.reset()}>
+          Reset
+        </button>
+      ) : (
+        <div>
+          {!stepper.state.isFirst && (
+            <button type="button" onClick={() => stepper.navigation.prev()}>
+              Back
+            </button>
+          )}
+          <button type="button" onClick={() => stepper.navigation.next()}>
+            Next
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function ScopedStepper() {
+  return (
+    <Scoped>
+      <StepContent />
+      <StepNavigation />
+    </Scoped>
+  );
+}
+```
+
+  </Tab>
+  <Tab value="Multi-scoped">
+
+```tsx twoslash
+import * as React from "react";
+import { defineStepper } from "@stepperize/react";
+
+const GlobalStepper = defineStepper(
+  { id: "start", title: "Start" },
+  { id: "middle", title: "Middle" },
+  { id: "end", title: "End" }
+);
+
+const LocalStepper = defineStepper(
+  { id: "sub1", title: "Sub-step 1" },
+  { id: "sub2", title: "Sub-step 2" }
+);
+
+function GlobalStepContent() {
+  const stepper = GlobalStepper.useStepper();
+  return (
+    <div>
+      <p>Global step: {stepper.state.current.data.title}</p>
+      {stepper.flow.switch({
+        start: () => <p>Start content.</p>,
+        middle: () => (
+          <LocalStepper.Scoped>
+            <LocalStepContent />
+            <LocalStepNavigation />
+          </LocalStepper.Scoped>
+        ),
+        end: () => <p>End content.</p>,
+      })}
+    </div>
+  );
+}
+
+function LocalStepContent() {
+  const stepper = LocalStepper.useStepper();
+  return <p>Local step: {stepper.state.current.data.title}</p>;
+}
+
+function LocalStepNavigation() {
+  const stepper = LocalStepper.useStepper();
+  return (
+    <div>
+      <button type="button" onClick={() => stepper.navigation.prev()} disabled={stepper.state.isFirst}>
+        Prev
+      </button>
+      <button type="button" onClick={() => stepper.navigation.next()} disabled={stepper.state.isLast}>
+        Next
+      </button>
+    </div>
+  );
+}
+
+function GlobalStepNavigation() {
+  const stepper = GlobalStepper.useStepper();
+  return (
+    <div>
+      {!stepper.state.isFirst && (
+        <button type="button" onClick={() => stepper.navigation.prev()}>Back</button>
+      )}
+      {stepper.state.isLast ? (
+        <button type="button" onClick={() => stepper.navigation.reset()}>Reset</button>
+      ) : (
+        <button type="button" onClick={() => stepper.navigation.next()}>Next</button>
+      )}
+    </div>
+  );
+}
+
+export function MultiScopedStepper() {
+  return (
+    <GlobalStepper.Scoped>
+      <GlobalStepContent />
+      <GlobalStepNavigation />
+    </GlobalStepper.Scoped>
+  );
+}
+```
+
+  </Tab>
+</Tabs>
+
+## Summary
+
+- **Scoped** — Wrap your tree so any descendant can call `useStepper()` and get the same stepper. For multi-scoped, nest a second `Scoped` inside the first so inner components can use both hooks.
+- **useStepper()** — Use in child components for `state.current`, `state.isFirst` / `state.isLast`, `flow.switch`, `navigation.next()` / `prev()` / `reset()`. In multi-scoped, call the matching hook (`GlobalStepper.useStepper()` vs `LocalStepper.useStepper()`).
+- **No primitives** — Build your own step list, content panels, and buttons; Stepperize only provides state and navigation.
+
+## Additional resources
+
+- [Scoped API](/docs/react/api-references/scoped) — Scoped component and useStepper when used with Scoped
+- [Hook API](/docs/react/api-references/hook) — useStepper state, navigation, flow, metadata

@@ -4,16 +4,29 @@ description: Learn how to migrate from v4 to v5
 icon: CircleFadingArrowUp
 ---
 
+<Callout type="warn">
+  For the latest migration guide (v5 to v6), see [Migrating to v6](./migrating-to-v6).
+</Callout>
+
+In v6 the config was simplified again: `useStepper` and `Scoped` now take `initialStep` and `initialMetadata` at the top level (no `initial` object), and initial `statuses` were removed (status is derived from position). If you are on v5 and upgrading to v6, follow the [v6 migration guide](./migrating-to-v6) instead.
+
 Stepperize v5 adds a new `metadata` API to the `useStepper` hook
 
 ## Breaking Changes
 
 ### Name changes in the values returned by the hook
 
-Now the parameters of useStepper are not a string indicating the initial step, but rather an object with the following values:
+Now the parameters of useStepper are not a string indicating the initial step, but rather an object with the `initial` property:
 
-- `initialStep` The ID of the initial step to display
-- `initialMetadata` The initial metadata to set for the steps
+```tsx
+const methods = useStepper({
+  initial: {
+    step: "first",        // The ID of the initial step to display
+    metadata: { ... },    // The initial metadata for each step
+    statuses: { ... },    // The initial status for each step
+  }
+});
+```
 
 ## New Features
 

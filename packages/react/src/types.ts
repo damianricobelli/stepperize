@@ -1,23 +1,29 @@
 import type { Get, Metadata, Step, Stepper, Utils } from "@stepperize/core";
+import type { StepperPrimitives } from "./primitives/create-stepper-primitives";
+import type { StepStatus } from "./primitives/types";
+
+export type TransitionDirection = "next" | "prev" | "goTo";
+
+export type TransitionContext<Steps extends Step[]> = {
+	readonly from: Steps[number];
+	readonly to: Steps[number];
+	readonly metadata: Record<Get.Id<Steps>, Metadata>;
+	readonly statuses: Record<Get.Id<Steps>, StepStatus>;
+	readonly direction: TransitionDirection;
+	readonly fromIndex: number;
+	readonly toIndex: number;
+};
 
 export type ScopedProps<Steps extends Step[]> = React.PropsWithChildren<{
 	/** The initial step to display. */
 	initialStep?: Get.Id<Steps>;
 	/** The initial metadata. */
-	initialMetadata?: Record<Get.Id<Steps>, Metadata>;
+	initialMetadata?: Partial<Record<Get.Id<Steps>, Metadata>>;
 }>;
 
 export type StepperReturn<Steps extends Step[]> = {
 	/** The steps of the stepper. */
 	steps: Steps;
-	/**
-	 * `utils` provides helper functions to interact with steps in the stepper.
-	 * These functions allow you to get steps by their ID or index, get the first and last steps,
-	 * and navigate through the steps by retrieving neighbors or adjacent steps.
-	 *
-	 * @returns An object containing utility methods to interact with the steps
-	 */
-	utils: Utils<Steps>;
 	/**
 	 * `Scoped` component is a wrapper that provides the stepper context to its children.
 	 * It uses the `Context` to pass the stepper instance to the children.
@@ -42,4 +48,9 @@ export type StepperReturn<Steps extends Step[]> = {
 		initialStep?: Get.Id<Steps>;
 		initialMetadata?: Partial<Record<Get.Id<Steps>, Metadata>>;
 	}) => Stepper<Steps>;
+	/**
+	 * Type-safe primitive components (Root, List, Item, Trigger, Title, Description, Indicator, Separator, Content, Actions, Prev, Next).
+	 * Use within Scoped. Root children can be a function receiving `{ stepper }`.
+	 */
+	Stepper: StepperPrimitives<Steps>;
 };

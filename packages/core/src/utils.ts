@@ -1,4 +1,4 @@
-import type { Get, Metadata, Step, Stepper, Utils } from "./types";
+import type { Get, Metadata, Step, StepperFlow, StepperLookup } from "./types";
 
 /**
  * Generate stepper utils.
@@ -35,7 +35,7 @@ export function generateStepperUtils<const Steps extends Step[]>(...steps: Steps
 				next: index < steps.length - 1 ? steps[index + 1] : null,
 			};
 		},
-	} satisfies Utils<Steps>;
+	} satisfies StepperLookup<Steps>;
 }
 
 /**
@@ -81,7 +81,7 @@ export function generateCommonStepperUseFns<const Steps extends Step[]>(
 	steps: Steps,
 	currentStep: Steps[number],
 	stepIndex: number,
-) {
+): StepperFlow<Steps> {
 	return {
 		switch(when) {
 			const whenFn = when[currentStep.id as keyof typeof when];
@@ -101,49 +101,11 @@ export function generateCommonStepperUseFns<const Steps extends Step[]>(
 			const matchFn = matches[state as keyof typeof matches];
 			return matchFn?.(step as any) ?? null;
 		},
-	} as Pick<Stepper<Steps>, "switch" | "when" | "match">;
+		is(id) {
+			return currentStep.id === id;
+		},
+	} as StepperFlow<Steps>;
 }
-
-async function executeStepCallback(
-	callback: (() => Promise<boolean> | boolean) | (() => Promise<void> | void),
-	isBefore: boolean,
-): Promise<boolean> {
-	const result = await callback();
-	if (isBefore) {
-		return result !== false;
-	}
-	return true;
-}
-
-/**
- * This function is used to execute a callback before or after a transition.
- * @param stepper - The stepper to execute the transition for.
- * @param direction - The direction to execute the transition for.
- * @param callback - The callback to execute the transition for.
- * @param before - Whether the callback is before the transition.
- * @param targetId - The target ID to execute the transition for.
- */
-export const executeTransition = async <Steps extends Step[]>({
-	stepper,
-	direction,
-	callback,
-	before,
-	targetId,
-}: {
-	stepper: Stepper<Steps>;
-	direction: "next" | "prev" | "goTo";
-	callback: (() => Promise<boolean> | boolean) | (() => Promise<void> | void);
-	before: boolean;
-	targetId?: Get.Id<Steps>;
-}) => {
-	const shouldProceed = before ? await executeStepCallback(callback, true) : true;
-	if (shouldProceed) {
-		if (direction === "next") stepper.next();
-		else if (direction === "prev") stepper.prev();
-		else if (direction === "goTo" && targetId) stepper.goTo(targetId);
-		if (!before) await executeStepCallback(callback, false);
-	}
-};
 
 /**
  * Update the step index.

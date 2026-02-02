@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
-	executeTransition,
 	generateCommonStepperUseFns,
 	generateStepperUtils,
 	getInitialMetadata,
@@ -23,6 +22,10 @@ describe("generateStepperUtils", () => {
 
 	it("get returns a step by id", () => {
 		expect(utils.get("second")).toEqual({ id: "second", label: "Step 2" });
+	});
+
+	it("get returns undefined for nonexistent id", () => {
+		expect(utils.get("nonexistent" as any)).toBeUndefined();
 	});
 
 	it("getIndex returns index by id", () => {
@@ -50,6 +53,14 @@ describe("generateStepperUtils", () => {
 		});
 		expect(utils.getNeighbors("first")).toEqual({ prev: null, next: steps[1] });
 		expect(utils.getNeighbors("third")).toEqual({ prev: steps[1], next: null });
+	});
+
+	it("getNext returns undefined for last step", () => {
+		expect(utils.getNext("third")).toBeUndefined();
+	});
+
+	it("getPrev returns undefined for first step", () => {
+		expect(utils.getPrev("first")).toBeUndefined();
 	});
 });
 
@@ -108,6 +119,27 @@ describe("generateCommonStepperUseFns", () => {
 		expect(result).toBe("fallback");
 	});
 
+	it("when with array id executes whenFn only when id and all conditions match", () => {
+		const resultMatch = fns.when(
+			["second", true, true],
+			(s: (typeof steps)[0]) => s.label,
+			() => "nope",
+		);
+		expect(resultMatch).toBe("Step 2");
+		const resultNoMatchId = fns.when(
+			["first", true, true],
+			() => "ok",
+			() => "fallback",
+		);
+		expect(resultNoMatchId).toBe("fallback");
+		const resultNoMatchCond = fns.when(
+			["second", false, true],
+			() => "ok",
+			() => "fallback",
+		);
+		expect(resultNoMatchCond).toBe("fallback");
+	});
+
 	it("match executes function associated with the state", () => {
 		const result = fns.match("second", {
 			second: (s) => s.label,
@@ -119,55 +151,14 @@ describe("generateCommonStepperUseFns", () => {
 		const result = fns.match("unknown" as any, {});
 		expect(result).toBeNull();
 	});
-});
 
-describe("executeTransition", () => {
-	let mockStepper: any;
-
-	beforeEach(() => {
-		vi.clearAllMocks();
-		mockStepper = {
-			next: vi.fn(),
-			prev: vi.fn(),
-			goTo: vi.fn(),
-		};
+	it("is returns true when current step id matches", () => {
+		expect(fns.is("second")).toBe(true);
 	});
 
-	it("executes next with callback before that returns true", async () => {
-		const cb = vi.fn().mockResolvedValue(true);
-		await executeTransition({ stepper: mockStepper as any, direction: "next", callback: cb, before: true });
-		expect(mockStepper.next).toHaveBeenCalled();
-		expect(cb).toHaveBeenCalled();
-	});
-
-	it("does not execute anything if callback before returns false", async () => {
-		const cb = vi.fn().mockResolvedValue(false);
-		await executeTransition({ stepper: mockStepper as any, direction: "next", callback: cb, before: true });
-		expect(mockStepper.next).not.toHaveBeenCalled();
-	});
-
-	it("executes prev when direction=prev", async () => {
-		const cb = vi.fn();
-		await executeTransition({ stepper: mockStepper as any, direction: "prev", callback: cb, before: true });
-		expect(mockStepper.prev).toHaveBeenCalled();
-	});
-
-	it("executes goTo when direction=goTo", async () => {
-		const cb = vi.fn();
-		await executeTransition({
-			stepper: mockStepper as any,
-			direction: "goTo",
-			callback: cb,
-			before: true,
-			targetId: "second",
-		});
-		expect(mockStepper.goTo).toHaveBeenCalledWith("second");
-	});
-
-	it("executes callback in after (before=false)", async () => {
-		const cb = vi.fn();
-		await executeTransition({ stepper: mockStepper as any, direction: "next", callback: cb, before: false });
-		expect(cb).toHaveBeenCalled();
+	it("is returns false when current step id does not match", () => {
+		expect(fns.is("first")).toBe(false);
+		expect(fns.is("third")).toBe(false);
 	});
 });
 

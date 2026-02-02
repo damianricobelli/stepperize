@@ -1,53 +1,36 @@
 ---
 title: Define
-description: How to define a stepper using defineStepper
+description: Create a fully-typed stepper with defineStepper
 ---
 
-`defineStepper` is the core function for creating a customizable stepper. It generates the necessary components and hooks for building your stepper UI and managing its state.
+`defineStepper` creates a stepper from your step definitions. You pass one object per step (as separate arguments). It returns typed `Stepper` (primitives), `Scoped`, `useStepper`, and `steps`.
 
-## Usage
+## Basic usage
 
-<Steps>
-  <Step>
-    ### Import
+```tsx twoslash
+import { defineStepper } from "@stepperize/react";
 
-    ```tsx twoslash
-    import { defineStepper } from "@stepperize/react";
-    ```
+const { Stepper, Scoped, useStepper, steps } = defineStepper(
+  { id: "shipping", title: "Shipping", description: "Enter your address" },
+  { id: "payment", title: "Payment", description: "Payment details" },
+  { id: "confirmation", title: "Confirmation", description: "Review order" }
+);
+```
 
-  </Step>
-  <Step>
-    ### Define steps
-    Call `defineStepper` with your step configurations:
+Each step must have a unique `id`. You can add any custom properties (`title`, `description`, `icon`, etc.) for your UI.
 
-    ```tsx twoslash
-    import { defineStepper } from "@stepperize/react"
-    // ---cut-before---
-    const { Scoped, useStepper, steps } = defineStepper(
-      { id: "step-1", title: "Step 1", description: "First step" },
-      { id: "step-2", title: "Step 2", description: "Second step" },
-      { id: "step-3", title: "Step 3", description: "Third step" }
-    );
-    ```
+## Return value
 
-    - `id` (required): Unique identifier for each step
-    - Add any custom properties (e.g., `title`, `description`) for use in your UI
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `steps` | `Steps` | The array of step objects you passed (same order as arguments) |
+| `useStepper` | `(props?: { initialStep?, initialMetadata? }) => Stepper<Steps>` | Hook for state, navigation, lookup, flow, metadata, lifecycle ([Hook](./hook)) |
+| `Scoped` | `(props: ScopedProps<Steps>) => ReactElement` | Provider for stepper context; props: `initialStep?`, `initialMetadata?`, `children` ([Scoped](./scoped)) |
+| `Stepper` | `StepperPrimitives<Steps>` | Type-safe UI primitives: Root, List, Item, Trigger, Title, Description, Indicator, Separator, Content, Actions, Prev, Next ([Primitives](./primitives)) |
 
-  </Step>
-  </Steps>
+## Next steps
 
-## Return Value
-
-`defineStepper` returns an object with:
-
-- `Scoped`: A Provider component for scoping stepper state
-- `useStepper`: A custom hook for accessing and controlling the stepper
-- `steps`: An array of the defined step objects
-- `utils`: Pure utility functions for working with steps
-
-## Next Steps
-
-Learn how to use the returned components and hooks:
-
-- [useStepper Hook](./hook)
-- [Scoped Component](./scoped)
+- [Primitives](./primitives) – Build the stepper UI
+- [useStepper](./hook) – State, navigation, lookup, flow, metadata
+- [Scoped](./scoped) – Share stepper state
+- [Lookup](./lookup) – Step lookup (via `stepper.lookup` or `generateStepperUtils` from core)

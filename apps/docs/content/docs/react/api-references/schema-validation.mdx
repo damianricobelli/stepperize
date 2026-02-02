@@ -3,9 +3,7 @@ title: Schema Validation
 description: Learn how to validate your stepper with any schema library
 ---
 
-Stepperize provides a way to add schemas to your steps with any schema library. This is very useful for working with forms and libraries such as React Hook Form, Conform, etc.
-
-Let's see how we can create our validation schemas and have them within our stepper.
+You can attach a schema (or any validation shape) to each step as a custom property. Stepperize does not run validation; you read the schema (e.g. `stepper.state.current.data.schema`) and use it with React Hook Form, Conform, Zod, etc. Below: examples with Zod (v4; for Zod 3 use `z.string().email()` instead of `z.email()`), ValiBot, and ArkType.
 
 ## Zod
 
@@ -14,17 +12,15 @@ import { z } from "zod";
 import { defineStepper } from "@stepperize/react";
 
 const Schema = z.object({
-  email: z.string().email(),
+  email: z.email(),
   password: z.string().min(8),
 });
 
 type MyFormValues = z.infer<typeof Schema>;
 
-const stepperInstance = defineStepper({
-  id: "personal",
-  label: "Personal Information",
-  schema: Schema,
-});
+const { useStepper } = defineStepper(
+  { id: "personal", label: "Personal Information", schema: Schema }
+);
 ```
 
 ## ValiBot
@@ -40,11 +36,9 @@ const Schema = v.object({
 
 type MyFormValues = v.InferInput<typeof Schema>;
 
-const stepperInstance = defineStepper({
-  id: "personal",
-  label: "Personal Information",
-  schema: Schema,
-});
+const { useStepper } = defineStepper(
+  { id: "personal", label: "Personal Information", schema: Schema }
+);
 ```
 
 ## ArkType
@@ -60,11 +54,47 @@ const Schema = type({
 
 type MyFormValues = typeof Schema.infer;
 
-const stepperInstance = defineStepper({
-  id: "personal",
-  label: "Personal Information",
-  schema: Schema,
+const { useStepper } = defineStepper(
+  { id: "personal", label: "Personal Information", schema: Schema }
+);
+```
+
+## Accessing schemas
+
+Steps are plain objects; you can add a `schema` (or any key) to each step. Access via the stepper:
+
+```tsx twoslash
+import * as React from "react";
+import { z } from "zod";
+import { defineStepper } from "@stepperize/react";
+
+const PersonalSchema = z.object({
+  name: z.string().min(1),
+  email: z.email(),
 });
+
+const AddressSchema = z.object({
+  street: z.string().min(1),
+  city: z.string().min(1),
+});
+
+const { useStepper } = defineStepper(
+  { id: "personal", title: "Personal", schema: PersonalSchema },
+  { id: "address", title: "Address", schema: AddressSchema }
+);
+
+function MyForm() {
+  const stepper = useStepper();
+
+  // Current step object (includes schema if you added it)
+  const currentSchema = stepper.state.current.data.schema;
+
+  // Step by ID
+  const personalStep = stepper.lookup.get("personal");
+  const personalSchema = personalStep?.schema;
+
+  return <div>Schema available: {currentSchema ? "Yes" : "No"}</div>;
+}
 ```
 
 ## Working with multiple schemas and steps
@@ -83,13 +113,13 @@ const FirstStepSchema = z.object({
 });
 
 const SecondStepSchema = z.object({
-  email: z.string().email(),
+  email: z.email(),
   password: z.string().min(8),
 });
 
 const ThirdStepSchema = z.object({});
 
-const stepperInstance = defineStepper(
+const { useStepper } = defineStepper(
   {
     id: "personal-info",
     label: "Personal Information",
@@ -109,9 +139,5 @@ const stepperInstance = defineStepper(
 ```
 
 <Callout type="info">
-  You've probably noticed that the last step has an empty schema. This is
-  because stepperize infers all the steps, and when you want to send your
-  `currentStep.schema`, one of them could be undefined. To avoid this, you can
-  simply add an empty schema. Or, if you prefer, you can choose not to do this
-  and validate for yourself whether the schema exists.
+  Steps are plain objects. The `Step` type does not define `schema`—it's a custom property you add for your own validation. Access it as `stepper.state.current.data.schema` or `stepper.lookup.get(id)?.schema`. The last step can have an empty schema or no schema; check for existence when needed.
 </Callout>

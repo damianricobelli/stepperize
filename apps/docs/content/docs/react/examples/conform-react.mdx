@@ -1,14 +1,274 @@
 ---
 title: Conform React
-description: Stepperize with Conform library.
+description: Step-by-step guide to use Stepperize with Conform for validated multi-step forms.
 ---
 
-This example demonstrates how to use the `@stepperize/react` with `@conform-to/react` to create a stepperized form.
+This example shows how to combine `@stepperize/react` with [Conform](https://conform.guide/) to build a multi-step form where each step has its own Zod schema and Conform handles validation and form state. No primitives—use `Scoped`, `useStepper`, and Conform's `useForm` / `getFormProps` / `parseWithZod` with your own UI.
 
-## Live Demo
+Install Conform and Zod:
 
-<DemoViewer src="https://stackblitz.com/edit/vitejs-vite-mt7dh2?embed=1&file=src%2FApp.tsx&hideNavigation=1&view=preview" />
+```bash
+pnpm add @conform-to/react @conform-to/zod zod
+```
 
-## Additional Resources
+## 1. Define steps with Zod schemas
 
-- [Conform Documentation](https://conform.guide/)
+Use `defineStepper` with one object per step. Attach a Zod schema to each step as a custom property (e.g. `schema`). Stepperize does not run validation; you will pass the current step's schema to Conform.
+
+```tsx
+import { z } from "zod";
+import { defineStepper } from "@stepperize/react";
+
+const PersonalSchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  email: z.email("Invalid email"),
+});
+
+const AddressSchema = z.object({
+  street: z.string().min(1, "Street is required"),
+  city: z.string().min(1, "City is required"),
+});
+
+const { Scoped, useStepper } = defineStepper(
+  { id: "personal", title: "Personal", schema: PersonalSchema },
+  { id: "address", title: "Address", schema: AddressSchema },
+  { id: "done", title: "Done" }
+);
+```
+
+## 2. Wrap the form with Scoped
+
+Wrap your form tree with `<Scoped>` so child components can call `useStepper()` and access the current step and its schema.
+
+```tsx
+import * as React from "react";
+import { defineStepper } from "@stepperize/react";
+
+const { Scoped, useStepper } = defineStepper(
+  { id: "personal", title: "Personal", schema: null },
+  { id: "address", title: "Address", schema: null },
+  { id: "done", title: "Done" }
+);
+
+function StepperForm() {
+  return (
+    <Scoped>
+      <StepForm />
+      <StepNavigation />
+    </Scoped>
+  );
+}
+
+function StepForm() {
+  const stepper = useStepper();
+  return <form>{/* Conform form */}</form>;
+}
+
+function StepNavigation() {
+  const stepper = useStepper();
+  return <div>{/* Next / Back */}</div>;
+}
+```
+
+## 3. Use Conform useForm with the current step's schema
+
+In your form component, call `useStepper()` and read the current step's schema from `stepper.state.current.data.schema`. Pass that schema to Conform's `useForm` (e.g. with `parseWithZod`). Use `getFormProps(form)` on your `<form>` and Conform's field helpers for inputs.
+
+```tsx
+import * as React from "react";
+import { useForm } from "@conform-to/react";
+import { parseWithZod } from "@conform-to/zod/v4/future";
+import { z } from "zod";
+import { defineStepper } from "@stepperize/react";
+
+const PersonalSchema = z.object({ name: z.string().min(1), email: z.email() });
+const AddressSchema = z.object({ street: z.string().min(1), city: z.string().min(1) });
+
+const { Scoped, useStepper } = defineStepper(
+  { id: "personal", title: "Personal", schema: PersonalSchema },
+  { id: "address", title: "Address", schema: AddressSchema },
+  { id: "done", title: "Done" }
+);
+
+function StepForm() {
+  const stepper = useStepper();
+  const schema = stepper.state.current.data.schema;
+  const [form, fields] = useForm({
+    onValidate({ formData }) {
+      return schema ? parseWithZod(formData, { schema }) : { status: "success", value: {} };
+    },
+    onSubmit(e, { formData }) {
+      e.preventDefault();
+      const result = schema ? parseWithZod(formData, { schema }) : { status: "success" as const, value: {} };
+      if (result.status === "success" && !stepper.state.isLast) {
+        stepper.navigation.next();
+      }
+    },
+  });
+
+  if (stepper.flow.is("done")) {
+    return <p>All done!</p>;
+  }
+
+  return (
+    <form {...form.props}>
+      {stepper.flow.switch({
+        personal: () => (
+          <>
+            <input name="name" defaultValue={fields.name.initialValue} />
+            <input name="email" type="email" defaultValue={fields.email.initialValue} />
+          </>
+        ),
+        address: () => (
+          <>
+            <input name="street" defaultValue={fields.street.initialValue} />
+            <input name="city" defaultValue={fields.city.initialValue} />
+          </>
+        ),
+        done: () => null,
+      })}
+      <button type="submit">Next</button>
+    </form>
+  );
+}
+```
+
+In practice you use `getFormProps(form)` if your Conform version exposes it, or spread `form.props` (or the props returned by useForm) onto the form. Check [Conform's useForm and getFormProps](https://conform.guide/api/react/useForm) for the exact API.
+
+## 4. Add navigation (Back / Next / Reset)
+
+Use `useStepper()` in a sibling or parent component to render Back, Next, or Reset. Next can be a submit button that advances only when the current step's Conform validation passes (as in the onSubmit above).
+
+```tsx
+function StepNavigation() {
+  const stepper = useStepper();
+  return (
+    <div>
+      {stepper.state.isLast ? (
+        <button type="button" onClick={() => stepper.navigation.reset()}>
+          Reset
+        </button>
+      ) : (
+        <>
+          {!stepper.state.isFirst && (
+            <button type="button" onClick={() => stepper.navigation.prev()}>
+              Back
+            </button>
+          )}
+          {/* Next is often the form submit button; or a separate button that calls stepper.navigation.next() */}
+        </>
+      )}
+    </div>
+  );
+}
+```
+
+## 5. Optional: persist field values with metadata
+
+Use `stepper.state.current.metadata` or `stepper.metadata.get(id)` to store per-step values so that when the user goes Back, previously entered data is still there. On submit or Next, call `stepper.state.current.metadata.set({ ...values })` (or `stepper.metadata.set(stepId, values)`) before `stepper.navigation.next()`.
+
+## Live preview
+
+<ConformReactPreview />
+
+## Full example
+
+```tsx
+zimport * as React from "react";
+import { useForm } from "@conform-to/react";
+import { parseWithZod } from "@conform-to/zod/v4/future";
+import { z } from "zod";
+import { defineStepper } from "@stepperize/react";
+
+const PersonalSchema = z.object({
+  name: z.string().min(1, "Name required"),
+  email: z.email("Invalid email"),
+});
+
+const AddressSchema = z.object({
+  street: z.string().min(1, "Street required"),
+  city: z.string().min(1, "City required"),
+});
+
+const { Scoped, useStepper } = defineStepper(
+  { id: "personal", title: "Personal", schema: PersonalSchema },
+  { id: "address", title: "Address", schema: AddressSchema },
+  { id: "done", title: "Done" }
+);
+
+function StepForm() {
+  const stepper = useStepper();
+  const schema = stepper.state.current.data.schema as z.ZodObject<Record<string, z.ZodTypeAny>> | undefined;
+
+  const [form, fields] = useForm({
+    onValidate({ formData }) {
+      return schema ? parseWithZod(formData, { schema }) : { status: "success" as const, value: {} };
+    },
+    onSubmit(e, { formData }) {
+      e.preventDefault();
+      const result = schema ? parseWithZod(formData, { schema }) : { status: "success" as const, value: {} };
+      if (result.status === "success" && !stepper.state.isLast) {
+        stepper.navigation.next();
+      }
+    },
+  });
+
+  if (stepper.flow.is("done")) return <p>All done!</p>;
+
+  return (
+    <form method="post" {...form.props}>
+      {stepper.flow.switch({
+        personal: () => (
+          <>
+            <div><label>Name</label><input name="name" /></div>
+            <div><label>Email</label><input name="email" type="email" /></div>
+          </>
+        ),
+        address: () => (
+          <>
+            <div><label>Street</label><input name="street" /></div>
+            <div><label>City</label><input name="city" /></div>
+          </>
+        ),
+        done: () => null,
+      })}
+      <button type="submit">Next</button>
+    </form>
+  );
+}
+
+function StepNavigation() {
+  const stepper = useStepper();
+  return (
+    <div>
+      {!stepper.state.isFirst && (
+        <button type="button" onClick={() => stepper.navigation.prev()}>Back</button>
+      )}
+      {stepper.state.isLast && (
+        <button type="button" onClick={() => stepper.navigation.reset()}>Reset</button>
+      )}
+    </div>
+  );
+}
+
+export function ConformStepperForm() {
+  return (
+    <Scoped>
+      <StepForm />
+      <StepNavigation />
+    </Scoped>
+  );
+}
+```
+
+## Summary
+
+- **defineStepper** — One object per step; add a `schema` (Zod) property to each step that has a form.
+- **Scoped** — Wrap the form so `useStepper()` and the current step's schema are available in children.
+- **useForm (Conform)** — Use the current step's schema (`stepper.state.current.data.schema`) with `parseWithZod` in `onValidate` / `onSubmit`; advance with `stepper.navigation.next()` only when validation succeeds.
+- **Navigation** — Back / Reset with `stepper.navigation.prev()` and `stepper.navigation.reset()`.
+
+## Additional resources
+
+- [Conform documentation](https://conform.guide/)
+- [Schema validation (Stepperize)](/docs/react/api-references/schema-validation) — Attaching schemas to steps

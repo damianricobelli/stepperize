@@ -22,7 +22,14 @@
 	"main": "./dist/index.js",
 	"module": "./dist/index.js",
 	"exports": {
-		".": "./dist/index.js"
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js"
+		},
+		"./primitives": {
+			"types": "./dist/primitives/index.d.ts",
+			"import": "./dist/primitives/index.js"
+		}
 	},
 	"scripts": {
 		"build": "tsup",

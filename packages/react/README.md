@@ -29,10 +29,10 @@ npm install @stepperize/react
 import { defineStepper } from "@stepperize/react";
 ```
 
-2. Define your steps:
+2. Define your steps (as arguments):
 
 ```tsx
-const { Scoped, useStepper, steps } = defineStepper(
+const { Scoped, useStepper, steps, utils } = defineStepper(
   { id: "step-1", title: "Step 1", description: "Description for step 1" },
   { id: "step-2", title: "Step 2", description: "Description for step 2" },
   { id: "step-3", title: "Step 3", description: "Description for step 3" },
@@ -40,18 +40,18 @@ const { Scoped, useStepper, steps } = defineStepper(
 );
 ```
 
-3. Use the hook in your components:
+3. Use the hook:
 
 ```tsx
 function StepperComponent() {
-  const { currentStep, nextStep, prevStep } = useStepper();
+  const stepper = useStepper();
 
   return (
     <div>
-      <h2>{currentStep.title}</h2>
-      <p>{currentStep.description}</p>
-      <button onClick={prevStep}>Previous</button>
-      <button onClick={nextStep}>Next</button>
+      <h2>{stepper.state.current.data.title}</h2>
+      <p>{stepper.state.current.data.description}</p>
+      <button onClick={() => stepper.navigation.prev()}>Previous</button>
+      <button onClick={() => stepper.navigation.next()}>Next</button>
     </div>
   );
 }

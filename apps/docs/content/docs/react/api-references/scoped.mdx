@@ -1,78 +1,90 @@
 ---
 title: Scoped
-description: Using the Scoped component to share stepper state across child components
+description: Share stepper state with the Scoped component
 ---
 
-The `Scoped` component acts as a provider, allowing you to synchronize stepper state via `useStepper` across child components.
+`Scoped` is the provider for the stepper. Wrap your tree with `<Scoped>` so any descendant can call `useStepper()` from the same `defineStepper` and receive the same stepper instance. Without Scoped (or Stepper.Root), there is no shared stepper context.
 
-## Basic Usage
+## Basic usage
 
 ```tsx twoslash
 import * as React from "react";
 import { defineStepper } from "@stepperize/react";
 
-const Stepper = defineStepper(
+const { Scoped, useStepper } = defineStepper(
   { id: "first", title: "First" },
   { id: "second", title: "Second" },
   { id: "last", title: "Last" }
 );
 
 export const MyScopedStepper = () => (
-  <Stepper.Scoped>
+  <Scoped>
     <StepContent />
     <StepNavigation />
-  </Stepper.Scoped>
+  </Scoped>
 );
 
 const StepContent = () => {
-  const { when } = Stepper.useStepper();
+  const stepper = useStepper();
   return (
-    <React.Fragment>
-      {when("first", (step) => (
-        <p>Starting with {step.title}</p>
-      ))}
-      {when("second", (step) => (
-        <p>In the middle: {step.title}</p>
-      ))}
-    </React.Fragment>
+    <div>
+      {stepper.flow.when("first", (step) => <p>Starting with {step.title}</p>)}
+      {stepper.flow.when("second", (step) => <p>In the middle: {step.title}</p>)}
+    </div>
   );
 };
 
 const StepNavigation = () => {
-  const { isLast, reset, next, when } = Stepper.useStepper();
+  const stepper = useStepper();
   return (
-    <button onClick={isLast ? reset : next}>
-      {when(
-        "last",
-        () => "Reset",
-        () => "Next"
-      )}
+    <button onClick={stepper.state.isLast ? () => stepper.navigation.reset() : () => stepper.navigation.next()}>
+      {stepper.flow.when("last", () => "Reset", () => "Next")}
     </button>
   );
 };
 ```
 
-<Callout title="When to use Scoped">
-  Use `Scoped` only when child components need access to stepper state.
-  Otherwise, use the hook directly in your component.
-</Callout>
+## Props
 
-## API Reference
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| `initialStep` | `Get.Id<Steps>` | Initial active step ID |
+| `initialMetadata` | `Partial<Record<Get.Id<Steps>, Metadata>>` | Initial metadata per step |
+| `children` | `React.ReactNode` | Content to render |
 
-| Name            | Type                       | Description                           | Required |
-| --------------- | -------------------------- | ------------------------------------- | -------- |
-| initialStep     | `string`                   | ID of the initial step to display.    | No       |
-| initialMetadata | `Record<string, Metadata>` | Initial metadata for the stepper.     | No       |
-| children        | `React.ReactNode`          | Content to render inside the stepper. | Yes      |
-
-## Nested Scopes
-
-You can nest multiple scopes for more complex stepper hierarchies:
-
-```tsx
+```tsx twoslash
 import * as React from "react";
 import { defineStepper } from "@stepperize/react";
-// ---cut-before---
+
+const { Scoped, useStepper } = defineStepper(
+  { id: "first", title: "First" },
+  { id: "second", title: "Second" },
+  { id: "last", title: "Last" }
+);
+
+export const MyScopedStepper = () => (
+  <Scoped
+    initialStep="second"
+    initialMetadata={{ first: { completed: true }, second: null, last: null }}
+  >
+    <StepContent />
+  </Scoped>
+);
+
+const StepContent = () => {
+  const stepper = useStepper();
+  return <div>Current: {stepper.state.current.data.title}</div>;
+};
+```
+
+## Nested scopes
+
+You can nest different steppers (e.g. global wizard + local sub-steps):
+
+```tsx twoslash
+import * as React from "react";
+import { defineStepper } from "@stepperize/react";
+
 const GlobalStepper = defineStepper(
   { id: "start", title: "Start" },
   { id: "middle", title: "Middle" },
@@ -87,16 +99,44 @@ const LocalStepper = defineStepper(
 export const NestedSteppers = () => (
   <GlobalStepper.Scoped>
     <GlobalStepContent />
-    <GlobalNavigation />
     <LocalStepper.Scoped>
       <LocalStepContent />
-      <LocalNavigation />
     </LocalStepper.Scoped>
   </GlobalStepper.Scoped>
 );
 
-// Use GlobalStepper.useStepper() for global scope
-// Use LocalStepper.useStepper() for local scope
+const GlobalStepContent = () => {
+  const stepper = GlobalStepper.useStepper();
+  return <div>Global: {stepper.state.current.data.title}</div>;
+};
+
+const LocalStepContent = () => {
+  const stepper = LocalStepper.useStepper();
+  return <div>Local: {stepper.state.current.data.title}</div>;
+};
 ```
 
-This structure allows for independent control of global and local stepper states.
+## With Stepper.Root
+
+`Stepper.Root` wraps content and provides the stepper via context (it uses `Scoped` internally). `Stepper.Root` accepts `initialStep` and `initialMetadata` and passes them to Scoped internally; use either Root or Scoped to set initial state.
+
+```tsx twoslash
+import * as React from "react";
+import { defineStepper } from "@stepperize/react";
+
+const { Stepper, useStepper } = defineStepper(
+  { id: "first", title: "First" },
+  { id: "second", title: "Second" }
+);
+
+export const MyStepper = () => (
+  <Stepper.Root>
+    {({ stepper }) => (
+      <div>
+        <p>Current: {stepper.state.current.data.title}</p>
+        <button onClick={() => stepper.navigation.next()}>Next</button>
+      </div>
+    )}
+  </Stepper.Root>
+);
+```
