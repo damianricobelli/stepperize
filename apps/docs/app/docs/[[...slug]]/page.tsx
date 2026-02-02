@@ -11,6 +11,7 @@ import { notFound } from "next/navigation";
 import { BasicCustomIndicatorPreview } from "@/components/demos/basic-custom-indicator-preview";
 import { BasicHorizontalPreview } from "@/components/demos/basic-horizontal-preview";
 import { BasicVerticalPreview } from "@/components/demos/basic-vertical-preview";
+import { FirstStepperPreview } from "@/components/demos/first-stepper-preview";
 import { DemoViewer } from "@/components/demo-viewer";
 import { OpenInV0 } from "@/components/open-in-v0";
 import { createMetadata } from "@/lib/metadata";
@@ -77,6 +78,7 @@ export default async function Page(props: { params: Promise<{ slug?: string[] }>
 						BasicHorizontalPreview,
 						BasicVerticalPreview,
 						BasicCustomIndicatorPreview,
+						FirstStepperPreview,
 						StepperDemo,
 						StepperWithDescription,
 						StepperWithForm,

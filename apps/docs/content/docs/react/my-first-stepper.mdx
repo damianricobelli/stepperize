@@ -1,0 +1,78 @@
+---
+title: My first stepper
+description: Build a minimal stepper using defineStepper and useStepper
+icon: Sparkles
+---
+
+This page walks you through building a minimal stepper **without primitives** (no `Stepper.List`, `Stepper.Item`, `Stepper.Trigger`, etc.) and **without Scoped or Stepper.Root**. You only need **[defineStepper](/docs/react/api-references/define)** and **[useStepper](/docs/react/api-references/hook)**. When you call `useStepper()` directly in a component, the hook owns the stepper state—no provider required.
+
+## 1. Define your steps
+
+**[defineStepper](/docs/react/api-references/define)** is the entry point. You pass one object per step (each with at least a unique `id`) and get back a typed stepper: `useStepper`, and optionally `Scoped`, `Stepper` (primitives). For this example we only use `useStepper`.
+
+Here we define four steps: **Name**, **Email**, **Confirm**, and **Done**. You can add any extra fields (`title`, `description`, etc.) for your UI.
+
+```tsx
+import { defineStepper } from "@stepperize/react";
+
+const { useStepper } = defineStepper(
+  { id: "name", title: "Name" },
+  { id: "email", title: "Email" },
+  { id: "confirm", title: "Confirm" },
+  { id: "done", title: "Done" },
+);
+```
+
+## 2. Use the hook in your component
+
+**[useStepper](/docs/react/api-references/hook)** returns the stepper instance. From the returned `stepper` you get:
+
+- **state** — `state.current` (current step object), `state.isFirst`, `state.isLast`
+- **flow** — `flow.switch({ ... })` to render content per step (one branch per step id)
+- **navigation** — `navigation.next()`, `navigation.prev()`, `navigation.reset()`, etc.
+
+## Full example
+
+```tsx
+import * as React from "react";
+import { defineStepper } from "@stepperize/react";
+
+const { useStepper } = defineStepper(
+  { id: "name", title: "Name" },
+  { id: "email", title: "Email" },
+  { id: "confirm", title: "Confirm" },
+  { id: "done", title: "Done" },
+);
+
+export function MyFirstStepper() {
+  const stepper = useStepper();
+  return (
+    <>
+      <p>Step: <strong>{stepper.state.current.data.title}</strong></p>
+      <div>
+        {stepper.flow.switch({
+          name: () => <p>What is your name?</p>,
+          email: () => <p>What is your email?</p>,
+          confirm: () => <p>Please confirm your details.</p>,
+          done: () => <p>All done!</p>,
+        })}
+      </div>
+      <div>
+{stepper.state.isLast ? (
+              <button onClick={() => stepper.navigation.reset()}>Reset</button>
+            ) : (
+              <>
+                <button onClick={() => stepper.navigation.prev()} disabled={stepper.state.isFirst}>Back</button>
+                <button onClick={() => stepper.navigation.next()}>Next</button>
+              </>
+            )}
+      </div>
+    </>
+  );
+}
+```
+
+
+## Result
+
+<FirstStepperPreview />

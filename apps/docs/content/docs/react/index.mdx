@@ -18,51 +18,6 @@ Stepperize is a versatile React library designed to streamline the creation of S
 - **State Management**: Built-in tools for handling step state, metadata, and status
 - **Async Support**: Optional async onBeforeTransition / onAfterTransition callbacks
 
-## Quick Start
-
-```tsx twoslash
-import * as React from "react"
-import { defineStepper } from "@stepperize/react";
-
-const { Stepper } = defineStepper(
-  { id: "shipping", title: "Shipping" },
-  { id: "payment", title: "Payment" },
-  { id: "confirmation", title: "Confirmation" }
-);
-
-function Checkout() {
-  return (
-    <Stepper.Root>
-      {({ stepper }) => (
-        <>
-          <Stepper.List>
-            {stepper.state.all.map((step) => (
-              <Stepper.Item key={step.id} step={step.id}>
-                <Stepper.Trigger>
-                  <Stepper.Indicator />
-                  <Stepper.Title>{step.title}</Stepper.Title>
-                </Stepper.Trigger>
-                <Stepper.Separator />
-              </Stepper.Item>
-            ))}
-          </Stepper.List>
-
-          {stepper.flow.switch({
-            shipping: () => <div>Shipping form here</div>,
-            payment: () => <div>Payment form here</div>,
-            confirmation: () => <div>Confirmation here</div>
-          })}
-
-          <Stepper.Actions>
-            <Stepper.Prev />
-            <Stepper.Next />
-          </Stepper.Actions>
-        </>
-      )}
-    </Stepper.Root>
-  );
-}
-```
 
 ## Core Concepts
 
@@ -95,40 +50,12 @@ Stepperize goes beyond linear progressions, enabling:
 - State-dependent UI changes
 - Multi-path processes
 
-### Step and metadata
-
-```tsx
-const stepper = useStepper();
-
-// Current step (the step object: { id, title, ... })
-stepper.state.current.data;
-
-// Metadata per step
-stepper.metadata.get("shipping");
-stepper.metadata.set("shipping", { address: "..." });
-stepper.metadata.reset(true); // optional: keep initial metadata
-```
-
-### Navigation
-
-Multiple ways to navigate:
-
-```tsx
-// Basic navigation
-stepper.navigation.next();
-stepper.navigation.prev();
-stepper.navigation.goTo("payment");
-stepper.navigation.reset();
-
-// With transition hooks (via lifecycle)
-const stepper = useStepper();
-stepper.lifecycle.onBeforeTransition(async (ctx) => (await validateForm()) || false);
-```
 
 ## What's Next
 
 - [Installation](/docs/react/installation)
+- [My first stepper](/docs/react/my-first-stepper)
 - [API Reference - defineStepper](/docs/react/api-references/define)
-- [API Reference - useStepper](/docs/react/api-references/hook)
 - [API Reference - Primitives](/docs/react/api-references/primitives)
+- [API Reference - useStepper](/docs/react/api-references/hook)
 - [Examples](/docs/react/examples)
