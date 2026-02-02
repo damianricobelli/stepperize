@@ -269,9 +269,11 @@ function LookupExample() {
 
 ## Transition hooks (before / after)
 
-For actions before or after a transition (e.g. validation, analytics), use **`stepper.lifecycle.onBeforeTransition(cb)`** and **`stepper.lifecycle.onAfterTransition(cb)`**. They run on every `next()`, `prev()`, and `goTo()`. Return `false` (or a promise that resolves to `false`) from `onBeforeTransition` to cancel the transition.
+For actions before or after a transition (e.g. validation, analytics), use **`stepper.lifecycle.onBeforeTransition(cb)`** and **`stepper.lifecycle.onAfterTransition(cb)`**. Multiple callbacks are supported (e.g. one at the Stepper level, one per step); each call returns an **unsubscribe** function. They run on every `next()`, `prev()`, and `goTo()`. Return `false` (or a promise that resolves to `false`) from `onBeforeTransition` to cancel the transition.
 
 The callback receives a **TransitionContext** with: `from`, `to`, `metadata`, `statuses`, `direction` (`"next"` | `"prev"` | `"goTo"`), `fromIndex`, `toIndex`. Use `direction` to branch (e.g. run logic only before "next" or "prev").
+
+To avoid stale metadata in the hook when you set metadata and then call `next()`, `prev()`, or `goTo()` in the same handler, pass a **payload** into navigation: **`next({ metadata: { "step-id": { ... } } })`**, **`prev({ metadata: ... })`**, or **`goTo(id, { metadata: ... })`**. That metadata is merged into `ctx.metadata` for the transition and persisted.
 
 ### onBeforeTransition
 
@@ -289,9 +291,10 @@ const { useStepper } = defineStepper(
 function MyStepper() {
   const stepper = useStepper();
   React.useEffect(() => {
-    stepper.lifecycle.onBeforeTransition(async (ctx) => {
+    const unsub = stepper.lifecycle.onBeforeTransition(async (ctx) => {
       if (ctx.direction === "prev" && !window.confirm("Go back?")) return false;
     });
+    return () => unsub();
   }, [stepper]);
   return (
     <button type="button" onClick={() => stepper.navigation.next()} disabled={stepper.state.isLast}>
@@ -299,6 +302,79 @@ function MyStepper() {
     </button>
   );
 }
+```
+
+### Multiple callbacks (Stepper + step) and unsubscribe
+
+You can register one handler at the Stepper level and another inside a step component; **all run in registration order**. If any `onBeforeTransition` callback returns `false`, the transition is cancelled. Each call returns an **unsubscribe** function — use it in your `useEffect` cleanup so the handler is removed when the component unmounts (e.g. when navigating away from that step).
+
+```tsx twoslash
+import * as React from "react";
+import { defineStepper } from "@stepperize/react";
+
+const { useStepper } = defineStepper(
+  { id: "step-1", title: "Step 1" },
+  { id: "step-2", title: "Step 2" }
+);
+
+function StepperWrapper() {
+  const stepper = useStepper();
+  React.useEffect(() => {
+    const unsub = stepper.lifecycle.onBeforeTransition(async (ctx) => {
+      if (ctx.direction === "prev" && !window.confirm("Go back?")) return false;
+    });
+    return () => unsub();
+  }, [stepper]);
+  return (
+    <>
+      {stepper.flow.switch({
+        "step-1": () => <Step1 />,
+        "step-2": () => <Step2 />,
+      })}
+    </>
+  );
+}
+
+function Step1() {
+  const stepper = useStepper();
+  React.useEffect(() => {
+    const unsub = stepper.lifecycle.onBeforeTransition(async (ctx) => {
+      if (ctx.from.id === "step-1") {
+        // Step-specific validation; both this and the global handler run
+        const ok = await validateStep1();
+        if (!ok) return false;
+      }
+    });
+    return () => unsub();
+  }, [stepper]);
+  return (
+    <button type="button" onClick={() => stepper.navigation.next()}>
+      Next
+    </button>
+  );
+}
+
+function Step2() {
+  return <p>Step 2</p>;
+}
+
+async function validateStep1(): Promise<boolean> {
+  return true;
+}
+```
+
+### Passing metadata in the transition (avoid stale ctx)
+
+If you set metadata and then call `next()` in the same handler, `onBeforeTransition` still sees the previous metadata (setState is async). Pass a payload so the hook receives fresh data. The same payload works for **`next(payload)`**, **`prev(payload)`**, and **`goTo(id, payload)`**:
+
+```tsx
+const handleNext = async () => {
+  const url = await generateUrl();
+  stepper.navigation.next({ metadata: { "step-1": { ...step1Meta, data: { url } } } });
+};
+
+stepper.navigation.prev({ metadata: { "step-1": { reason: "back" } } });
+stepper.navigation.goTo("summary", { metadata: { "payment": { method: "card" } } });
 ```
 
 ### onAfterTransition
@@ -317,9 +393,10 @@ const { useStepper } = defineStepper(
 function MyStepper() {
   const stepper = useStepper();
   React.useEffect(() => {
-    stepper.lifecycle.onAfterTransition((ctx) => {
+    const unsub = stepper.lifecycle.onAfterTransition((ctx) => {
       console.log(`${ctx.from.id} → ${ctx.to.id}`);
     });
+    return () => unsub();
   }, [stepper]);
   return (
     <button type="button" onClick={() => stepper.navigation.next()} disabled={stepper.state.isLast}>
@@ -396,8 +473,8 @@ const MyStepperComponent = () => {
 | Name | Type | Description |
 | ---- | ---- | ----------- |
 | `state` | `StepperState<Steps>` | `all`, `current` (data, index, status, metadata), `isFirst`, `isLast`, `isTransitioning` |
-| `navigation` | `StepperNavigation<Steps>` | `next()`, `prev()`, `goTo(id)`, `reset()` |
+| `navigation` | `StepperNavigation<Steps>` | `next(payload?)`, `prev(payload?)`, `goTo(id, payload?)`, `reset()` — payload can include `metadata` to merge into transition context |
 | `lookup` | `StepperLookup<Steps>` | `getAll()`, `get(id)`, `getIndex(id)`, `getByIndex(index)`, `getFirst()` / `getLast()`, `getNext(id)` / `getPrev(id)`, `getNeighbors(id)` |
 | `flow` | `StepperFlow<Steps>` | `is(id)`, `when(id, whenFn, elseFn?)`, `switch(when)`, `match(state, matches)` |
 | `metadata` | `StepperMetadata<Steps>` | `values`, `set(id, values)`, `get(id)`, `reset(keepInitialMetadata?)` |
-| `lifecycle` | `{ onBeforeTransition, onAfterTransition }` | Register callbacks for every transition; return `false` from `onBeforeTransition` to cancel |
+| `lifecycle` | `{ onBeforeTransition, onAfterTransition }` | Register callbacks (multiple supported); each returns unsubscribe; return `false` from `onBeforeTransition` to cancel |

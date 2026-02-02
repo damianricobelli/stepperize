@@ -305,4 +305,57 @@ describe("defineStepper", () => {
 		expect(onAfter.mock.calls[0][0].to.id).toBe("second");
 		expect(onAfter.mock.calls[0][0].direction).toBe("next");
 	});
+
+	it("multiple onBeforeTransition callbacks run in order; false cancels", async () => {
+		const { useStepper } = defineStepper(...steps);
+		const { result } = renderHook(() => useStepper());
+		const first = vi.fn().mockResolvedValue(undefined);
+		const second = vi.fn().mockResolvedValue(false);
+		act(() => {
+			result.current.lifecycle.onBeforeTransition(first);
+			result.current.lifecycle.onBeforeTransition(second);
+		});
+		await act(async () => {
+			await result.current.navigation.next();
+		});
+		expect(first).toHaveBeenCalledTimes(1);
+		expect(second).toHaveBeenCalledTimes(1);
+		expect(result.current.state.current.data.id).toBe("first");
+	});
+
+	it("onBeforeTransition returns unsubscribe", async () => {
+		const { useStepper } = defineStepper(...steps);
+		const { result } = renderHook(() => useStepper());
+		const onBefore = vi.fn().mockResolvedValue(undefined);
+		let unsubscribe: () => void;
+		act(() => {
+			unsubscribe = result.current.lifecycle.onBeforeTransition(onBefore);
+		});
+		unsubscribe!();
+		await act(async () => {
+			await result.current.navigation.next();
+		});
+		expect(onBefore).not.toHaveBeenCalled();
+		expect(result.current.state.current.data.id).toBe("second");
+	});
+
+	it("next(payload) merges metadata into ctx and persists", async () => {
+		const { useStepper } = defineStepper(...steps);
+		const { result } = renderHook(() => useStepper());
+		let seenMetadata: Record<string, unknown> = {};
+		act(() => {
+			result.current.lifecycle.onBeforeTransition((ctx) => {
+				seenMetadata = { ...ctx.metadata };
+			});
+		});
+		await act(async () => {
+			await result.current.navigation.next({
+				metadata: { first: { url: "https://example.com" }, second: { foo: 1 } },
+			});
+		});
+		expect(seenMetadata.first).toEqual({ url: "https://example.com" });
+		expect(seenMetadata.second).toEqual({ foo: 1 });
+		expect(result.current.metadata.get("first")).toEqual({ url: "https://example.com" });
+		expect(result.current.metadata.get("second")).toEqual({ foo: 1 });
+	});
 });

@@ -43,23 +43,32 @@ type StepperState<Steps extends Step[] = Step[]> = {
 	isTransitioning: boolean;
 };
 
+/** Optional payload for navigation (e.g. metadata to merge into transition context without waiting for setState). */
+type TransitionPayload<Steps extends Step[] = Step[]> = {
+	/** Metadata to merge into ctx.metadata for this transition and persist. */
+	metadata?: Partial<Record<Get.Id<Steps>, Metadata>>;
+};
+
 type StepperNavigation<Steps extends Step[] = Step[]> = {
 	/**
 	 * Advances to the next step.
-	 * @returns The next step.
+	 * @param payload - Optional metadata to merge into transition context (avoids stale metadata in onBeforeTransition).
+	 * @returns void or Promise when lifecycle hooks run.
 	 */
-	next: () => void | Promise<void>;
+	next: (payload?: TransitionPayload<Steps>) => void | Promise<void>;
 	/**
 	 * Returns to the previous step.
-	 * @returns The previous step.
+	 * @param payload - Optional metadata to merge into transition context.
+	 * @returns void or Promise when lifecycle hooks run.
 	 */
-	prev: () => void | Promise<void>;
+	prev: (payload?: TransitionPayload<Steps>) => void | Promise<void>;
 	/**
 	 * Navigates to a specific step by its ID.
 	 * @param id - The ID of the step to navigate to.
-	 * @returns The step to navigate to.
+	 * @param payload - Optional metadata to merge into transition context.
+	 * @returns void or Promise when lifecycle hooks run.
 	 */
-	goTo: (id: Get.Id<Steps>) => void | Promise<void>;
+	goTo: (id: Get.Id<Steps>, payload?: TransitionPayload<Steps>) => void | Promise<void>;
 	/**
 	 * Resets the stepper to its initial state.
 	 * @returns The initial state of the stepper.
@@ -192,14 +201,19 @@ type StepperMetadata<Steps extends Step[] = Step[]> = {
 
 type StepperLifecycle<Steps extends Step[] = Step[]> = {
 	/**
-	 * Called before a transition occurs.
-	 * @param cb - The callback to call before the transition occurs.
+	 * Registers a callback before each transition. Multiple callbacks are supported; returns unsubscribe.
+	 * @param cb - The callback (return false or Promise<false> to cancel transition).
+	 * @returns Unsubscribe function.
 	 */
-	onBeforeTransition: (cb: (ctx: TransitionContext<Steps>) => void | Promise<void | false>) => void;
+	onBeforeTransition: (
+		cb: (ctx: TransitionContext<Steps>) => void | Promise<void | false>,
+	) => () => void;
 	/**
-	 * Called after a transition occurs.
+	 * Registers a callback after each transition. Multiple callbacks are supported; returns unsubscribe.
+	 * @param cb - The callback.
+	 * @returns Unsubscribe function.
 	 */
-	onAfterTransition: (cb: (ctx: TransitionContext<Steps>) => void | Promise<void>) => void;
+	onAfterTransition: (cb: (ctx: TransitionContext<Steps>) => void | Promise<void>) => () => void;
 };
 
 type TransitionContext<Steps extends Step[] = Step[]> = {
@@ -308,5 +322,6 @@ export type {
 	StepperFlow,
 	StepperMetadata,
 	Stepper,
+	TransitionPayload,
 	Get,
 }

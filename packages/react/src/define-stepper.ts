@@ -1,4 +1,11 @@
-import type { Get, Metadata, Step, Stepper, StepStatus } from "@stepperize/core";
+import type {
+	Get,
+	Metadata,
+	Step,
+	Stepper,
+	StepStatus,
+	TransitionPayload,
+} from "@stepperize/core";
 import {
 	generateCommonStepperUseFns,
 	generateStepperUtils,
@@ -10,6 +17,11 @@ import * as React from "react";
 import { createStepperPrimitives } from "./primitives/create-stepper-primitives";
 import type { ScopedProps, StepperReturn, TransitionContext } from "./types";
 import { getStatuses } from "./utils";
+
+type BeforeCb<Steps extends Step[]> = (
+	ctx: TransitionContext<Steps>,
+) => void | Promise<void | false>;
+type AfterCb<Steps extends Step[]> = (ctx: TransitionContext<Steps>) => void | Promise<void>;
 
 /**
  * Creates a stepper context and utility functions for managing stepper state.
@@ -33,34 +45,48 @@ export const defineStepper = <const Steps extends Step[]>(...steps: Steps): Step
 		const [metadata, setMetadata] = React.useState(() => getInitialMetadata(steps, initialMetadata));
 		const [isTransitioning, setIsTransitioning] = React.useState(false);
 
-		const onBeforeRef = React.useRef<(ctx: TransitionContext<Steps>) => void | Promise<void | false>>(
-			undefined,
-		);
-		const onAfterRef = React.useRef<(ctx: TransitionContext<Steps>) => void | Promise<void>>(undefined);
+		const beforeCallbacksRef = React.useRef<BeforeCb<Steps>[]>([]);
+		const afterCallbacksRef = React.useRef<AfterCb<Steps>[]>([]);
 
 		const performTransition = React.useCallback(
-			async (fromIndex: number, toIndex: number, direction: "next" | "prev" | "goTo") => {
+			async (
+				fromIndex: number,
+				toIndex: number,
+				direction: "next" | "prev" | "goTo",
+				payload?: TransitionPayload<Steps>,
+			) => {
 				setIsTransitioning(true);
 				try {
 					const from = steps[fromIndex];
 					const to = steps[toIndex];
+					const effectiveMetadata = {
+						...metadata,
+						...(payload?.metadata ?? {}),
+					} as Record<Get.Id<Steps>, Metadata>;
 					const ctx: TransitionContext<Steps> = {
 						from,
 						to,
-						metadata,
+						metadata: effectiveMetadata,
 						statuses: getStatuses(steps, fromIndex),
 						direction,
 						fromIndex,
 						toIndex,
 					};
-					const proceed = await onBeforeRef.current?.(ctx);
-					if (proceed === false) return;
+					for (const cb of beforeCallbacksRef.current) {
+						const proceed = await cb(ctx);
+						if (proceed === false) return;
+					}
+					if (payload?.metadata) {
+						setMetadata((prev) => ({ ...prev, ...payload.metadata }));
+					}
 					setStepIndex(toIndex);
 					const ctxAfter: TransitionContext<Steps> = {
 						...ctx,
 						statuses: getStatuses(steps, toIndex),
 					};
-					await onAfterRef.current?.(ctxAfter);
+					for (const cb of afterCallbacksRef.current) {
+						await cb(ctxAfter);
+					}
 				} finally {
 					setIsTransitioning(false);
 				}
@@ -74,28 +100,31 @@ export const defineStepper = <const Steps extends Step[]>(...steps: Steps): Step
 			const isFirst = stepIndex === 0;
 			const status: StepStatus = "active";
 
-			const next = () => {
+			const hasLifecycle = () =>
+				beforeCallbacksRef.current.length > 0 || afterCallbacksRef.current.length > 0;
+
+			const next = (payload?: TransitionPayload<Steps>) => {
 				const toIndex = stepIndex + 1;
-				if (onBeforeRef.current != null || onAfterRef.current != null) {
+				if (hasLifecycle() || payload?.metadata) {
 					if (toIndex >= steps.length) return;
-					return performTransition(stepIndex, toIndex, "next");
+					return performTransition(stepIndex, toIndex, "next", payload);
 				}
 				updateStepIndex(steps, toIndex, setStepIndex);
 			};
-			const prev = () => {
+			const prev = (payload?: TransitionPayload<Steps>) => {
 				const toIndex = stepIndex - 1;
-				if (onBeforeRef.current != null || onAfterRef.current != null) {
+				if (hasLifecycle() || payload?.metadata) {
 					if (toIndex < 0) return;
-					return performTransition(stepIndex, toIndex, "prev");
+					return performTransition(stepIndex, toIndex, "prev", payload);
 				}
 				updateStepIndex(steps, toIndex, setStepIndex);
 			};
-			const goTo = (id: Get.Id<Steps>) => {
+			const goTo = (id: Get.Id<Steps>, payload?: TransitionPayload<Steps>) => {
 				const toIndex = steps.findIndex((s) => s.id === id);
 				if (toIndex === -1) throw new Error(`Step with id "${id}" not found.`);
 				if (toIndex === stepIndex) return;
-				if (onBeforeRef.current != null || onAfterRef.current != null) {
-					return performTransition(stepIndex, toIndex, "goTo");
+				if (hasLifecycle() || payload?.metadata) {
+					return performTransition(stepIndex, toIndex, "goTo", payload);
 				}
 				setStepIndex(toIndex);
 			};
@@ -148,11 +177,21 @@ export const defineStepper = <const Steps extends Step[]>(...steps: Steps): Step
 					},
 				},
 				lifecycle: {
-					onBeforeTransition(cb) {
-						onBeforeRef.current = cb;
+					onBeforeTransition(cb: BeforeCb<Steps>) {
+						const list = beforeCallbacksRef.current;
+						list.push(cb);
+						return () => {
+							const i = list.indexOf(cb);
+							if (i !== -1) list.splice(i, 1);
+						};
 					},
-					onAfterTransition(cb) {
-						onAfterRef.current = cb;
+					onAfterTransition(cb: AfterCb<Steps>) {
+						const list = afterCallbacksRef.current;
+						list.push(cb);
+						return () => {
+							const i = list.indexOf(cb);
+							if (i !== -1) list.splice(i, 1);
+						};
 					},
 				},
 			} as Stepper<Steps>;

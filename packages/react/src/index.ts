@@ -1,5 +1,5 @@
 // Types
-export type { Step, Stepper, Get } from "@stepperize/core";
+export type { Get, Step, Stepper, TransitionPayload } from "@stepperize/core";
 export type {
 	StepperReturn,
 	ScopedProps,
