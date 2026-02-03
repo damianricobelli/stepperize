@@ -128,7 +128,7 @@ const DemoContent = () => {
 							{!methods.state.isFirst && (
 								<button
 									type="button"
-									onClick={methods.navigation.prev}
+									onClick={() => methods.navigation.prev()}
 									className="px-3 py-2 text-sm font-medium rounded-lg border border-gray-7 text-gray-12 hover:bg-gray-4 transition-colors"
 								>
 									Back
