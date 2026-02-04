@@ -89,7 +89,7 @@ type TransitionPayload<Steps> = {
 };
 ```
 
-Merged into `ctx.metadata` for that transition and persisted, so `onBeforeTransition` / `onAfterTransition` see up-to-date metadata without waiting for `metadata.set()` to flush.
+Merged into `ctx.metadata` for that transition and persisted when the transition completes, so `onBeforeTransition` / `onAfterTransition` see up-to-date metadata without waiting for `metadata.set()` to flush. If a transition is cancelled (e.g. `onBeforeTransition` returns `false`), the payload is not persisted.
 
 ### TransitionDirection
 

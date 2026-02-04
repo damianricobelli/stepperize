@@ -273,7 +273,7 @@ For actions before or after a transition (e.g. validation, analytics), use **`st
 
 The callback receives a **TransitionContext** with: `from`, `to`, `metadata`, `statuses`, `direction` (`"next"` | `"prev"` | `"goTo"`), `fromIndex`, `toIndex`. Use `direction` to branch (e.g. run logic only before "next" or "prev").
 
-To avoid stale metadata in the hook when you set metadata and then call `next()`, `prev()`, or `goTo()` in the same handler, pass a **payload** into navigation: **`next({ metadata: { "step-id": { ... } } })`**, **`prev({ metadata: ... })`**, or **`goTo(id, { metadata: ... })`**. That metadata is merged into `ctx.metadata` for the transition and persisted.
+To avoid stale metadata in the hook when you set metadata and then call `next()`, `prev()`, or `goTo()` in the same handler, pass a **payload** into navigation: **`next({ metadata: { "step-id": { ... } } })`**, **`prev({ metadata: ... })`**, or **`goTo(id, { metadata: ... })`**. That metadata is merged into `ctx.metadata` for the transition and persisted when the transition completes. **If an `onBeforeTransition` callback returns `false` and cancels the transition, the payload (including any `metadata`) is not persisted** — the step index and metadata state stay as they were. If you need to commit metadata even when the transition is cancelled, call `stepper.metadata.set(id, values)` (or `stepper.state.current.metadata.set(values)`) inside the before callback.
 
 ### onBeforeTransition
 
