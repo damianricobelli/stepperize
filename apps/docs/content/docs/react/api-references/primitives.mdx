@@ -139,7 +139,7 @@ The root accepts a function `{({ stepper }) => (...)}` that receives the full st
 
 ### `useStepper()` — global stepper in any child
 
-Any component inside `Stepper.Root` can call `useStepper()` (from your `defineStepper` result) to access the full stepper: current step, `next()`, `prev()`, `goTo()`, `when()`, `switch()`, etc. Use it for content panels, navigation logic, or any component that needs to know "where we are" and control the flow.
+Any component inside `Stepper.Root` can call `useStepper()` (from your `defineStepper` result) to access the full stepper: current step, `navigation.next()`, `navigation.prev()`, `navigation.goTo()`, `flow.when()`, `flow.switch()`, etc. Use it for content panels, navigation logic, or any component that needs to know "where we are" and control the flow.
 
 ```tsx
 const { Stepper, useStepper } = defineStepper(/* step1, step2, ... */);
