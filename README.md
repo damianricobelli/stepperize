@@ -32,7 +32,7 @@ import { defineStepper } from "@stepperize/react";
 2. Define your steps (as arguments):
 
 ```tsx
-const { Scoped, useStepper, steps, utils } = defineStepper(
+const { Scoped, useStepper, steps, Stepper } = defineStepper(
   { id: "step-1", title: "Step 1", description: "Description for step 1" },
   { id: "step-2", title: "Step 2", description: "Description for step 2" },
   { id: "step-3", title: "Step 3", description: "Description for step 3" },
@@ -48,10 +48,10 @@ function StepperComponent() {
 
   return (
     <div>
-      <h2>{stepper.current.title}</h2>
-      <p>{stepper.current.description}</p>
-      <button onClick={() => stepper.prev()}>Previous</button>
-      <button onClick={() => stepper.next()}>Next</button>
+      <h2>{stepper.state.current.data.title}</h2>
+      <p>{stepper.state.current.data.description}</p>
+      <button onClick={() => stepper.navigation.prev()}>Previous</button>
+      <button onClick={() => stepper.navigation.next()}>Next</button>
     </div>
   );
 }
@@ -64,7 +64,7 @@ Stepperize allows you to define a series of steps with unique IDs. When you crea
 - A `Scoped` component for context management
 - A `useStepper` hook for step control
 - An array of `steps` for rendering
-- An `utils` object with useful functions
+- Type-safe `Stepper` primitives for building UI
 
 The only required field for each step is the `id`. You can add any additional properties you need, and they'll be fully type-safe when using the hook.
 

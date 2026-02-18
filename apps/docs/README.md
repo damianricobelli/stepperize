@@ -1,26 +1,65 @@
-# docs2
+# Stepperize Docs App
 
-This is a Next.js application generated with
-[Create Fumadocs](https://github.com/fuma-nama/fumadocs).
+Documentation site for Stepperize (`@stepperize/react` and `@stepperize/core`), built with Next.js + Fumadocs.
 
-Run development server:
+## Requirements
+
+- Node.js `>=18`
+- pnpm `10` (workspace package manager)
+
+## Run Locally
+
+From the monorepo root:
 
 ```bash
-npm run dev
-# or
 pnpm dev
-# or
-yarn dev
 ```
 
-Open http://localhost:3000 with your browser to see the result.
+Or run only the docs app:
 
-## Learn More
+```bash
+pnpm --filter docs dev
+```
 
-To learn more about Next.js and Fumadocs, take a look at the following
-resources:
+Default local URL: `http://localhost:3000`
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js
-  features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-- [Fumadocs](https://fumadocs.vercel.app) - learn about Fumadocs
+## Build
+
+From the monorepo root:
+
+```bash
+pnpm build
+```
+
+Or only docs:
+
+```bash
+pnpm --filter docs build
+```
+
+## Useful Scripts (docs app)
+
+Run these from `apps/docs` (or with `pnpm --filter docs <script>` from root):
+
+- `pnpm dev` — start dev server
+- `pnpm build` — production build
+- `pnpm start` — run production server
+- `pnpm generate:r` — generate both Base UI and Radix registry JSON files
+- `pnpm generate:r:base` — generate only Base UI registry JSON
+- `pnpm generate:r:radix` — generate only Radix registry JSON
+- `pnpm registry:build` — generate registry files and run `shadcn build`
+
+## Content and Structure
+
+- `content/docs/react` — React docs pages (`.mdx`)
+- `app` — Next.js App Router routes
+- `components` — docs UI components and previews
+- `registry` — source blocks/components for registry generation
+- `public/r` — generated registry output files
+
+## Notes
+
+- The docs app consumes local workspace packages:
+  - `@stepperize/react`
+  - `@stepperize/core`
+- After changing registry block sources, regenerate registry files before publishing docs.
