@@ -1,5 +1,11 @@
 # @stepperize/react
 
+## 6.0.1
+
+### Patch Changes
+
+- [#168](https://github.com/damianricobelli/stepperize/pull/168) [`267b328`](https://github.com/damianricobelli/stepperize/commit/267b328e7b1839d805b63e14940389e275e9adad) Thanks [@damianricobelli](https://github.com/damianricobelli)! - docs: update documentation and code examples for stepper integration
+
 ## 6.0.0
 
 ### Major Changes
