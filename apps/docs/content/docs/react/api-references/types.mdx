@@ -28,11 +28,11 @@ type Metadata = Record<string, any> | null;
 The stepper instance type has six namespaces:
 
 - **state**: `StepperState<Steps>` — `all`, `current` (data, index, status, metadata), `isFirst`, `isLast`, `isTransitioning`
-- **navigation**: `StepperNavigation<Steps>` — `next`, `prev`, `goTo`, `reset`
+- **navigation**: `StepperNavigation<Steps>` — `next(payload?)`, `prev(payload?)`, `goTo(id, payload?)`, `reset` — see **TransitionPayload**
 - **lookup**: `StepperLookup<Steps>` — `getAll`, `get`, `getIndex`, `getByIndex`, `getFirst`, `getLast`, `getNext`, `getPrev`, `getNeighbors`
 - **flow**: `StepperFlow<Steps>` — `is`, `when`, `switch`, `match`
 - **metadata**: `StepperMetadata<Steps>` — `values`, `set`, `get`, `reset`
-- **lifecycle**: `StepperLifecycle<Steps>` — `onBeforeTransition`, `onAfterTransition`
+- **lifecycle**: `StepperLifecycle<Steps>` — `onBeforeTransition(cb)` / `onAfterTransition(cb)` (each returns unsubscribe; multiple callbacks supported)
 
 Transition state is `state.isTransitioning`. See [Hook](./hook#transition-hooks).
 
@@ -78,6 +78,18 @@ type TransitionContext<Steps> = {
   readonly toIndex: number;
 };
 ```
+
+### TransitionPayload (from @stepperize/core)
+
+Optional payload for `next(payload?)`, `prev(payload?)`, `goTo(id, payload?)`:
+
+```ts
+type TransitionPayload<Steps> = {
+  metadata?: Partial<Record<Get.Id<Steps>, Metadata>>;
+};
+```
+
+Merged into `ctx.metadata` for that transition and persisted when the transition completes, so `onBeforeTransition` / `onAfterTransition` see up-to-date metadata without waiting for `metadata.set()` to flush. If a transition is cancelled (e.g. `onBeforeTransition` returns `false`), the payload is not persisted.
 
 ### TransitionDirection
 

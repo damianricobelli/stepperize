@@ -66,27 +66,30 @@
  * ```
  */
 
-export { useStepItemContext, StepItemProvider, StepItemContext } from "./context";
 export type { StepItemValue } from "./context";
-
-export type {
-	StepStatus,
-	StepInfo,
-	RenderProp,
-	PrimitiveProps,
-	RootProps,
-	ListProps,
-	ItemProps,
-	TriggerProps,
-	TitleProps,
-	DescriptionProps,
-	IndicatorProps,
-	SeparatorProps,
-	ContentProps,
-	ActionsProps,
-	PrevProps,
-	NextProps,
-} from "./types";
+export {
+  StepItemContext,
+  StepItemProvider,
+  useStepItemContext,
+} from "./context";
+export type { StepperPrimitives } from "./create-stepper-primitives";
 
 export { createStepperPrimitives } from "./create-stepper-primitives";
-export type { StepperPrimitives } from "./create-stepper-primitives";
+export type {
+  ActionsProps,
+  ContentProps,
+  DescriptionProps,
+  IndicatorProps,
+  ItemProps,
+  ListProps,
+  NextProps,
+  PrevProps,
+  PrimitiveProps,
+  RenderProp,
+  RootProps,
+  SeparatorProps,
+  StepInfo,
+  StepStatus,
+  TitleProps,
+  TriggerProps,
+} from "./types";

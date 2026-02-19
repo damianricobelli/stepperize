@@ -32,7 +32,7 @@ const { Stepper, Scoped } = defineStepper(
 `Stepper.Root` provides the stepper context (it uses Scoped internally) and passes the stepper to your render function. Use `orientation="horizontal"` (default) for a horizontal layout.
 
 ```tsx twoslash
-import * as React from "react";
+import React from "react";
 import { defineStepper } from "@stepperize/react";
 
 const { Stepper } = defineStepper(
@@ -62,7 +62,7 @@ function HorizontalStepper() {
 Map over `stepper.state.all` and render one `Stepper.Item` per step. Each item needs a `Trigger` (and optionally `Title`, `Indicator`, `Separator`).
 
 ```tsx twoslash
-import * as React from "react";
+import React from "react";
 import { defineStepper } from "@stepperize/react";
 
 const { Stepper } = defineStepper(
@@ -102,7 +102,7 @@ function StepList() {
 Use `Stepper.Content` with a `step` prop so each panel is visible only when that step is current.
 
 ```tsx twoslash
-import * as React from "react";
+import React from "react";
 import { defineStepper } from "@stepperize/react";
 
 const { Stepper } = defineStepper(
@@ -143,7 +143,7 @@ Put `Stepper.Prev` and `Stepper.Next` inside `Stepper.Actions`. They call `navig
 ### Full example
 
 ```tsx twoslash
-import * as React from "react";
+import React from "react";
 import { defineStepper } from "@stepperize/react";
 
 const { Stepper } = defineStepper(
@@ -224,7 +224,7 @@ Pass `orientation="vertical"` to `Stepper.Root` and `Stepper.List`. Use a custom
 ### Full example
 
 ```tsx twoslash
-import * as React from "react";
+import React from "react";
 import { defineStepper } from "@stepperize/react";
 
 const { Stepper } = defineStepper(
@@ -303,7 +303,7 @@ By default, `Stepper.Indicator` has no built-in content. You control what it sho
 ### Custom indicator with step index
 
 ```tsx twoslash
-import * as React from "react";
+import React from "react";
 import { defineStepper } from "@stepperize/react";
 import { useStepItemContext } from "@stepperize/react/primitives";
 
@@ -351,7 +351,7 @@ function StepperWithNumberedIndicator() {
 You can also use the `render` prop to receive DOM props and render a custom element (e.g. for styling the “circle” later).
 
 ```tsx twoslash
-import * as React from "react";
+import React from "react";
 import { defineStepper } from "@stepperize/react";
 import { useStepItemContext } from "@stepperize/react/primitives";
 
@@ -388,7 +388,7 @@ function CustomIndicator() {
 ### Full example
 
 ```tsx twoslash
-import * as React from "react";
+import React from "react";
 import { defineStepper } from "@stepperize/react";
 import { useStepItemContext } from "@stepperize/react/primitives";
 

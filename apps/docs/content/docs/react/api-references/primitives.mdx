@@ -8,7 +8,7 @@ The `Stepper` object returned by `defineStepper` provides a set of primitive com
 ## Overview
 
 ```tsx twoslash
-import * as React from "react"
+import React from "react"
 import { defineStepper } from "@stepperize/react"
 
 const { Stepper } = defineStepper(
@@ -190,7 +190,7 @@ import { useStepItemContext } from "@stepperize/react/primitives";
 Use `item.index` to show a numeric indicator (1, 2, 3) without passing the step id:
 
 ```tsx twoslash
-import * as React from "react";
+import React from "react";
 import { defineStepper } from "@stepperize/react";
 import { useStepItemContext } from "@stepperize/react/primitives";
 
@@ -233,7 +233,7 @@ function MyStepper() {
 Use `item.status` to change the trigger's appearance (e.g. active vs inactive) without comparing step ids yourself:
 
 ```tsx twoslash
-import * as React from "react";
+import React from "react";
 import { defineStepper } from "@stepperize/react";
 import { useStepItemContext } from "@stepperize/react/primitives";
 
@@ -773,7 +773,7 @@ Use data attributes for CSS styling. Step status is one of `"active"`, `"success
 ## Complete Example
 
 ```tsx twoslash
-import * as React from "react"
+import React from "react"
 import { defineStepper } from "@stepperize/react"
 
 const { Stepper, useStepper } = defineStepper(

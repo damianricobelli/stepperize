@@ -1,5 +1,5 @@
-import * as React from "react";
 import type { Step, StepperState } from "@stepperize/core";
+import React from "react";
 
 /**
  * Value provided to children of `Stepper.Item`. Same shape as `useStepper().state.current`:
@@ -10,13 +10,13 @@ export type StepItemValue<S extends Step = Step> = StepperState<[S]>["current"];
 const StepItemContext = React.createContext<StepItemValue | null>(null);
 
 export function StepItemProvider<S extends Step>({
-	value,
-	children,
+  value,
+  children,
 }: {
-	value: StepItemValue<S>;
-	children: React.ReactNode;
+  value: StepItemValue<S>;
+  children: React.ReactNode;
 }) {
-	return React.createElement(StepItemContext.Provider, { value, children });
+  return React.createElement(StepItemContext.Provider, { value, children });
 }
 
 /**
@@ -49,11 +49,11 @@ export function StepItemProvider<S extends Step>({
  * ```
  */
 export function useStepItemContext<S extends Step = Step>(): StepItemValue<S> {
-	const context = React.useContext(StepItemContext);
-	if (!context) {
-		throw new Error("useStepItemContext must be used within a Stepper.Item.");
-	}
-	return context as StepItemValue<S>;
+  const context = React.useContext(StepItemContext);
+  if (!context) {
+    throw new Error("Missing Stepper.Item.");
+  }
+  return context as StepItemValue<S>;
 }
 
 export { StepItemContext };

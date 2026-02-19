@@ -110,8 +110,10 @@ See [Scoped](/docs/react/api-references/scoped).
 
 **Now:** Register callbacks on the stepper instance:
 
-- `stepper.lifecycle.onBeforeTransition(cb)` — runs before every `next` / `prev` / `goTo`. Return `false` (or a promise that resolves to `false`) to cancel.
-- `stepper.lifecycle.onAfterTransition(cb)` — runs after the transition.
+- `stepper.lifecycle.onBeforeTransition(cb)` — runs before every `next` / `prev` / `goTo`. Return `false` (or a promise that resolves to `false`) to cancel. **Multiple callbacks** are supported (e.g. one at Stepper level, one per step); each returns an unsubscribe function.
+- `stepper.lifecycle.onAfterTransition(cb)` — runs after the transition; same multi-callback / unsubscribe behavior.
+
+You can pass **metadata in the transition** so the hook sees fresh data: `next({ metadata: { "step-id": { ... } } })` instead of `metadata.set()` + `next()` (which would give stale `ctx.metadata` in the hook).
 
 The callback receives a **TransitionContext**: `from`, `to`, `metadata`, `statuses`, `direction` (`"next"` | `"prev"` | `"goTo"`), `fromIndex`, `toIndex`.
 

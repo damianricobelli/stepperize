@@ -1,8 +1,8 @@
 "use client";
 
-import * as React from "react";
 import { defineStepper } from "@stepperize/react";
 import { useStepItemContext } from "@stepperize/react/primitives";
+import React from "react";
 
 const { Stepper } = defineStepper(
   { id: "a", title: "First" },
@@ -37,19 +37,29 @@ export function BasicCustomIndicatorPreview() {
                       <Stepper.Indicator className="inline-flex size-4 items-center justify-center rounded-full bg-inherit text-xs font-semibold">
                         <StepNumber />
                       </Stepper.Indicator>
-                      <Stepper.Title render={(props) => <span {...props}>{step.title}</span>} />
+                      <Stepper.Title
+                        render={(props) => <span {...props}>{step.title}</span>}
+                      />
                     </Trigger>
                   </Stepper.Item>
                   {step.id !== "c" && (
-                    <span className="self-center text-gray-400 dark:text-gray-500">→</span>
+                    <span className="self-center text-gray-400 dark:text-gray-500">
+                      →
+                    </span>
                   )}
                 </React.Fragment>
               ))}
             </Stepper.List>
             <div className="mt-4 min-h-10 text-gray-900 dark:text-gray-100">
-              <Stepper.Content step="a"><p className="m-0">First step content</p></Stepper.Content>
-              <Stepper.Content step="b"><p className="m-0">Second step content</p></Stepper.Content>
-              <Stepper.Content step="c"><p className="m-0">Third step content</p></Stepper.Content>
+              <Stepper.Content step="a">
+                <p className="m-0">First step content</p>
+              </Stepper.Content>
+              <Stepper.Content step="b">
+                <p className="m-0">Second step content</p>
+              </Stepper.Content>
+              <Stepper.Content step="c">
+                <p className="m-0">Third step content</p>
+              </Stepper.Content>
             </div>
             <div className="mt-4 flex flex-wrap gap-2">
               {stepper.state.isLast ? (

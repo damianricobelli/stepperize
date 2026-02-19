@@ -41,7 +41,7 @@ const { Scoped, useStepper } = defineStepper(
 Wrap your form tree with `<Scoped>` so child components can call `useStepper()` and access the current step and its schema.
 
 ```tsx
-import * as React from "react";
+import React from "react";
 import { defineStepper } from "@stepperize/react";
 
 const { Scoped, useStepper } = defineStepper(
@@ -75,7 +75,7 @@ function StepNavigation() {
 In your form component, call `useStepper()` and read the current step's schema from `stepper.state.current.data.schema`. Use RHF's `useForm` with `zodResolver(schema)` (and optionally `defaultValues` from metadata). Call `handleSubmit(onValid)` so that when the user submits, you only advance to the next step if validation passes.
 
 ```tsx
-import * as React from "react";
+import React from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -175,7 +175,7 @@ function StepNavigation() {
 ## Full example
 
 ```tsx
-import * as React from "react";
+import React from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
