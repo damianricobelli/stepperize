@@ -1,7 +1,7 @@
 "use client";
 
-import * as React from "react";
 import { defineStepper } from "@stepperize/react";
+import React from "react";
 
 const { Stepper } = defineStepper(
   { id: "one", title: "Step 1" },
@@ -35,7 +35,9 @@ export function BasicVerticalPreview() {
                 <React.Fragment key={step.id}>
                   <Stepper.Item step={step.id}>
                     <Trigger>
-                      <Stepper.Title render={(props) => <span {...props}>{step.title}</span>} />
+                      <Stepper.Title
+                        render={(props) => <span {...props}>{step.title}</span>}
+                      />
                     </Trigger>
                   </Stepper.Item>
                   {index < stepper.state.all.length - 1 && <VerticalLine />}

@@ -41,7 +41,7 @@ const { Scoped, useStepper } = defineStepper(
 Wrap your form tree with `<Scoped>` so child components can call `useStepper()` and access the current step and its schema.
 
 ```tsx
-import * as React from "react";
+import React from "react";
 import { defineStepper } from "@stepperize/react";
 
 const { Scoped, useStepper } = defineStepper(
@@ -75,7 +75,7 @@ function StepNavigation() {
 In your form component, call `useStepper()` and read the current step's schema from `stepper.state.current.data.schema`. Pass that schema to Conform's `useForm` (e.g. with `parseWithZod`). Use `getFormProps(form)` on your `<form>` and Conform's field helpers for inputs.
 
 ```tsx
-import * as React from "react";
+import React from "react";
 import { useForm } from "@conform-to/react";
 import { parseWithZod } from "@conform-to/zod/v4/future";
 import { z } from "zod";
@@ -174,7 +174,7 @@ Use `stepper.state.current.metadata` or `stepper.metadata.get(id)` to store per-
 ## Full example
 
 ```tsx
-zimport * as React from "react";
+zimport React from "react";
 import { useForm } from "@conform-to/react";
 import { parseWithZod } from "@conform-to/zod/v4/future";
 import { z } from "zod";

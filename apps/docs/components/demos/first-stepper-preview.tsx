@@ -1,6 +1,5 @@
 "use client";
 
-import * as React from "react";
 import { defineStepper } from "@stepperize/react";
 
 const { useStepper } = defineStepper(

@@ -13,7 +13,7 @@ The hook accepts an optional single argument: a config object with:
 ## Usage
 
 ```tsx twoslash
-import * as React from "react";
+import React from "react";
 import { defineStepper } from "@stepperize/react";
 
 const { useStepper } = defineStepper(
@@ -42,7 +42,7 @@ The stepper exposes **`flow`** with helpers to render content by step: **`flow.i
 The `flow.when` method allows rendering content conditionally based on the current step. It takes a step ID (string or array of ID plus conditions), a `whenFn` (the function to run if the step matches), and an optional `elseFn` (run when it does not match).
 
 ```tsx twoslash
-import * as React from "react";
+import React from "react";
 import { defineStepper } from "@stepperize/react";
 
 const { useStepper } = defineStepper(
@@ -68,7 +68,7 @@ const MyStepperComponent = () => {
 You can pass an optional `elseFn` to render when the current step does not match:
 
 ```tsx twoslash
-import * as React from "react";
+import React from "react";
 import { defineStepper } from "@stepperize/react";
 
 const { useStepper } = defineStepper(
@@ -94,7 +94,7 @@ function Content() {
 You can also use an array as the first argument: the first element is the step ID, the rest are boolean conditions. The step matches only when the ID matches and all conditions are `true`. This allows multi-condition logic (e.g. step + feature flag or validation state).
 
 ```tsx twoslash
-import * as React from "react";
+import React from "react";
 import { defineStepper } from "@stepperize/react";
 
 const { useStepper } = defineStepper(
@@ -124,7 +124,7 @@ const MyStepperComponent = () => {
 The `flow.switch` method lets you render content based on the current step ID in a switch-case style. It is a cleaner and more scalable way to handle many steps without multiple `when` conditions.
 
 ```tsx twoslash
-import * as React from "react";
+import React from "react";
 import { defineStepper } from "@stepperize/react";
 
 const { useStepper } = defineStepper(
@@ -150,7 +150,7 @@ const MyStepperComponent = () => {
 The `flow.match` method lets you render content based on an **external** step ID (e.g. from the server, URL, or other state). Unlike `flow.switch`, which uses the stepper’s current step, `flow.match` takes that ID as the first argument. Useful for frameworks like Remix with server-side state or when driving the UI from a URL param.
 
 ```tsx twoslash
-import * as React from "react";
+import React from "react";
 import { defineStepper } from "@stepperize/react";
 
 const { useStepper } = defineStepper(
@@ -177,7 +177,7 @@ const MyStepperComponent = () => {
 For simple conditionals, use `flow.is(id)`. It returns `true` when the current step’s ID equals `id`.
 
 ```tsx twoslash
-import * as React from "react";
+import React from "react";
 import { defineStepper } from "@stepperize/react";
 
 const { useStepper } = defineStepper(
@@ -210,7 +210,7 @@ function Content() {
 | `navigation.reset()` | Reset to initial step |
 
 ```tsx twoslash
-import * as React from "react";
+import React from "react";
 import { defineStepper } from "@stepperize/react";
 
 const { useStepper } = defineStepper(
@@ -248,7 +248,7 @@ Step lookup helpers (same shape as `generateStepperUtils` from `@stepperize/core
 | `lookup.getNeighbors(id)` | `{ prev, next }` for step `id` |
 
 ```tsx twoslash
-import * as React from "react";
+import React from "react";
 import { defineStepper } from "@stepperize/react";
 
 const { useStepper } = defineStepper(
@@ -280,7 +280,7 @@ To avoid stale metadata in the hook when you set metadata and then call `next()`
 Runs before the step index updates. Return `false` to cancel.
 
 ```tsx twoslash
-import * as React from "react";
+import React from "react";
 import { defineStepper } from "@stepperize/react";
 
 const { useStepper } = defineStepper(
@@ -309,7 +309,7 @@ function MyStepper() {
 You can register one handler at the Stepper level and another inside a step component; **all run in registration order**. If any `onBeforeTransition` callback returns `false`, the transition is cancelled. Each call returns an **unsubscribe** function — use it in your `useEffect` cleanup so the handler is removed when the component unmounts (e.g. when navigating away from that step).
 
 ```tsx twoslash
-import * as React from "react";
+import React from "react";
 import { defineStepper } from "@stepperize/react";
 
 const { useStepper } = defineStepper(
@@ -382,7 +382,7 @@ stepper.navigation.goTo("summary", { metadata: { "payment": { method: "card" } }
 Runs after the step index has updated.
 
 ```tsx twoslash
-import * as React from "react";
+import React from "react";
 import { defineStepper } from "@stepperize/react";
 
 const { useStepper } = defineStepper(
@@ -415,7 +415,7 @@ Metadata lets you attach custom data per step (e.g. form drafts, values from the
 Pass **`initialMetadata`** in `useStepper({ ... })` to seed metadata per step:
 
 ```tsx twoslash
-import * as React from "react";
+import React from "react";
 import { defineStepper } from "@stepperize/react";
 
 const { useStepper } = defineStepper(
@@ -443,7 +443,7 @@ const MyStepperComponent = () => {
 Current step only: **`state.current.metadata.get()`**, **`state.current.metadata.set(values)`**, **`state.current.metadata.reset()`**.
 
 ```tsx twoslash
-import * as React from "react";
+import React from "react";
 import { defineStepper } from "@stepperize/react";
 
 const { useStepper } = defineStepper(

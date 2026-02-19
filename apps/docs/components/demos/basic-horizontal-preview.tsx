@@ -1,7 +1,7 @@
 "use client";
 
-import * as React from "react";
 import { defineStepper } from "@stepperize/react";
+import React from "react";
 
 const { Stepper } = defineStepper(
   { id: "account", title: "Account" },
@@ -28,19 +28,29 @@ export function BasicHorizontalPreview() {
                 <React.Fragment key={step.id}>
                   <Stepper.Item step={step.id}>
                     <Trigger>
-                      <Stepper.Title render={(props) => <span {...props}>{step.title}</span>} />
+                      <Stepper.Title
+                        render={(props) => <span {...props}>{step.title}</span>}
+                      />
                     </Trigger>
                   </Stepper.Item>
                   {step.id !== "done" && (
-                    <span className="self-center text-gray-400 dark:text-gray-500">→</span>
+                    <span className="self-center text-gray-400 dark:text-gray-500">
+                      →
+                    </span>
                   )}
                 </React.Fragment>
               ))}
             </Stepper.List>
             <div className="mt-4 min-h-12 text-gray-900 dark:text-gray-100">
-              <Stepper.Content step="account"><p className="m-0">Account form</p></Stepper.Content>
-              <Stepper.Content step="profile"><p className="m-0">Profile form</p></Stepper.Content>
-              <Stepper.Content step="done"><p className="m-0">All done!</p></Stepper.Content>
+              <Stepper.Content step="account">
+                <p className="m-0">Account form</p>
+              </Stepper.Content>
+              <Stepper.Content step="profile">
+                <p className="m-0">Profile form</p>
+              </Stepper.Content>
+              <Stepper.Content step="done">
+                <p className="m-0">All done!</p>
+              </Stepper.Content>
             </div>
             <div className="mt-4 flex flex-wrap gap-2">
               {stepper.state.isLast ? (

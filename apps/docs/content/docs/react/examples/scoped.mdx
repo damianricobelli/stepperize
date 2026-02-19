@@ -18,7 +18,7 @@ Use `defineStepper` with one object per step. For a single stepper you destructu
 One stepper: wrap your tree with `<Scoped>` and call `useStepper()` in children.
 
 ```tsx twoslash
-import * as React from "react";
+import React from "react";
 import { defineStepper } from "@stepperize/react";
 
 const { Scoped, useStepper } = defineStepper(
@@ -62,7 +62,7 @@ const LocalStepper = defineStepper(
   <Tab value="Single scope">
 
 ```tsx twoslash
-import * as React from "react";
+import React from "react";
 import { defineStepper } from "@stepperize/react";
 
 const { Scoped, useStepper } = defineStepper(
@@ -95,7 +95,7 @@ function StepNavigation() {
   <Tab value="Multi-scoped">
 
 ```tsx twoslash
-import * as React from "react";
+import React from "react";
 import { defineStepper } from "@stepperize/react";
 
 const GlobalStepper = defineStepper(
@@ -177,7 +177,7 @@ For **single scope** the pattern is the same in every child. For **multi-scoped*
   <Tab value="Single scope">
 
 ```tsx twoslash
-import * as React from "react";
+import React from "react";
 import { defineStepper } from "@stepperize/react";
 
 const { Scoped, useStepper } = defineStepper(
@@ -219,7 +219,7 @@ In another child component, call the same `useStepper()` (or the matching one in
   <Tab value="Single scope">
 
 ```tsx twoslash
-import * as React from "react";
+import React from "react";
 import { defineStepper } from "@stepperize/react";
 
 const { Scoped, useStepper } = defineStepper(
@@ -272,7 +272,7 @@ Use `GlobalStepper.useStepper()` for global nav (Back / Next / Reset) and `Local
 Pass `initialStep` and/or `initialMetadata` to `Scoped` to set the starting step and initial metadata per step.
 
 ```tsx twoslash
-import * as React from "react";
+import React from "react";
 import { defineStepper } from "@stepperize/react";
 
 const { Scoped, useStepper } = defineStepper(
@@ -352,7 +352,7 @@ function GlobalStepGate({ children }: { children: React.ReactNode }) {
   <Tab value="Single scope">
 
 ```tsx twoslash
-import * as React from "react";
+import React from "react";
 import { defineStepper } from "@stepperize/react";
 
 const { Scoped, useStepper } = defineStepper(
@@ -413,7 +413,7 @@ export function ScopedStepper() {
   <Tab value="Multi-scoped">
 
 ```tsx twoslash
-import * as React from "react";
+import React from "react";
 import { defineStepper } from "@stepperize/react";
 
 const GlobalStepper = defineStepper(

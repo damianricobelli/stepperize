@@ -8,7 +8,7 @@ description: Share stepper state with the Scoped component
 ## Basic usage
 
 ```tsx twoslash
-import * as React from "react";
+import React from "react";
 import { defineStepper } from "@stepperize/react";
 
 const { Scoped, useStepper } = defineStepper(
@@ -53,7 +53,7 @@ const StepNavigation = () => {
 | `children` | `React.ReactNode` | Content to render |
 
 ```tsx twoslash
-import * as React from "react";
+import React from "react";
 import { defineStepper } from "@stepperize/react";
 
 const { Scoped, useStepper } = defineStepper(
@@ -82,7 +82,7 @@ const StepContent = () => {
 You can nest different steppers (e.g. global wizard + local sub-steps):
 
 ```tsx twoslash
-import * as React from "react";
+import React from "react";
 import { defineStepper } from "@stepperize/react";
 
 const GlobalStepper = defineStepper(
@@ -121,7 +121,7 @@ const LocalStepContent = () => {
 `Stepper.Root` wraps content and provides the stepper via context (it uses `Scoped` internally). `Stepper.Root` accepts `initialStep` and `initialMetadata` and passes them to Scoped internally; use either Root or Scoped to set initial state.
 
 ```tsx twoslash
-import * as React from "react";
+import React from "react";
 import { defineStepper } from "@stepperize/react";
 
 const { Stepper, useStepper } = defineStepper(

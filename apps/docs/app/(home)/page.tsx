@@ -7,13 +7,13 @@ import { Footer } from "@/components/home/footer";
 import Hero from "@/components/home/hero";
 
 export default function HomePage() {
-	return (
-		<div className="min-h-screen">
-			<Hero />
-			<Features />
-			<CodeExample>
-				<Code
-					code={`import * as React from "react";
+  return (
+    <div className="min-h-screen">
+      <Hero />
+      <Features />
+      <CodeExample>
+        <Code
+          code={`import React from "react";
 import { defineStepper } from "@stepperize/react";
 
 const stepper = defineStepper(
@@ -43,12 +43,12 @@ const StepperDemo = () => {
   );
 }
 `}
-					lang="tsx"
-				/>
-			</CodeExample>
-			<DemoSection />
-			<Cta />
-			<Footer />
-		</div>
-	);
+          lang="tsx"
+        />
+      </CodeExample>
+      <DemoSection />
+      <Cta />
+      <Footer />
+    </div>
+  );
 }
