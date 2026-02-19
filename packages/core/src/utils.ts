@@ -8,33 +8,37 @@ import type { Get, Metadata, Step, StepperFlow, StepperLookup } from "./types";
 export function generateStepperUtils<const Steps extends Step[]>(
   ...steps: Steps
 ) {
+  const getIndex = (id: Get.Id<Steps>) =>
+    steps.findIndex((step) => step.id === id);
+
+  const getByIndex = <Index extends number>(index: Index) => steps[index];
+
   return {
     getAll() {
       return steps;
     },
-    get: (id) => {
-      const step = steps.find((step) => step.id === id);
-      return step as Get.StepById<Steps, typeof id>;
+    get(id) {
+      return getByIndex(getIndex(id)) as Get.StepById<Steps, typeof id>;
     },
-    getIndex: (id) => steps.findIndex((step) => step.id === id),
-    getByIndex: (index) => steps[index],
+    getIndex: (id) => getIndex(id),
+    getByIndex,
     getFirst() {
-      return steps[0];
+      return getByIndex(0);
     },
     getLast() {
-      return steps[steps.length - 1];
+      return getByIndex(steps.length - 1);
     },
     getNext(id) {
-      return steps[steps.findIndex((step) => step.id === id) + 1];
+      return getByIndex(getIndex(id) + 1);
     },
     getPrev(id) {
-      return steps[steps.findIndex((step) => step.id === id) - 1];
+      return getByIndex(getIndex(id) - 1);
     },
     getNeighbors(id) {
-      const index = steps.findIndex((step) => step.id === id);
+      const index = getIndex(id);
       return {
-        prev: index > 0 ? steps[index - 1] : null,
-        next: index < steps.length - 1 ? steps[index + 1] : null,
+        prev: index > 0 ? getByIndex(index - 1) : null,
+        next: index < steps.length - 1 ? getByIndex(index + 1) : null,
       };
     },
   } satisfies StepperLookup<Steps>;
@@ -50,10 +54,8 @@ export function getInitialStepIndex<Steps extends Step[]>(
   steps: Steps,
   initialStep?: Get.Id<Steps>,
 ) {
-  return Math.max(
-    steps.findIndex((step) => step.id === initialStep),
-    0,
-  );
+  const index = steps.findIndex((step) => step.id === initialStep);
+  return index === -1 ? 0 : index;
 }
 
 /**
@@ -66,14 +68,14 @@ export function getInitialMetadata<Steps extends Step[]>(
   steps: Steps,
   initialMetadata?: Partial<Record<Get.Id<Steps>, Metadata>>,
 ) {
-  return steps.reduce(
-    (acc, step) => {
-      acc[step.id as Get.Id<Steps>] =
-        initialMetadata?.[step.id as Get.Id<Steps>] ?? null;
-      return acc;
-    },
-    {} as Record<Get.Id<Steps>, Metadata>,
-  );
+  const metadata = {} as Record<Get.Id<Steps>, Metadata>;
+
+  for (const step of steps) {
+    const id = step.id as Get.Id<Steps>;
+    metadata[id] = initialMetadata?.[id] ?? null;
+  }
+
+  return metadata;
 }
 
 /**
@@ -128,35 +130,15 @@ export const updateStepIndex = <Steps extends Step[]>(
   newIndex: number,
   setter: (index: number) => void,
 ) => {
-  if (newIndex < 0)
-    throwNavigationError({
-      steps,
-      newIndex,
-      direction: "next",
-      reason: "it is the first step",
-    });
-  if (newIndex >= steps.length)
-    throwNavigationError({
-      steps,
-      newIndex,
-      direction: "prev",
-      reason: "it is the last step",
-    });
-  setter(newIndex);
-};
+  if (newIndex >= 0 && newIndex < steps.length) {
+    setter(newIndex);
+    return;
+  }
 
-const throwNavigationError = ({
-  steps,
-  newIndex,
-  direction,
-  reason,
-}: {
-  steps: Step[];
-  newIndex: number;
-  direction: "next" | "prev";
-  reason: string;
-}) => {
+  const direction = newIndex < 0 ? "prev" : "next";
+  const reason = newIndex < 0 ? "it is the first step" : "it is the last step";
   const stepId = steps[newIndex]?.id ?? `index ${newIndex}`;
+
   throw new Error(
     `Cannot navigate ${direction} from step "${stepId}": ${reason}`,
   );
