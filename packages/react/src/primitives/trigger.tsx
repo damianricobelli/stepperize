@@ -1,5 +1,5 @@
 import type { Step, Stepper } from "@stepperize/core";
-import React from "react";
+import type React from "react";
 import { useStepItemContext } from "./context";
 import { runClickHandler, useStepperContextOrThrow } from "./helpers";
 import type { TriggerProps } from "./types";

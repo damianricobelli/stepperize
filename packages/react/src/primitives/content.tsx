@@ -1,5 +1,5 @@
 import type { Step, Stepper } from "@stepperize/core";
-import React from "react";
+import type React from "react";
 import { useStepperContextOrThrow } from "./helpers";
 import type { ContentProps } from "./types";
 
