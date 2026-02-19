@@ -15,7 +15,6 @@ export function createTrigger<Steps extends Step[]>(
     }
     const stepId = item.data.id;
     const isActive = stepper.state.current.data.id === stepId;
-    const stepIndex = stepper.state.all.findIndex((s) => s.id === stepId);
     const handleClick = () =>
       stepper.navigation.goTo(
         stepId as import("@stepperize/core").Get.Id<Steps>,
@@ -29,12 +28,13 @@ export function createTrigger<Steps extends Step[]>(
       tabIndex: item.status === "inactive" ? -1 : 0,
       "aria-controls": `step-panel-${stepId}`,
       "aria-current": isActive ? ("step" as const) : undefined,
-      "aria-posinset": stepIndex + 1,
+      "aria-posinset": item.index + 1,
       "aria-setsize": stepper.state.all.length,
       "aria-selected": isActive,
       onClick: (e: React.MouseEvent<HTMLButtonElement>) => {
-        handleClick();
         rest.onClick?.(e);
+        if (e.defaultPrevented) return;
+        handleClick();
       },
     };
     if (render) {

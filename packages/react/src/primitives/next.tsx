@@ -17,8 +17,9 @@ export function createNext<Steps extends Step[]>(
       disabled: stepper.state.isLast,
       "aria-disabled": stepper.state.isLast,
       onClick: (e: React.MouseEvent<HTMLButtonElement>) => {
-        stepper.navigation.next();
         rest.onClick?.(e);
+        if (e.defaultPrevented) return;
+        stepper.navigation.next();
       },
       ...rest,
     };

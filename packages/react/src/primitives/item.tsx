@@ -42,7 +42,11 @@ export function createItem<Steps extends Step[]>(
       ...rest,
     };
     if (render) {
-      <StepItemProvider value={itemValue}>{render(domProps)}</StepItemProvider>;
+      return (
+        <StepItemProvider value={itemValue}>
+          {render(domProps)}
+        </StepItemProvider>
+      );
     }
     return (
       <StepItemProvider value={itemValue}>

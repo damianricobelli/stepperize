@@ -27,6 +27,7 @@ export function createList<Steps extends Step[]>(
     const handleKeyDown = React.useCallback(
       (e: React.KeyboardEvent<HTMLOListElement>) => {
         onKeyDown?.(e);
+        if (e.defaultPrevented) return;
         if (!ARROW_KEYS.includes(e.key as (typeof ARROW_KEYS)[number])) return;
         const target = e.target as HTMLElement;
         if (target.getAttribute?.("role") !== "tab") return;

@@ -117,6 +117,30 @@ describe("defineStepper", () => {
     }).toThrow(/not found/);
   });
 
+  it("navigation boundaries throw even with lifecycle callbacks or payload metadata", () => {
+    const { useStepper } = defineStepper(...steps);
+
+    const first = renderHook(() => useStepper());
+    act(() => {
+      first.result.current.lifecycle.onBeforeTransition(() => {});
+    });
+    expect(() => {
+      act(() => {
+        void first.result.current.navigation.prev();
+      });
+    }).toThrow(/first step/);
+
+    const last = renderHook(() => useStepper({ initialStep: "third" }));
+    act(() => {
+      last.result.current.lifecycle.onAfterTransition(() => {});
+    });
+    expect(() => {
+      act(() => {
+        void last.result.current.navigation.next({ metadata: { third: { x: 1 } } });
+      });
+    }).toThrow(/last step/);
+  });
+
   it("navigation.reset restores initial step", () => {
     const { useStepper } = defineStepper(...steps);
     const { result } = renderHook(() => useStepper({ initialStep: "second" }));

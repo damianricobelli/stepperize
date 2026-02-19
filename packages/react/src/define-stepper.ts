@@ -25,6 +25,14 @@ type AfterCb<Steps extends Step[]> = (
   ctx: TransitionContext<Steps>,
 ) => void | Promise<void>;
 
+function registerCallback<CB>(list: CB[], cb: CB) {
+  list.push(cb);
+  return () => {
+    const i = list.indexOf(cb);
+    if (i !== -1) list.splice(i, 1);
+  };
+}
+
 /**
  * Creates a stepper context and utility functions for managing stepper state.
  *
@@ -51,6 +59,15 @@ export const defineStepper = <const Steps extends Step[]>(
       getInitialMetadata(steps, initialMetadata),
     );
     const [isTransitioning, setIsTransitioning] = React.useState(false);
+
+    const resetMetadata = React.useCallback(
+      (keepInitialMetadata?: boolean) =>
+        getInitialMetadata(
+          steps,
+          keepInitialMetadata ? initialMetadata : undefined,
+        ),
+      [initialMetadata],
+    );
 
     const beforeCallbacksRef = React.useRef<BeforeCb<Steps>[]>([]);
     const afterCallbacksRef = React.useRef<AfterCb<Steps>[]>([]);
@@ -106,23 +123,28 @@ export const defineStepper = <const Steps extends Step[]>(
       const isLast = stepIndex === steps.length - 1;
       const isFirst = stepIndex === 0;
       const status: StepStatus = "active";
-
       const hasLifecycle = () =>
         beforeCallbacksRef.current.length > 0 ||
         afterCallbacksRef.current.length > 0;
 
       const next = (payload?: TransitionPayload<Steps>) => {
         const toIndex = stepIndex + 1;
+        if (toIndex >= steps.length) {
+          updateStepIndex(steps, toIndex, setStepIndex);
+          return;
+        }
         if (hasLifecycle() || payload?.metadata) {
-          if (toIndex >= steps.length) return;
           return performTransition(stepIndex, toIndex, "next", payload);
         }
         updateStepIndex(steps, toIndex, setStepIndex);
       };
       const prev = (payload?: TransitionPayload<Steps>) => {
         const toIndex = stepIndex - 1;
+        if (toIndex < 0) {
+          updateStepIndex(steps, toIndex, setStepIndex);
+          return;
+        }
         if (hasLifecycle() || payload?.metadata) {
-          if (toIndex < 0) return;
           return performTransition(stepIndex, toIndex, "prev", payload);
         }
         updateStepIndex(steps, toIndex, setStepIndex);
@@ -161,12 +183,7 @@ export const defineStepper = <const Steps extends Step[]>(
                 );
               },
               reset: (keepInitialMetadata?: boolean) => {
-                setMetadata(
-                  getInitialMetadata(
-                    steps,
-                    keepInitialMetadata ? initialMetadata : undefined,
-                  ),
-                );
+                setMetadata(resetMetadata(keepInitialMetadata));
               },
             },
           },
@@ -188,34 +205,26 @@ export const defineStepper = <const Steps extends Step[]>(
           },
           get: (id) => metadata[id],
           reset: (keepInitialMetadata?: boolean) => {
-            setMetadata(
-              getInitialMetadata(
-                steps,
-                keepInitialMetadata ? initialMetadata : undefined,
-              ),
-            );
+            setMetadata(resetMetadata(keepInitialMetadata));
           },
         },
         lifecycle: {
           onBeforeTransition(cb: BeforeCb<Steps>) {
-            const list = beforeCallbacksRef.current;
-            list.push(cb);
-            return () => {
-              const i = list.indexOf(cb);
-              if (i !== -1) list.splice(i, 1);
-            };
+            return registerCallback(beforeCallbacksRef.current, cb);
           },
           onAfterTransition(cb: AfterCb<Steps>) {
-            const list = afterCallbacksRef.current;
-            list.push(cb);
-            return () => {
-              const i = list.indexOf(cb);
-              if (i !== -1) list.splice(i, 1);
-            };
+            return registerCallback(afterCallbacksRef.current, cb);
           },
         },
       } as Stepper<Steps>;
-    }, [stepIndex, metadata, isTransitioning, performTransition]);
+    }, [
+      stepIndex,
+      metadata,
+      isTransitioning,
+      initialStep,
+      performTransition,
+      resetMetadata,
+    ]);
 
     return stepper;
   };
