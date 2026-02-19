@@ -1,5 +1,15 @@
 # docs
 
+## 3.0.2
+
+### Patch Changes
+
+- [#167](https://github.com/damianricobelli/stepperize/pull/167) [`bcda7f3`](https://github.com/damianricobelli/stepperize/commit/bcda7f3c683a67320c13cbfec1faf2fdbd455e87) Thanks [@damianricobelli](https://github.com/damianricobelli)! - feat: enhance stepper lifecycle with multiple callbacks and metadata
+
+- Updated dependencies [[`bcda7f3`](https://github.com/damianricobelli/stepperize/commit/bcda7f3c683a67320c13cbfec1faf2fdbd455e87)]:
+  - @stepperize/react@6.1.0
+  - @stepperize/core@2.1.0
+
 ## 3.0.1
 
 ### Patch Changes
