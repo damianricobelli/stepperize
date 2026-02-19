@@ -151,7 +151,7 @@ export const defineStepper = <const Steps extends Step[]>(
       };
       const goTo = (id: Get.Id<Steps>, payload?: TransitionPayload<Steps>) => {
         const toIndex = steps.findIndex((s) => s.id === id);
-        if (toIndex === -1) throw new Error(`Step with id "${id}" not found.`);
+        if (toIndex === -1) throw new Error(`Step "${id}" not found.`);
         if (toIndex === stepIndex) return;
         if (hasLifecycle() || payload?.metadata) {
           return performTransition(stepIndex, toIndex, "goTo", payload);

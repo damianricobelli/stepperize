@@ -1,6 +1,7 @@
 import type { Step, Stepper } from "@stepperize/core";
 import React from "react";
 import { useStepItemContext } from "./context";
+import { runClickHandler, useStepperContextOrThrow } from "./helpers";
 import type { TriggerProps } from "./types";
 
 export function createTrigger<Steps extends Step[]>(
@@ -8,11 +9,8 @@ export function createTrigger<Steps extends Step[]>(
 ) {
   return function Trigger(props: TriggerProps) {
     const { render, children, ...rest } = props;
-    const stepper = React.useContext(StepperContext);
+    const stepper = useStepperContextOrThrow(StepperContext);
     const item = useStepItemContext();
-    if (!stepper) {
-      throw new Error("Stepper.Trigger must be used within Stepper.Root.");
-    }
     const stepId = item.data.id;
     const isActive = stepper.state.current.data.id === stepId;
     const handleClick = () =>
@@ -32,9 +30,7 @@ export function createTrigger<Steps extends Step[]>(
       "aria-setsize": stepper.state.all.length,
       "aria-selected": isActive,
       onClick: (e: React.MouseEvent<HTMLButtonElement>) => {
-        rest.onClick?.(e);
-        if (e.defaultPrevented) return;
-        handleClick();
+        runClickHandler(e, rest.onClick, handleClick);
       },
     };
     if (render) {

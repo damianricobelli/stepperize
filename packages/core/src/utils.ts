@@ -136,10 +136,6 @@ export const updateStepIndex = <Steps extends Step[]>(
   }
 
   const direction = newIndex < 0 ? "prev" : "next";
-  const reason = newIndex < 0 ? "it is the first step" : "it is the last step";
-  const stepId = steps[newIndex]?.id ?? `index ${newIndex}`;
-
-  throw new Error(
-    `Cannot navigate ${direction} from step "${stepId}": ${reason}`,
-  );
+  const reason = newIndex < 0 ? "first step" : "last step";
+  throw new Error(`Cannot navigate ${direction}: ${reason}`);
 };

@@ -51,7 +51,7 @@ export function StepItemProvider<S extends Step>({
 export function useStepItemContext<S extends Step = Step>(): StepItemValue<S> {
   const context = React.useContext(StepItemContext);
   if (!context) {
-    throw new Error("useStepItemContext must be used within a Stepper.Item.");
+    throw new Error("Missing Stepper.Item.");
   }
   return context as StepItemValue<S>;
 }

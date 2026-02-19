@@ -12,9 +12,14 @@ export default defineConfig({
   tsconfig: "tsconfig.json",
   terserOptions: {
     compress: {
+      module: true,
+      passes: 3,
+      pure_getters: true,
       drop_console: true,
       pure_funcs: ["console.info", "console.debug"],
     },
-    mangle: true,
+    mangle: {
+      toplevel: true,
+    },
   },
 });

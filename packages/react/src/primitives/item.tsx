@@ -1,5 +1,6 @@
 import type { Get, Metadata, Step, Stepper } from "@stepperize/core";
 import React from "react";
+import { useStepperContextOrThrow } from "./helpers";
 import { StepItemProvider, type StepItemValue } from "./context";
 import type { ItemProps, StepStatus } from "./types";
 
@@ -8,10 +9,7 @@ export function createItem<Steps extends Step[]>(
 ) {
   return function Item(props: ItemProps<Steps>) {
     const { step, render, children, ...rest } = props;
-    const stepper = React.useContext(StepperContext);
-    if (!stepper) {
-      throw new Error("Stepper.Item must be used within Stepper.Root.");
-    }
+    const stepper = useStepperContextOrThrow(StepperContext);
     const stepIndex = stepper.lookup.getIndex(step);
     const currentIndex = stepper.state.current.index;
     const status: StepStatus =

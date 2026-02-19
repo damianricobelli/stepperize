@@ -18,7 +18,7 @@ export function createRoot<Steps extends Step[]>(
   }: Omit<RootProps<Steps>, "initialStep" | "initialMetadata">) {
     const stepper = React.useContext(StepperContext);
     if (!stepper) {
-      throw new Error("Stepper.Root must be used within Scoped.");
+      throw new Error("Missing Scoped.");
     }
     return React.createElement(
       "div",

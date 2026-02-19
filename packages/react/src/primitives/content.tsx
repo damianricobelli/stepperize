@@ -1,5 +1,6 @@
 import type { Step, Stepper } from "@stepperize/core";
 import React from "react";
+import { useStepperContextOrThrow } from "./helpers";
 import type { ContentProps } from "./types";
 
 export function createContent<Steps extends Step[]>(
@@ -7,10 +8,7 @@ export function createContent<Steps extends Step[]>(
 ) {
   return function Content(props: ContentProps<Steps>) {
     const { step, render, children, ...rest } = props;
-    const stepper = React.useContext(StepperContext);
-    if (!stepper) {
-      throw new Error("Stepper.Content must be used within Stepper.Root.");
-    }
+    const stepper = useStepperContextOrThrow(StepperContext);
     const isActive = stepper.state.current.data.id === step;
     if (!isActive) {
       return null;
@@ -20,7 +18,6 @@ export function createContent<Steps extends Step[]>(
       "data-component": "stepper-content",
       role: "tabpanel" as const,
       "aria-labelledby": `step-${step}`,
-      "aria-hidden": false,
       tabIndex: 0,
       ...rest,
     };
