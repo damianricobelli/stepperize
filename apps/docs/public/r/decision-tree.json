@@ -1,0 +1,37 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "decision-tree",
+  "type": "registry:component",
+  "title": "Decision Tree",
+  "description": "A plan finder that branches to different follow-up questions and converges on a result computed from the answers.",
+  "author": "Stepperize",
+  "dependencies": [
+    "@stepperize/react",
+    "lucide-react"
+  ],
+  "registryDependencies": [],
+  "categories": [
+    "flow-control"
+  ],
+  "meta": {
+    "capabilities": [
+      "branching"
+    ],
+    "level": "advanced",
+    "tags": [
+      "decision tree",
+      "quiz",
+      "branching",
+      "wizard",
+      "recommendation"
+    ]
+  },
+  "files": [
+    {
+      "path": "components/stepperize/decision-tree.tsx",
+      "type": "registry:component",
+      "target": "components/stepperize/decision-tree.tsx",
+      "content": "import { defineStepper } from \"@stepperize/react\";\nimport { ArrowLeft, Briefcase, RotateCcw, Sparkles, User } from \"lucide-react\";\n\nconst tree = defineStepper([\n\t{ id: \"use\", title: \"Use case\" },\n\t{ id: \"personal\", title: \"Budget\" },\n\t{ id: \"business\", title: \"Team size\" },\n\t{ id: \"result\", title: \"Recommendation\" },\n] as const);\n\nconst { Stepper, useStepper } = tree;\n\ntype Use = \"personal\" | \"business\";\ntype Answer = \"free\" | \"paid\" | \"small\" | \"large\";\n\n// Two branches off the root, each asking a different follow-up, both converging\n// on a single \"result\" step that derives its outcome from the path taken.\nconst PLANS: Record<string, { name: string; blurb: string }> = {\n\t\"personal/free\": {\n\t\tname: \"Hobby\",\n\t\tblurb: \"Free forever for personal projects.\",\n\t},\n\t\"personal/paid\": {\n\t\tname: \"Pro\",\n\t\tblurb: \"For individuals who need more power.\",\n\t},\n\t\"business/small\": { name: \"Team\", blurb: \"Collaboration for small teams.\" },\n\t\"business/large\": {\n\t\tname: \"Enterprise\",\n\t\tblurb: \"SSO, audit logs, and support.\",\n\t},\n};\n\n/**\n * Decision tree: the first answer branches to one of two follow-up questions,\n * then both branches converge on a shared result computed from the answers.\n */\nexport function DecisionTreeBlock() {\n\treturn (\n\t\t<Stepper.Root className=\"w-full max-w-sm rounded-xl border bg-background p-6 shadow-sm\">\n\t\t\t{() => <Inner />}\n\t\t</Stepper.Root>\n\t);\n}\n\nfunction Inner() {\n\tconst stepper = useStepper();\n\tconst use = stepper.data.get(\"use\") as Use | undefined;\n\tconst answer = stepper.data.get(\"result\") as Answer | undefined;\n\n\t// Flow data is keyed by step id: the use case lives on \"use\", the follow-up\n\t// answer on \"result\" (the step that reads them both back).\n\tconst pick = (\n\t\tkey: \"use\" | \"result\",\n\t\tvalue: string,\n\t\tnext: Parameters<typeof stepper.goTo>[0],\n\t) => {\n\t\tstepper.data.set(key, value);\n\t\tstepper.goTo(next);\n\t};\n\n\treturn (\n\t\t<>\n\t\t\t<div className=\"mb-4 flex items-center gap-2 text-sm font-semibold\">\n\t\t\t\t<Sparkles className=\"size-4 text-primary\" /> Find your plan\n\t\t\t</div>\n\n\t\t\t<div className=\"min-h-44\">\n\t\t\t\t<Stepper.Content step=\"use\" className=\"space-y-2\">\n\t\t\t\t\t<p className=\"text-sm text-muted-foreground\">\n\t\t\t\t\t\tWhat are you building?\n\t\t\t\t\t</p>\n\t\t\t\t\t<Option\n\t\t\t\t\t\ticon={User}\n\t\t\t\t\t\tlabel=\"A personal project\"\n\t\t\t\t\t\tonClick={() => pick(\"use\", \"personal\", \"personal\")}\n\t\t\t\t\t/>\n\t\t\t\t\t<Option\n\t\t\t\t\t\ticon={Briefcase}\n\t\t\t\t\t\tlabel=\"Something for work\"\n\t\t\t\t\t\tonClick={() => pick(\"use\", \"business\", \"business\")}\n\t\t\t\t\t/>\n\t\t\t\t</Stepper.Content>\n\n\t\t\t\t<Stepper.Content step=\"personal\" className=\"space-y-2\">\n\t\t\t\t\t<BackButton onClick={() => stepper.goTo(\"use\")} />\n\t\t\t\t\t<p className=\"text-sm text-muted-foreground\">What's your budget?</p>\n\t\t\t\t\t<Option\n\t\t\t\t\t\tlabel=\"Free only\"\n\t\t\t\t\t\tonClick={() => pick(\"result\", \"free\", \"result\")}\n\t\t\t\t\t/>\n\t\t\t\t\t<Option\n\t\t\t\t\t\tlabel=\"Happy to pay for more\"\n\t\t\t\t\t\tonClick={() => pick(\"result\", \"paid\", \"result\")}\n\t\t\t\t\t/>\n\t\t\t\t</Stepper.Content>\n\n\t\t\t\t<Stepper.Content step=\"business\" className=\"space-y-2\">\n\t\t\t\t\t<BackButton onClick={() => stepper.goTo(\"use\")} />\n\t\t\t\t\t<p className=\"text-sm text-muted-foreground\">How big is your team?</p>\n\t\t\t\t\t<Option\n\t\t\t\t\t\tlabel=\"Under 10 people\"\n\t\t\t\t\t\tonClick={() => pick(\"result\", \"small\", \"result\")}\n\t\t\t\t\t/>\n\t\t\t\t\t<Option\n\t\t\t\t\t\tlabel=\"10 or more\"\n\t\t\t\t\t\tonClick={() => pick(\"result\", \"large\", \"result\")}\n\t\t\t\t\t/>\n\t\t\t\t</Stepper.Content>\n\n\t\t\t\t<Stepper.Content step=\"result\">\n\t\t\t\t\t<Result use={use} answer={answer} onRestart={() => stepper.reset()} />\n\t\t\t\t</Stepper.Content>\n\t\t\t</div>\n\t\t</>\n\t);\n}\n\nfunction Result({\n\tuse,\n\tanswer,\n\tonRestart,\n}: {\n\tuse?: Use;\n\tanswer?: Answer;\n\tonRestart: () => void;\n}) {\n\tconst plan = use && answer ? PLANS[`${use}/${answer}`] : undefined;\n\tif (!plan) return null;\n\treturn (\n\t\t<div className=\"space-y-3 text-center\">\n\t\t\t<p className=\"text-xs uppercase tracking-wide text-muted-foreground\">\n\t\t\t\tWe recommend\n\t\t\t</p>\n\t\t\t<p className=\"text-2xl font-bold text-primary\">{plan.name}</p>\n\t\t\t<p className=\"text-sm text-muted-foreground\">{plan.blurb}</p>\n\t\t\t<button\n\t\t\t\ttype=\"button\"\n\t\t\t\tonClick={onRestart}\n\t\t\t\tclassName=\"inline-flex h-9 items-center gap-1.5 rounded-lg border bg-background px-4 text-sm font-medium transition-colors hover:bg-muted\"\n\t\t\t>\n\t\t\t\t<RotateCcw className=\"size-3.5\" /> Start over\n\t\t\t</button>\n\t\t</div>\n\t);\n}\n\nfunction Option({\n\ticon: Icon,\n\tlabel,\n\tonClick,\n}: {\n\ticon?: typeof User;\n\tlabel: string;\n\tonClick: () => void;\n}) {\n\treturn (\n\t\t<button\n\t\t\ttype=\"button\"\n\t\t\tonClick={onClick}\n\t\t\tclassName=\"flex w-full items-center gap-3 rounded-lg border p-3 text-left text-sm font-medium transition-colors hover:border-primary/50 hover:bg-primary/5\"\n\t\t>\n\t\t\t{Icon && (\n\t\t\t\t<span className=\"grid size-8 place-items-center rounded-lg bg-muted text-muted-foreground\">\n\t\t\t\t\t<Icon className=\"size-4\" />\n\t\t\t\t</span>\n\t\t\t)}\n\t\t\t{label}\n\t\t</button>\n\t);\n}\n\nfunction BackButton({ onClick }: { onClick: () => void }) {\n\treturn (\n\t\t<button\n\t\t\ttype=\"button\"\n\t\t\tonClick={onClick}\n\t\t\tclassName=\"inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground\"\n\t\t>\n\t\t\t<ArrowLeft className=\"size-3.5\" /> Back\n\t\t</button>\n\t);\n}\n"
+    }
+  ]
+}

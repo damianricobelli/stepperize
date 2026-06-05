@@ -1,0 +1,161 @@
+---
+title: First stepper
+description: Build your first typed multi-step flow.
+---
+
+# First stepper
+
+Use this pattern when one component owns the whole flow.
+
+You will build three things:
+
+1. A typed step definition.
+2. A component that reads the current step.
+3. Buttons that move through the flow.
+
+## Define the flow
+
+```tsx
+import { defineStepper } from "@stepperize/react";
+
+const signup = defineStepper([
+  { id: "name", title: "Name" },
+  { id: "email", title: "Email" },
+  { id: "confirm", title: "Confirm" },
+]);
+```
+
+The ids become the typed union `"name" | "email" | "confirm"`.
+
+## Create an instance
+
+Call the generated hook inside the component that owns the flow.
+
+```tsx
+function Signup() {
+  const stepper = signup.useStepper();
+
+  return <p>{stepper.current.title}</p>;
+}
+```
+
+`stepper.current` is the active step object. It includes your custom fields, so `title`, `description`, `schema`, or any other data you put on the step is available without a lookup.
+
+## Render each step
+
+Use `stepper.match` when each step has different content.
+
+```tsx
+function Signup() {
+  const stepper = signup.useStepper();
+
+  return (
+    <form>
+      <p>
+        Step {stepper.index + 1} of {stepper.count}: {stepper.current.title}
+      </p>
+
+      {stepper.match({
+        name: () => <input name="name" placeholder="Ada Lovelace" />,
+        email: () => <input name="email" placeholder="ada@example.com" />,
+        confirm: () => <p>Review your details.</p>,
+      })}
+
+      <button type="button" disabled={!stepper.canPrev} onClick={() => stepper.prev()}>
+        Back
+      </button>
+      <button type="button" disabled={!stepper.canNext} onClick={() => stepper.next()}>
+        Next
+      </button>
+    </form>
+  );
+}
+```
+
+`match` is exhaustive. If you add `{ id: "password" }` to the definition, TypeScript asks you to add a `password` renderer too.
+
+## Add navigation
+
+The basic buttons are just React buttons calling the flat instance:
+
+```tsx
+<button type="button" disabled={!stepper.canPrev} onClick={() => stepper.prev()}>
+  Back
+</button>
+
+<button type="button" disabled={!stepper.canNext} onClick={() => stepper.next()}>
+  Next
+</button>
+```
+
+`canPrev` and `canNext` already account for the first/last step and any navigation currently in progress.
+
+## What you will use most
+
+| API | Use it for |
+| --- | --- |
+| `stepper.current` | Current step object, including your custom fields. |
+| `stepper.index` / `stepper.count` | User-facing progress labels. |
+| `stepper.match({...})` | Exhaustive content rendering by step id. |
+| `stepper.canPrev` / `stepper.canNext` | Disabled states. |
+| `stepper.prev()` / `stepper.next()` | Move through the flow. |
+
+## Complete example
+
+```tsx
+import { defineStepper } from "@stepperize/react";
+
+const signup = defineStepper([
+  { id: "name", title: "Name" },
+  { id: "email", title: "Email" },
+  { id: "confirm", title: "Confirm" },
+]);
+
+export function Signup() {
+  const stepper = signup.useStepper();
+
+  return (
+    <form>
+      <p>
+        Step {stepper.index + 1} of {stepper.count}: {stepper.current.title}
+      </p>
+
+      {stepper.match({
+        name: () => <input name="name" placeholder="Ada Lovelace" />,
+        email: () => <input name="email" placeholder="ada@example.com" />,
+        confirm: () => <p>Review your details.</p>,
+      })}
+
+      <button type="button" disabled={!stepper.canPrev} onClick={() => stepper.prev()}>
+        Back
+      </button>
+      <button type="button" disabled={!stepper.canNext} onClick={() => stepper.next()}>
+        Next
+      </button>
+    </form>
+  );
+}
+```
+
+## Share it when the UI grows
+
+If the sidebar, content, and footer need the same instance, wrap them with the generated provider:
+
+```tsx
+function Shell() {
+  return (
+    <signup.Provider defaultStep="name">
+      <Sidebar />
+      <Panel />
+      <FooterActions />
+    </signup.Provider>
+  );
+}
+
+function Panel() {
+  const stepper = signup.useStepper();
+  return <h2>{stepper.current.title}</h2>;
+}
+```
+
+Next: [learn how to model steps](/docs/latest/getting-started/concepts), then [guard navigation](/docs/latest/guides/navigation).

@@ -1,0 +1,140 @@
+---
+title: Production checklist
+description: Prepare your stepper for production.
+---
+
+# Production checklist
+
+You have a working stepper. Before it ships, walk this list. Each item is a real
+failure mode, with the fix.
+
+## Accessibility
+
+If you use the `Stepper.*` primitives, most of this is already done for you — the
+components emit roles, ids, and ARIA. Your job is to not break them.
+
+- [ ] **Keep the wiring.** When you use `render={(props) => ...}`, **spread
+  `props`** onto your element. Dropping them strips `role`, `aria-*`, and the
+  click handler.
+- [ ] **Trigger a real `<button>`.** `Stepper.Trigger`/`Next`/`Prev` render
+  buttons with the right `tabIndex` and `aria-disabled`. If you render a custom
+  element, keep it focusable and operable by keyboard.
+- [ ] **Arrow keys work.** `Stepper.List` handles `←/→` (or `↑/↓` when
+  `orientation="vertical"`), plus `Home`/`End`, moving focus between triggers
+  with roving `tabIndex` when `canGoTo(id)` allows the target. Set
+  `orientation` to match your layout.
+- [ ] **Indicators are decorative.** `Stepper.Indicator` is `aria-hidden`. Put
+  the accessible label in `Stepper.Title`, not the indicator.
+- [ ] **Panels are labelled.** `Stepper.Content` is a `tabpanel` linked to its
+  trigger. Render one `Content` per step so the relationship holds.
+
+What the primitives emit, for reference:
+
+| Element | Role / ARIA |
+| --- | --- |
+| `Stepper.Root` | `role="group"`, `aria-label="Stepper"` |
+| `Stepper.List` | `role="tablist"`, `aria-orientation` |
+| `Stepper.Trigger` | `role="tab"`, `aria-selected`, `aria-current`, `aria-controls` |
+| `Stepper.Content` | `role="tabpanel"`, `aria-labelledby` |
+
+Rolling your own markup instead of primitives? You own all of the above. The
+primitives exist precisely so you don't have to.
+
+## SSR, RSC, and Next.js
+
+- [ ] **Define at module scope.** `defineStepper(...)` has no side effects and is
+  safe to import anywhere, including Server Components.
+- [ ] **Mark interactive components `"use client"`.** `useStepper`, `Provider`,
+  and the primitives are client APIs. Any component that calls them must be a
+  Client Component.
+
+```tsx
+// stepper.ts — safe on the server, shared everywhere
+export const checkout = defineStepper([...]);
+```
+
+```tsx
+"use client";
+import { checkout } from "./stepper";
+
+export function Checkout() {
+  const stepper = checkout.useStepper();
+  // ...
+}
+```
+
+- [ ] **No hydration mismatch.** Don't seed the initial step from
+  `window`/`localStorage` during render. Read persisted state in an effect, then
+  `goTo` — or pass it as a server prop.
+
+## State & data
+
+- [ ] **Controlled means you update it.** If you pass `step`, you must handle
+  `onStepChange` (same for `data`, `completed`). See
+  [Controlled vs uncontrolled](/docs/latest/core-concepts/controlled-vs-uncontrolled).
+- [ ] **Recover external step ids.** Controlled `step` can receive raw URL or
+  storage values, but pair it with `onInvalidStep`. Use `parseStep` before
+  passing external values to typed APIs like `goTo(id)`.
+- [ ] **`await` navigation when branching on the result.** A bare call is a
+  Promise. `if (!stepper.next())` always passes.
+- [ ] **Disable during transitions.** Bind buttons to `canNext`/`canPrev`; they
+  already account for `isPending`, so async guards can't be double-fired.
+
+## Persistence (resume where they left off)
+
+```tsx
+const stepper = checkout.useStepper({
+  data: values,
+  onDataChange: (next) => {
+    setValues(next);
+    localStorage.setItem("checkout", JSON.stringify(next));
+  },
+});
+```
+
+- [ ] Persist `values` (and optionally `step`/`completed`) on change.
+- [ ] Rehydrate in an effect, not during render (see SSR above).
+- [ ] For complex step UI that should survive step navigation without a storage
+  round trip, consider
+  [React Activity](/docs/latest/guides/react-activity). It keeps inactive step
+  components mounted while preserving Stepperize-controlled navigation.
+
+## Analytics & side effects
+
+- [ ] Use `onStepChange` for step-view tracking — it fires only on accepted moves.
+
+```tsx
+checkout.useStepper({
+  onStepChange: (step, { from, direction }) =>
+    analytics.track("step_change", { from: from.id, to: step, direction }),
+});
+```
+
+## Testing
+
+Stepperize is just React state, so test it like any component.
+
+```tsx
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+
+test("advances to payment", async () => {
+  render(<Checkout />);
+  await userEvent.click(screen.getByRole("button", { name: /next/i }));
+  expect(screen.getByRole("tab", { name: /payment/i })).toHaveAttribute("aria-selected", "true");
+});
+```
+
+- [ ] Assert on **roles and `aria-selected`/`aria-current`**, not on classes —
+  they're stable and they verify accessibility at the same time.
+- [ ] Test a **cancelled `beforeStepChange`** path: the active step should not change.
+- [ ] For pure logic, the `@stepperize/core` helpers (`createStepMap`,
+  `matchStep`) run without React — handy in unit tests and loaders.
+
+## Final pass
+
+- [ ] Keyboard-only walkthrough: Tab to the list, arrow between steps, Enter to
+  select, Tab into the panel.
+- [ ] Screen-reader check: each step announces its position and selected state.
+- [ ] Refresh mid-flow: state restores (if you persist) or resets cleanly.
+- [ ] Network-throttled: async guards disable buttons instead of double-firing.

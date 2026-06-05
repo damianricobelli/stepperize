@@ -1,18 +1,31 @@
 {
-	"compilerOptions": {
-		"outDir": "dist",
-		"declaration": true,
-		"declarationMap": true,
-		"sourceMap": true,
-		"removeComments": false,
-		"jsx": "react-jsx",
-		"module": "esnext",
-		"target": "esnext",
-		"moduleResolution": "bundler",
-		"esModuleInterop": true,
-		"skipLibCheck": true,
-		"strict": true
-	},
-	"include": ["."],
-	"exclude": ["node_modules", "dist"]
+  "compilerOptions": {
+    "outDir": "dist",
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "removeComments": false,
+    "jsx": "react-jsx",
+    "module": "esnext",
+    "target": "esnext",
+    "moduleResolution": "bundler",
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "ignoreDeprecations": "6.0",
+  },
+  "include": [
+    "src/index.ts",
+    "src/define-stepper.ts",
+    "src/types.ts",
+    "src/utils.ts",
+    "src/primitives",
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "src/tests",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+  ],
 }

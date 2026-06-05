@@ -1,55 +1,49 @@
-import type { Get, Metadata, Step, Stepper } from "@stepperize/core";
+import type { Get, Step, Stepper } from "@stepperize/core";
 import React from "react";
+import { StepItemProvider, type StepItemValue, useAutoStep } from "./context";
 import { useStepperContextOrThrow } from "./helpers";
-import { StepItemProvider, type StepItemValue } from "./context";
-import type { ItemProps, StepStatus } from "./types";
+import type { ItemProps, PrimitiveComponent } from "./types";
 
-export function createItem<Steps extends Step[]>(
-  StepperContext: React.Context<Stepper<Steps> | null>,
-) {
-  return function Item(props: ItemProps<Steps>) {
-    const { step, render, children, ...rest } = props;
-    const stepper = useStepperContextOrThrow(StepperContext);
-    const stepIndex = stepper.lookup.getIndex(step);
-    const currentIndex = stepper.state.current.index;
-    const status: StepStatus =
-      stepIndex < currentIndex
-        ? "success"
-        : stepIndex === currentIndex
-          ? "active"
-          : "inactive";
-    const stepData = stepper.lookup.get(step as Get.Id<Steps>);
-    const itemValue = React.useMemo(
-      (): StepItemValue<Get.StepById<Steps, Get.Id<Steps>>> => ({
-        data: stepData,
-        index: stepIndex,
-        status,
-        metadata: {
-          get: () => stepper.metadata.get(step as Get.Id<Steps>),
-          set: <M extends Metadata>(values: M) =>
-            stepper.metadata.set(step as Get.Id<Steps>, values),
-          reset: (keepInitialMetadata?: boolean) =>
-            stepper.metadata.reset(keepInitialMetadata),
-        },
-      }),
-      [step, stepData, stepIndex, status, stepper],
-    );
-    const domProps = {
-      "data-component": "stepper-item",
-      "data-status": status,
-      ...rest,
-    };
-    if (render) {
-      return (
-        <StepItemProvider value={itemValue}>
-          {render(domProps)}
-        </StepItemProvider>
-      );
-    }
-    return (
-      <StepItemProvider value={itemValue}>
-        <li {...domProps}>{children}</li>
-      </StepItemProvider>
-    );
-  };
+export function createItem<Steps extends readonly Step[]>(
+	StepperContext: React.Context<Stepper<Steps> | null>,
+): PrimitiveComponent<ItemProps<Steps>> {
+	return function Item(props: ItemProps<Steps>) {
+		const { step: explicitStep, render, children, ...rest } = props;
+		const autoStep = useAutoStep<Steps[number]>();
+		const stepId = explicitStep ?? (autoStep?.id as Get.Id<Steps> | undefined);
+
+		if (!stepId) {
+			throw new Error("Stepper.Item needs a step prop or must be used inside Stepper.Items.");
+		}
+
+		const stepper = useStepperContextOrThrow(StepperContext);
+		const stepIndex = stepper.steps.findIndex((s) => s.id === stepId);
+		const status = stepper.status(stepId);
+		const stepData = stepper.steps.find((s) => s.id === stepId) as Get.StepById<Steps, Get.Id<Steps>> | undefined;
+
+		if (!stepData) {
+			throw new Error(`Step "${stepId}" not found.`);
+		}
+
+		const itemValue = React.useMemo(
+			(): StepItemValue<Get.StepById<Steps, Get.Id<Steps>>> => ({
+				data: stepData as Get.StepById<Steps, Get.Id<Steps>>,
+				index: stepIndex,
+				status,
+			}),
+			[stepData, stepIndex, status],
+		);
+
+		const domProps = {
+			"data-component": "stepper-item",
+			"data-status": status,
+			...rest,
+		};
+
+		return (
+			<StepItemProvider value={itemValue}>
+				{render ? render(domProps) : <li {...domProps}>{children}</li>}
+			</StepItemProvider>
+		);
+	};
 }

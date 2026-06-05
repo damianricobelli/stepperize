@@ -1,0 +1,148 @@
+---
+title: Shared state
+description: Share one stepper instance across your UI.
+---
+
+# Shared state
+
+Start local. Share only when the UI is split across components.
+
+All examples on this page use this stepper definition:
+
+```tsx
+import { defineStepper } from "@stepperize/react";
+
+const checkout = defineStepper([
+  { id: "shipping", title: "Shipping" },
+  { id: "payment", title: "Payment" },
+  { id: "review", title: "Review" },
+]);
+```
+
+| Shape | Use it when |
+| --- | --- |
+| `useStepper()` | One component owns the flow. |
+| Generated `Provider` | Descendants need the same instance. |
+| Controlled options | Router, URL, store, or server state owns the source of truth. |
+
+The generated hook always has the same rule:
+
+| Location | `checkout.useStepper()` does |
+| --- | --- |
+| Outside `checkout.Provider` or `Stepper.Root` | Creates a local instance. |
+| Inside `checkout.Provider` or `Stepper.Root` | Reads the shared instance from context. |
+
+## Local
+
+```tsx
+function Checkout() {
+  const stepper = checkout.useStepper();
+
+  return (
+    <>
+      <Panel stepper={stepper} />
+      <Actions stepper={stepper} />
+    </>
+  );
+}
+```
+
+Use this until prop passing becomes annoying.
+
+Local state is best for a compact wizard where content, actions, and progress live in one component.
+
+## Provider
+
+```tsx
+function CheckoutShell() {
+  return (
+    <checkout.Provider defaultStep="shipping">
+      <Sidebar />
+      <Panel />
+      <Actions />
+    </checkout.Provider>
+  );
+}
+```
+
+Every descendant calls the same generated hook:
+
+```tsx
+function Actions() {
+  const stepper = checkout.useStepper();
+
+  return (
+    <button type="button" disabled={!stepper.canNext} onClick={() => stepper.next()}>
+      Continue
+    </button>
+  );
+}
+```
+
+Inside the provider, `checkout.useStepper()` reads shared state. Outside it, it creates local state.
+
+Use `Provider` when you want your own markup and layout, but many descendants need the same instance.
+
+## Controlled
+
+```tsx
+const stepper = checkout.useStepper({
+  step,
+  onStepChange: setStep,
+  data: values,
+  onDataChange: setValues,
+  completed,
+  onCompletedChange: setCompleted,
+});
+```
+
+Use controlled options for URL sync, external stores, persisted drafts, or workflow engines.
+
+Controlled data is not the only way to keep step UI around. When the user should
+return to the same mounted form, editor, or expensive panel instance, use
+[React Activity](/docs/latest/guides/react-activity) to preserve inactive step
+components and let this shared stepper keep driving the active id.
+
+## URL synced step
+
+Controlled `step` is useful when a route param or search param owns the current step.
+
+```tsx
+const stepper = checkout.useStepper({
+  step: currentStepFromUrl,
+  onStepChange: (nextStep) => {
+    navigate({ search: { step: nextStep } });
+  },
+  onInvalidStep: () => {
+    navigate({ search: { step: "shipping" }, replace: true });
+  },
+});
+```
+
+The controlled `step` option accepts raw external strings. `onStepChange` still
+emits only known step ids. Use `checkout.parseStep(value)` when you need to
+narrow an untrusted value before passing it to another typed API.
+
+## Defaults vs overrides
+
+Definition options are defaults for every instance:
+
+```tsx
+const checkout = defineStepper(steps, {
+  defaultStep: "shipping",
+  linear: true,
+});
+```
+
+Instance options override those defaults:
+
+```tsx
+const stepper = checkout.useStepper({
+  defaultStep: "review",
+  linear: false,
+});
+```
+
+Use definition options for the normal flow. Use instance options for one screen that behaves differently.
+
+Next: [build primitive UI](/docs/latest/guides/primitives), or jump to the [instance reference](/docs/latest/api/react/stepper-instance).

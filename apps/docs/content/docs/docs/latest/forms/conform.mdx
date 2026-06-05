@@ -1,0 +1,157 @@
+---
+title: Conform
+description: Build a checkout flow with Conform.
+---
+
+# Conform
+
+The same flow as the [React Hook Form](/docs/latest/forms/react-hook-form) and
+[TanStack Form](/docs/latest/forms/tanstack-form) versions, built with Conform.
+Conform is `FormData`- and schema-first, but the Stepperize hand-off is unchanged.
+
+```bash
+npm install @conform-to/react @conform-to/zod
+```
+
+## Setup
+
+The shared definition. Conform owns parsing **and validation** of each step's
+fields; Stepperize owns the flow. With form-driven navigation (Pattern 8) Conform
+parses and validates on submit *before* `stepper.next()`, so the form library is
+the validation source of truth.
+
+```tsx
+import { defineStepper } from "@stepperize/react";
+
+export const checkout = defineStepper(
+  [
+    { id: "personal", title: "Personal", schema: personalSchema },
+    { id: "shipping", title: "Shipping", schema: shippingSchema },
+    { id: "payment", title: "Payment", schema: paymentSchema },
+    { id: "review", title: "Review" },
+  ],
+  { linear: true },
+);
+```
+
+<Callout type="info">
+The per-step `schema` types `stepper.data` and feeds `parseWithZod`. You *can* also
+add a library-agnostic `beforeStepChange` guard (`ctx.validate()`) as a
+safety net for non-form navigation paths, but with form-driven navigation it is
+optional — see [Schema & validate()](/docs/latest/forms/schema-validation).
+</Callout>
+
+## A step form (save + seed)
+
+`defaultValue` seeds from the saved draft (Pattern 2). Conform parses with the
+step's schema and reports field errors, so an invalid submission never advances.
+`onSubmit` saves the parsed value and advances (Pattern 1).
+
+```tsx
+import { useForm } from "@conform-to/react";
+import { parseWithZod } from "@conform-to/zod";
+
+function PersonalStep() {
+  const stepper = checkout.useStepper();
+  const draft = stepper.data.get("personal");
+
+  const [form, fields] = useForm({
+    defaultValue: draft,
+    onValidate({ formData }) {
+      return parseWithZod(formData, { schema: personalSchema });
+    },
+    async onSubmit(event, { submission }) {
+      event.preventDefault();
+      if (submission?.status !== "success") return;
+
+      const moved = await stepper.next({ data: submission.value });
+      if (moved) stepper.setComplete();
+    },
+  });
+
+  return (
+    <form id={form.id} onSubmit={form.onSubmit} noValidate>
+      <input name={fields.name.name} defaultValue={fields.name.initialValue} />
+      {fields.name.errors && <p role="alert">{fields.name.errors}</p>}
+
+      <input name={fields.email.name} defaultValue={fields.email.initialValue} />
+      {fields.email.errors && <p role="alert">{fields.email.errors}</p>}
+
+      <button type="submit">{stepper.isLast ? "Place order" : "Next"}</button>
+    </form>
+  );
+}
+```
+
+Conform validates on submit via `parseWithZod`; on a successful submission you get
+a typed `submission.value`, which you hand to `stepper.next({ data: value })`. Same
+[Pattern 8](/docs/latest/forms/patterns#pattern-8--form-driven-navigation).
+Field validation (Conform) and flow validation (an optional `beforeStepChange`
+guard) are different layers: field errors versus the transition gate.
+
+If the step contains component-local UI that should not be recreated on return,
+wrap each step panel with [React Activity](/docs/latest/guides/react-activity).
+Stepperize still controls the active step; Activity preserves the inactive tree.
+
+## Review and edit
+
+Identical across implementations — pure Stepperize, no form library.
+
+```tsx
+function ReviewStep() {
+  const stepper = checkout.useStepper();
+  const all = stepper.data.all();
+
+  return (
+    <>
+      <Summary section="Personal" data={all.personal} onEdit={() => stepper.goTo("personal")} />
+      <Summary section="Shipping" data={all.shipping} onEdit={() => stepper.goTo("shipping")} />
+      <Summary section="Payment"  data={all.payment}  onEdit={() => stepper.goTo("payment")} />
+      <button type="button" onClick={() => api.createOrder(all)}>Place order</button>
+    </>
+  );
+}
+```
+
+## Render the active step
+
+```tsx
+function Checkout() {
+  // One Provider so the step components and this renderer share one instance.
+  return (
+    <checkout.Provider>
+      <CheckoutFlow />
+    </checkout.Provider>
+  );
+}
+
+function CheckoutFlow() {
+  const stepper = checkout.useStepper();
+  return stepper.match({
+    personal: () => <PersonalStep />,
+    shipping: () => <ShippingStep />,
+    payment: () => <PaymentStep />,
+    review: () => <ReviewStep />,
+  });
+}
+```
+
+## How Conform maps to the patterns
+
+| Pattern | Conform |
+| --- | --- |
+| Seed from draft | `useForm({ defaultValue: stepper.data.get(id) })` |
+| Field validation | `onValidate: parseWithZod(formData, { schema })` |
+| Save + advance | `onSubmit` → `stepper.next({ data: submission.value })` |
+| Navigation gate (optional) | `beforeStepChange` on the Provider/instance |
+| Review | `stepper.data.all()` (no form library) |
+| Edit previous | `stepper.goTo(id)` → form re-seeds from `defaultValue` |
+
+<Callout type="info">
+Conform works with `FormData`, so `submission.value` is the parsed, typed object —
+exactly the shape you want to store as the step draft. The same step `schema` can
+feed both Conform's field validation and an optional `beforeStepChange` gate.
+</Callout>
+
+Compare with [React Hook Form](/docs/latest/forms/react-hook-form) and
+[TanStack Form](/docs/latest/forms/tanstack-form).

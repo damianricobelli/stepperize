@@ -1,0 +1,109 @@
+---
+title: Core utilities
+description: Reference the framework-agnostic utilities.
+---
+
+# Core utilities
+
+Use `@stepperize/react` for React apps. Use `@stepperize/core` directly for adapters, tests, validation utilities, or non-React integrations.
+
+Core has no React state. It exports types and pure helpers.
+
+React users usually do not need to install or import core directly because `@stepperize/react` depends on it and re-exports the common public types.
+
+## Types
+
+```ts
+type Step;
+type StandardSchemaV1<Input, Output>;
+type StepStatus = "active" | "previous" | "upcoming";
+type StepDirection = "next" | "prev" | "goto" | "reset";
+type FlowData<Steps>;
+type InputOf<Steps, Id>;
+type OutputOf<Steps, Id>;
+type ValidationResult<T>;
+type StepChangeContext<Steps>;
+type StepChangeValidator<Steps>;
+type NavigationPayload;
+```
+
+## Step map
+
+```ts
+import { createStepMap } from "@stepperize/core";
+
+const stepMap = createStepMap(steps);
+
+stepMap.ids;
+stepMap.get("shipping");
+stepMap.at(0);
+stepMap.indexOf("payment");
+stepMap.has("review");
+stepMap.first();
+stepMap.last();
+stepMap.next("shipping");
+stepMap.prev("review");
+stepMap.neighbors("payment");
+```
+
+```ts
+import { parseStep, validateStep } from "@stepperize/core";
+
+// Narrow an arbitrary value to a known step id, or `undefined`.
+const stepId = parseStep(steps, urlParam);
+
+// Validate a value against a step's schema (Standard Schema). Schemaless steps
+// always succeed. Always resolves to a ValidationResult.
+const result = await validateStep(steps, "shipping", draft);
+```
+
+Use these when you need step metadata or validation without a React hook.
+
+`createStepMap` is useful in server code, route loaders, tests, validation modules, and adapters where React hooks cannot run.
+
+## Status
+
+```ts
+getStepStatus(steps, currentIndex, "shipping");
+getStepStatuses(steps, currentIndex);
+```
+
+Status is positional: `"active"`, `"previous"`, or `"upcoming"`. It is separate from business completion.
+
+## Match
+
+```ts
+matchStep(steps, currentId, {
+  shipping: () => "Shipping",
+  payment: () => "Payment",
+  review: () => "Review",
+});
+```
+
+React exposes this as `stepper.match`.
+
+## Initial helpers
+
+```ts
+getInitialStepIndex(steps, initial);
+getInitialData(data);
+```
+
+These are mainly useful when building adapters.
+
+## Exports
+
+```ts
+import {
+  createStepMap,
+  getInitialData,
+  getInitialStepIndex,
+  getStepStatus,
+  getStepStatuses,
+  matchStep,
+  parseStep,
+  validateStep,
+  type Step,
+  type Stepper,
+} from "@stepperize/core";
+```

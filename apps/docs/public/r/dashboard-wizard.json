@@ -1,0 +1,44 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "dashboard-wizard",
+  "type": "registry:component",
+  "title": "Dashboard Wizard",
+  "description": "A SaaS settings wizard with sticky step nav, per-step validation, and an unsaved-changes guard wired through beforeStepChange and beforeunload.",
+  "author": "Stepperize",
+  "dependencies": [
+    "@stepperize/react",
+    "lucide-react"
+  ],
+  "registryDependencies": [
+    "alert",
+    "badge",
+    "button",
+    "input",
+    "label"
+  ],
+  "categories": [
+    "flow-control"
+  ],
+  "meta": {
+    "capabilities": [
+      "validation",
+      "persistence"
+    ],
+    "level": "advanced",
+    "tags": [
+      "settings",
+      "dashboard",
+      "unsaved changes",
+      "guard",
+      "validation"
+    ]
+  },
+  "files": [
+    {
+      "path": "components/stepperize/dashboard-wizard.tsx",
+      "type": "registry:component",
+      "target": "components/stepperize/dashboard-wizard.tsx",
+      "content": "import { defineStepper } from \"@stepperize/react\";\nimport { AlertTriangle, Check } from \"lucide-react\";\nimport { useEffect, useState } from \"react\";\nimport { Alert, AlertDescription } from \"@/components/ui/alert\";\nimport { Badge } from \"@/components/ui/badge\";\nimport { buttonVariants } from \"@/components/ui/button\";\nimport { Input } from \"@/components/ui/input\";\nimport { Label } from \"@/components/ui/label\";\n\nconst { Stepper } = defineStepper([\n\t{ id: \"general\", title: \"General\", hint: \"Workspace name and URL\" },\n\t{ id: \"members\", title: \"Members\", hint: \"Invite your team\" },\n\t{ id: \"billing\", title: \"Billing\", hint: \"Plan and payment\" },\n\t{ id: \"review\", title: \"Review\", hint: \"Confirm changes\" },\n]);\n\nconst REQUIRED: Partial<Record<string, string>> = {\n\tgeneral: \"name\",\n\tbilling: \"card\",\n};\n\nexport function DashboardWizardBlock() {\n\tconst [values, setValues] = useState<Record<string, string>>({});\n\tconst [error, setError] = useState<string | null>(null);\n\tconst [dirty, setDirty] = useState(false);\n\tconst [saved, setSaved] = useState(false);\n\n\t// Unsaved-changes guard: warn before the tab is closed while edits are pending.\n\tuseEffect(() => {\n\t\tif (!dirty) return;\n\t\tconst handler = (event: BeforeUnloadEvent) => event.preventDefault();\n\t\twindow.addEventListener(\"beforeunload\", handler);\n\t\treturn () => window.removeEventListener(\"beforeunload\", handler);\n\t}, [dirty]);\n\n\treturn (\n\t\t<Stepper.Root\n\t\t\tlinear\n\t\t\t// Per-step validation guard: block forward navigation until the active\n\t\t\t// step's required field is filled.\n\t\t\tbeforeStepChange={async ({ from, direction }) => {\n\t\t\t\tif (direction !== \"next\") {\n\t\t\t\t\tsetError(null);\n\t\t\t\t\treturn true;\n\t\t\t\t}\n\t\t\t\tconst field = REQUIRED[from.id];\n\t\t\t\tif (field && !values[`${from.id}.${field}`]?.trim()) {\n\t\t\t\t\tsetError(`${from.title} needs a ${field} before continuing.`);\n\t\t\t\t\treturn false;\n\t\t\t\t}\n\t\t\t\tsetError(null);\n\t\t\t\tsetDirty(false);\n\t\t\t\treturn true;\n\t\t\t}}\n\t\t\tclassName=\"w-full max-w-2xl rounded-xl border bg-background shadow-sm\"\n\t\t>\n\t\t\t{({ stepper }) => (\n\t\t\t\t<div className=\"flex flex-col sm:flex-row\">\n\t\t\t\t\t{/* Sticky step nav */}\n\t\t\t\t\t<Stepper.List className=\"flex shrink-0 flex-col gap-1 border-b p-3 sm:w-52 sm:border-r sm:border-b-0\">\n\t\t\t\t\t\t<Stepper.Items>\n\t\t\t\t\t\t\t{(step, index) => (\n\t\t\t\t\t\t\t\t<Stepper.Item key={step.id} step={step.id}>\n\t\t\t\t\t\t\t\t\t<Stepper.Trigger className=\"group flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-muted data-[status=active]:bg-muted disabled:cursor-not-allowed disabled:opacity-50\">\n\t\t\t\t\t\t\t\t\t\t<Stepper.Indicator className=\"grid size-6 shrink-0 place-items-center rounded-full border text-xs font-semibold transition-colors group-data-[status=active]:border-primary group-data-[status=active]:text-primary group-data-[status=previous]:border-primary group-data-[status=previous]:bg-primary group-data-[status=previous]:text-primary-foreground\">\n\t\t\t\t\t\t\t\t\t\t\t<span className=\"group-data-[status=previous]:hidden\">\n\t\t\t\t\t\t\t\t\t\t\t\t{index + 1}\n\t\t\t\t\t\t\t\t\t\t\t</span>\n\t\t\t\t\t\t\t\t\t\t\t<Check className=\"hidden size-3 group-data-[status=previous]:block\" />\n\t\t\t\t\t\t\t\t\t\t</Stepper.Indicator>\n\t\t\t\t\t\t\t\t\t\t<span className=\"min-w-0\">\n\t\t\t\t\t\t\t\t\t\t\t<Stepper.Title className=\"block truncate font-medium leading-none\" />\n\t\t\t\t\t\t\t\t\t\t\t<span className=\"mt-0.5 block truncate text-xs text-muted-foreground\">\n\t\t\t\t\t\t\t\t\t\t\t\t{step.hint}\n\t\t\t\t\t\t\t\t\t\t\t</span>\n\t\t\t\t\t\t\t\t\t\t</span>\n\t\t\t\t\t\t\t\t\t</Stepper.Trigger>\n\t\t\t\t\t\t\t\t</Stepper.Item>\n\t\t\t\t\t\t\t)}\n\t\t\t\t\t\t</Stepper.Items>\n\t\t\t\t\t</Stepper.List>\n\n\t\t\t\t\t{/* Content */}\n\t\t\t\t\t<div className=\"min-w-0 flex-1 p-6\">\n\t\t\t\t\t\t<div className=\"mb-4 flex items-center justify-between\">\n\t\t\t\t\t\t\t<h3 className=\"text-base font-semibold\">\n\t\t\t\t\t\t\t\t{stepper.current.title}\n\t\t\t\t\t\t\t</h3>\n\t\t\t\t\t\t\t{dirty && (\n\t\t\t\t\t\t\t\t<Badge\n\t\t\t\t\t\t\t\t\tvariant=\"secondary\"\n\t\t\t\t\t\t\t\t\tclassName=\"bg-amber-500/15 text-amber-600\"\n\t\t\t\t\t\t\t\t>\n\t\t\t\t\t\t\t\t\t<AlertTriangle />\n\t\t\t\t\t\t\t\t\tUnsaved changes\n\t\t\t\t\t\t\t\t</Badge>\n\t\t\t\t\t\t\t)}\n\t\t\t\t\t\t</div>\n\n\t\t\t\t\t\t<Stepper.Content step=\"general\" className=\"space-y-3\">\n\t\t\t\t\t\t\t<Field\n\t\t\t\t\t\t\t\tlabel=\"Workspace name\"\n\t\t\t\t\t\t\t\tplaceholder=\"Acme Inc.\"\n\t\t\t\t\t\t\t\tonChange={(v) => {\n\t\t\t\t\t\t\t\t\tsetValues((s) => ({ ...s, \"general.name\": v }));\n\t\t\t\t\t\t\t\t\tsetDirty(true);\n\t\t\t\t\t\t\t\t}}\n\t\t\t\t\t\t\t/>\n\t\t\t\t\t\t</Stepper.Content>\n\t\t\t\t\t\t<Stepper.Content\n\t\t\t\t\t\t\tstep=\"members\"\n\t\t\t\t\t\t\tclassName=\"text-sm text-muted-foreground\"\n\t\t\t\t\t\t>\n\t\t\t\t\t\t\tInvite teammates by email (optional).\n\t\t\t\t\t\t</Stepper.Content>\n\t\t\t\t\t\t<Stepper.Content step=\"billing\" className=\"space-y-3\">\n\t\t\t\t\t\t\t<Field\n\t\t\t\t\t\t\t\tlabel=\"Card number\"\n\t\t\t\t\t\t\t\tplaceholder=\"4242 4242 4242 4242\"\n\t\t\t\t\t\t\t\tonChange={(v) => {\n\t\t\t\t\t\t\t\t\tsetValues((s) => ({ ...s, \"billing.card\": v }));\n\t\t\t\t\t\t\t\t\tsetDirty(true);\n\t\t\t\t\t\t\t\t}}\n\t\t\t\t\t\t\t/>\n\t\t\t\t\t\t</Stepper.Content>\n\t\t\t\t\t\t<Stepper.Content\n\t\t\t\t\t\t\tstep=\"review\"\n\t\t\t\t\t\t\tclassName=\"text-sm text-muted-foreground\"\n\t\t\t\t\t\t>\n\t\t\t\t\t\t\t{saved\n\t\t\t\t\t\t\t\t? \"Changes saved. The workspace settings are up to date.\"\n\t\t\t\t\t\t\t\t: \"Review your changes, then save.\"}\n\t\t\t\t\t\t</Stepper.Content>\n\n\t\t\t\t\t\t{error && (\n\t\t\t\t\t\t\t<Alert variant=\"destructive\" className=\"mt-3\">\n\t\t\t\t\t\t\t\t<AlertTriangle />\n\t\t\t\t\t\t\t\t<AlertDescription>{error}</AlertDescription>\n\t\t\t\t\t\t\t</Alert>\n\t\t\t\t\t\t)}\n\n\t\t\t\t\t\t<Stepper.Actions className=\"mt-6 flex gap-2\">\n\t\t\t\t\t\t\t<Stepper.Prev className={buttonVariants({ variant: \"outline\" })}>\n\t\t\t\t\t\t\t\tBack\n\t\t\t\t\t\t\t</Stepper.Prev>\n\t\t\t\t\t\t\t{saved ? (\n\t\t\t\t\t\t\t\t<button\n\t\t\t\t\t\t\t\t\ttype=\"button\"\n\t\t\t\t\t\t\t\t\tonClick={() => {\n\t\t\t\t\t\t\t\t\t\tsetSaved(false);\n\t\t\t\t\t\t\t\t\t\tsetValues({});\n\t\t\t\t\t\t\t\t\t\tsetError(null);\n\t\t\t\t\t\t\t\t\t\tsetDirty(false);\n\t\t\t\t\t\t\t\t\t\tstepper.reset();\n\t\t\t\t\t\t\t\t\t}}\n\t\t\t\t\t\t\t\t\tclassName={buttonVariants()}\n\t\t\t\t\t\t\t\t>\n\t\t\t\t\t\t\t\t\tRestart flow\n\t\t\t\t\t\t\t\t</button>\n\t\t\t\t\t\t\t) : stepper.isLast ? (\n\t\t\t\t\t\t\t\t<button\n\t\t\t\t\t\t\t\t\ttype=\"button\"\n\t\t\t\t\t\t\t\t\tonClick={() => {\n\t\t\t\t\t\t\t\t\t\tsetSaved(true);\n\t\t\t\t\t\t\t\t\t\tsetDirty(false);\n\t\t\t\t\t\t\t\t\t}}\n\t\t\t\t\t\t\t\t\tclassName={buttonVariants()}\n\t\t\t\t\t\t\t\t>\n\t\t\t\t\t\t\t\t\tSave changes\n\t\t\t\t\t\t\t\t</button>\n\t\t\t\t\t\t\t) : (\n\t\t\t\t\t\t\t\t<Stepper.Next className={buttonVariants()}>\n\t\t\t\t\t\t\t\t\tContinue\n\t\t\t\t\t\t\t\t</Stepper.Next>\n\t\t\t\t\t\t\t)}\n\t\t\t\t\t\t</Stepper.Actions>\n\t\t\t\t\t</div>\n\t\t\t\t</div>\n\t\t\t)}\n\t\t</Stepper.Root>\n\t);\n}\n\nfunction Field({\n\tlabel,\n\tplaceholder,\n\tonChange,\n}: {\n\tlabel: string;\n\tplaceholder?: string;\n\tonChange: (value: string) => void;\n}) {\n\treturn (\n\t\t<div className=\"space-y-1.5\">\n\t\t\t<Label>{label}</Label>\n\t\t\t<Input\n\t\t\t\tplaceholder={placeholder}\n\t\t\t\tonChange={(event) => onChange(event.target.value)}\n\t\t\t/>\n\t\t</div>\n\t);\n}\n"
+    }
+  ]
+}

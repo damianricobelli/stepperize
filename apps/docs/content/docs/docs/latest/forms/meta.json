@@ -1,0 +1,15 @@
+{
+	"title": "Forms",
+	"description": "Build multi-step forms with Stepperize",
+	"defaultOpen": true,
+	"pages": [
+		"index",
+		"patterns",
+		"schema-validation",
+		"common-problems",
+		"---Implementations---",
+		"react-hook-form",
+		"tanstack-form",
+		"conform"
+	]
+}

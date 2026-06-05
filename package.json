@@ -16,14 +16,20 @@
     "ci:release": "changeset publish"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.4.2",
-    "@changesets/changelog-github": "0.5.2",
-    "@changesets/cli": "^2.29.8",
-    "turbo": "2.8.10",
+    "@biomejs/biome": "2.4.16",
+    "@changesets/changelog-github": "0.7.0",
+    "@changesets/cli": "^2.31.0",
+    "turbo": "2.9.16",
     "typescript": "catalog:"
   },
   "packageManager": "pnpm@10.28.0",
   "engines": {
     "node": ">=18"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "lightningcss"
+    ]
   }
 }

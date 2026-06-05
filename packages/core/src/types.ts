@@ -1,345 +1,290 @@
+/**
+ * A step definition. Only `id` is required; every other property is user data
+ * and stays fully typed throughout Stepperize.
+ *
+ * Add a `schema` (any [Standard Schema](https://standardschema.dev)) to type
+ * the step's flow data and enable `validate()`.
+ */
 type Step<Id extends string = string, Data extends object = object> = {
-  id: Id;
+	id: Id;
 } & Data;
-type Metadata = Record<string, any> | null;
 
-/** Step status for UI: active (current), success (past), inactive (future) */
-type StepStatus = "active" | "inactive" | "success";
+/**
+ * Minimal vendored copy of the [Standard Schema](https://standardschema.dev) v1
+ * interface, used to type flow data and drive `validate()` across Zod, Valibot,
+ * ArkType, and any other compliant library — with no runtime dependency.
+ */
+interface StandardSchemaV1<Input = unknown, Output = Input> {
+	readonly "~standard": StandardSchemaV1.Props<Input, Output>;
+}
 
-type StepperState<Steps extends Step[] = Step[]> = {
-  /**
-   * The steps of the stepper.
-   * @returns The steps of the stepper.
-   */
-  all: Steps;
-  /**
-   * The current step of the stepper.
-   * @returns The current step of the stepper.
-   */
-  current: {
-    data: Steps[number];
-    index: number;
-    status: StepStatus;
-    metadata: {
-      get: <M extends Metadata>() => M;
-      set: <M extends Metadata>(values: M) => void;
-      reset: (keepInitialMetadata?: boolean) => void;
-    };
-  };
-  /**
-   * Returns true if the current step is the last step.
-   * @returns True if the current step is the last step.
-   */
-  isLast: boolean;
-  /**
-   * Returns true if the current step is the first step.
-   * @returns True if the current step is the first step.
-   */
-  isFirst: boolean;
-  /**
-   * Returns true if the stepper is transitioning.
-   * @returns True if the stepper is transitioning.
-   */
-  isTransitioning: boolean;
-};
+namespace StandardSchemaV1 {
+	export interface Props<Input = unknown, Output = Input> {
+		readonly version: 1;
+		readonly vendor: string;
+		readonly validate: (value: unknown) => Result<Output> | Promise<Result<Output>>;
+		readonly types?: Types<Input, Output> | undefined;
+	}
+	export type Result<Output> = SuccessResult<Output> | FailureResult;
+	export interface SuccessResult<Output> {
+		readonly value: Output;
+		readonly issues?: undefined;
+	}
+	export interface FailureResult {
+		readonly issues: ReadonlyArray<Issue>;
+	}
+	export interface Issue {
+		readonly message: string;
+		readonly path?: ReadonlyArray<PropertyKey | PathSegment> | undefined;
+	}
+	export interface PathSegment {
+		readonly key: PropertyKey;
+	}
+	export interface Types<Input = unknown, Output = Input> {
+		readonly input: Input;
+		readonly output: Output;
+	}
+	export type InferInput<Schema extends StandardSchemaV1> = NonNullable<Schema["~standard"]["types"]>["input"];
+	export type InferOutput<Schema extends StandardSchemaV1> = NonNullable<Schema["~standard"]["types"]>["output"];
+}
 
-/** Optional payload for navigation (e.g. metadata to merge into transition context without waiting for setState). */
-type TransitionPayload<Steps extends Step[] = Step[]> = {
-  /** Metadata to merge into ctx.metadata for this transition and persist. */
-  metadata?: Partial<Record<Get.Id<Steps>, Metadata>>;
-};
+type SchemaOf<Steps extends readonly Step[], Id extends Get.Id<Steps>> = Get.StepById<Steps, Id> extends {
+	schema: infer S;
+}
+	? S extends StandardSchemaV1
+		? S
+		: never
+	: never;
 
-type StepperNavigation<Steps extends Step[] = Step[]> = {
-  /**
-   * Advances to the next step.
-   * @param payload - Optional metadata to merge into transition context (avoids stale metadata in onBeforeTransition).
-   * @returns void or Promise when lifecycle hooks run.
-   */
-  next: (payload?: TransitionPayload<Steps>) => void | Promise<void>;
-  /**
-   * Returns to the previous step.
-   * @param payload - Optional metadata to merge into transition context.
-   * @returns void or Promise when lifecycle hooks run.
-   */
-  prev: (payload?: TransitionPayload<Steps>) => void | Promise<void>;
-  /**
-   * Navigates to a specific step by its ID.
-   * @param id - The ID of the step to navigate to.
-   * @param payload - Optional metadata to merge into transition context.
-   * @returns void or Promise when lifecycle hooks run.
-   */
-  goTo: (
-    id: Get.Id<Steps>,
-    payload?: TransitionPayload<Steps>,
-  ) => void | Promise<void>;
-  /**
-   * Resets the stepper to its initial state.
-   * @returns The initial state of the stepper.
-   */
-  reset: () => void;
-};
+/** Input (draft) type for a step's flow data, or `unknown` when the step has no schema. */
+type InputOf<Steps extends readonly Step[], Id extends Get.Id<Steps>> = [SchemaOf<Steps, Id>] extends [never]
+	? unknown
+	: StandardSchemaV1.InferInput<SchemaOf<Steps, Id>>;
 
-type StepperLookup<Steps extends Step[] = Step[]> = {
-  /**
-   * Retrieves all steps.
-   * @returns An array of all steps.
-   */
-  getAll: () => Steps;
-  /**
-   * Retrieves a step by its ID.
-   * @param id - The ID of the step to retrieve.
-   * @returns The step with the specified ID.
-   */
-  get: <Id extends Get.Id<Steps>>(id: Id) => Get.StepById<Steps, Id>;
-  /**
-   * Retrieves the index of a step by its ID.
-   * @param id - The ID of the step to retrieve the index for.
-   * @returns The index of the step.
-   */
-  getIndex: <Id extends Get.Id<Steps>>(id: Id) => number;
-  /**
-   * Retrieves a step by its index.
-   * @param index - The index of the step to retrieve.
-   * @returns The step at the specified index.
-   */
-  getByIndex: <Index extends number>(index: Index) => Steps[Index];
-  /**
-   * Retrieves the first step.
-   * @returns The first step.
-   */
-  getFirst: () => Steps[number];
-  /**
-   * Retrieves the last step.
-   * @returns The last step.
-   */
-  getLast: () => Steps[number];
-  /**
-   * Retrieves the next step after the specified ID.
-   * @param id - The ID of the current step.
-   * @returns The next step.
-   */
-  getNext: <Id extends Get.Id<Steps>>(id: Id) => Steps[number];
-  /**
-   * Retrieves the previous step before the specified ID.
-   * @param id - The ID of the current step.
-   * @returns The previous step.
-   */
-  getPrev: <Id extends Get.Id<Steps>>(id: Id) => Steps[number];
-  /**
-   * Retrieves the neighboring steps (previous and next) of the specified step.
-   * @param id - The ID of the current step.
-   * @returns An object containing the previous and next steps.
-   */
-  getNeighbors: <Id extends Get.Id<Steps>>(
-    id: Id,
-  ) => { prev: Steps[number] | null; next: Steps[number] | null };
-};
+/** Output (validated) type for a step's flow data, or `unknown` when the step has no schema. */
+type OutputOf<Steps extends readonly Step[], Id extends Get.Id<Steps>> = [SchemaOf<Steps, Id>] extends [never]
+	? unknown
+	: StandardSchemaV1.InferOutput<SchemaOf<Steps, Id>>;
 
-type StepperFlow<Steps extends Step[] = Step[]> = {
-  /**
-   * Executes a function based on the current step ID.
-   * @param id - The ID of the step to check.
-   * @param whenFn - Function to execute if the current step matches the ID.
-   * @param elseFn - Optional function to execute if the current step does not match the ID.
-   * @returns The result of whenFn or elseFn.
-   */
-  when: <Id extends Get.Id<Steps>, R1, R2>(
-    id: Id | [Id, ...boolean[]],
-    whenFn: (step: Get.StepById<Steps, Id>) => R1,
-    elseFn?: (step: Get.StepSansId<Steps, Id>) => R2,
-  ) => R1 | R2;
-  /**
-   * Executes a function based on a switch-case-like structure for steps.
-   * @param when - An object mapping step IDs to functions.
-   * @returns The result of the function corresponding to the current step ID.
-   */
-  switch: <R>(when: Get.Switch<Steps, R>) => R;
-  /**
-   * Matches the current state with a set of possible states and executes the corresponding function.
-   * @param state - The current state ID.
-   * @param matches - An object mapping state IDs to functions.
-   * @returns The result of the matched function or null if no match is found.
-   */
-  match: <State extends Get.Id<Steps>, R>(
-    state: State,
-    matches: Get.Switch<Steps, R>,
-  ) => R | null;
-  /**
-   * Returns whether the current step has the given ID. Use for conditionals (e.g. `stepper.flow.is("payment")`).
-   *
-   * @param id - Step ID to check (e.g. `"shipping"`, `"payment"`).
-   * @returns `true` if the current step's id equals `id`, otherwise `false`.
-   *
-   * @example
-   * ```ts
-   * if (stepper.flow.is("payment")) {
-   *   return <PaymentForm />;
-   * }
-   * // or in JSX
-   * {stepper.flow.is("confirmation") && <Summary />}
-   * ```
-   */
-  is: <Id extends Get.Id<Steps>>(id: Id) => boolean;
-};
+/**
+ * Positional UI status derived from the active index.
+ *
+ * Explicit completion is separate: use `stepper.setComplete()` and
+ * `stepper.isComplete()` for business completion.
+ */
+type StepStatus = "active" | "previous" | "upcoming";
 
-type StepperMetadata<Steps extends Step[] = Step[]> = {
-  /**
-   * The metadata values for each step.
-   * @returns The metadata values for each step.
-   */
-  values: Record<Get.Id<Steps>, Metadata>;
-  /**
-   * Sets the metadata values for a step.
-   * @param id - The ID of the step to set the metadata values for.
-   * @param values - The values to set for the metadata.
-   */
-  set: <M extends Metadata>(id: Get.Id<Steps>, values: M) => void;
-  /**
-   * Gets the metadata values for a step.
-   * @param id - The ID of the step to get the metadata values for.
-   * @returns The metadata values for the step.
-   */
-  get: <M extends Metadata>(id: Get.Id<Steps>) => M;
-  /**
-   * Resets the metadata values to the initial state.
-   * @param keepInitialMetadata - If true, the initial metadata values defined in the useStepper hook will be kept.
-   */
-  reset: (keepInitialMetadata?: boolean) => void;
-};
+type StepDirection = "next" | "prev" | "goto" | "reset";
 
 type MaybePromise<T> = T | Promise<T>;
 
-type StepperLifecycle<Steps extends Step[] = Step[]> = {
-  /**
-   * Registers a callback before each transition. Multiple callbacks are supported; returns unsubscribe.
-   * @param cb - The callback (return false or Promise<false> to cancel transition).
-   * @returns Unsubscribe function.
-   */
-  onBeforeTransition: (
-    cb: (ctx: TransitionContext<Steps>) => MaybePromise<void | false>,
-  ) => () => void;
-  /**
-   * Registers a callback after each transition. Multiple callbacks are supported; returns unsubscribe.
-   * @param cb - The callback.
-   * @returns Unsubscribe function.
-   */
-  onAfterTransition: (
-    cb: (ctx: TransitionContext<Steps>) => MaybePromise<void>,
-  ) => () => void;
+/**
+ * Committed cross-step data, not live field state. Use it for review
+ * screens, summaries, branching decisions, and resumable wizards. With a per-step
+ * `schema`, each entry is typed as that schema's input.
+ */
+type FlowData<Steps extends readonly Step[] = readonly Step[]> = {
+	[Id in Get.Id<Steps>]?: InputOf<Steps, Id>;
 };
 
-type TransitionContext<Steps extends Step[] = Step[]> = {
-  /**
-   * The step being transitioned from.
-   */
-  from: Steps[number];
-  /**
-   * The step being transitioned to.
-   */
-  to: Steps[number];
-  /**
-   * The metadata for the transition.
-   */
-  metadata: Record<Get.Id<Steps>, Metadata>;
-  /**
-   * The statuses for the transition.
-   */
-  statuses: Record<Get.Id<Steps>, StepStatus>;
-  /**
-   * The direction of the transition.
-   */
-  direction: "next" | "prev" | "goTo";
-  /**
-   * The index of the step being transitioned from.
-   */
-  fromIndex: number;
-  /**
-   * The index of the step being transitioned to.
-   */
-  toIndex: number;
+type StepChangeValidator<
+	Steps extends readonly Step[] = readonly Step[],
+	FromId extends Get.Id<Steps> = Get.Id<Steps>,
+> = {
+	/**
+	 * Validate the step being left against this transition's data snapshot.
+	 *
+	 * Inside `beforeStepChange`, this includes any pending navigation payload
+	 * before it has been committed to `stepper.data`.
+	 */
+	(): Promise<ValidationResult<OutputOf<Steps, FromId>>>;
+	<Id extends Get.Id<Steps>>(id: Id): Promise<ValidationResult<OutputOf<Steps, Id>>>;
+	<Id extends Get.Id<Steps>>(step: Get.StepById<Steps, Id>): Promise<ValidationResult<OutputOf<Steps, Id>>>;
+};
+
+type StepChangeContextBase<Steps extends readonly Step[], FromId extends Get.Id<Steps>> = {
+	from: Get.StepById<Steps, FromId>;
+	to: Steps[number];
+	fromIndex: number;
+	toIndex: number;
+	direction: StepDirection;
+	data: FlowData<Steps>;
+	validate: StepChangeValidator<Steps, FromId>;
+	statuses: Record<Get.Id<Steps>, StepStatus>;
 };
 
 /**
- * Full stepper API returned by `useStepper` / `defineStepper`. Gives you state, navigation, lookup helpers, flow branching, and step-scoped metadata.
+ * Context passed to the step-change guard and to `onStepChange`.
  *
- * @example
- * ```ts
- * const stepper = useStepper({ steps: [{ id: "a" }, { id: "b" }] });
- * stepper.state.current.data;   // current step
- * stepper.navigation.next();    // go next
- * stepper.lookup.get("b");      // get step by id
- * stepper.flow.when("a", () => "on A", () => "else");  // branch by step
- * stepper.metadata.set("a", { count: 1 });            // step metadata
- * ```
+ * `data` includes any payload passed to `next`, `prev`, `goTo`, or `reset`
+ * before callbacks run, so validation does not need to wait for React state.
+ *
+ * Use `ctx.validate()` in guards to validate the step being left against that
+ * transition data snapshot.
  */
-type Stepper<Steps extends Step[] = Step[]> = {
-  /**
-   * Read-only state: current step data, index, status (active/inactive/success), and metadata get/set for the active step.
-   * @example `stepper.state.current.data` — current step; `stepper.state.current.metadata.get()` — current step metadata
-   */
-  state: StepperState<Steps>;
-  /**
-   * Imperative navigation: `next()`, `prev()`, `goTo(id)`, `reset()`.
-   * @example `stepper.navigation.next()` — advance; `stepper.navigation.goTo("confirm")` — jump to step by id
-   */
-  navigation: StepperNavigation<Steps>;
-  /**
-   * Step lookup: `getAll()`, `get(id)`, `getIndex(id)`, `getByIndex(i)`, `getFirst` / `getLast` / `getNext` / `getPrev` / `getNeighbors(id)`.
-   * @example `stepper.lookup.get("summary")` — get step by id; `stepper.lookup.getNext(stepper.state.current.data.id)` — next step
-   */
-  lookup: StepperLookup<Steps>;
-  /**
-   * Branch by step id: `when(id, whenFn, elseFn?)`, `switch(when)`, `match(state, matches)`.
-   * @example `stepper.flow.when("payment", () => <Payment />)` — render by step; `stepper.flow.switch({ payment: () => 1, done: () => 2 })` — switch by id
-   */
-  flow: StepperFlow<Steps>;
-  /**
-   * Step-scoped metadata: `values`, `set(id, values)`, `get(id)`, `reset()`.
-   * @example `stepper.metadata.set("form", { draft: true })` — persist data per step; `stepper.metadata.get("form")` — read it
-   */
-  metadata: StepperMetadata<Steps>;
-  /**
-   * Lifecycle hooks: `onBeforeTransition()`, `onAfterTransition()`.
-   * @example `stepper.lifecycle.onBeforeTransition(() => { console.log("before transition") });` — before transition; `stepper.lifecycle.onAfterTransition(() => { console.log("after transition") });` — after transition
-   */
-  lifecycle: StepperLifecycle<Steps>;
+type StepChangeContext<Steps extends readonly Step[] = readonly Step[]> = {
+	[FromId in Get.Id<Steps>]: StepChangeContextBase<Steps, FromId>;
+}[Get.Id<Steps>];
+
+/**
+ * The step-change guard. Runs before a step change on imperative navigation
+ * (`next`, `prev`, `goTo`, `reset`). Return `false` to cancel the change.
+ *
+ * Does not run for external controlled `step` changes; those are authoritative.
+ */
+type BeforeStepChange<Steps extends readonly Step[] = readonly Step[]> = (
+	context: StepChangeContext<Steps>,
+) => MaybePromise<boolean | undefined>;
+
+/**
+ * Optional data passed while navigating.
+ *
+ * `data` is staged for the current step before the guard runs, and persisted
+ * only if the change is accepted.
+ */
+type NavigationPayload = {
+	data?: unknown;
+};
+
+/**
+ * Navigation methods resolve to `false` when the stepper is already at an edge
+ * or a guard cancelled the change.
+ */
+type NavigationResult = boolean;
+
+type ValidationResult<T = unknown> =
+	| { success: true; data: T }
+	| { success: false; issues: ReadonlyArray<StandardSchemaV1.Issue> };
+
+type StepperData<Steps extends readonly Step[] = readonly Step[]> = {
+	/**
+	 * Get flow data for the current step, or for a specific step when an id is
+	 * passed. With an id, the result is typed as that step's schema input.
+	 *
+	 * @example
+	 * ```ts
+	 * stepper.data.get();             // current step (unknown)
+	 * stepper.data.get("shipping");   // ShippingInput | undefined
+	 * ```
+	 */
+	get: {
+		(): unknown;
+		<Id extends Get.Id<Steps>>(id: Id): InputOf<Steps, Id> | undefined;
+	};
+	/**
+	 * Set flow data for the current step, or for a specific step when an id is
+	 * passed. With an id, the value is type-checked against that step's schema input.
+	 *
+	 * @example
+	 * ```ts
+	 * stepper.data.set(formValues);
+	 * stepper.data.set("payment", paymentValues);
+	 * ```
+	 */
+	set: {
+		(value: unknown): void;
+		<Id extends Get.Id<Steps>>(id: Id, value: InputOf<Steps, Id>): void;
+	};
+	all: () => FlowData<Steps>;
+	clear: (id?: Get.Id<Steps>) => void;
+	reset: () => void;
+};
+
+/** Exhaustive matcher for the current step. */
+type StepMatcher<Steps extends readonly Step[] = readonly Step[]> = <Result>(
+	handlers: Get.Match<Steps, Result>,
+) => Result;
+
+type StepMap<Steps extends readonly Step[] = readonly Step[]> = {
+	steps: Steps;
+	ids: Get.Id<Steps>[];
+	get: <Id extends Get.Id<Steps>>(id: Id) => Get.StepById<Steps, Id> | undefined;
+	at: <Index extends number>(index: Index) => Steps[Index] | undefined;
+	/** Get the index for a step id, or `-1` when missing. */
+	indexOf: <Id extends Get.Id<Steps>>(id: Id) => number;
+	/** Check whether an arbitrary string is one of the step ids. */
+	has: <Id extends string>(id: Id) => boolean;
+	first: () => Steps[number] | undefined;
+	last: () => Steps[number] | undefined;
+	next: <Id extends Get.Id<Steps>>(id: Id) => Steps[number] | undefined;
+	prev: <Id extends Get.Id<Steps>>(id: Id) => Steps[number] | undefined;
+	neighbors: <Id extends Get.Id<Steps>>(id: Id) => { prev: Steps[number] | undefined; next: Steps[number] | undefined };
+};
+
+/**
+ * Runtime stepper instance returned by `useStepper`.
+ *
+ * The instance is intentionally lean: it exposes live state, queries, flow data,
+ * validation, rendering, and navigation. Static step lookups live on the
+ * definition (`wizard.get`, `wizard.at`) and on the raw `steps` array.
+ */
+type Stepper<Steps extends readonly Step[] = readonly Step[]> = {
+	steps: Steps;
+	current: Steps[number];
+	id: Get.Id<Steps>;
+	index: number;
+	count: number;
+	progress: number;
+	/** Explicitly completed step ids, independent from positional status. */
+	completed: Get.Id<Steps>[];
+	isFirst: boolean;
+	isLast: boolean;
+	canPrev: boolean;
+	canNext: boolean;
+	isPending: boolean;
+	data: StepperData<Steps>;
+	status: <Id extends Get.Id<Steps>>(id: Id) => StepStatus;
+	setComplete: (id?: Get.Id<Steps>, value?: boolean) => void;
+	isComplete: (id?: Get.Id<Steps>) => boolean;
+	/**
+	 * Validate a step's stored flow data against its schema. Defaults to the
+	 * current step. Steps without a schema always succeed with the stored value.
+	 */
+	validate: <Id extends Get.Id<Steps>>(id?: Id) => Promise<ValidationResult<OutputOf<Steps, Id>>>;
+	/**
+	 * Check whether `goTo(id)` is allowed by the navigation policy and reflected
+	 * by trigger primitives. Imperative `goTo` is not gated by this and always
+	 * proceeds (subject to the guard), which enables branching flows.
+	 */
+	canGoTo: <Id extends Get.Id<Steps>>(id: Id) => boolean;
+	is: <Id extends Get.Id<Steps>>(id: Id) => boolean;
+	match: StepMatcher<Steps>;
+	next: (payload?: NavigationPayload) => Promise<NavigationResult>;
+	prev: (payload?: NavigationPayload) => Promise<NavigationResult>;
+	/** Move to a specific step id. Bypasses the navigation policy. Resolves to whether the step changed. */
+	goTo: (id: Get.Id<Steps>, payload?: NavigationPayload) => Promise<NavigationResult>;
+	reset: (payload?: NavigationPayload) => Promise<NavigationResult>;
 };
 
 namespace Get {
-  /** Returns a union of possible IDs from the given Steps. */
-  export type Id<Steps extends Step[] = Step[]> = Steps[number]["id"];
+	export type Id<Steps extends readonly Step[] = readonly Step[]> = Steps[number]["id"];
 
-  /** Returns a Step from the given Steps with the given Step Id. */
-  export type StepById<
-    Steps extends Step[],
-    Id extends Get.Id<Steps>,
-  > = Extract<Steps[number], { id: Id }>;
+	export type StepById<Steps extends readonly Step[], Id extends Get.Id<Steps>> = Extract<Steps[number], { id: Id }>;
 
-  /** Returns any Steps from the given Steps without the given Step Id. */
-  export type StepSansId<
-    Steps extends Step[],
-    Id extends Get.Id<Steps>,
-  > = Exclude<Steps[number], { id: Id }>;
-
-  /** Returns any Steps from the given Steps without the given Step Id. */
-  export type Switch<Steps extends Step[], R> = {
-    [Id in Get.Id<Steps>]?: (step: Get.StepById<Steps, Id>) => R;
-  };
+	/** Exhaustive handler map keyed by step id. */
+	export type Match<Steps extends readonly Step[], Result> = {
+		[Id in Get.Id<Steps>]: (step: Get.StepById<Steps, Id>) => Result;
+	};
 }
 
-/** Alias for StepperLookup (return type of generateStepperUtils). */
-export type Utils<Steps extends Step[] = Step[]> = StepperLookup<Steps>;
-
 export type {
-  Step,
-  Metadata,
-  StepStatus,
-  StepperState,
-  StepperNavigation,
-  StepperLookup,
-  StepperFlow,
-  StepperMetadata,
-  Stepper,
-  TransitionPayload,
-  Get,
+	BeforeStepChange,
+	FlowData,
+	Get,
+	InputOf,
+	MaybePromise,
+	NavigationPayload,
+	NavigationResult,
+	OutputOf,
+	StandardSchemaV1,
+	Step,
+	StepChangeContext,
+	StepChangeValidator,
+	StepDirection,
+	StepMap,
+	StepMatcher,
+	Stepper,
+	StepperData,
+	StepStatus,
+	ValidationResult,
 };

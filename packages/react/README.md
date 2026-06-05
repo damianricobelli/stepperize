@@ -2,18 +2,9 @@
   <img src="https://stepperize.vercel.app/banner.png" alt="Stepperize Logo" />
 </p>
 
-[![Build Size](https://img.shields.io/bundlephobia/minzip/@stepperize/react@latest?label=bundle%20size&style=flat&colorA=000000&colorB=000000)](https://bundlephobia.com/result?p=@stepperize/react@latest)
-[![Version](https://img.shields.io/npm/v/@stepperize/react?style=flat&colorA=000000&colorB=000000)](https://www.npmjs.com/package/@stepperize/react)
-[![Downloads](https://img.shields.io/npm/dt/@stepperize/react.svg?style=flat&colorA=000000&colorB=000000)](https://www.npmjs.com/package/@stepperize/react)
+# @stepperize/react
 
-A library for creating step-by-step workflows in your apps
-
-- 🚀 Fast and efficient
-- 🔥 Powerful and flexible
-- 📦 Lightweight (1.1kB gzipped)
-- 🪄 Fully type-safe
-- 🔗 Composable architecture
-- 🎨 Unstyled for maximum customization
+Type-safe step-by-step workflows for React.
 
 ## Installation
 
@@ -23,59 +14,86 @@ npm install @stepperize/react
 
 ## Quick Start
 
-1. Import the constructor:
-
 ```tsx
 import { defineStepper } from "@stepperize/react";
-```
 
-2. Define your steps (as arguments):
+const wizard = defineStepper([
+  { id: "account", title: "Account" },
+  { id: "profile", title: "Profile" },
+  { id: "done", title: "Done" },
+]);
 
-```tsx
-const { Scoped, useStepper, steps, Stepper } = defineStepper(
-  { id: "step-1", title: "Step 1", description: "Description for step 1" },
-  { id: "step-2", title: "Step 2", description: "Description for step 2" },
-  { id: "step-3", title: "Step 3", description: "Description for step 3" },
-  { id: "step-4", title: "Step 4", description: "Description for step 4" }
-);
-```
-
-3. Use the hook:
-
-```tsx
-function StepperComponent() {
-  const stepper = useStepper();
+function Wizard() {
+  const stepper = wizard.useStepper();
 
   return (
     <div>
-      <h2>{stepper.state.current.data.title}</h2>
-      <p>{stepper.state.current.data.description}</p>
-      <button onClick={() => stepper.navigation.prev()}>Previous</button>
-      <button onClick={() => stepper.navigation.next()}>Next</button>
+      <h2>{stepper.current.title}</h2>
+
+      {stepper.match({
+        account: () => <AccountStep />,
+        profile: () => <ProfileStep />,
+        done: () => <DoneStep />,
+      })}
+
+      <button onClick={() => stepper.prev()} disabled={!stepper.canPrev}>
+        Back
+      </button>
+      <button onClick={() => stepper.next()} disabled={!stepper.canNext}>
+        Next
+      </button>
     </div>
   );
 }
 ```
 
-## How It Works
+## Shared State
 
-Stepperize allows you to define a series of steps with unique IDs. When you create your steps using `defineStepper`, you get:
+```tsx
+function Page() {
+  return (
+    <wizard.Provider>
+      <Header />
+      <Wizard />
+    </wizard.Provider>
+  );
+}
+```
 
-- A `Scoped` component for context management
-- A `useStepper` hook for step control
-- An array of `steps` for rendering
-- Type-safe `Stepper` primitives for building UI
+## Primitives
 
-The only required field for each step is the `id`. You can add any additional properties you need, and they'll be fully type-safe when using the hook.
+```tsx
+const { Stepper } = wizard;
+
+function PrimitiveWizard() {
+  return (
+    <Stepper.Root>
+      {({ stepper }) => (
+        <>
+          <Stepper.List>
+            <Stepper.Items>
+              {(step) => (
+                <Stepper.Item key={step.id} step={step.id}>
+                  <Stepper.Trigger>
+                    <Stepper.Indicator />
+                    <Stepper.Title>{step.title}</Stepper.Title>
+                  </Stepper.Trigger>
+                </Stepper.Item>
+              )}
+            </Stepper.Items>
+          </Stepper.List>
+
+          <Stepper.Actions>
+            <Stepper.Prev>Back</Stepper.Prev>
+            <Stepper.Next>{stepper.isLast ? "Finish" : "Next"}</Stepper.Next>
+          </Stepper.Actions>
+        </>
+      )}
+    </Stepper.Root>
+  );
+}
+```
 
 ## Documentation
 
-For more detailed information on usage, configuration, and advanced features, visit our [full documentation](https://stepperize.vercel.app).
-
-## Contributing
-
-We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for more details.
-
-## License
-
-Stepperize is [MIT licensed](LICENSE).
+Read the full docs at [stepperize.vercel.app](https://stepperize.vercel.app).

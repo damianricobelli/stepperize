@@ -1,181 +1,150 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
-  generateCommonStepperUseFns,
-  generateStepperUtils,
-  getInitialMetadata,
-  getInitialStepIndex,
-  updateStepIndex,
+	createStepMap,
+	getInitialData,
+	getInitialStepIndex,
+	getStepStatus,
+	getStepStatuses,
+	matchStep,
+	parseStep,
+	validateStep,
 } from "../utils";
 
-const steps = [
-  { id: "first", label: "Step 1" },
-  { id: "second", label: "Step 2" },
-  { id: "third", label: "Step 3" },
+type TestStep = { id: "first"; label: string } | { id: "second"; label: string } | { id: "third"; label: string };
+
+const steps: TestStep[] = [
+	{ id: "first", label: "Step 1" },
+	{ id: "second", label: "Step 2" },
+	{ id: "third", label: "Step 3" },
 ];
 
-describe("generateStepperUtils", () => {
-  const utils = generateStepperUtils(...steps);
+describe("createStepMap", () => {
+	const stepMap = createStepMap(steps);
 
-  it("returns all steps", () => {
-    expect(utils.getAll()).toEqual(steps);
-  });
+	it("returns steps and ids", () => {
+		expect(stepMap.steps).toEqual(steps);
+		expect(stepMap.ids).toEqual(["first", "second", "third"]);
+	});
 
-  it("get returns a step by id", () => {
-    expect(utils.get("second")).toEqual({ id: "second", label: "Step 2" });
-  });
+	it("gets steps by id and index", () => {
+		expect(stepMap.get("second")).toEqual({ id: "second", label: "Step 2" });
+		expect(stepMap.at(0)).toEqual(steps[0]);
+		expect(stepMap.get("missing" as any)).toBeUndefined();
+		expect(stepMap.at(9)).toBeUndefined();
+	});
 
-  it("get returns undefined for nonexistent id", () => {
-    expect(utils.get("nonexistent" as any)).toBeUndefined();
-  });
-
-  it("getIndex returns index by id", () => {
-    expect(utils.getIndex("third")).toBe(2);
-  });
-
-  it("getByIndex returns step by index", () => {
-    expect(utils.getByIndex(0)).toEqual(steps[0]);
-  });
-
-  it("getFirst and getLast return extremes", () => {
-    expect(utils.getFirst()).toEqual(steps[0]);
-    expect(utils.getLast()).toEqual(steps[2]);
-  });
-
-  it("getNext and getPrev return neighbors", () => {
-    expect(utils.getNext("first")).toEqual(steps[1]);
-    expect(utils.getPrev("third")).toEqual(steps[1]);
-  });
-
-  it("getNeighbors returns prev and next correctly", () => {
-    expect(utils.getNeighbors("second")).toEqual({
-      prev: steps[0],
-      next: steps[2],
-    });
-    expect(utils.getNeighbors("first")).toEqual({ prev: null, next: steps[1] });
-    expect(utils.getNeighbors("third")).toEqual({ prev: steps[1], next: null });
-  });
-
-  it("getNext returns undefined for last step", () => {
-    expect(utils.getNext("third")).toBeUndefined();
-  });
-
-  it("getPrev returns undefined for first step", () => {
-    expect(utils.getPrev("first")).toBeUndefined();
-  });
+	it("returns positions and neighbors", () => {
+		expect(stepMap.indexOf("third")).toBe(2);
+		expect(stepMap.has("second")).toBe(true);
+		expect(stepMap.has("missing")).toBe(false);
+		expect(stepMap.first()).toEqual(steps[0]);
+		expect(stepMap.last()).toEqual(steps[2]);
+		expect(stepMap.next("first")).toEqual(steps[1]);
+		expect(stepMap.prev("third")).toEqual(steps[1]);
+		expect(stepMap.next("missing" as any)).toBeUndefined();
+		expect(stepMap.prev("missing" as any)).toBeUndefined();
+		expect(stepMap.neighbors("second")).toEqual({
+			prev: steps[0],
+			next: steps[2],
+		});
+		expect(stepMap.neighbors("first")).toEqual({
+			prev: undefined,
+			next: steps[1],
+		});
+	});
 });
 
 describe("getInitialStepIndex", () => {
-  it("returns 0 if no initialStep is passed", () => {
-    expect(getInitialStepIndex(steps)).toBe(0);
-  });
+	it("returns 0 by default or when the id is not found", () => {
+		expect(getInitialStepIndex(steps)).toBe(0);
+		expect(getInitialStepIndex(steps, "missing" as any)).toBe(0);
+	});
 
-  it("returns correct index if the step exists", () => {
-    expect(getInitialStepIndex(steps, "second")).toBe(1);
-  });
-
-  it("returns 0 if the step does not exist", () => {
-    expect(getInitialStepIndex(steps, "not-exist" as any)).toBe(0);
-  });
+	it("returns the matching index", () => {
+		expect(getInitialStepIndex(steps, "second")).toBe(1);
+	});
 });
 
-describe("getInitialMetadata", () => {
-  it("returns null by default for each step", () => {
-    const metadata = getInitialMetadata(steps);
-    expect(metadata).toEqual({ first: null, second: null, third: null });
-  });
-
-  it("applies initial metadata if passed", () => {
-    const metadata = getInitialMetadata(steps, { first: { foo: "bar" } });
-    expect(metadata.first).toEqual({ foo: "bar" });
-    expect(metadata.second).toBeNull();
-  });
+describe("getInitialData", () => {
+	it("returns a defensive copy", () => {
+		const data = { first: { saved: true } };
+		expect(getInitialData<typeof steps>(data)).toEqual(data);
+		expect(getInitialData<typeof steps>(data)).not.toBe(data);
+	});
 });
 
-describe("generateCommonStepperUseFns", () => {
-  const fns = generateCommonStepperUseFns(steps, steps[1], 1);
+describe("validateStep", () => {
+	const schema = {
+		"~standard": {
+			version: 1 as const,
+			vendor: "test",
+			validate: (value: unknown) =>
+				typeof value === "string" && value.length > 0
+					? { value }
+					: { issues: [{ message: "Required" }] },
+		},
+	};
+	const withSchema = [{ id: "name", schema }, { id: "done" }] as const;
 
-  it("switch executes function of the current step", () => {
-    const result = fns.switch({
-      second: (s) => `Hola ${s.label}`,
-    });
-    expect(result).toBe("Hola Step 2");
-  });
+	it("succeeds for a step without a schema, passing the value through", async () => {
+		const result = await validateStep(withSchema, "done", { anything: true });
+		expect(result).toEqual({ success: true, data: { anything: true } });
+	});
 
-  it("when executes whenFn if id matches", () => {
-    const result = fns.when(
-      "second",
-      (s: (typeof steps)[0]) => s.label,
-      () => "nope",
-    );
-    expect(result).toBe("Step 2");
-  });
+	it("returns success with the parsed value when the schema passes", async () => {
+		const result = await validateStep(withSchema, "name", "Ada");
+		expect(result).toEqual({ success: true, data: "Ada" });
+	});
 
-  it("when executes elseFn if id does not match", () => {
-    const result = fns.when(
-      "first",
-      () => "ok",
-      () => "fallback",
-    );
-    expect(result).toBe("fallback");
-  });
+	it("returns issues when the schema fails", async () => {
+		const result = await validateStep(withSchema, "name", "");
+		expect(result.success).toBe(false);
+		if (!result.success) expect(result.issues[0].message).toBe("Required");
+	});
 
-  it("when with array id executes whenFn only when id and all conditions match", () => {
-    const resultMatch = fns.when(
-      ["second", true, true],
-      (s: (typeof steps)[0]) => s.label,
-      () => "nope",
-    );
-    expect(resultMatch).toBe("Step 2");
-    const resultNoMatchId = fns.when(
-      ["first", true, true],
-      () => "ok",
-      () => "fallback",
-    );
-    expect(resultNoMatchId).toBe("fallback");
-    const resultNoMatchCond = fns.when(
-      ["second", false, true],
-      () => "ok",
-      () => "fallback",
-    );
-    expect(resultNoMatchCond).toBe("fallback");
-  });
-
-  it("match executes function associated with the state", () => {
-    const result = fns.match("second", {
-      second: (s) => s.label,
-    });
-    expect(result).toBe("Step 2");
-  });
-
-  it("match returns null if there is no step", () => {
-    const result = fns.match("unknown" as any, {});
-    expect(result).toBeNull();
-  });
-
-  it("is returns true when current step id matches", () => {
-    expect(fns.is("second")).toBe(true);
-  });
-
-  it("is returns false when current step id does not match", () => {
-    expect(fns.is("first")).toBe(false);
-    expect(fns.is("third")).toBe(false);
-  });
+	it("throws for an unknown step id", async () => {
+		await expect(validateStep(withSchema, "missing" as never, null)).rejects.toThrow(/not found/);
+	});
 });
 
-describe("updateStepIndex", () => {
-  it("sets valid index", () => {
-    const setter = vi.fn();
-    updateStepIndex(steps, 1, setter);
-    expect(setter).toHaveBeenCalledWith(1);
-  });
+describe("step statuses", () => {
+	it("uses active/previous/upcoming", () => {
+		expect(getStepStatus(steps, 1, "first")).toBe("previous");
+		expect(getStepStatus(steps, 1, "second")).toBe("active");
+		expect(getStepStatus(steps, 1, "third")).toBe("upcoming");
+		expect(getStepStatuses(steps, 1)).toEqual({
+			first: "previous",
+			second: "active",
+			third: "upcoming",
+		});
+	});
+});
 
-  it("throws error if newIndex < 0", () => {
-    const setter = vi.fn();
-    expect(() => updateStepIndex(steps, -1, setter)).toThrowError(/first step/);
-  });
+describe("parseStep", () => {
+	it("returns the value when it matches a known step id", () => {
+		expect(parseStep(steps, "second")).toBe("second");
+	});
 
-  it("throws error if newIndex >= steps.length", () => {
-    const setter = vi.fn();
-    expect(() => updateStepIndex(steps, 10, setter)).toThrowError(/last step/);
-  });
+	it("returns undefined for unknown or malformed values", () => {
+		expect(parseStep(steps, "missing")).toBeUndefined();
+		expect(parseStep(steps, null)).toBeUndefined();
+		expect(parseStep(steps, undefined)).toBeUndefined();
+		expect(parseStep(steps, 42)).toBeUndefined();
+	});
+});
+
+describe("matchStep", () => {
+	it("runs the handler for the provided id", () => {
+		expect(
+			matchStep(steps, "second", {
+				first: (step) => step.label,
+				second: (step) => step.label,
+				third: (step) => step.label,
+			}),
+		).toBe("Step 2");
+	});
+
+	it("throws when no exhaustive handler exists", () => {
+		expect(() => matchStep(steps, "third", { first: (step: any) => step.label } as any)).toThrow(/No match handler/);
+	});
 });

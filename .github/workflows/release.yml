@@ -1,4 +1,4 @@
-name: Realease
+name: Release
 
 on:
   push:
@@ -7,38 +7,36 @@ on:
 
 concurrency: ${{ github.workflow }}-${{ github.ref }}
 
+permissions:
+  contents: write
+  pull-requests: write
+  id-token: write
+
 jobs:
   release:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Node.js
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
-
-      - name: Cache pnpm modules
-        uses: actions/cache@v4
-        with:
-          path: |
-            **/node_modules
-            **/.pnpm-store
-          key: pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            pnpm-
-
-      - name: Install pnpm
-        run: npm install -g pnpm
+          node-version: 22
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build stepperize packages
-        run: pnpm turbo run build --filter=@stepperize/react
+      - name: Build packages
+        run: pnpm turbo run build --filter=@stepperize/react...
 
-      - name: Create Release Pull Request or Publish to npm
+      - name: Create Release Pull Request or Publish
         uses: changesets/action@v1
         with:
           version: pnpm ci:version
@@ -46,5 +44,4 @@ jobs:
           title: "chore: new release"
           publish: pnpm ci:release
         env:
-          GITHUB_TOKEN: ${{ secrets.GH_ACTION_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

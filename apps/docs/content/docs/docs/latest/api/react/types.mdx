@@ -1,0 +1,109 @@
+---
+title: Types
+description: Reference the public React package types.
+---
+
+# Types
+
+Most app code does not need manual annotations. `defineStepper` infers ids, step data, render handlers, flow data, and primitives from your steps.
+
+Use these types for reusable components, helpers, or controlled wrappers.
+
+Import types from `@stepperize/react` in React apps. It re-exports the core public types that React users usually need.
+
+## React types
+
+```ts
+type DefineStepperOptions<Steps>;
+type UseStepperOptions<Steps>;
+type ProviderProps<Steps>;
+type StepperDefinition<Steps>;
+type ControlledStep<Steps>;
+```
+
+| Type | Use it for |
+| --- | --- |
+| `DefineStepperOptions` | Options passed to `defineStepper`. |
+| `UseStepperOptions` | Options passed to `useStepper`, `Provider`, or `Stepper.Root`. |
+| `ProviderProps` | Props accepted by the generated provider. |
+| `StepperDefinition` | Return value of `defineStepper`. |
+| `ControlledStep` | Raw external value accepted by controlled `step`; `onStepChange` still emits known step ids. |
+
+## Core types re-exported by React
+
+```ts
+type Step;
+type Stepper;
+type StepperData;
+type FlowData;
+type InputOf;
+type OutputOf;
+type ValidationResult;
+type StandardSchemaV1;
+type StepStatus;
+type StepDirection;
+type StepMatcher;
+type NavigationPayload;
+type NavigationResult;
+type StepChangeContext;
+type StepChangeValidator;
+type BeforeStepChange;
+```
+
+| Type | Use it for |
+| --- | --- |
+| `Step` | Generic reusable components that accept any step list. |
+| `Stepper` | Props that receive a runtime instance. |
+| `FlowData` | Controlled flow-data stores. |
+| `InputOf` / `OutputOf` | Per-step schema input (draft) and output (validated) types. |
+| `ValidationResult` | Return type of `validate()`. |
+| `BeforeStepChange` | Reusable `beforeStepChange` guards. |
+| `StepChangeContext` | Shared callback context helpers (guard and `onStepChange`). |
+| `StepChangeValidator` | Type of `ctx.validate()` inside lifecycle callbacks. |
+
+## Get helpers
+
+```tsx
+import { defineStepper, type Get } from "@stepperize/react";
+
+const checkout = defineStepper([
+  { id: "shipping", title: "Shipping" },
+  { id: "payment", title: "Payment" },
+  { id: "review", title: "Review" },
+]);
+
+type StepId = Get.Id<typeof checkout.steps>;
+type PaymentStep = Get.StepById<typeof checkout.steps, "payment">;
+```
+
+## Reusable component
+
+```tsx
+import type { Step, Stepper } from "@stepperize/react";
+
+function Progress<Steps extends readonly Step[]>({
+  stepper,
+}: {
+  stepper: Stepper<Steps>;
+}) {
+  return (
+    <p>
+      Step {stepper.index + 1} of {stepper.count}
+    </p>
+  );
+}
+```
+
+If a component can call the generated hook directly, prefer that over passing types around.
+
+## Controlled wrapper props
+
+```tsx
+import type { Step, UseStepperOptions } from "@stepperize/react";
+
+type WizardProps<Steps extends readonly Step[]> = UseStepperOptions<Steps> & {
+  children: React.ReactNode;
+};
+```
+
+Use `UseStepperOptions` when a wrapper forwards `defaultStep`, controlled `step`, `data`, `completed`, `linear`, or callbacks to a generated hook/provider/root.

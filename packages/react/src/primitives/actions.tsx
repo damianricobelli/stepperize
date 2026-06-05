@@ -1,13 +1,13 @@
-import type { ActionsProps } from "./types";
+import type { ActionsProps, PrimitiveComponent } from "./types";
 
-export function createActions() {
-  return function Actions(props: ActionsProps) {
-    const { render, children, ...rest } = props;
-    const domProps = {
-      "data-component": "stepper-actions",
-      ...rest,
-    };
-    if (render) return render(domProps);
-    return <div {...domProps}>{children}</div>;
-  };
+export function createActions(): PrimitiveComponent<ActionsProps> {
+	return function Actions(props: ActionsProps) {
+		const { render, children, ...rest } = props;
+		const domProps = {
+			"data-component": "stepper-actions",
+			...rest,
+		};
+		if (render) return render(domProps);
+		return <div {...domProps}>{children}</div>;
+	};
 }

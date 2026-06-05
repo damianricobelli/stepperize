@@ -1,0 +1,87 @@
+---
+title: The navigation lifecycle
+description: Understand how Stepperize handles each step transition.
+---
+
+# The navigation lifecycle
+
+Every move — `next`, `prev`, `goTo`, `reset` — runs the same pipeline. Understand
+it once and validation, saving, and side effects all fall into place.
+
+Press **next()** below. Then turn on **reject in beforeStepChange** and press it
+again to watch the change cancel before anything commits.
+
+<LifecycleViz />
+
+## The four stages
+
+1. **Payload** — you optionally pass data with `next({ data })`; it is staged
+   for the **current** step. To stage several steps at once, call
+   `stepper.data.set(...)` first, then navigate. These pending values are prepared first.
+2. **`beforeStepChange`** — runs *before* the move. It already sees the pending
+   values, so you can validate the data being submitted in the same call.
+   **Return `false` to cancel.** It can be async.
+3. **Commit** — values are saved and the current step changes. This only happens
+   if no guard cancelled.
+4. **`onStepChange`** — runs *after* the move is accepted. Use it for analytics,
+   persistence, side effects, and to sync a controlled `step`.
+
+The call then resolves to **`true`** if the step changed, or **`false`** if it
+didn't (an edge, a blocked move, or a cancelled guard).
+
+For forms, this is the key mental model: your form library validates fields;
+`beforeStepChange` validates the transition.
+
+## Why payload-before-commit matters
+
+Because `beforeStepChange` sees the payload, you can validate data that hasn't hit
+React state yet:
+
+```tsx
+const accepted = await stepper.next({ data: form.getValues() });
+
+// inside beforeStepChange, validate() reads that same payload snapshot
+```
+
+No `useEffect`, no waiting for a re-render. Submit and validate in one action.
+
+Lifecycle callbacks are instance-level — pass them to `useStepper` (or
+`Provider` / `Stepper.Root`):
+
+```tsx
+const stepper = checkout.useStepper({
+  beforeStepChange: async ({ direction, validate }) => {
+    if (direction === "prev") return true;
+
+    // validate() runs the step being left against this transition's data
+    // snapshot. Schemaless steps always succeed.
+    return (await validate()).success; // false cancels the move
+  },
+  onStepChange: (step) => analytics.track("step_view", { step }),
+});
+```
+
+## Reading the result
+
+`next/prev/goTo/reset` are **always async** (a guard might be). A bare call
+returns a Promise — `await` it when you need the boolean:
+
+```tsx
+// ✅ fine for buttons — fire and forget
+<button onClick={() => stepper.next()}>Next</button>
+
+// ✅ await when the result drives logic
+const accepted = await stepper.next({ data: value });
+if (accepted) stepper.setComplete();
+```
+
+<Callout type="warn">
+`if (!stepper.next())` never runs — an un-awaited call is a Promise, which is
+always truthy. Always `await` before branching on the result.
+</Callout>
+
+While a guard or change handler is running, `isPending` is `true` and
+`canPrev`/`canNext` go conservative, so your buttons disable themselves during
+async work.
+
+Next: [status vs completion](/docs/latest/core-concepts/status-vs-completion).

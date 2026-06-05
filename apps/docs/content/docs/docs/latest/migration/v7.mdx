@@ -1,0 +1,393 @@
+---
+title: Migrating to v7
+description: Update projects from v6 to v7.
+---
+
+# Migrating to v7
+
+v7 is a clean API reset. The new instance is flat:
+
+```tsx
+stepper.current;
+stepper.next();
+stepper.match({...});
+stepper.data;
+stepper.setComplete();
+```
+
+## Quick map
+
+| v6 | v7 |
+| --- | --- |
+| `defineStepper(step1, step2)` | `defineStepper([step1, step2])` |
+| `Scoped` | `Provider` |
+| `initialStep` | `defaultStep` on an instance, or `defaultStep` on the definition |
+| `initialMetadata` | `defaultData` |
+| `metadata.get/set/reset` | `data.get/set/reset` |
+| `lifecycle.onBeforeTransition` | `beforeStepChange` |
+| `lifecycle.onAfterTransition` | `onStepChange` |
+| `flow.switch` | `match` |
+| `flow.when(id, ...)` | `is(id)` |
+| `lookup.get(id)` | `get(id)` |
+| status `"success"` / `"inactive"` | status `"previous"` / `"upcoming"` |
+
+## Copy-paste LLM migration prompt
+
+Copy everything in the block below into ChatGPT, Claude, Cursor, Windsurf, Copilot,
+or any other coding assistant, then paste (or point it at) your code. It encodes the
+full v6 → v7 mapping, the v7 instance surface, the behavioral pitfalls, and a
+three-phase **analyze → migrate → verify** workflow so the assistant reasons about
+intent instead of blindly find-replacing.
+
+````markdown
+# Task: migrate this codebase from @stepperize/react v6 to v7
+
+You are a senior React + TypeScript engineer and a **Stepperize migration expert**.
+Migrate every Stepperize usage in the code I provide from **v6** to **v7**.
+
+The defining change in v7: the instance is **flat**. v6's nested namespaces
+(`state`, `navigation`, `flow`, `metadata`, `lookup`, `lifecycle`) are gone — every
+property and method now lives directly on the `stepper` object.
+
+## Prime directives (read first, obey throughout)
+
+- **Preserve behavior, type safety, accessibility, and UX exactly.** The migrated
+  app must do what it did before.
+- **Change only what v7 requires.** No drive-by refactors, renames, reordering,
+  reformatting, or dependency bumps. Touch the smallest possible surface.
+- **Preserve intent, not just syntax.** When a mapping is ambiguous, reason about
+  what the code is trying to achieve and migrate to the idiomatic v7 pattern.
+- **Never invent APIs.** Use only the v7 surface documented below. If something has
+  no clear v7 equivalent, stop and ask rather than guessing.
+- **Explain every non-mechanical decision** and flag anything you cannot preserve
+  exactly.
+
+## The v7 mental model (six ideas)
+
+1. **Flat instance** — `stepper.current`, `stepper.next()`, `stepper.match({...})`,
+   `stepper.data`, `stepper.setComplete()`. No nested namespaces.
+2. **Steps are an array** — `defineStepper([stepA, stepB])`.
+3. **Navigation is async** — `next`, `prev`, `goTo`, `reset` return
+   `Promise<boolean>` (`true` = the step changed, `false` = blocked/edge/cancelled).
+4. **`data` replaces `metadata`** — typed (via per-step `schema`), per-step flow data.
+5. **Status vs completion are separate axes.** Positional status
+   (`active` / `previous` / `upcoming`) is derived automatically. Completion
+   (`setComplete()` / `isComplete()`) is **explicit business state you set**. A
+   `previous` step is **not** automatically completed.
+6. **Lifecycle is `beforeStepChange` (guard) and `onStepChange` (after / write).**
+   Both are instance options — there are no imperative event subscriptions.
+
+## API mapping (v6 → v7)
+
+| v6 | v7 |
+| --- | --- |
+| `defineStepper(a, b, c)` | `defineStepper([a, b, c])` |
+| `Scoped` | generated `Provider` |
+| `initialStep` (prop) | `defaultStep` (instance/Provider/Root) |
+| `initialStep` (shared default) | `defaultStep` in the `defineStepper` options object |
+| `initialMetadata` | `defaultData` (definition option) |
+| `stepper.metadata.get/set/reset` | `stepper.data.get/set/reset` |
+| `stepper.state.current.data` | `stepper.current` |
+| `stepper.state.current.id` | `stepper.id` |
+| `stepper.state.current.index` | `stepper.index` |
+| `stepper.state.all` | `stepper.steps` |
+| `stepper.state.isFirst` / `isLast` | `stepper.isFirst` / `stepper.isLast` |
+| `stepper.navigation.next/prev/goTo/reset` | `stepper.next/prev/goTo/reset` (async) |
+| `stepper.flow.switch({...})` | `stepper.match({...})` (exhaustive) |
+| `stepper.flow.when(id, ...)` | `stepper.is(id) && ...` |
+| `stepper.lookup.get(id)` | `checkout.get(id)` (definition helper) |
+| `stepper.lifecycle.onBeforeTransition` | `beforeStepChange` option |
+| `stepper.lifecycle.onAfterTransition` | `onStepChange` option |
+| status `"success"` | positional `"previous"` **or** `isComplete(id)` — decide by intent (see pitfalls) |
+| status `"inactive"` | `"upcoming"` |
+
+## Instance surface (the only API you may use)
+
+- **State:** `steps`, `current`, `id`, `index`, `count`, `progress` (0–1),
+  `completed`, `isFirst`, `isLast`, `canPrev`, `canNext`, `isPending`.
+- **Step access:** the instance carries only live state. Use the **definition**
+  helpers `get(id)`, `at(index)`, `parseStep(value)`, or the raw `stepper.steps`
+  array for static lookups.
+- **Render / status:** `match({ [id]: (step) => ReactNode })`, `status(id)`,
+  `is(id)`.
+- **Navigation (async → `Promise<boolean>`):** `next(payload?)`, `prev(payload?)`,
+  `goTo(id, payload?)`, `reset(payload?)`, `canGoTo(id)`. `goTo` bypasses the
+  `linear` policy. Payload: `{ data?: unknown }` — staged for the current step
+  before the guard runs, then committed only if the change is accepted.
+- **Flow data:** `data.get(id?)`, `data.set(value)` / `data.set(id, value)`,
+  `data.all()`, `data.clear(id?)`, `data.reset()`.
+- **Validation:** `validate(id?)` → `Promise<{ success; data } | { success; issues }>`.
+  Schemaless steps always succeed.
+- **Completion:** `setComplete(id?, value = true)`, `isComplete(id?)`.
+- **Lifecycle:** there are no imperative event subscriptions. Use the
+  `beforeStepChange` guard and `onStepChange` options, or a `useEffect` on
+  `stepper.id` for ad-hoc effects.
+- **Definition (`defineStepper([...], options)`):** options = `defaultStep`,
+  `defaultData`, `defaultCompleted`, `linear` (boolean). Lifecycle callbacks are
+  instance-only. Returns
+  `{ steps, useStepper, Provider, Stepper, get, at, parseStep, validate }`.
+- **Instance / Provider / `Stepper.Root` options:** `defaultStep`, `step` +
+  `onStepChange`, `onInvalidStep`, `defaultData`, `data` + `onDataChange`,
+  `completed` + `onCompletedChange`, `linear`, `beforeStepChange`.
+  Controlled `step` may be a raw external string; `onStepChange` receives known
+  step ids, and `onInvalidStep` handles unknown external values.
+
+## Critical rules & pitfalls (where migrations go wrong)
+
+- **`await` navigation whenever you branch on the result.** A bare call returns a
+  Promise, which is always truthy — `if (!stepper.next()) ...` is a bug. Use
+  `const moved = await stepper.next(); if (!moved) return;`. Fire-and-forget in
+  click handlers (`onClick={() => stepper.next()}`) is fine.
+- **`beforeStepChange` must `return false` to cancel.** Returning `undefined`/`true`
+  allows the move. It can be `async`; use `ctx.validate()` to validate the step
+  being left against the pending payload before it is committed.
+- **Controlled state needs its handler.** Passing `step` without `onStepChange`
+  (or `data` without `onDataChange`, `completed` without `onCompletedChange`)
+  makes the stepper read-only — it won't move. Migrate v6 controlled usage with
+  both halves.
+- **`match` is exhaustive.** Provide one handler per step id, or it throws / fails
+  to typecheck.
+- **`"success"` is the subtle one.** In v6 it often meant "a finished step." In v7,
+  positional `previous` ≠ completed. If the v6 code used `"success"` purely to
+  style already-visited steps, map it to `previous`. If it gated business logic
+  ("this step is done/valid/submitted"), introduce explicit `setComplete(id)` and read
+  `isComplete(id)`. State your choice per occurrence.
+- **`Stepper.Next` / `Stepper.Prev` send no payload.** If a v6 flow saved form data
+  while advancing, don't rely on these — use your own button calling
+  `stepper.next({ data: value })`, or save in `beforeStepChange`.
+- **Primitives:** use the generated `Stepper` from the v7 definition. Iterate with
+  `Stepper.Items`; inside it `Stepper.Item` gets its step from context, outside it
+  pass `step="id"`. When you use a primitive's `render` prop, **spread the provided
+  props** onto your element so roles, ARIA, and handlers survive.
+- **Keep `defineStepper(...)` at module scope** (not inside a component).
+
+---
+
+## Workflow — follow these three phases in order
+
+### Phase 1 — Analyze & report (do not edit yet)
+
+1. Find all Stepperize usage. Search for: `@stepperize/react`, `defineStepper(`,
+   `Scoped`, `initialStep`, `initialMetadata`, `.state`, `.navigation`, `.flow`,
+   `.metadata`, `.lookup`, `.lifecycle`, `"success"`, `"inactive"`.
+2. Produce a short report:
+   - **Inventory** — every file/component that uses Stepperize.
+   - **Planned changes** — each change mapped to the table above, with a one-line
+     *why*.
+   - **Risks & ambiguities** — `"success"` decisions, controlled-state gaps,
+     navigation calls that now need `await`, and anything you must assume.
+3. List any questions whose answers would change the migration. In an interactive
+   assistant, ask them before Phase 2; in an autonomous agent, choose the safest
+   option and record the assumption.
+
+### Phase 2 — Migrate
+
+- Apply the changes file by file, smallest diff per file.
+- Update imports and destructuring to v7 names.
+- Preserve step ids, titles, schemas, form-library integrations, class names, and
+  markup unless v7 requires a change.
+- Add `await` and `onStepChange`/`onDataChange` where the pitfalls require them.
+
+### Phase 3 — Verify
+
+- Run the project's typecheck, tests, and formatter (e.g. `tsc --noEmit`, the test
+  runner, the linter/formatter). Report the exact commands and whether they passed.
+- Grep again for every v6 token from Phase 1 and confirm **none remain**.
+- Re-check the pitfalls list: every result-dependent navigation is awaited, every
+  controlled prop has its handler, `match` is exhaustive, `"success"` decisions are
+  applied.
+- If a test fails, fix the **migration**, not the test — unless the assertion was
+  explicitly tied to a v6-only behavior, in which case explain the change.
+
+## Deliverables
+
+- The **Phase 1 report**.
+- The **edits / diffs**.
+- A final summary: files changed, assumptions made, manual follow-ups, and the
+  verification commands run with their results.
+````
+
+## Define steps
+
+```tsx
+// v6
+const { useStepper } = defineStepper(
+  { id: "first", title: "First" },
+  { id: "second", title: "Second" },
+);
+```
+
+```tsx
+// v7
+const { useStepper } = defineStepper([
+  { id: "first", title: "First" },
+  { id: "second", title: "Second" },
+]);
+```
+
+## Render content
+
+```tsx
+// v6
+return stepper.flow.switch({
+  first: () => <First />,
+  second: () => <Second />,
+});
+```
+
+```tsx
+// v7
+return stepper.match({
+  first: () => <First />,
+  second: () => <Second />,
+});
+```
+
+For small conditions:
+
+```tsx
+{stepper.is("second") && <Summary />}
+```
+
+## Read state
+
+```tsx
+// v6
+stepper.state.current.data;
+stepper.state.current.index;
+stepper.state.isLast;
+```
+
+```tsx
+// v7
+stepper.current;
+stepper.index;
+stepper.isLast;
+```
+
+Common state now lives at the top level: `current`, `id`, `index`, `count`, `progress`, `canPrev`, `canNext`, `isPending`.
+
+## Navigate
+
+```tsx
+// v6
+stepper.navigation.next();
+stepper.navigation.prev();
+stepper.navigation.goTo("review");
+```
+
+```tsx
+// v7
+stepper.next();
+stepper.prev();
+stepper.goTo("review");
+```
+
+Navigation can be called directly from buttons. Await it when you need the result; it resolves to `true` when the step changed and `false` when it did not.
+
+## Share state
+
+```tsx
+// v7
+const flow = defineStepper([
+  { id: "profile", title: "Profile" },
+  { id: "done", title: "Done" },
+]);
+
+function Page() {
+  return (
+    <flow.Provider defaultStep="profile">
+      <Panel />
+    </flow.Provider>
+  );
+}
+
+function Panel() {
+  const stepper = flow.useStepper();
+  return <h2>{stepper.current.title}</h2>;
+}
+```
+
+`Scoped` became the generated `Provider`.
+
+## Forms and flow data
+
+```tsx
+// v6
+stepper.metadata.set("shipping", formValues);
+stepper.navigation.next();
+```
+
+```tsx
+// v7
+await stepper.next({ data: formValues }); // writes the current step
+```
+
+The `{ data }` payload writes the current step. To write several steps, call
+`stepper.data.set` first, then navigate:
+
+```tsx
+stepper.data.set("payment", paymentValues);
+await stepper.goTo("review", { data: reviewValues });
+```
+
+The payload is visible to `beforeStepChange` via `ctx.data` and saved only if
+navigation succeeds.
+
+## Guards
+
+```tsx
+const stepper = checkout.useStepper({
+  beforeStepChange: async ({ direction, validate }) => {
+    if (direction === "prev") return true;
+    return (await validate()).success;
+  },
+  onStepChange: (step) => {
+    console.log("Moved to", step);
+  },
+});
+```
+
+Return `false` from `beforeStepChange` to cancel navigation. Lifecycle callbacks
+are instance options — they are no longer accepted on `defineStepper`.
+
+## Primitives
+
+```tsx
+<Stepper.Root>
+  {({ stepper }) => (
+    <>
+      <Stepper.List>
+        <Stepper.Items>
+          {(step) => (
+            <Stepper.Item key={step.id}>
+              <Stepper.Trigger>{step.title}</Stepper.Trigger>
+            </Stepper.Item>
+          )}
+        </Stepper.Items>
+      </Stepper.List>
+
+      <Stepper.Content step="shipping">Shipping</Stepper.Content>
+      <Stepper.Content step="payment">Payment</Stepper.Content>
+
+      <Stepper.Actions>
+        <Stepper.Prev>Back</Stepper.Prev>
+        <Stepper.Next>{stepper.isLast ? "Finish" : "Next"}</Stepper.Next>
+      </Stepper.Actions>
+    </>
+  )}
+</Stepper.Root>
+```
+
+Inside `Stepper.Items`, `Stepper.Item` gets item context automatically. Outside the iterator, pass `step="shipping"`.
+
+## Checklist
+
+- Wrap step definitions in an array.
+- Replace nested reads with flat reads.
+- Replace nested navigation with `next`, `prev`, `goTo`, and `reset`.
+- Replace `flow.switch` with `match`.
+- Replace `flow.when(id, ...)` with `is(id)`.
+- Move `metadata` to `data`.
+- Use `completed` only for explicit business completion.
+- Replace `Scoped` with `Provider`.

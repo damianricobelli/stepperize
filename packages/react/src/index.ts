@@ -1,10 +1,27 @@
-// Types
-export type { Get, Step, Stepper, TransitionPayload } from "@stepperize/core";
-// Define Stepper
+export type {
+	BeforeStepChange,
+	FlowData,
+	Get,
+	InputOf,
+	NavigationPayload,
+	NavigationResult,
+	OutputOf,
+	StandardSchemaV1,
+	Step,
+	StepChangeContext,
+	StepChangeValidator,
+	StepDirection,
+	StepMatcher,
+	Stepper,
+	StepperData,
+	StepStatus,
+	ValidationResult,
+} from "@stepperize/core";
 export * from "./define-stepper";
 export type {
-  ScopedProps,
-  StepperReturn,
-  TransitionContext,
-  TransitionDirection,
+	ControlledStep,
+	DefineStepperOptions,
+	ProviderProps,
+	StepperDefinition,
+	UseStepperOptions,
 } from "./types";

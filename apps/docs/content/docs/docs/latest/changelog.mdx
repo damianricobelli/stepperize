@@ -1,0 +1,154 @@
+---
+title: Changelog
+description: Review recent documentation and package changes.
+---
+
+# Changelog
+
+Release notes for the current Stepperize documentation line.
+
+## v7.0.0
+
+v7 is a deliberate API reset for Stepperize. The goal is to make the stepper
+instance easier to read, easier to type, and easier to wire into real workflows:
+forms, guarded transitions, branching flows, URL-driven state, and headless UI.
+
+The short version: define an ordered step list once, then work with one flat
+instance everywhere.
+
+```tsx
+const checkout = defineStepper([
+  { id: "shipping", title: "Shipping" },
+  { id: "payment", title: "Payment" },
+  { id: "review", title: "Review" },
+]);
+
+const stepper = checkout.useStepper();
+
+stepper.current;
+await stepper.next();
+stepper.data.set(values);
+stepper.match({
+  shipping: () => <ShippingForm />,
+  payment: () => <PaymentForm />,
+  review: () => <ReviewOrder />,
+});
+```
+
+### Packages
+
+- `@stepperize/core`
+- `@stepperize/react`
+
+### Highlights
+
+- Flat React instance: use `stepper.current`, `stepper.id`, `stepper.next()`,
+  `stepper.match(...)`, `stepper.data`, and `stepper.setComplete()` directly.
+  The old nested namespaces are gone.
+- Ordered step definitions: `defineStepper([...])` now receives one array, which
+  makes order explicit and gives the definition room for shared options like
+  `defaultStep`, `defaultData`, `defaultCompleted`, and `linear`.
+- Async navigation: `next`, `prev`, `goTo`, and `reset` now resolve to
+  `Promise<boolean>`, so guarded transitions can block movement and callers can
+  branch on the result.
+- Guarded transitions: `beforeStepChange` can validate or cancel a move before
+  data is committed. `onStepChange` runs after an accepted transition.
+- Typed flow data: `data` replaces legacy metadata and can be inferred from each
+  step's `schema` using Standard Schema-compatible validators.
+- Explicit completion: positional status (`active`, `previous`, `upcoming`) is
+  separate from business completion (`setComplete`, `isComplete`).
+- Controlled state support for `step`, `data`, and `completed`, with matching
+  change handlers for router, URL, store, or persisted-state integrations.
+- Bound, unstyled React primitives are generated from each stepper definition,
+  so headless UI keeps the same step ids, types, ARIA attributes, and navigation
+  behavior as the hook.
+
+### Breaking changes
+
+- `defineStepper(stepA, stepB)` is now `defineStepper([stepA, stepB])`.
+- `Scoped` was renamed to the generated `Provider`.
+- `initialStep` is now `defaultStep`; `initialMetadata` is now `defaultData`.
+- `metadata.get`, `metadata.set`, and `metadata.reset` moved to `data.get`,
+  `data.set`, and `data.reset`.
+- Namespaced instance APIs were flattened:
+  - `stepper.state.current.data` -> `stepper.current`
+  - `stepper.state.current.id` -> `stepper.id`
+  - `stepper.state.current.index` -> `stepper.index`
+  - `stepper.state.all` -> `stepper.steps`
+  - `stepper.navigation.next()` -> `stepper.next()`
+  - `stepper.navigation.prev()` -> `stepper.prev()`
+  - `stepper.navigation.goTo(id)` -> `stepper.goTo(id)`
+  - `stepper.flow.switch(...)` -> `stepper.match(...)`
+  - `stepper.flow.when(id, ...)` -> `stepper.is(id) && ...`
+- Lifecycle subscriptions were replaced with instance options:
+  `beforeStepChange` for guards and `onStepChange` for accepted transitions.
+- Navigation methods are async. If code branches on whether navigation worked,
+  `await` the call before checking the result.
+- Status names changed from `"success"` / `"inactive"` to `"previous"` /
+  `"upcoming"`. Use `isComplete(id)` when you mean "this step is done" instead
+  of "this step appears before the current one."
+
+### Features
+
+- New `@stepperize/core` package with public types and pure helpers for shared,
+  framework-independent stepper logic.
+- New step map helpers with `get`, `at`, `indexOf`, `has`, `first`, `last`,
+  `next`, `prev`, and `neighbors`.
+- New `parseStep` helper for narrowing external values, such as URL params or
+  persisted snapshots, into known step ids.
+- New `validateStep` helper and instance-level `validate()` method for
+  Standard Schema-compatible step validation.
+- New status helpers for deriving positional step state from the active index.
+- New exhaustive `matchStep` core utility and React `stepper.match(...)` API for
+  typed rendering by step id.
+- New transition payloads: pass `{ data }` to `next`, `prev`, `goTo`, or `reset`
+  to stage current-step data before guards run.
+- New `isPending` state and `canPrev` / `canNext` guards to make async
+  transitions easier to reflect in UI.
+- New `canGoTo(id)` policy check used by trigger primitives and useful for
+  linear flows.
+- New `Stepper.Items` primitive for iterating through the typed step list inside
+  a generated primitive tree.
+
+### Migration example
+
+```tsx
+// v6
+const { useStepper, Scoped } = defineStepper(
+  { id: "account", title: "Account" },
+  { id: "profile", title: "Profile" },
+);
+```
+
+```tsx
+// v7
+const accountFlow = defineStepper([
+  { id: "account", title: "Account" },
+  { id: "profile", title: "Profile" },
+]);
+
+const { useStepper, Provider } = accountFlow;
+```
+
+```tsx
+// v6
+stepper.navigation.next();
+stepper.flow.switch({
+  account: () => <Account />,
+  profile: () => <Profile />,
+});
+```
+
+```tsx
+// v7
+await stepper.next();
+stepper.match({
+  account: () => <Account />,
+  profile: () => <Profile />,
+});
+```
+
+### Migration
+
+Read [Migrating to v7](/docs/latest/migration/v7) for the full v6 -> v7 API
+map, common pitfalls, and a copy-paste migration prompt for coding assistants.

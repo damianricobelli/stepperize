@@ -1,0 +1,157 @@
+---
+title: Primitives
+description: Reference the unstyled components for custom stepper UI.
+---
+
+# Primitives
+
+Every definition exposes bound primitives. They are generated from your stepper definition, so the components know your exact step ids.
+
+## Example setup
+
+All examples on this page use this stepper definition:
+
+```tsx
+import { defineStepper } from "@stepperize/react";
+
+const checkout = defineStepper([
+  { id: "shipping", title: "Shipping", description: "Delivery address" },
+  { id: "payment", title: "Payment", description: "Payment method" },
+  { id: "review", title: "Review", description: "Confirm order" },
+]);
+```
+
+```tsx
+const { Stepper } = checkout;
+```
+
+Use them when you want accessible stepper UI without giving up your own styles.
+
+They are bound to the definition, so all `step` props and item data use the ids from that flow.
+
+## Root
+
+`Stepper.Root` creates and provides one stepper instance.
+
+```tsx
+<Stepper.Root defaultStep="shipping" linear>
+  {({ stepper }) => <p>{stepper.current.title}</p>}
+</Stepper.Root>
+```
+
+It accepts the same options as `useStepper`, plus `orientation`.
+
+`orientation` is exposed as `data-orientation` on the root. `Stepper.List` also accepts `orientation` for keyboard behavior and `aria-orientation`.
+
+## List
+
+```tsx
+<Stepper.List>
+  <Stepper.Items>
+    {(step) => (
+      <Stepper.Item key={step.id}>
+        <Stepper.Trigger>
+          <Stepper.Indicator />
+          <Stepper.Title>{step.title}</Stepper.Title>
+          <Stepper.Description>{step.description}</Stepper.Description>
+        </Stepper.Trigger>
+      </Stepper.Item>
+    )}
+  </Stepper.Items>
+</Stepper.List>
+```
+
+Inside `Stepper.Items`, `Stepper.Item` gets the current item from context. Outside the iterator, pass a step id:
+
+```tsx
+<Stepper.Item step="payment">
+  <Stepper.Trigger>Payment</Stepper.Trigger>
+</Stepper.Item>
+```
+
+## Content and actions
+
+```tsx
+<Stepper.Content step="shipping">Shipping form</Stepper.Content>
+<Stepper.Content step="payment">Payment form</Stepper.Content>
+<Stepper.Content step="review">Review order</Stepper.Content>
+
+<Stepper.Actions>
+  <Stepper.Prev>Back</Stepper.Prev>
+  <Stepper.Next>Continue</Stepper.Next>
+</Stepper.Actions>
+```
+
+`Prev` and `Next` use the same rules as `stepper.canPrev` and `stepper.canNext`.
+When `linear` is enabled, `Trigger` and `List` keyboard navigation use
+`stepper.canGoTo(id)`.
+
+`Next` and `Prev` call `stepper.next()` and `stepper.prev()` without a payload. For forms that need to submit values before moving, use your own button and call the instance directly.
+
+## Components
+
+| Component | Purpose |
+| --- | --- |
+| `Root` | Provider-backed root. |
+| `List` | Step list container. |
+| `Items` | Typed iterator over steps. |
+| `Item` | Per-step wrapper. |
+| `Trigger` | Button that selects a step. |
+| `Title` / `Description` | Step labels. |
+| `Indicator` | Number, icon, or status mark. |
+| `Separator` | Decorative separator. |
+| `Content` | Active-step panel. |
+| `Actions` | Navigation controls wrapper. |
+| `Prev` | Previous button. |
+| `Next` | Next button. |
+
+## Custom render
+
+Most primitives accept `render`. It replaces the primitive's root element, so
+always spread the props:
+
+```tsx
+<Stepper.Trigger
+  render={(props) => (
+    <button className="step-trigger" {...props}>
+      Shipping
+    </button>
+  )}
+/>
+```
+
+The props include accessibility attributes, event handlers, and data attributes.
+
+## Data attributes
+
+The primitives expose their state through three `data-*` attributes, which is how
+you style them:
+
+| Attribute | Values | Set on |
+| --- | --- | --- |
+| `data-status` | `active` · `previous` · `upcoming` | `Item`, `Trigger`, `Indicator` |
+| `data-orientation` | `horizontal` · `vertical` | `Root`, `List`, `Separator` |
+| `data-component` | `stepper`, `stepper-list`, `stepper-item`, `stepper-trigger`, `stepper-content` | every primitive |
+
+For how to style against these — Tailwind variants, `group-data`, plain CSS, and
+the status-vs-completion gotcha — see the [Styling guide](/docs/latest/guides/styling).
+
+## Item state
+
+Use the root render prop when item UI needs instance state:
+
+```tsx
+<Stepper.Root>
+  {({ stepper }) => (
+    <Stepper.List>
+      <Stepper.Items>
+        {(step, index) => (
+          <Stepper.Item>
+            <Stepper.Trigger>{index + 1}</Stepper.Trigger>
+          </Stepper.Item>
+        )}
+      </Stepper.Items>
+    </Stepper.List>
+  )}
+</Stepper.Root>
+```

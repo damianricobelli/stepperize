@@ -1,0 +1,438 @@
+---
+title: React Activity
+description: Preserve step state, forms, and expensive UI trees while navigating.
+keywords:
+  - preserve step state
+  - keep components mounted
+  - multi-step forms
+  - React Activity
+  - wizard performance
+---
+
+# Preserve step state with React Activity
+
+Use `React Activity` when a step should disappear from view without losing its
+local state, DOM, or expensive render work.
+
+Stepperize controls **which step is active**. `Activity` controls **what happens
+to inactive step UI**. Together they give you a production-friendly way to build
+multi-step forms, wizards, editors, and dashboards where moving between steps
+does not mean starting every panel over.
+
+## Why React Activity?
+
+[`<Activity>`](https://react.dev/reference/react/Activity) is a React component
+that hides and restores a subtree:
+
+```tsx
+import { Activity } from "react";
+
+<Activity mode={isActive ? "visible" : "hidden"}>
+  <StepPanel />
+</Activity>;
+```
+
+The current API uses two modes:
+
+| Mode | What React does |
+| --- | --- |
+| `"visible"` | Shows the children and runs their Effects. |
+| `"hidden"` | Hides the children with `display: none`, preserves their state and DOM, and cleans up their Effects. |
+
+That is different from conditional rendering:
+
+```tsx
+// Unmounts inactive steps. Their local state is destroyed.
+{stepper.is("profile") && <ProfileStep />}
+
+// Preserves inactive steps. Their local state is restored when visible again.
+<Activity mode={stepper.is("profile") ? "visible" : "hidden"}>
+  <ProfileStep />
+</Activity>
+```
+
+This pairs naturally with Stepperize because Stepperize already gives every step
+a stable id, typed navigation, and a controlled current step. Instead of asking a
+form library or global store to preserve every tiny piece of UI state, you keep
+the panels mounted and let Stepperize drive the active id.
+
+Reach for this when a step contains:
+
+- **Large forms** with uncontrolled inputs, touched state, nested field arrays,
+  or local draft UI.
+- **Rich editors** that are expensive to initialize and annoying to recreate.
+- **Charts and tables** with local sorting, filters, row expansion, or scroll
+  position.
+- **Async data** that is likely to be needed again soon.
+- **Draft preservation** where "Back" should feel instant and non-destructive.
+
+<Callout type="info">
+Hidden Activity children keep their React state, but React cleans up their
+Effects while hidden and recreates those Effects when the subtree becomes
+visible again. For subscriptions, timers, media playback, and sockets, write
+normal Effect cleanup code.
+</Callout>
+
+## Live example
+
+Fill a few fields, move around the flow, then come back. Each step displays a
+stable instance id and its local state so the preservation is visible.
+
+<Preview>
+  <ReactActivityDemo />
+</Preview>
+
+## The pattern
+
+Render every step once, wrap each panel in an `Activity`, and use Stepperize to
+choose which boundary is visible.
+
+```tsx
+{stepper.steps.map((step) => (
+  <Activity key={step.id} mode={stepper.is(step.id) ? "visible" : "hidden"}>
+    <StepPanel stepId={step.id} />
+  </Activity>
+))}
+```
+
+Avoid `stepper.is(id) && <StepPanel />` for this pattern. That is the common
+conditional rendering shape, but it intentionally unmounts the step and discards
+component-local state.
+
+## Complete source
+
+This example uses uncontrolled Stepperize state for navigation and local React
+state inside each step. It is copy-pasteable TypeScript; replace the simple
+fields with your form library, editor, chart, or table components.
+
+```tsx
+import { defineStepper } from "@stepperize/react";
+import { Activity, useId, useState } from "react";
+
+const signup = defineStepper([
+  { id: "account", title: "Account" },
+  { id: "profile", title: "Profile" },
+  { id: "preferences", title: "Preferences" },
+  { id: "review", title: "Review" },
+] as const);
+
+type StepId = (typeof signup.steps)[number]["id"];
+
+export function PreservedSignupWizard() {
+  const stepper = signup.useStepper();
+
+  return (
+    <div className="wizard">
+      <nav aria-label="Signup steps">
+        {stepper.steps.map((step, index) => (
+          <button
+            key={step.id}
+            type="button"
+            aria-current={stepper.is(step.id) ? "step" : undefined}
+            onClick={() => stepper.goTo(step.id)}
+          >
+            {index + 1}. {step.title}
+          </button>
+        ))}
+      </nav>
+
+      <div className="step-panels">
+        {stepper.steps.map((step) => (
+          <Activity
+            key={step.id}
+            mode={stepper.is(step.id) ? "visible" : "hidden"}
+          >
+            <StepPanel stepId={step.id} />
+          </Activity>
+        ))}
+      </div>
+
+      <footer>
+        <button type="button" disabled={!stepper.canPrev} onClick={() => stepper.prev()}>
+          Back
+        </button>
+        <span>
+          Step {stepper.index + 1} of {stepper.count}
+        </span>
+        <button type="button" disabled={!stepper.canNext} onClick={() => stepper.next()}>
+          {stepper.isLast ? "Done" : "Continue"}
+        </button>
+      </footer>
+    </div>
+  );
+}
+
+function StepPanel({ stepId }: { stepId: StepId }) {
+  switch (stepId) {
+    case "account":
+      return <AccountStep />;
+    case "profile":
+      return <ProfileStep />;
+    case "preferences":
+      return <PreferencesStep />;
+    case "review":
+      return <ReviewStep />;
+  }
+}
+
+function AccountStep() {
+  const instanceId = useStableInstanceId();
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+
+  return (
+    <section>
+      <Header title="Account" instanceId={instanceId} />
+      <label>
+        Name
+        <input value={name} onChange={(event) => setName(event.target.value)} />
+      </label>
+      <label>
+        Email
+        <input
+          type="email"
+          value={email}
+          onChange={(event) => setEmail(event.target.value)}
+        />
+      </label>
+      <pre>{JSON.stringify({ name, email }, null, 2)}</pre>
+    </section>
+  );
+}
+
+function ProfileStep() {
+  const instanceId = useStableInstanceId();
+  const [bio, setBio] = useState("");
+
+  return (
+    <section>
+      <Header title="Profile" instanceId={instanceId} />
+      <label>
+        Bio
+        <textarea value={bio} onChange={(event) => setBio(event.target.value)} />
+      </label>
+      <p>{bio.length} characters</p>
+    </section>
+  );
+}
+
+function PreferencesStep() {
+  const instanceId = useStableInstanceId();
+  const [newsletter, setNewsletter] = useState(true);
+  const [theme, setTheme] = useState("system");
+
+  return (
+    <section>
+      <Header title="Preferences" instanceId={instanceId} />
+      <label>
+        <input
+          type="checkbox"
+          checked={newsletter}
+          onChange={(event) => setNewsletter(event.target.checked)}
+        />
+        Product newsletter
+      </label>
+      <label>
+        Theme
+        <select value={theme} onChange={(event) => setTheme(event.target.value)}>
+          <option value="system">System</option>
+          <option value="light">Light</option>
+          <option value="dark">Dark</option>
+        </select>
+      </label>
+    </section>
+  );
+}
+
+function ReviewStep() {
+  const instanceId = useStableInstanceId();
+  const [notes, setNotes] = useState("");
+
+  return (
+    <section>
+      <Header title="Review" instanceId={instanceId} />
+      <p>
+        Go back to earlier steps. Their inputs are still mounted behind Activity
+        boundaries, so local state is restored immediately.
+      </p>
+      <label>
+        Review notes
+        <textarea value={notes} onChange={(event) => setNotes(event.target.value)} />
+      </label>
+    </section>
+  );
+}
+
+function Header({ title, instanceId }: { title: string; instanceId: string }) {
+  return (
+    <header>
+      <h2>{title}</h2>
+      <p>Stable component instance: {instanceId}</p>
+    </header>
+  );
+}
+
+function useStableInstanceId() {
+  return useId();
+}
+```
+
+## Non-form example: expensive data table
+
+Activity is just as useful when the step is not a form. Imagine a reporting
+wizard where one step renders a large table with local filters, selected rows,
+column widths, and scroll position. If you unmount the table when the user visits
+Review, all of that UI state resets. With `Activity`, the table is hidden and
+restored.
+
+```tsx
+import { defineStepper } from "@stepperize/react";
+import { Activity, useMemo, useState } from "react";
+
+type Row = { id: string; name: string; revenue: number };
+
+const reportFlow = defineStepper([
+  { id: "filters", title: "Filters" },
+  { id: "table", title: "Data table" },
+  { id: "review", title: "Review" },
+] as const);
+
+export function ReportBuilder() {
+  const stepper = reportFlow.useStepper();
+
+  return (
+    <>
+      {stepper.steps.map((step) => (
+        <Activity key={step.id} mode={stepper.is(step.id) ? "visible" : "hidden"}>
+          {step.id === "filters" && <FilterStep />}
+          {step.id === "table" && <ExpensiveTableStep />}
+          {step.id === "review" && <ReviewStep />}
+        </Activity>
+      ))}
+
+      <button type="button" disabled={!stepper.canPrev} onClick={() => stepper.prev()}>
+        Back
+      </button>
+      <button type="button" disabled={!stepper.canNext} onClick={() => stepper.next()}>
+        Continue
+      </button>
+    </>
+  );
+}
+
+function ExpensiveTableStep() {
+  const rows = useMemo(() => buildLargeDataset(), []);
+  const [query, setQuery] = useState("");
+  const [sort, setSort] = useState<"name" | "revenue">("revenue");
+  const [selected, setSelected] = useState<string[]>([]);
+
+  const visibleRows = useMemo(
+    () =>
+      rows
+        .filter((row) => row.name.toLowerCase().includes(query.toLowerCase()))
+        .sort((a, b) =>
+          sort === "name"
+            ? a.name.localeCompare(b.name)
+            : b.revenue - a.revenue,
+        ),
+    [rows, query, sort],
+  );
+
+  return (
+    <section>
+      <input value={query} onChange={(event) => setQuery(event.target.value)} />
+      <button type="button" onClick={() => setSort("name")}>Sort by name</button>
+      <button type="button" onClick={() => setSort("revenue")}>Sort by revenue</button>
+
+      <table>
+        <tbody>
+          {visibleRows.map((row) => (
+            <tr key={row.id}>
+              <td>
+                <input
+                  type="checkbox"
+                  checked={selected.includes(row.id)}
+                  onChange={(event) =>
+                    setSelected((current) =>
+                      event.target.checked
+                        ? [...current, row.id]
+                        : current.filter((id) => id !== row.id),
+                    )
+                  }
+                />
+              </td>
+              <td>{row.name}</td>
+              <td>{row.revenue}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </section>
+  );
+}
+
+function FilterStep() {
+  const [region, setRegion] = useState("all");
+
+  return (
+    <section>
+      <label>
+        Region
+        <select value={region} onChange={(event) => setRegion(event.target.value)}>
+          <option value="all">All regions</option>
+          <option value="americas">Americas</option>
+          <option value="emea">EMEA</option>
+          <option value="apac">APAC</option>
+        </select>
+      </label>
+    </section>
+  );
+}
+
+function ReviewStep() {
+  return (
+    <section>
+      <h2>Review</h2>
+      <p>Return to the table: its query, sort, and selected rows are preserved.</p>
+    </section>
+  );
+}
+
+function buildLargeDataset(): Row[] {
+  return Array.from({ length: 500 }, (_, index) => ({
+    id: `row-${index}`,
+    name: `Customer ${index + 1}`,
+    revenue: Math.round(1000 + Math.random() * 9000),
+  }));
+}
+```
+
+## When not to use it
+
+`Activity` is a good fit for steps the user is likely to revisit. It is not a
+replacement for persistence, validation, or routing:
+
+- Use [Stepperize data](/docs/latest/forms/patterns#pattern-1--save-a-steps-values)
+  when the review step or final submit needs every step's values.
+- Use [controlled state](/docs/latest/core-concepts/controlled-vs-uncontrolled)
+  when the current step, data, or completion list belongs in a router, store, or
+  server-backed draft.
+- Persist drafts to storage or your backend when state must survive a reload.
+- Be deliberate with very large hidden trees. Preserving state also means keeping
+  memory around.
+
+## Why it works well with Stepperize
+
+Stepperize does not force one rendering strategy. It gives you typed steps,
+navigation methods, guards, completion, and data APIs. You decide whether inactive
+panels unmount, stay in the DOM, sync to a form store, or persist externally.
+
+That makes `Activity` a clean advanced pattern:
+
+1. Define the flow with Stepperize.
+2. Render one `Activity` boundary per step.
+3. Drive each boundary's `mode` from `stepper.is(step.id)`.
+4. Keep local UI state inside the step that owns it.
+5. Save cross-step data with Stepperize when another step needs to read it.
+
+Next: review [form core patterns](/docs/latest/forms/patterns), [shared state](/docs/latest/guides/shared-state), or [navigation guards](/docs/latest/guides/navigation).

@@ -11,7 +11,8 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "strict": true,
+    "ignoreDeprecations": "6.0",
   },
-  "include": ["."],
-  "exclude": ["node_modules", "dist"],
+  "include": ["src/index.ts", "src/types.ts", "src/utils.ts"],
+  "exclude": ["node_modules", "dist", "src/tests", "**/*.test.ts", "**/*.test.tsx"],
 }

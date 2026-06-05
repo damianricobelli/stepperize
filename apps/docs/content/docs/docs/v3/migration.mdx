@@ -1,0 +1,58 @@
+---
+title: Migrating to v3
+description: Update older projects from v2 to v3.
+---
+
+# Migrating to v3
+
+Stepperize v3 brings naming changes to make the hook API more consistent. It also adds a `switch` method that lets you render content for each step more directly.
+
+If you are upgrading beyond v3, keep these renames in mind before moving to [Migrating to v5](/docs/v5/migration), [Migrating to v6](/docs/v6/migration), and [Migrating to v7](/docs/latest/migration/v7).
+
+## Breaking changes
+
+### Name changes
+
+The values returned by the `useStepper` hook were renamed:
+
+- `currentStep` is now `current`.
+- `isFirstStep` is now `isFirst`.
+- `isLastStep` is now `isLast`.
+- `getStepById` is now `get`.
+- `goToNextStep` is now `next`.
+- `goToPrevStep` is now `prev`.
+- `goToStep` is now `goTo`.
+
+## New features
+
+### New `switch` method
+
+The `switch` method was added to the `useStepper` hook. Use it to map step ids to render functions.
+
+```tsx
+const MySteps = () => {
+  const stepper = useStepper();
+
+  return (
+    <>
+      {stepper.switch({
+        first: (step) => <p>This is the {step.title} step.</p>,
+        second: (step) => <p>This is the {step.title} step.</p>,
+        last: (step) => <p>You have reached the {step.title} step.</p>,
+      })}
+    </>
+  );
+};
+```
+
+### Add `all` property
+
+The `all` property was added to the object returned by `useStepper`. It contains all steps in the stepper.
+
+## Later versions
+
+In v6, state and flow are namespaced: use `stepper.state.current` instead of `stepper.current`, `stepper.state.all` instead of `stepper.all`, and `stepper.flow.switch(...)` instead of `stepper.switch(...)`.
+
+In v7, the API becomes flat again and `stepper.flow.switch(...)` becomes `stepper.match(...)`.
+
+Use [Migrating to v4](/docs/v4/migration) next.

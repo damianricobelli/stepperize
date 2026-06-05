@@ -1,0 +1,266 @@
+---
+title: Core patterns
+description: Learn the core patterns behind reliable multi-step forms.
+---
+
+# Core patterns
+
+These patterns work with any form library — or none. Each one is a small, reusable
+move. Multi-step forms are just these combined.
+
+All examples use the checkout flow from the [introduction](/docs/latest/forms):
+
+```tsx
+export const checkout = defineStepper(
+  [
+    { id: "personal", title: "Personal", schema: personalSchema },
+    { id: "shipping", title: "Shipping", schema: shippingSchema },
+    { id: "payment", title: "Payment", schema: paymentSchema },
+    { id: "review", title: "Review" },
+  ],
+  { linear: true },
+);
+```
+
+## Pattern 1 — Save a step's values
+
+When a step is submitted, hand its data to Stepperize in the same call that moves
+forward. The value is stored under the **current step's id**.
+
+```tsx
+async function onStepSubmit(data: unknown) {
+  const moved = await stepper.next({ data: data });
+  if (moved) stepper.setComplete(); // mark this step done
+}
+```
+
+`next({ data })` does three things in order: stages the value, runs your guards,
+and — only if accepted — commits the value and changes step. If a guard cancels,
+nothing is saved. This is the safe order: **submit → guard → save → move**.
+
+Read it back anywhere:
+
+```tsx
+stepper.data.get("personal"); // one step
+stepper.data.all(); // everything, for the review page
+```
+
+## Pattern 2 — Seed a step from its draft
+
+When the user navigates back, or reloads, each step should repopulate from what
+it saved. Read the draft when the step mounts and use it as the form's initial
+values.
+
+```tsx
+function PersonalStep() {
+  const stepper = checkout.useStepper();
+  const draft = stepper.data.get("personal");
+
+  // hand `draft` to your form library as defaultValues / initial state
+  return <PersonalForm defaultValues={draft} />;
+}
+```
+
+For the **active** step the id is optional — `stepper.data.get()` returns the
+current step's draft.
+
+<Callout type="info">
+This is what makes "Back" non-destructive: the value was saved on the way forward,
+so returning to a step shows exactly what the user typed.
+</Callout>
+
+For complex steps that also need to keep component-local state mounted — rich
+editors, field arrays, chart configuration, or uncontrolled drafts — see
+[Preserve step state with React Activity](/docs/latest/guides/react-activity).
+
+## Pattern 3 — Validate before moving forward
+
+Validation has two independent layers, and they do different jobs:
+
+| Layer | Runs | Blocks | Use for |
+| --- | --- | --- | --- |
+| **Field validation** | On submit / on change | Re-render with field errors | Showing *which field* is wrong |
+| **Flow gate** (`beforeStepChange`) | Before the step changes | Cancels the navigation | The *gate* — "is this step allowed to advance?" |
+
+**Who owns field validation depends on your setup:**
+
+- **Using a form library?** It already owns field validation. With form-driven
+  navigation (Pattern 8), the form validates on submit *before* it calls
+  `stepper.next()`, so an invalid step never advances. You usually don't need a
+  flow gate at all. If you want one as a safety net for non-form navigation
+  (`Stepper.Next`, a programmatic `goTo`), call the form's own check:
+
+  ```tsx
+  // form-library validation inside the gate (e.g. React Hook Form)
+  beforeStepChange: ({ from, direction }) =>
+    direction === "prev" ? true : form.trigger(fieldsByStep[from.id]),
+  ```
+
+- **No form library** (or a separate form per step, or you want one
+  library-agnostic gate)? Put a step `schema` on each step and let Stepperize
+  validate it. `ctx.validate()` runs the step being left against the transition
+  data snapshot, including any pending `next({ data })` payload. Schemas use
+  [Standard Schema](/docs/latest/forms/schema-validation), so Zod, Valibot,
+  ArkType, and other compliant libraries work the same way:
+
+  ```tsx
+  const stepper = checkout.useStepper({
+    beforeStepChange: async ({ direction, validate }) => {
+      if (direction === "prev") return true;
+      // validates the step being left; schemaless steps always pass
+      const result = await validate();
+      return result.success; // false cancels the move
+    },
+  });
+  ```
+
+Either way, the gate runs no matter how navigation was triggered — submit button,
+`Stepper.Next`, or a programmatic `goTo`. See [Schema &
+validate()](/docs/latest/forms/schema-validation) for the full validation flow
+and the [navigation lifecycle](/docs/latest/core-concepts/navigation-lifecycle)
+for the pipeline.
+
+## Pattern 4 — The review step
+
+The review step reads every draft and renders a summary. Since drafts are stored
+by id, it's just `data.all()`:
+
+```tsx
+function ReviewStep() {
+  const stepper = checkout.useStepper();
+  const all = stepper.data.all();
+
+  return (
+    <>
+      <Summary section="Personal" data={all.personal} onEdit={() => stepper.goTo("personal")} />
+      <Summary section="Shipping" data={all.shipping} onEdit={() => stepper.goTo("shipping")} />
+      <Summary section="Payment"  data={all.payment}  onEdit={() => stepper.goTo("payment")} />
+
+      <button type="button" onClick={submitOrder}>Place order</button>
+    </>
+  );
+}
+```
+
+The review step is read-only over Stepperize state — no form library needed here.
+
+## Pattern 5 — Edit a previous step, then return
+
+"Edit" is just `goTo(id)`. The draft is already there (Pattern 2), so the step
+reopens pre-filled. To send the user straight back to review after editing, drive
+navigation from your own logic:
+
+```tsx
+async function saveEditAndReturn(data: unknown) {
+  // save the edited step without changing the active step…
+  stepper.data.set("shipping", data);
+  // …then jump back to review
+  await stepper.goTo("review");
+}
+```
+
+Use `data.set` (not `next({ data })`) when the user is **editing in place** and
+you control where they go next, rather than walking the flow linearly.
+
+## Pattern 6 — Submit the whole form
+
+Submission happens on the last step. Gather every draft and send it:
+
+```tsx
+async function submitOrder() {
+  const payload = stepper.data.all();
+  await api.createOrder(payload);
+  stepper.setComplete("review");
+}
+
+// show the right button on the last step
+<button type="submit">{stepper.isLast ? "Place order" : "Next"}</button>
+```
+
+## Pattern 7 — Persist across reloads
+
+Drafts live in memory by default. To survive a refresh, **control** the values and
+mirror them to storage:
+
+```tsx
+const [values, setValues] = React.useState(
+  () => JSON.parse(localStorage.getItem("checkout") ?? "{}"),
+);
+
+const stepper = checkout.useStepper({
+  data: values,
+  onDataChange: (next) => {
+    setValues(next);
+    localStorage.setItem("checkout", JSON.stringify(next));
+  },
+});
+```
+
+Persist the `step` the same way if you want users to resume on the exact step they
+left. See [controlled vs
+uncontrolled](/docs/latest/core-concepts/controlled-vs-uncontrolled).
+
+<Callout type="warn">
+Read persisted state in an initializer or effect, not freshly during SSR render,
+to avoid hydration mismatches. See the [production
+checklist](/docs/latest/production/checklist#ssr-rsc-and-nextjs).
+</Callout>
+
+## Pattern 8 — Form-driven navigation
+
+Bind navigation to your form's submit, not to a bare "Next" button, so a click
+always runs the form's own validation first:
+
+```tsx
+<form onSubmit={handleSubmit(async (data) => {
+  // form-level validation already passed here
+  const moved = await stepper.next({ data: data });
+  if (moved) stepper.setComplete();
+})}>
+  {/* fields */}
+  <button type="submit">{stepper.isLast ? "Place order" : "Next"}</button>
+</form>
+```
+
+The submit button submits the form; the form's success handler advances the
+stepper. Field errors stop the submit; `beforeStepChange` is the transition guard
+that protects every navigation path, including primitive buttons and
+programmatic calls.
+
+## Pattern 9 — Dynamic flows (skip a step)
+
+Sometimes a step depends on an earlier answer (e.g. skip Shipping for a digital
+order). Branch inside navigation rather than mutating the step list:
+
+```tsx
+async function continueFromPersonal(data: PersonalValues) {
+  await stepper.next({ data: data });
+  if (data.orderType === "digital") {
+    await stepper.goTo("payment"); // skip shipping
+  }
+}
+```
+
+For a genuinely conditional step, mark skipped steps complete (or exclude them
+from your "all done?" check) so completion stays accurate.
+
+---
+
+## Putting it together
+
+Every multi-step form is these nine patterns in some combination:
+
+| Goal | Pattern |
+| --- | --- |
+| Save on advance | `next({ data })` |
+| Pre-fill on back/reload | `data.get(id)` |
+| Block invalid steps | `beforeStepChange` |
+| Summary screen | `data.all()` |
+| Edit a previous step | `goTo(id)` + `data.set` |
+| Submit | `data.all()` on `isLast` |
+| Survive refresh | controlled `data` + storage |
+| Validate on submit | form-driven navigation |
+| Conditional steps | branch in navigation |
+
+Next, see the [common problems](/docs/latest/forms/common-problems) these
+patterns prevent — then pick an [implementation](/docs/latest/forms/react-hook-form).

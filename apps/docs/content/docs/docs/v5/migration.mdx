@@ -1,0 +1,51 @@
+---
+title: Migrating to v5
+description: Update older projects from v4 to v5.
+---
+
+# Migrating to v5
+
+Stepperize v5 adds a `metadata` API to the `useStepper` hook.
+
+If you are upgrading from v5 to a newer version, use [Migrating to v6](/docs/v6/migration) first. v6 simplifies the initial state API again and removes initial statuses.
+
+## Breaking changes
+
+### Initial state configuration
+
+The parameters of `useStepper` changed from a string initial step to an object with an `initial` property.
+
+```tsx
+const methods = useStepper({
+  initial: {
+    step: "first", // The ID of the initial step to display
+    metadata: { ... }, // The initial metadata for each step
+    statuses: { ... }, // The initial status for each step
+  },
+});
+```
+
+## New features
+
+### New `metadata` API
+
+The `metadata` API allows you to set dynamic metadata for each step.
+
+```tsx
+const stepper = useStepper({
+  initial: {
+    step: "shipping",
+    metadata: {
+      shipping: { saved: false },
+    },
+  },
+});
+
+stepper.metadata.set("shipping", { saved: true });
+```
+
+## Later versions
+
+In v6, `useStepper` and `Scoped` take `initialStep` and `initialMetadata` at the top level. The nested `initial` object is removed, and `statuses` are derived from position instead of configured initially.
+
+Use [Migrating to v6](/docs/v6/migration) next.

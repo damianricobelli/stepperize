@@ -1,0 +1,36 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "breadcrumb",
+  "type": "registry:component",
+  "title": "Breadcrumb Stepper",
+  "description": "A breadcrumb-style trail of steps with chevrons.",
+  "author": "Stepperize",
+  "dependencies": [
+    "@stepperize/react",
+    "lucide-react"
+  ],
+  "registryDependencies": [],
+  "categories": [
+    "layouts"
+  ],
+  "meta": {
+    "capabilities": [
+      "navigation"
+    ],
+    "level": "beginner",
+    "tags": [
+      "breadcrumb",
+      "trail",
+      "chevron",
+      "horizontal"
+    ]
+  },
+  "files": [
+    {
+      "path": "components/stepperize/breadcrumb.tsx",
+      "type": "registry:component",
+      "target": "components/stepperize/breadcrumb.tsx",
+      "content": "import { defineStepper } from \"@stepperize/react\";\nimport { ChevronRight } from \"lucide-react\";\nimport { Fragment, useState } from \"react\";\n\nconst { Stepper } = defineStepper([\n\t{ id: \"type\", title: \"Type\" },\n\t{ id: \"details\", title: \"Details\" },\n\t{ id: \"media\", title: \"Media\" },\n\t{ id: \"publish\", title: \"Publish\" },\n]);\n\nexport function BreadcrumbBlock() {\n\tconst [published, setPublished] = useState(false);\n\n\treturn (\n\t\t<Stepper.Root\n\t\t\tlinear\n\t\t\tclassName=\"w-full max-w-md rounded-xl border bg-background p-6 shadow-sm\"\n\t\t>\n\t\t\t{({ stepper }) => (\n\t\t\t\t<>\n\t\t\t\t\t<Stepper.List className=\"flex flex-wrap items-center gap-0.5 text-sm\">\n\t\t\t\t\t\t<Stepper.Items>\n\t\t\t\t\t\t\t{(step, index) => (\n\t\t\t\t\t\t\t\t<Fragment key={step.id}>\n\t\t\t\t\t\t\t\t\t{index > 0 && (\n\t\t\t\t\t\t\t\t\t\t<ChevronRight className=\"size-4 shrink-0 text-muted-foreground/50\" />\n\t\t\t\t\t\t\t\t\t)}\n\t\t\t\t\t\t\t\t\t<Stepper.Item step={step.id}>\n\t\t\t\t\t\t\t\t\t\t<Stepper.Trigger className=\"rounded-md px-2 py-1 font-medium text-muted-foreground transition-colors enabled:hover:bg-muted enabled:hover:text-foreground disabled:opacity-100 data-[status=active]:text-primary data-[status=previous]:text-foreground\">\n\t\t\t\t\t\t\t\t\t\t\t<Stepper.Title />\n\t\t\t\t\t\t\t\t\t\t</Stepper.Trigger>\n\t\t\t\t\t\t\t\t\t</Stepper.Item>\n\t\t\t\t\t\t\t\t</Fragment>\n\t\t\t\t\t\t\t)}\n\t\t\t\t\t\t</Stepper.Items>\n\t\t\t\t\t</Stepper.List>\n\n\t\t\t\t\t<div className=\"mt-6 grid min-h-24 place-items-center rounded-lg border bg-muted/30 p-4 text-center text-sm text-muted-foreground\">\n\t\t\t\t\t\t{published ? (\n\t\t\t\t\t\t\t<div>\n\t\t\t\t\t\t\t\t<p className=\"font-medium text-foreground\">Content published</p>\n\t\t\t\t\t\t\t\t<p className=\"mt-1 text-xs\">\n\t\t\t\t\t\t\t\t\tType, details, media, and publishing are complete.\n\t\t\t\t\t\t\t\t</p>\n\t\t\t\t\t\t\t</div>\n\t\t\t\t\t\t) : (\n\t\t\t\t\t\t\t<Stepper.Content step={stepper.current.id}>\n\t\t\t\t\t\t\t\tEditing “{stepper.current.title}”.\n\t\t\t\t\t\t\t</Stepper.Content>\n\t\t\t\t\t\t)}\n\t\t\t\t\t</div>\n\n\t\t\t\t\t<Stepper.Actions className=\"mt-6 flex justify-between\">\n\t\t\t\t\t\t<Stepper.Prev className=\"inline-flex h-9 items-center rounded-lg border bg-background px-4 text-sm font-medium transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-50\">\n\t\t\t\t\t\t\tBack\n\t\t\t\t\t\t</Stepper.Prev>\n\t\t\t\t\t\t{published ? (\n\t\t\t\t\t\t\t<button\n\t\t\t\t\t\t\t\ttype=\"button\"\n\t\t\t\t\t\t\t\tonClick={() => {\n\t\t\t\t\t\t\t\t\tsetPublished(false);\n\t\t\t\t\t\t\t\t\tstepper.reset();\n\t\t\t\t\t\t\t\t}}\n\t\t\t\t\t\t\t\tclassName=\"inline-flex h-9 items-center rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90\"\n\t\t\t\t\t\t\t>\n\t\t\t\t\t\t\t\tRestart flow\n\t\t\t\t\t\t\t</button>\n\t\t\t\t\t\t) : stepper.isLast ? (\n\t\t\t\t\t\t\t<button\n\t\t\t\t\t\t\t\ttype=\"button\"\n\t\t\t\t\t\t\t\tonClick={() => setPublished(true)}\n\t\t\t\t\t\t\t\tclassName=\"inline-flex h-9 items-center rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90\"\n\t\t\t\t\t\t\t>\n\t\t\t\t\t\t\t\tPublish\n\t\t\t\t\t\t\t</button>\n\t\t\t\t\t\t) : (\n\t\t\t\t\t\t\t<Stepper.Next className=\"inline-flex h-9 items-center rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90\">\n\t\t\t\t\t\t\t\tContinue\n\t\t\t\t\t\t\t</Stepper.Next>\n\t\t\t\t\t\t)}\n\t\t\t\t\t</Stepper.Actions>\n\t\t\t\t</>\n\t\t\t)}\n\t\t</Stepper.Root>\n\t);\n}\n"
+    }
+  ]
+}

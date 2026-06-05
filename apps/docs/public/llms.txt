@@ -1,0 +1,201 @@
+# Stepperize
+
+> Typed, headless, framework-agnostic step/wizard state for React. One typed
+> definition drives a hook, a provider, exhaustive rendering, and unstyled
+> accessible primitives — all sharing the same step ids. Packages:
+> `@stepperize/react` for React apps, `@stepperize/core` for the
+> framework-agnostic types and pure helpers.
+
+This file helps AI agents generate **correct, current Stepperize code**. The API
+below is current. Older patterns (`stepper.navigation.next()`,
+`stepper.flow.switch()`, `stepper.metadata`, `Scoped`, `defineStepper(stepA, stepB)`,
+`stepper.render()`, `stepper.values`, `stepper.complete()`, `beforeChange`,
+`navigation: "linear"`) are outdated and must not be used.
+
+## Install
+
+```bash
+npm install @stepperize/react
+```
+
+## Canonical usage
+
+```tsx
+import { defineStepper } from "@stepperize/react";
+
+// 1. Define once, at module scope. Pass an ARRAY of steps. `id` is required;
+//    every other field is yours and stays typed. Add `schema` (any Standard
+//    Schema) to type a step's flow data and enable validate(). The array must
+//    be non-empty and ids must be unique. Literal duplicate ids are TypeScript
+//    errors when possible; runtime validation catches dynamic arrays.
+const checkout = defineStepper(
+  [
+    { id: "shipping", title: "Shipping" },
+    { id: "payment", title: "Payment" },
+    { id: "review", title: "Review" },
+  ],
+  { defaultStep: "shipping", linear: false }, // options are optional
+);
+
+// 2. Use the flat instance.
+function Checkout() {
+  const stepper = checkout.useStepper();
+
+  return (
+    <section>
+      <h2>{stepper.current.title}</h2>
+
+      {/* match is exhaustive — one handler per id, type-checked */}
+      {stepper.match({
+        shipping: () => <Shipping />,
+        payment: () => <Payment />,
+        review: () => <Review />,
+      })}
+
+      <button disabled={!stepper.canPrev} onClick={() => stepper.prev()}>Back</button>
+      <button disabled={!stepper.canNext} onClick={() => stepper.next()}>Next</button>
+    </section>
+  );
+}
+```
+
+## The flat instance (returned by useStepper)
+
+State: `steps`, `current`, `id`, `index`, `count`, `progress` (0..1),
+`completed`, `isFirst`, `isLast`, `canPrev`, `canNext`, `isPending`.
+
+Step access lives on the DEFINITION, not the instance: `checkout.get(id)`,
+`checkout.at(index)`, `checkout.parseStep(value)`, or the raw `stepper.steps`
+array. (The instance has no `indexOf`/`has`/`first`/`last`/`nextStep`/`neighbors`.)
+
+Render/status: `match({ [id]: (step) => ReactNode })`, `status(id)` →
+`"active" | "previous" | "upcoming"`, `is(id)`.
+
+Navigation (all async, resolve to `boolean` "did it change"): `next(payload?)`,
+`prev(payload?)`, `goTo(id, payload?)`, `reset(payload?)`, `canGoTo(id)`.
+Payload: `{ data?: unknown }` — staged for the CURRENT step before the guard
+runs, then committed only if the move is accepted. `goTo` bypasses the `linear`
+policy. Always `await` when branching on result.
+
+Flow data (committed cross-step data, not live field state): `data.get(id?)`,
+`data.set(value)` / `data.set(id, value)`, `data.all()`, `data.clear(id?)`,
+`data.reset()`. With a per-step `schema`, `data.get(id)` is typed as the schema input.
+
+Validation hierarchy:
+- `ctx.validate()` inside `beforeStepChange` validates the step being left against
+  the transition data snapshot, including any pending `next({ data })` payload.
+  This is the preferred guard API.
+- `stepper.validate(id?)` validates STORED draft data from `stepper.data`.
+- `checkout.validate(id, value)` (on the definition) validates an ARBITRARY value
+  against a step schema.
+All return `Promise<{ success: true; data } | { success: false; issues }>`.
+Schema is any Standard Schema (Zod/Valibot/ArkType; no runtime dep). Schemaless
+steps always succeed with the value unchanged. NOTE: `stepper.data.get(id)` is the
+DRAFT (schema input, may be invalid); validation returns the parsed OUTPUT — don't
+treat draft data as validated.
+
+Completion (explicit business state, separate from status):
+`setComplete(id?, value = true)`, `isComplete(id?)`.
+
+Lifecycle is options, not instance methods. There are no event subscriptions —
+use a `useEffect` on `stepper.id` for ad-hoc effects.
+
+## Definition object (returned by defineStepper)
+
+`{ steps, useStepper(options?), Provider, Stepper, get(id), at(index), parseStep(value), validate(id, value) }`.
+
+## Options (defineStepper 2nd arg = defaults; useStepper/Provider/Root arg = per-instance overrides)
+
+- defineStepper: `defaultStep`, `defaultData`, `defaultCompleted`, `linear` (boolean).
+  Lifecycle callbacks are NOT accepted here — they are instance-only.
+- useStepper / Provider / Stepper.Root: `defaultStep`, `step` + `onStepChange`
+  (controlled step; `step` may be a raw external string and `onStepChange`
+  receives known step ids), `onInvalidStep`, `defaultData`, `data` + `onDataChange`,
+  `completed` + `onCompletedChange`, `linear`, `beforeStepChange`.
+- Controlled rule: if you pass `step`, you MUST pass `onStepChange` or it won't move
+  (same for `data`/`onDataChange`, `completed`/`onCompletedChange`).
+
+## Lifecycle (every imperative navigation)
+
+payload → `beforeStepChange(ctx)` (return `false` to cancel; can be async; sees
+pending data; `ctx.validate()` validates the step being left) → commit (save data
++ change step) → `onStepChange(step, ctx)` → resolves `true`/`false`. `ctx`:
+`{ from, to, fromIndex, toIndex, direction, data, validate, statuses }`,
+`direction` ∈ `"next" | "prev" | "goto" | "reset"`. The guard runs on
+imperative navigation only — external controlled `step` changes are authoritative
+and do not run it.
+
+## Validate before advancing (common pattern)
+
+```tsx
+const checkout = defineStepper([
+  { id: "shipping", schema: ShippingSchema },
+  { id: "review" },
+]);
+
+function Checkout() {
+  const stepper = checkout.useStepper({
+    beforeStepChange: async ({ direction, validate }) => {
+      if (direction === "prev") return true;
+      // validate() checks the step being left against this transition's data
+      // snapshot, including any pending next({ data }) payload.
+      return (await validate()).success; // false cancels
+    },
+  });
+  // submit + validate + complete in one action:
+  // const accepted = await stepper.next({ data: form.getValues() });
+  // if (accepted) stepper.setComplete();
+}
+```
+
+## Shared state
+
+Wrap with the generated `Provider`; descendants call `checkout.useStepper()` and
+read the SAME instance (outside a provider the hook makes a local instance).
+
+```tsx
+<checkout.Provider defaultStep="shipping">
+  <Sidebar /> <Panel /> <Actions />
+</checkout.Provider>
+```
+
+## Primitives (unstyled, accessible) — `checkout.Stepper.*`
+
+`Root` (provider-backed; render prop `{({ stepper }) => ...}`; `linear`,
+`orientation`, all useStepper options), `List` (tablist + arrow-key nav,
+`orientation`), `Items` (`{(step, index) => ...}`), `Item` (`step` prop, or auto
+inside `Items`), `Trigger` (selects the item's step), `Title`, `Description`,
+`Indicator`, `Separator`, `Content` (`step` prop; renders only when active),
+`Actions`, `Prev`, `Next`. Most accept `render={(props) => ...}`; it replaces the
+primitive root element — SPREAD `props`. Style via
+`data-status="active|previous|upcoming"` and `data-component`. With `linear`,
+`Trigger` and `List` keyboard navigation follow `canGoTo(id)`.
+
+## Rules for generating Stepperize code
+
+1. Pass a non-empty steps ARRAY to `defineStepper`. Define at module scope and keep ids unique.
+2. The instance is FLAT: `stepper.next()`, not `stepper.navigation.next()`.
+3. Use `stepper.match({...})` (exhaustive), not `stepper.render` or `flow.switch`.
+4. `data` for per-step flow data (not `values`/`metadata`); `Provider` for sharing (not `Scoped`).
+5. `await` navigation when you need the boolean result.
+6. Controlled `step` requires `onStepChange`.
+7. Status is positional; completion is explicit (`setComplete()` / `isComplete()`).
+8. Lifecycle is `beforeStepChange` (guard) + `onStepChange` (after), passed to the hook/provider.
+9. Navigation policy is `linear: boolean`, not `navigation: "linear" | "non-linear"`.
+
+## Docs
+
+- Quick start: /docs/latest/getting-started/first-stepper
+- The stepper instance (live): /docs/latest/core-concepts/stepper-instance
+- Navigation lifecycle: /docs/latest/core-concepts/navigation-lifecycle
+- Status vs completion: /docs/latest/core-concepts/status-vs-completion
+- Controlled vs uncontrolled: /docs/latest/core-concepts/controlled-vs-uncontrolled
+- Primitives: /docs/latest/guides/primitives
+- Building forms (patterns, not libraries): /docs/latest/forms
+- Form patterns (drafts, validation gate, review, edit, persist): /docs/latest/forms/patterns
+- Schema & validate() (Standard Schema, draft vs validated): /docs/latest/forms/schema-validation
+- Form implementations: /docs/latest/forms/{react-hook-form,tanstack-form,conform}
+- Reference: /docs/latest/api/react/stepper-instance
+- Production checklist: /docs/latest/production/checklist
+- Migrate v6 → latest: /docs/latest/migration/v7
+```

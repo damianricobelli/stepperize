@@ -3,560 +3,392 @@ import { describe, expect, it, vi } from "vitest";
 import { defineStepper } from "../define-stepper";
 
 const steps = [
-  { id: "first", title: "First" },
-  { id: "second", title: "Second" },
-  { id: "third", title: "Third" },
-] as const;
+	{ id: "first", title: "First" },
+	{ id: "second", title: "Second" },
+	{ id: "third", title: "Third" },
+];
+
+const stringSchema = {
+	"~standard": {
+		version: 1 as const,
+		vendor: "test",
+		validate: (value: unknown) =>
+			typeof value === "string" && value.length > 0 ? { value } : { issues: [{ message: "Required" }] },
+	},
+};
 
 describe("defineStepper", () => {
-  it("returns steps, Scoped, useStepper, Stepper", () => {
-    const result = defineStepper(...steps);
-    expect(result.steps).toEqual(steps);
-    expect(result.Scoped).toBeDefined();
-    expect(typeof result.useStepper).toBe("function");
-    expect(result.Stepper).toBeDefined();
-    expect(result.Stepper.Root).toBeDefined();
-    expect(result.Stepper.List).toBeDefined();
-    expect(result.Stepper.Item).toBeDefined();
-    expect(result.Stepper.Trigger).toBeDefined();
-    expect(result.Stepper.Content).toBeDefined();
-    expect(result.Stepper.Prev).toBeDefined();
-    expect(result.Stepper.Next).toBeDefined();
-  });
+	it("throws for empty step definitions", () => {
+		expect(() => defineStepper([] as const)).toThrow("defineStepper requires at least one step.");
+	});
 
-  it("useStepper returns stepper with state, navigation, lookup, flow, metadata, lifecycle", () => {
-    const { useStepper } = defineStepper(...steps);
-    const { result } = renderHook(() => useStepper());
-    const stepper = result.current;
-    expect(stepper.state.all).toEqual(steps);
-    expect(stepper.state.current.data).toEqual(steps[0]);
-    expect(stepper.state.current.index).toBe(0);
-    expect(stepper.state.current.status).toBe("active");
-    expect(stepper.state.isFirst).toBe(true);
-    expect(stepper.state.isLast).toBe(false);
-    expect(stepper.navigation.next).toBeDefined();
-    expect(stepper.navigation.prev).toBeDefined();
-    expect(stepper.navigation.goTo).toBeDefined();
-    expect(stepper.navigation.reset).toBeDefined();
-    expect(stepper.lookup.get("second")).toEqual(steps[1]);
-    expect(typeof stepper.flow.is).toBe("function");
-    expect(stepper.flow.is("first")).toBe(true);
-    expect(stepper.flow.is("second")).toBe(false);
-    expect(stepper.metadata.get("first")).toBeNull();
-    expect(stepper.lifecycle.onBeforeTransition).toBeDefined();
-    expect(stepper.lifecycle.onAfterTransition).toBeDefined();
-  });
+	it("throws for duplicate step ids", () => {
+		const duplicateSteps: { id: string; title: string }[] = [
+			{ id: "first", title: "First" },
+			{ id: "first", title: "Duplicate" },
+		];
 
-  it("useStepper with initialStep starts at that step", () => {
-    const { useStepper } = defineStepper(...steps);
-    const { result } = renderHook(() => useStepper({ initialStep: "third" }));
-    expect(result.current.state.current.data.id).toBe("third");
-    expect(result.current.state.current.index).toBe(2);
-    expect(result.current.state.isLast).toBe(true);
-  });
+		expect(() => defineStepper(duplicateSteps)).toThrow(
+			"defineStepper requires unique step ids. Duplicate id(s): first.",
+		);
+	});
 
-  it("useStepper with initialMetadata seeds metadata per step", () => {
-    const { useStepper } = defineStepper(...steps);
-    const { result } = renderHook(() =>
-      useStepper({
-        initialMetadata: { first: { saved: true }, second: { count: 2 } },
-      }),
-    );
-    expect(result.current.metadata.get("first")).toEqual({ saved: true });
-    expect(result.current.metadata.get("second")).toEqual({ count: 2 });
-    expect(result.current.metadata.get("third")).toBeNull();
-  });
+	it("defines steps from an array and returns the surface", () => {
+		const result = defineStepper(steps);
+		expect(result.steps).toEqual(steps);
+		expect(result.Provider).toBeDefined();
+		expect(typeof result.useStepper).toBe("function");
+		expect(result.Stepper.Root).toBeDefined();
+		expect(result.Stepper.Items).toBeDefined();
+		expect(result.get("second")).toEqual(steps[1]);
+		expect(result.at(0)).toEqual(steps[0]);
+	});
 
-  it("navigation.next advances step", () => {
-    const { useStepper } = defineStepper(...steps);
-    const { result } = renderHook(() => useStepper());
-    expect(result.current.state.current.data.id).toBe("first");
-    act(() => {
-      result.current.navigation.next();
-    });
-    expect(result.current.state.current.data.id).toBe("second");
-    act(() => {
-      result.current.navigation.next();
-    });
-    expect(result.current.state.current.data.id).toBe("third");
-  });
+	it("useStepper returns a flat stepper API", () => {
+		const { useStepper } = defineStepper(steps);
+		const { result } = renderHook(() => useStepper());
+		const stepper = result.current;
 
-  it("navigation.prev goes back", () => {
-    const { useStepper } = defineStepper(...steps);
-    const { result } = renderHook(() => useStepper({ initialStep: "third" }));
-    act(() => {
-      result.current.navigation.prev();
-    });
-    expect(result.current.state.current.data.id).toBe("second");
-    act(() => {
-      result.current.navigation.prev();
-    });
-    expect(result.current.state.current.data.id).toBe("first");
-  });
+		expect(stepper.steps).toEqual(steps);
+		expect(stepper.current).toEqual(steps[0]);
+		expect(stepper.id).toBe("first");
+		expect(stepper.index).toBe(0);
+		expect(stepper.count).toBe(3);
+		expect(stepper.progress).toBe(0);
+		expect(stepper.isFirst).toBe(true);
+		expect(stepper.isLast).toBe(false);
+		expect(stepper.canPrev).toBe(false);
+		expect(stepper.canNext).toBe(true);
+		expect(stepper.isPending).toBe(false);
+		expect(stepper.status("first")).toBe("active");
+		expect(stepper.status("second")).toBe("upcoming");
+		expect(stepper.is("first")).toBe(true);
+	});
 
-  it("navigation.goTo jumps to step by id", () => {
-    const { useStepper } = defineStepper(...steps);
-    const { result } = renderHook(() => useStepper());
-    act(() => {
-      result.current.navigation.goTo("third");
-    });
-    expect(result.current.state.current.data.id).toBe("third");
-    act(() => {
-      result.current.navigation.goTo("first");
-    });
-    expect(result.current.state.current.data.id).toBe("first");
-  });
+	it("uses definition-level defaultStep and defaultData options", () => {
+		const { useStepper } = defineStepper(steps, {
+			defaultStep: "second",
+			defaultData: { first: { saved: true } },
+		});
+		const { result } = renderHook(() => useStepper());
 
-  it("navigation.goTo throws if step id not found", () => {
-    const { useStepper } = defineStepper(...steps);
-    const { result } = renderHook(() => useStepper());
-    expect(() => {
-      act(() => {
-        result.current.navigation.goTo("not-exist" as any);
-      });
-    }).toThrow(/not found/);
-  });
+		expect(result.current.id).toBe("second");
+		expect(result.current.index).toBe(1);
+		expect(result.current.data.get("first")).toEqual({ saved: true });
+		expect(result.current.data.get()).toBeUndefined();
+	});
 
-  it("navigation boundaries throw even with lifecycle callbacks or payload metadata", () => {
-    const { useStepper } = defineStepper(...steps);
+	it("navigates with next, prev, goTo and reset", async () => {
+		const { useStepper } = defineStepper(steps, { defaultStep: "second" });
+		const { result } = renderHook(() => useStepper());
 
-    const first = renderHook(() => useStepper());
-    act(() => {
-      first.result.current.lifecycle.onBeforeTransition(() => {});
-    });
-    expect(() => {
-      act(() => {
-        void first.result.current.navigation.prev();
-      });
-    }).toThrow(/first step/);
+		await act(async () => {
+			expect(await result.current.next()).toBe(true);
+		});
+		expect(result.current.id).toBe("third");
+		expect(result.current.isLast).toBe(true);
+		expect(result.current.progress).toBe(1);
 
-    const last = renderHook(() => useStepper({ initialStep: "third" }));
-    act(() => {
-      last.result.current.lifecycle.onAfterTransition(() => {});
-    });
-    expect(() => {
-      act(() => {
-        void last.result.current.navigation.next({ metadata: { third: { x: 1 } } });
-      });
-    }).toThrow(/last step/);
-  });
+		await act(async () => {
+			expect(await result.current.next()).toBe(false);
+			expect(await result.current.prev()).toBe(true);
+		});
+		expect(result.current.id).toBe("second");
 
-  it("navigation.reset restores initial step", () => {
-    const { useStepper } = defineStepper(...steps);
-    const { result } = renderHook(() => useStepper({ initialStep: "second" }));
-    act(() => {
-      result.current.navigation.next();
-    });
-    expect(result.current.state.current.data.id).toBe("third");
-    act(() => {
-      result.current.navigation.reset();
-    });
-    expect(result.current.state.current.data.id).toBe("second");
-  });
+		await act(async () => {
+			expect(await result.current.goTo("first")).toBe(true);
+		});
+		expect(result.current.id).toBe("first");
 
-  it("flow.switch returns result for current step", () => {
-    const { useStepper } = defineStepper(...steps);
-    const { result } = renderHook(() => useStepper());
-    const out = result.current.flow.switch({
-      first: (s) => s.title,
-      second: (s) => s.title,
-      third: (s) => s.title,
-    });
-    expect(out).toBe("First");
-    act(() => result.current.navigation.next());
-    const out2 = result.current.flow.switch({
-      first: (s) => s.title,
-      second: (s) => s.title,
-      third: (s) => s.title,
-    });
-    expect(out2).toBe("Second");
-  });
+		await act(async () => {
+			expect(await result.current.reset()).toBe(true);
+		});
+		expect(result.current.id).toBe("second");
+	});
 
-  it("metadata.set and get persist per step", () => {
-    const { useStepper } = defineStepper(...steps);
-    const { result } = renderHook(() => useStepper());
-    act(() => {
-      result.current.metadata.set("first", { draft: true });
-    });
-    expect(result.current.metadata.get("first")).toEqual({ draft: true });
-    act(() => result.current.navigation.next());
-    expect(result.current.metadata.get("second")).toBeNull();
-    expect(result.current.metadata.get("first")).toEqual({ draft: true });
-  });
+	it("matches exhaustively by current step", async () => {
+		const { useStepper } = defineStepper(steps);
+		const { result } = renderHook(() => useStepper());
 
-  it("state.current.metadata get/set for current step", () => {
-    const { useStepper } = defineStepper(...steps);
-    const { result } = renderHook(() => useStepper());
-    expect(result.current.state.current.metadata.get()).toBeNull();
-    act(() => {
-      result.current.state.current.metadata.set({ count: 1 });
-    });
-    expect(result.current.state.current.metadata.get()).toEqual({ count: 1 });
-  });
+		expect(
+			result.current.match({
+				first: (step) => step.title,
+				second: (step) => step.title,
+				third: (step) => step.title,
+			}),
+		).toBe("First");
 
-  it("Scoped provides same stepper to children via useStepper", () => {
-    const { Scoped, useStepper } = defineStepper(...steps);
-    let childStepper: ReturnType<typeof useStepper> | null = null;
-    function Child() {
-      childStepper = useStepper();
-      return (
-        <span data-testid="child">{childStepper.state.current.data.id}</span>
-      );
-    }
-    render(
-      <Scoped>
-        <Child />
-      </Scoped>,
-    );
-    expect(childStepper).not.toBeNull();
-    expect(childStepper!.state.current.data.id).toBe("first");
-    expect(screen.getByTestId("child").textContent).toBe("first");
-  });
+		await act(async () => {
+			await result.current.goTo("third");
+		});
 
-  it("Scoped with initialStep provides that step to children", () => {
-    const { Scoped, useStepper } = defineStepper(...steps);
-    let childStepper: ReturnType<typeof useStepper> | null = null;
-    function Child() {
-      childStepper = useStepper();
-      return (
-        <span data-testid="child">{childStepper!.state.current.data.id}</span>
-      );
-    }
-    render(
-      <Scoped initialStep="second">
-        <Child />
-      </Scoped>,
-    );
-    expect(childStepper!.state.current.data.id).toBe("second");
-    expect(screen.getByTestId("child").textContent).toBe("second");
-  });
+		expect(
+			result.current.match({
+				first: (step) => step.title,
+				second: (step) => step.title,
+				third: (step) => step.title,
+			}),
+		).toBe("Third");
+	});
 
-  it("flow.when returns whenFn when step matches, elseFn otherwise", () => {
-    const { useStepper } = defineStepper(...steps);
-    const { result } = renderHook(() => useStepper());
-    expect(
-      result.current.flow.when(
-        "first",
-        (s) => s.title,
-        () => "else",
-      ),
-    ).toBe("First");
-    expect(
-      result.current.flow.when(
-        "second",
-        () => "when",
-        () => "else",
-      ),
-    ).toBe("else");
-    act(() => result.current.navigation.next());
-    expect(
-      result.current.flow.when(
-        "second",
-        (s) => s.title,
-        () => "else",
-      ),
-    ).toBe("Second");
-  });
+	it("stores and clears flow data for the current or explicit step", () => {
+		const { useStepper } = defineStepper(steps);
+		const { result } = renderHook(() => useStepper());
 
-  it("flow.match returns result for given state id", () => {
-    const { useStepper } = defineStepper(...steps);
-    const { result } = renderHook(() => useStepper());
-    const out = result.current.flow.match("second", {
-      first: (s) => s.title,
-      second: (s) => s.title,
-      third: (s) => s.title,
-    });
-    expect(out).toBe("Second");
-    expect(result.current.flow.match("missing" as any, {})).toBeNull();
-  });
+		act(() => {
+			result.current.data.set({ draft: true });
+		});
+		expect(result.current.data.get("first")).toEqual({ draft: true });
 
-  it("metadata.reset clears metadata; keepInitialMetadata restores initial", () => {
-    const { useStepper } = defineStepper(...steps);
-    const { result } = renderHook(() =>
-      useStepper({ initialMetadata: { first: { x: 1 } } }),
-    );
-    act(() => result.current.metadata.set("second", { y: 2 }));
-    expect(result.current.metadata.get("first")).toEqual({ x: 1 });
-    expect(result.current.metadata.get("second")).toEqual({ y: 2 });
-    act(() => result.current.metadata.reset(false));
-    expect(result.current.metadata.get("first")).toBeNull();
-    expect(result.current.metadata.get("second")).toBeNull();
-    act(() => result.current.metadata.set("first", { x: 1 }));
-    act(() => result.current.metadata.set("second", { y: 2 }));
-    act(() => result.current.metadata.reset(true));
-    expect(result.current.metadata.get("first")).toEqual({ x: 1 });
-    expect(result.current.metadata.get("second")).toBeNull();
-  });
+		act(() => {
+			result.current.data.set("second", { count: 2 });
+		});
+		expect(result.current.data.all()).toEqual({
+			first: { draft: true },
+			second: { count: 2 },
+		});
 
-  it("Stepper.Root provides stepper to children render prop", () => {
-    const { Stepper, useStepper } = defineStepper(...steps);
-    type StepperInstance = ReturnType<typeof useStepper>;
-    let receivedStepper: StepperInstance | null = null;
-    render(
-      <Stepper.Root>
-        {({ stepper }) => {
-          receivedStepper = stepper;
-          return (
-            <span data-testid="root-child">
-              {stepper.state.current.data.id}
-            </span>
-          );
-        }}
-      </Stepper.Root>,
-    );
-    expect(receivedStepper).not.toBeNull();
-    expect(receivedStepper!.state.current.data.id).toBe("first");
-    expect(screen.getByTestId("root-child").textContent).toBe("first");
-  });
+		act(() => {
+			result.current.data.clear("first");
+		});
+		expect(result.current.data.all()).toEqual({ second: { count: 2 } });
 
-  it("onBeforeTransition return false cancels transition", async () => {
-    const { useStepper } = defineStepper(...steps);
-    const { result } = renderHook(() => useStepper());
-    const onBefore = vi.fn().mockResolvedValue(false);
-    act(() => {
-      result.current.lifecycle.onBeforeTransition(onBefore);
-    });
-    await act(async () => {
-      await result.current.navigation.next();
-    });
-    expect(onBefore).toHaveBeenCalled();
-    expect(result.current.state.current.data.id).toBe("first");
-  });
+		act(() => {
+			result.current.data.reset();
+		});
+		expect(result.current.data.all()).toEqual({});
+	});
 
-  it("onAfterTransition is called after transition", async () => {
-    const { useStepper } = defineStepper(...steps);
-    const { result } = renderHook(() => useStepper());
-    const onAfter = vi.fn().mockResolvedValue(undefined);
-    act(() => {
-      result.current.lifecycle.onAfterTransition(onAfter);
-    });
-    await act(async () => {
-      result.current.navigation.next();
-    });
-    expect(onAfter).toHaveBeenCalledTimes(1);
-    expect(onAfter.mock.calls[0][0].from.id).toBe("first");
-    expect(onAfter.mock.calls[0][0].to.id).toBe("second");
-    expect(onAfter.mock.calls[0][0].direction).toBe("next");
-  });
+	it("passes payload data to the guard and persists it only when the change completes", async () => {
+		const beforeStepChange = vi.fn().mockResolvedValue(false);
+		const { useStepper } = defineStepper(steps);
+		const { result } = renderHook(() => useStepper({ beforeStepChange }));
 
-  it("multiple onBeforeTransition callbacks run in order; false cancels", async () => {
-    const { useStepper } = defineStepper(...steps);
-    const { result } = renderHook(() => useStepper());
-    const first = vi.fn().mockResolvedValue(undefined);
-    const second = vi.fn().mockResolvedValue(false);
-    act(() => {
-      result.current.lifecycle.onBeforeTransition(first);
-      result.current.lifecycle.onBeforeTransition(second);
-    });
-    await act(async () => {
-      await result.current.navigation.next();
-    });
-    expect(first).toHaveBeenCalledTimes(1);
-    expect(second).toHaveBeenCalledTimes(1);
-    expect(result.current.state.current.data.id).toBe("first");
-  });
+		await act(async () => {
+			expect(await result.current.next({ data: { name: "Ada" } })).toBe(false);
+		});
 
-  it("onBeforeTransition returns unsubscribe", async () => {
-    const { useStepper } = defineStepper(...steps);
-    const { result } = renderHook(() => useStepper());
-    const onBefore = vi.fn().mockResolvedValue(undefined);
-    let unsubscribe: () => void;
-    act(() => {
-      unsubscribe = result.current.lifecycle.onBeforeTransition(onBefore);
-    });
-    unsubscribe!();
-    await act(async () => {
-      await result.current.navigation.next();
-    });
-    expect(onBefore).not.toHaveBeenCalled();
-    expect(result.current.state.current.data.id).toBe("second");
-  });
+		expect(beforeStepChange.mock.calls[0][0].data.first).toEqual({ name: "Ada" });
+		expect(result.current.id).toBe("first");
+		expect(result.current.data.get("first")).toBeUndefined();
 
-  it("next(payload) merges metadata into ctx and persists", async () => {
-    const { useStepper } = defineStepper(...steps);
-    const { result } = renderHook(() => useStepper());
-    let seenMetadata: Record<string, unknown> = {};
-    act(() => {
-      result.current.lifecycle.onBeforeTransition((ctx) => {
-        seenMetadata = { ...ctx.metadata };
-      });
-    });
-    await act(async () => {
-      await result.current.navigation.next({
-        metadata: { first: { url: "https://example.com" }, second: { foo: 1 } },
-      });
-    });
-    expect(seenMetadata.first).toEqual({ url: "https://example.com" });
-    expect(seenMetadata.second).toEqual({ foo: 1 });
-    expect(result.current.metadata.get("first")).toEqual({
-      url: "https://example.com",
-    });
-    expect(result.current.metadata.get("second")).toEqual({ foo: 1 });
-  });
+		beforeStepChange.mockResolvedValueOnce(true);
+		await act(async () => {
+			expect(await result.current.next({ data: { name: "Ada" } })).toBe(true);
+		});
 
-  it("onBeforeTransition cancel does not call onAfterTransition", async () => {
-    const { useStepper } = defineStepper(...steps);
-    const { result } = renderHook(() => useStepper());
-    const onBefore = vi.fn().mockResolvedValue(false);
-    const onAfter = vi.fn();
+		expect(result.current.id).toBe("second");
+		expect(result.current.data.get("first")).toEqual({ name: "Ada" });
+	});
 
-    act(() => {
-      result.current.lifecycle.onBeforeTransition(onBefore);
-      result.current.lifecycle.onAfterTransition(onAfter);
-    });
+	it("validates the step being left against the pending transition data", async () => {
+		const wizard = defineStepper([{ id: "name", schema: stringSchema }, { id: "done" }] as const);
+		const beforeStepChange = vi.fn(async ({ validate }) => (await validate()).success);
+		const { result } = renderHook(() => wizard.useStepper({ beforeStepChange }));
 
-    await act(async () => {
-      await result.current.navigation.next();
-    });
+		await act(async () => {
+			expect(await result.current.next({ data: "" })).toBe(false);
+		});
+		expect(result.current.id).toBe("name");
+		expect(result.current.data.get("name")).toBeUndefined();
 
-    expect(onBefore).toHaveBeenCalledTimes(1);
-    expect(onAfter).not.toHaveBeenCalled();
-    expect(result.current.state.current.data.id).toBe("first");
-  });
+		await act(async () => {
+			expect(await result.current.next({ data: "Ada" })).toBe(true);
+		});
+		expect(result.current.id).toBe("done");
+		expect(result.current.data.get("name")).toBe("Ada");
+	});
 
-  it("lifecycle ctx is correct for prev and goTo transitions", async () => {
-    const { useStepper } = defineStepper(...steps);
-    const { result } = renderHook(() => useStepper({ initialStep: "second" }));
+	it("supports explicit guard-context validation by id or step object", async () => {
+		const wizard = defineStepper([{ id: "name", schema: stringSchema }, { id: "done" }] as const);
+		const beforeStepChange = vi.fn(async ({ from, validate }) => {
+			const byId = await validate("name");
+			const byStep = await validate(from);
+			return byId.success && byStep.success;
+		});
+		const { result } = renderHook(() => wizard.useStepper({ beforeStepChange }));
 
-    const before = vi.fn();
-    const after = vi.fn();
+		await act(async () => {
+			expect(await result.current.next({ data: "Ada" })).toBe(true);
+		});
+		expect(result.current.id).toBe("done");
+	});
 
-    act(() => {
-      result.current.lifecycle.onBeforeTransition(before);
-      result.current.lifecycle.onAfterTransition(after);
-    });
+	it("runs beforeStepChange as a guard and cancels on false", async () => {
+		const beforeStepChange = vi.fn().mockResolvedValue(false);
+		const { useStepper } = defineStepper(steps);
+		const { result } = renderHook(() => useStepper({ beforeStepChange }));
 
-    await act(async () => {
-      await result.current.navigation.prev();
-    });
+		await act(async () => {
+			expect(await result.current.next()).toBe(false);
+		});
+		expect(beforeStepChange).toHaveBeenCalledTimes(1);
+		expect(result.current.id).toBe("first");
 
-    expect(before).toHaveBeenNthCalledWith(
-      1,
-      expect.objectContaining({
-        direction: "prev",
-        fromIndex: 1,
-        toIndex: 0,
-      }),
-    );
-    expect(before.mock.calls[0]?.[0]?.statuses).toEqual({
-      first: "success",
-      second: "active",
-      third: "inactive",
-    });
-    expect(after).toHaveBeenNthCalledWith(
-      1,
-      expect.objectContaining({
-        direction: "prev",
-        fromIndex: 1,
-        toIndex: 0,
-      }),
-    );
-    expect(after.mock.calls[0]?.[0]?.statuses).toEqual({
-      first: "active",
-      second: "inactive",
-      third: "inactive",
-    });
+		beforeStepChange.mockResolvedValueOnce(true);
+		await act(async () => {
+			expect(await result.current.next()).toBe(true);
+		});
+		expect(result.current.id).toBe("second");
+	});
 
-    await act(async () => {
-      await result.current.navigation.goTo("third");
-    });
+	it("validates stored data against a step schema, and treats schemaless steps as valid", async () => {
+		const wizard = defineStepper([{ id: "name", schema: stringSchema }, { id: "done" }] as const);
+		const { result } = renderHook(() => wizard.useStepper());
 
-    expect(before).toHaveBeenNthCalledWith(
-      2,
-      expect.objectContaining({
-        direction: "goTo",
-        fromIndex: 0,
-        toIndex: 2,
-      }),
-    );
-    expect(after).toHaveBeenNthCalledWith(
-      2,
-      expect.objectContaining({
-        direction: "goTo",
-        fromIndex: 0,
-        toIndex: 2,
-      }),
-    );
-    expect(result.current.state.current.data.id).toBe("third");
-  });
+		await act(async () => {
+			const invalid = await result.current.validate("name");
+			expect(invalid.success).toBe(false);
+		});
 
-  it("onAfterTransition returns unsubscribe and removes callback", async () => {
-    const { useStepper } = defineStepper(...steps);
-    const { result } = renderHook(() => useStepper());
-    const onAfter = vi.fn();
+		act(() => {
+			result.current.data.set("name", "Ada");
+		});
+		await act(async () => {
+			const valid = await result.current.validate("name");
+			expect(valid).toEqual({ success: true, data: "Ada" });
+		});
 
-    let unsubscribe: () => void;
-    act(() => {
-      unsubscribe = result.current.lifecycle.onAfterTransition(onAfter);
-    });
+		await act(async () => {
+			const schemaless = await result.current.validate("done");
+			expect(schemaless.success).toBe(true);
+		});
 
-    await act(async () => {
-      await result.current.navigation.next();
-    });
-    expect(onAfter).toHaveBeenCalledTimes(1);
+		// definition-level validate of an arbitrary value
+		const direct = await wizard.validate("name", "Bob");
+		expect(direct).toEqual({ success: true, data: "Bob" });
+	});
 
-    unsubscribe!();
+	it("supports controlled step state", async () => {
+		const { useStepper } = defineStepper(steps);
+		type StepId = (typeof steps)[number]["id"];
+		const onStepChange = vi.fn();
+		const { result, rerender } = renderHook(({ step }: { step: StepId }) => useStepper({ step, onStepChange }), {
+			initialProps: { step: "first" as StepId },
+		});
 
-    await act(async () => {
-      await result.current.navigation.prev();
-    });
-    expect(onAfter).toHaveBeenCalledTimes(1);
-  });
+		await act(async () => {
+			expect(await result.current.next()).toBe(true);
+		});
+		expect(result.current.id).toBe("first");
+		expect(onStepChange).toHaveBeenCalledWith("second", expect.objectContaining({ direction: "next" }));
 
-  it("isTransitioning is true during async lifecycle callbacks", async () => {
-    const { useStepper } = defineStepper(...steps);
-    const { result } = renderHook(() => useStepper());
+		rerender({ step: "second" as StepId });
+		expect(result.current.id).toBe("second");
+	});
 
-    let releaseBefore: (() => void) | undefined;
-    const beforeGate = new Promise<void>((resolve) => {
-      releaseBefore = resolve;
-    });
+	it("does not run the guard for external controlled step changes", async () => {
+		type StepId = (typeof steps)[number]["id"];
+		const beforeStepChange = vi.fn().mockResolvedValue(true);
+		const { useStepper } = defineStepper(steps);
+		const { result, rerender } = renderHook(({ step }: { step: StepId }) => useStepper({ step, beforeStepChange }), {
+			initialProps: { step: "first" as StepId },
+		});
 
-    act(() => {
-      result.current.lifecycle.onBeforeTransition(async () => {
-        await beforeGate;
-      });
-    });
+		rerender({ step: "third" as StepId });
+		expect(result.current.id).toBe("third");
+		expect(beforeStepChange).not.toHaveBeenCalled();
+	});
 
-    act(() => {
-      void result.current.navigation.next();
-    });
+	it("recovers from an invalid controlled step and calls onInvalidStep", () => {
+		const { useStepper } = defineStepper(steps, { defaultStep: "second" });
+		const onInvalidStep = vi.fn();
+		const { result } = renderHook(() => useStepper({ step: "nope", onInvalidStep }));
 
-    expect(result.current.state.isTransitioning).toBe(true);
-    expect(result.current.state.current.data.id).toBe("first");
+		expect(result.current.id).toBe("second");
+		expect(onInvalidStep).toHaveBeenCalledWith("nope");
+	});
 
-    releaseBefore?.();
+	it("accepts null as an invalid controlled step from external state", () => {
+		const { useStepper } = defineStepper(steps);
+		const onInvalidStep = vi.fn();
+		const { result } = renderHook(() => useStepper({ step: null, onInvalidStep }));
 
-    await act(async () => {
-      await beforeGate;
-    });
+		expect(result.current.id).toBe("first");
+		expect(onInvalidStep).toHaveBeenCalledWith(null);
+	});
 
-    expect(result.current.state.current.data.id).toBe("second");
-    expect(result.current.state.isTransitioning).toBe(false);
-  });
+	it("parseStep narrows arbitrary values to known step ids", () => {
+		const wizard = defineStepper(steps);
+		expect(wizard.parseStep("second")).toBe("second");
+		expect(wizard.parseStep("missing")).toBeUndefined();
+		expect(wizard.parseStep(null)).toBeUndefined();
+	});
 
-  it("payload metadata is visible in onBefore ctx but not persisted when transition is canceled", async () => {
-    const { useStepper } = defineStepper(...steps);
-    const { result } = renderHook(() => useStepper());
-    let seenMetadata: Record<string, unknown> = {};
+	it("supports controlled flow data", () => {
+		const { useStepper } = defineStepper(steps);
+		const onDataChange = vi.fn();
+		const { result } = renderHook(() => useStepper({ data: { first: { a: 1 } }, onDataChange }));
 
-    act(() => {
-      result.current.lifecycle.onBeforeTransition((ctx) => {
-        seenMetadata = { ...ctx.metadata };
-        return false;
-      });
-    });
+		act(() => {
+			result.current.data.set({ a: 2 });
+		});
 
-    await act(async () => {
-      await result.current.navigation.next({
-        metadata: { first: { draft: true }, second: { foo: 1 } },
-      });
-    });
+		expect(result.current.data.get("first")).toEqual({ a: 1 });
+		expect(onDataChange).toHaveBeenCalledWith({ first: { a: 2 } });
+	});
 
-    expect(seenMetadata.first).toEqual({ draft: true });
-    expect(seenMetadata.second).toEqual({ foo: 1 });
-    expect(result.current.metadata.get("first")).toBeNull();
-    expect(result.current.metadata.get("second")).toBeNull();
-    expect(result.current.state.current.data.id).toBe("first");
-  });
+	it("tracks explicit completion separately from positional status", () => {
+		const { useStepper } = defineStepper(steps, { defaultCompleted: ["first"] });
+		const { result } = renderHook(() => useStepper());
+
+		expect(result.current.status("first")).toBe("active");
+		expect(result.current.isComplete("first")).toBe(true);
+		expect(result.current.completed).toEqual(["first"]);
+
+		act(() => {
+			result.current.setComplete("second");
+		});
+		expect(result.current.completed).toEqual(["first", "second"]);
+
+		act(() => {
+			result.current.setComplete("first", false);
+		});
+		expect(result.current.completed).toEqual(["second"]);
+	});
+
+	it("supports controlled completion", () => {
+		const { useStepper } = defineStepper(steps);
+		const onCompletedChange = vi.fn();
+		const { result } = renderHook(() => useStepper({ completed: ["first"], onCompletedChange }));
+
+		act(() => {
+			result.current.setComplete("second");
+		});
+
+		expect(result.current.completed).toEqual(["first"]);
+		expect(onCompletedChange).toHaveBeenCalledWith(["first", "second"]);
+	});
+
+	it("gates canGoTo with linear policy but lets imperative goTo bypass it", async () => {
+		const { useStepper } = defineStepper(steps, { linear: true });
+		const { result } = renderHook(() => useStepper());
+
+		expect(result.current.canGoTo("third")).toBe(false);
+
+		await act(async () => {
+			expect(await result.current.goTo("third")).toBe(true);
+		});
+		expect(result.current.id).toBe("third");
+	});
+
+	it("Provider shares stepper state with children", async () => {
+		const { Provider, useStepper } = defineStepper(steps, { defaultStep: "second" });
+		const seenSteppers: ReturnType<typeof useStepper>[] = [];
+
+		function Child() {
+			const childStepper = useStepper();
+			seenSteppers[0] = childStepper;
+			return <span data-testid="child">{childStepper.id}</span>;
+		}
+
+		render(
+			<Provider>
+				<Child />
+			</Provider>,
+		);
+
+		expect(seenSteppers[0]?.id).toBe("second");
+		expect(screen.getByTestId("child").textContent).toBe("second");
+	});
 });

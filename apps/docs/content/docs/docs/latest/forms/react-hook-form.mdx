@@ -1,0 +1,160 @@
+---
+title: React Hook Form
+description: Build a checkout flow with React Hook Form.
+---
+
+# React Hook Form
+
+This is the [core patterns](/docs/latest/forms/patterns) mapped onto React Hook
+Form. The flow, the responsibilities, and the hand-off are identical to the
+[TanStack Form](/docs/latest/forms/tanstack-form) and
+[Conform](/docs/latest/forms/conform) versions — only the field syntax changes.
+
+```bash
+npm install react-hook-form @hookform/resolvers
+```
+
+## Setup
+
+One shared definition. RHF owns each step's fields **and their validation**;
+Stepperize owns the flow. With form-driven navigation (Pattern 8) the RHF resolver
+validates on submit *before* `stepper.next()` runs, so the form library is the
+validation source of truth — you don't need `stepper.validate()` here.
+
+```tsx
+import { defineStepper } from "@stepperize/react";
+
+export const checkout = defineStepper(
+  [
+    { id: "personal", title: "Personal", schema: personalSchema },
+    { id: "shipping", title: "Shipping", schema: shippingSchema },
+    { id: "payment", title: "Payment", schema: paymentSchema },
+    { id: "review", title: "Review" },
+  ],
+  { linear: true },
+);
+```
+
+<Callout type="info">
+The per-step `schema` types `stepper.data` and powers the RHF resolver. You *can*
+also add a library-agnostic `beforeStepChange` guard (`ctx.validate()`) as a
+safety net for non-form navigation paths, but with form-driven navigation it is
+optional — see [Schema & validate()](/docs/latest/forms/schema-validation).
+</Callout>
+
+## A step form (save + seed)
+
+`resolver` gives RHF field-level validation. `defaultValues` seeds from the saved
+draft (Pattern 2). The submit handler saves and advances (Pattern 1).
+
+```tsx
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+
+function PersonalStep() {
+  const stepper = checkout.useStepper();
+
+  const form = useForm<PersonalValues>({
+    resolver: zodResolver(personalSchema),
+    defaultValues: stepper.data.get("personal") ?? { name: "", email: "" },
+  });
+
+  const onSubmit = form.handleSubmit(async (data) => {
+    const moved = await stepper.next({ data: data });
+    if (moved) stepper.setComplete();
+  });
+
+  return (
+    <form onSubmit={onSubmit}>
+      <input {...form.register("name")} />
+      {form.formState.errors.name && <p role="alert">{form.formState.errors.name.message}</p>}
+
+      <input {...form.register("email")} />
+      {form.formState.errors.email && <p role="alert">{form.formState.errors.email.message}</p>}
+
+      <button type="submit">{stepper.isLast ? "Place order" : "Next"}</button>
+    </form>
+  );
+}
+```
+
+The submit button submits the form; RHF validates; on success it saves the value
+into Stepperize and moves. Field errors stop the submit path, so an invalid step
+never advances. This is [Pattern 8 — form-driven
+navigation](/docs/latest/forms/patterns#pattern-8--form-driven-navigation).
+
+Want RHF's local form state to stay mounted instead of reseeding from drafts on
+every return? Wrap each step panel with
+[React Activity](/docs/latest/guides/react-activity) and keep this same
+Stepperize navigation.
+
+## Review and edit
+
+The review step is the same in every implementation — it's pure Stepperize, no
+form library. Read `data.all()`; "edit" is `goTo(id)`, and the draft reopens the
+RHF form pre-filled via `defaultValues`.
+
+```tsx
+function ReviewStep() {
+  const stepper = checkout.useStepper();
+  const all = stepper.data.all();
+
+  return (
+    <>
+      <Summary section="Personal" data={all.personal} onEdit={() => stepper.goTo("personal")} />
+      <Summary section="Shipping" data={all.shipping} onEdit={() => stepper.goTo("shipping")} />
+      <Summary section="Payment"  data={all.payment}  onEdit={() => stepper.goTo("payment")} />
+      <button type="button" onClick={submitOrder}>Place order</button>
+    </>
+  );
+}
+
+async function submitOrder() {
+  await api.createOrder(checkout /* instance */.data.all());
+}
+```
+
+## Render the active step
+
+```tsx
+function Checkout() {
+  // One Provider so every step component AND the renderer below share the same
+  // instance. Without it, each checkout.useStepper() call makes its own stepper
+  // and navigation in a step would never update what is rendered here.
+  return (
+    <checkout.Provider>
+      <CheckoutFlow />
+    </checkout.Provider>
+  );
+}
+
+function CheckoutFlow() {
+  const stepper = checkout.useStepper();
+  return stepper.match({
+    personal: () => <PersonalStep />,
+    shipping: () => <ShippingStep />,
+    payment: () => <PaymentStep />,
+    review: () => <ReviewStep />,
+  });
+}
+```
+
+## How RHF maps to the patterns
+
+| Pattern | React Hook Form |
+| --- | --- |
+| Seed from draft | `useForm({ defaultValues: stepper.data.get(id) })` |
+| Field validation | `resolver: zodResolver(schema)` |
+| Save + advance | `handleSubmit(async (data) => stepper.next({ data: data }))` |
+| Navigation gate (optional) | `beforeStepChange` on the Provider/instance |
+| Review | `stepper.data.all()` (no RHF) |
+| Edit previous | `stepper.goTo(id)` → form re-seeds from draft |
+
+<Callout type="info">
+RHF keeps each step's form **unmounted** when inactive (only the active step
+renders). The draft in Stepperize is the source of truth across mounts — RHF state
+is per-step and ephemeral, exactly as intended.
+</Callout>
+
+Compare with [TanStack Form](/docs/latest/forms/tanstack-form) and
+[Conform](/docs/latest/forms/conform).
