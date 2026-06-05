@@ -1,0 +1,37 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "order-tracking",
+  "type": "registry:component",
+  "title": "Order Tracking",
+  "description": "A shipment tracker driven by typed per-step metadata (carrier, location, ETA).",
+  "author": "Stepperize",
+  "dependencies": [
+    "@stepperize/react",
+    "lucide-react"
+  ],
+  "registryDependencies": [],
+  "categories": [
+    "async"
+  ],
+  "meta": {
+    "capabilities": [
+      "metadata"
+    ],
+    "level": "beginner",
+    "tags": [
+      "tracking",
+      "shipping",
+      "timeline",
+      "order",
+      "metadata"
+    ]
+  },
+  "files": [
+    {
+      "path": "components/stepperize/order-tracking.tsx",
+      "type": "registry:component",
+      "target": "components/stepperize/order-tracking.tsx",
+      "content": "import { defineStepper } from \"@stepperize/react\";\nimport { Check, Package, Truck, Warehouse } from \"lucide-react\";\nimport type { ComponentType } from \"react\";\nimport { useState } from \"react\";\n\n// `location`, `detail`, and `eta` are typed metadata on each step. They're read\n// back off `stepper.current` with full inference — no separate status table.\nconst steps = [\n\t{\n\t\tid: \"placed\",\n\t\ttitle: \"Order placed\",\n\t\ticon: Check,\n\t\tlocation: \"Online\",\n\t\tdetail: \"We received your order.\",\n\t\teta: \"Ships in 1 day\",\n\t},\n\t{\n\t\tid: \"packed\",\n\t\ttitle: \"Packed\",\n\t\ticon: Package,\n\t\tlocation: \"Newark, NJ\",\n\t\tdetail: \"Your parcel is packed and labelled.\",\n\t\teta: \"Picked up today\",\n\t},\n\t{\n\t\tid: \"transit\",\n\t\ttitle: \"In transit\",\n\t\ticon: Truck,\n\t\tlocation: \"Columbus, OH\",\n\t\tdetail: \"Out with the carrier, moving your way.\",\n\t\teta: \"Arrives tomorrow\",\n\t},\n\t{\n\t\tid: \"delivered\",\n\t\ttitle: \"Delivered\",\n\t\ticon: Warehouse,\n\t\tlocation: \"Your address\",\n\t\tdetail: \"Left at the front door.\",\n\t\teta: \"Delivered\",\n\t},\n] as const;\n\nconst icons: Record<\n\tstring,\n\tComponentType<{ className?: string }>\n> = Object.fromEntries(steps.map((s) => [s.id, s.icon]));\n\nconst { Stepper } = defineStepper(steps);\n\nexport function OrderTrackingBlock() {\n\tconst [confirmed, setConfirmed] = useState(false);\n\n\treturn (\n\t\t<Stepper.Root\n\t\t\tdefaultStep=\"transit\"\n\t\t\tclassName=\"w-full max-w-lg rounded-xl border bg-background p-6 shadow-sm\"\n\t\t>\n\t\t\t{({ stepper }) => (\n\t\t\t\t<>\n\t\t\t\t\t<div className=\"mb-6 flex items-center justify-between\">\n\t\t\t\t\t\t<div>\n\t\t\t\t\t\t\t<p className=\"text-sm font-semibold\">Order #4815</p>\n\t\t\t\t\t\t\t<p className=\"text-xs text-muted-foreground\">\n\t\t\t\t\t\t\t\t{stepper.current.eta}\n\t\t\t\t\t\t\t</p>\n\t\t\t\t\t\t</div>\n\t\t\t\t\t\t<span className=\"rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary\">\n\t\t\t\t\t\t\t{stepper.current.title}\n\t\t\t\t\t\t</span>\n\t\t\t\t\t</div>\n\n\t\t\t\t\t<Stepper.List className=\"flex items-start\">\n\t\t\t\t\t\t<Stepper.Items>\n\t\t\t\t\t\t\t{(step, index) => {\n\t\t\t\t\t\t\t\tconst Icon = icons[step.id];\n\t\t\t\t\t\t\t\treturn (\n\t\t\t\t\t\t\t\t\t<div\n\t\t\t\t\t\t\t\t\t\tkey={step.id}\n\t\t\t\t\t\t\t\t\t\tclassName=\"flex flex-1 items-start last:flex-none\"\n\t\t\t\t\t\t\t\t\t>\n\t\t\t\t\t\t\t\t\t\t<Stepper.Item\n\t\t\t\t\t\t\t\t\t\t\tstep={step.id}\n\t\t\t\t\t\t\t\t\t\t\tclassName=\"flex flex-col items-center gap-2\"\n\t\t\t\t\t\t\t\t\t\t>\n\t\t\t\t\t\t\t\t\t\t\t<Stepper.Indicator className=\"group grid size-10 place-items-center rounded-full border-2 transition-colors data-[status=active]:border-primary data-[status=active]:bg-primary data-[status=active]:text-primary-foreground data-[status=previous]:border-primary data-[status=previous]:bg-primary data-[status=previous]:text-primary-foreground data-[status=upcoming]:border-border data-[status=upcoming]:bg-background data-[status=upcoming]:text-muted-foreground\">\n\t\t\t\t\t\t\t\t\t\t\t\t<Check className=\"hidden size-5 group-data-[status=previous]:block\" />\n\t\t\t\t\t\t\t\t\t\t\t\t<Icon className=\"size-5 group-data-[status=previous]:hidden\" />\n\t\t\t\t\t\t\t\t\t\t\t</Stepper.Indicator>\n\t\t\t\t\t\t\t\t\t\t\t<Stepper.Title className=\"w-20 text-center text-xs font-medium\" />\n\t\t\t\t\t\t\t\t\t\t</Stepper.Item>\n\t\t\t\t\t\t\t\t\t\t{index < stepper.count - 1 && (\n\t\t\t\t\t\t\t\t\t\t\t<div\n\t\t\t\t\t\t\t\t\t\t\t\tclassName=\"mx-1 mt-5 h-0.5 flex-1 rounded bg-border data-[done=true]:bg-primary\"\n\t\t\t\t\t\t\t\t\t\t\t\tdata-done={index < stepper.index}\n\t\t\t\t\t\t\t\t\t\t\t/>\n\t\t\t\t\t\t\t\t\t\t)}\n\t\t\t\t\t\t\t\t\t</div>\n\t\t\t\t\t\t\t\t);\n\t\t\t\t\t\t\t}}\n\t\t\t\t\t\t</Stepper.Items>\n\t\t\t\t\t</Stepper.List>\n\n\t\t\t\t\t{/* Detail panel driven by the current step's typed metadata. */}\n\t\t\t\t\t<div className=\"mt-6 flex items-start justify-between gap-3 rounded-lg border bg-muted/30 p-3 text-sm\">\n\t\t\t\t\t\t<div>\n\t\t\t\t\t\t\t<p className=\"font-medium\">\n\t\t\t\t\t\t\t\t{confirmed\n\t\t\t\t\t\t\t\t\t? \"Delivery confirmed. Thanks for checking in.\"\n\t\t\t\t\t\t\t\t\t: stepper.current.detail}\n\t\t\t\t\t\t\t</p>\n\t\t\t\t\t\t\t<p className=\"mt-0.5 text-xs text-muted-foreground\">\n\t\t\t\t\t\t\t\t{stepper.current.location}\n\t\t\t\t\t\t\t</p>\n\t\t\t\t\t\t</div>\n\t\t\t\t\t\t<span className=\"shrink-0 text-xs font-medium text-primary\">\n\t\t\t\t\t\t\t{stepper.current.eta}\n\t\t\t\t\t\t</span>\n\t\t\t\t\t</div>\n\n\t\t\t\t\t<Stepper.Actions className=\"mt-6 flex justify-center gap-2\">\n\t\t\t\t\t\t<button\n\t\t\t\t\t\t\ttype=\"button\"\n\t\t\t\t\t\t\tonClick={() => stepper.prev()}\n\t\t\t\t\t\t\tdisabled={!stepper.canPrev}\n\t\t\t\t\t\t\tclassName=\"inline-flex h-8 items-center rounded-lg border bg-background px-3 text-sm font-medium transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-50\"\n\t\t\t\t\t\t>\n\t\t\t\t\t\t\tRewind\n\t\t\t\t\t\t</button>\n\t\t\t\t\t\t{confirmed ? (\n\t\t\t\t\t\t\t<button\n\t\t\t\t\t\t\t\ttype=\"button\"\n\t\t\t\t\t\t\t\tonClick={() => {\n\t\t\t\t\t\t\t\t\tsetConfirmed(false);\n\t\t\t\t\t\t\t\t\tstepper.reset();\n\t\t\t\t\t\t\t\t}}\n\t\t\t\t\t\t\t\tclassName=\"inline-flex h-8 items-center rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90\"\n\t\t\t\t\t\t\t>\n\t\t\t\t\t\t\t\tTrack again\n\t\t\t\t\t\t\t</button>\n\t\t\t\t\t\t) : stepper.isLast ? (\n\t\t\t\t\t\t\t<button\n\t\t\t\t\t\t\t\ttype=\"button\"\n\t\t\t\t\t\t\t\tonClick={() => setConfirmed(true)}\n\t\t\t\t\t\t\t\tclassName=\"inline-flex h-8 items-center rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90\"\n\t\t\t\t\t\t\t>\n\t\t\t\t\t\t\t\tConfirm delivery\n\t\t\t\t\t\t\t</button>\n\t\t\t\t\t\t) : (\n\t\t\t\t\t\t\t<button\n\t\t\t\t\t\t\t\ttype=\"button\"\n\t\t\t\t\t\t\t\tonClick={() => stepper.next()}\n\t\t\t\t\t\t\t\tclassName=\"inline-flex h-8 items-center rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90\"\n\t\t\t\t\t\t\t>\n\t\t\t\t\t\t\t\tAdvance status\n\t\t\t\t\t\t\t</button>\n\t\t\t\t\t\t)}\n\t\t\t\t\t</Stepper.Actions>\n\t\t\t\t</>\n\t\t\t)}\n\t\t</Stepper.Root>\n\t);\n}\n"
+    }
+  ]
+}

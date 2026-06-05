@@ -1,0 +1,13 @@
+# https://www.robotstxt.org/robotstxt.html
+User-agent: *
+Allow: /
+
+# AI crawlers — allowed; see /llms.txt for a concise, machine-readable summary.
+User-agent: GPTBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+Host: https://stepperize.com
+Sitemap: https://stepperize.com/sitemap.xml

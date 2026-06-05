@@ -1,0 +1,23 @@
+---
+title: Migrating to v4
+description: Update older projects from v3 to v4.
+---
+
+# Migrating to v4
+
+v4 continues the v3 API shape and prepares the library for the metadata changes introduced in v5.
+
+There are no major migration steps beyond keeping the v3 names stable before upgrading again.
+
+## What to check
+
+- Keep step ids stable.
+- Keep `defineStepper` as the single source for your flow.
+- Audit usages of the helpers renamed in v3 before moving to v5 metadata.
+- Check any custom wrappers around `useStepper`, because v5 changes how the initial state is passed.
+
+## Later versions
+
+v5 adds `metadata` and changes `useStepper` from a string initial step to an object with an `initial` property. v6 then replaces that nested object with top-level `initialStep` and `initialMetadata`.
+
+Use [Migrating to v5](/docs/v5/migration) next.

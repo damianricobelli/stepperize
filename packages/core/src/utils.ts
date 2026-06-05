@@ -1,141 +1,154 @@
-import type { Get, Metadata, Step, StepperFlow, StepperLookup } from "./types";
+import type { FlowData, Get, OutputOf, StandardSchemaV1, Step, StepMap, StepStatus, ValidationResult } from "./types";
 
 /**
- * Generate stepper utils.
- * @param steps - The steps to generate the utils for.
- * @returns The stepper utils.
+ * Create pure step access helpers without state, safe for Node, SSR,
+ * validation code, tests, and framework adapters.
  */
-export function generateStepperUtils<const Steps extends Step[]>(
-  ...steps: Steps
-) {
-  const getIndex = (id: Get.Id<Steps>) =>
-    steps.findIndex((step) => step.id === id);
+export function createStepMap<const Steps extends readonly Step[]>(steps: Steps): StepMap<Steps> {
+	const indexOf = (id: Get.Id<Steps>) => steps.findIndex((step) => step.id === id);
 
-  const getByIndex = <Index extends number>(index: Index) => steps[index];
+	const at = <Index extends number>(index: Index) => steps[index];
 
-  return {
-    getAll() {
-      return steps;
-    },
-    get(id) {
-      return getByIndex(getIndex(id)) as Get.StepById<Steps, typeof id>;
-    },
-    getIndex: (id) => getIndex(id),
-    getByIndex,
-    getFirst() {
-      return getByIndex(0);
-    },
-    getLast() {
-      return getByIndex(steps.length - 1);
-    },
-    getNext(id) {
-      return getByIndex(getIndex(id) + 1);
-    },
-    getPrev(id) {
-      return getByIndex(getIndex(id) - 1);
-    },
-    getNeighbors(id) {
-      const index = getIndex(id);
-      return {
-        prev: index > 0 ? getByIndex(index - 1) : null,
-        next: index < steps.length - 1 ? getByIndex(index + 1) : null,
-      };
-    },
-  } satisfies StepperLookup<Steps>;
+	return {
+		steps,
+		ids: steps.map((step) => step.id) as Get.Id<Steps>[],
+		get(id) {
+			return steps.find((step) => step.id === id) as Get.StepById<Steps, typeof id> | undefined;
+		},
+		at,
+		indexOf,
+		has(id) {
+			return steps.some((step) => step.id === id);
+		},
+		first() {
+			return at(0);
+		},
+		last() {
+			return at(steps.length - 1);
+		},
+		next(id) {
+			const index = indexOf(id);
+			return index >= 0 ? at(index + 1) : undefined;
+		},
+		prev(id) {
+			const index = indexOf(id);
+			return index > 0 ? at(index - 1) : undefined;
+		},
+		neighbors(id) {
+			const index = indexOf(id);
+			return {
+				prev: index > 0 ? at(index - 1) : undefined,
+				next: index >= 0 && index < steps.length - 1 ? at(index + 1) : undefined,
+			};
+		},
+	};
 }
 
 /**
- * Get the initial step index for the stepper.
- * @param steps - The steps to get the initial step index for.
- * @param initialStep - The initial step to use.
- * @returns The initial step index for the stepper.
+ * Resolve the initial step index.
+ *
+ * Returns `0` when no initial id is provided or when the id is not found.
  */
-export function getInitialStepIndex<Steps extends Step[]>(
-  steps: Steps,
-  initialStep?: Get.Id<Steps>,
-) {
-  const index = steps.findIndex((step) => step.id === initialStep);
-  return index === -1 ? 0 : index;
+export function getInitialStepIndex<Steps extends readonly Step[]>(steps: Steps, initial?: Get.Id<Steps>) {
+	const index = steps.findIndex((step) => step.id === initial);
+	return index === -1 ? 0 : index;
 }
 
 /**
- * Get the initial metadata for the stepper.
- * @param steps - The steps to get the initial metadata for.
- * @param initialMetadata - The initial metadata to use.
- * @returns The initial metadata for the stepper.
+ * Narrow an arbitrary value to a known step id.
+ *
+ * Useful at the boundary between Stepperize and external state such as URL
+ * params, router state, or persisted flow snapshots.
  */
-export function getInitialMetadata<Steps extends Step[]>(
-  steps: Steps,
-  initialMetadata?: Partial<Record<Get.Id<Steps>, Metadata>>,
-) {
-  const metadata = {} as Record<Get.Id<Steps>, Metadata>;
+export function parseStep<const Steps extends readonly Step[]>(
+	steps: Steps,
+	value: unknown,
+): Get.Id<Steps> | undefined {
+	return steps.some((step) => step.id === value) ? (value as Get.Id<Steps>) : undefined;
+}
 
-  for (const step of steps) {
-    const id = step.id as Get.Id<Steps>;
-    metadata[id] = initialMetadata?.[id] ?? null;
-  }
-
-  return metadata;
+export function getInitialData<Steps extends readonly Step[]>(data?: FlowData<Steps>) {
+	return { ...(data ?? {}) } as FlowData<Steps>;
 }
 
 /**
- * Generate common stepper use functions.
- * @param steps - The steps to generate the functions for.
- * @param currentStep - The current step.
- * @param stepIndex - The index of the current step.
- * @returns The common stepper use functions.
+ * Validate a value against a step's `schema` (any Standard Schema). Steps without
+ * a schema always succeed with the value unchanged, so non-form steps stay
+ * first-class. Always resolves to a {@link ValidationResult}.
  */
-export function generateCommonStepperUseFns<const Steps extends Step[]>(
-  steps: Steps,
-  currentStep: Steps[number],
-  stepIndex: number,
-): StepperFlow<Steps> {
-  return {
-    switch(when) {
-      const whenFn = when[currentStep.id as keyof typeof when];
-      return whenFn?.(
-        currentStep as Get.StepById<typeof steps, (typeof currentStep)["id"]>,
-      );
-    },
-    when(id, whenFn, elseFn) {
-      const currentStep = steps[stepIndex];
-      const matchesId = Array.isArray(id)
-        ? currentStep.id === id[0] && id.slice(1).every(Boolean)
-        : currentStep.id === id;
+export async function validateStep<const Steps extends readonly Step[], Id extends Get.Id<Steps>>(
+	steps: Steps,
+	id: Id,
+	value: unknown,
+): Promise<ValidationResult<OutputOf<Steps, Id>>> {
+	const step = steps.find((candidate) => candidate.id === id);
+	if (!step) {
+		throw new Error(`Step "${id}" not found.`);
+	}
 
-      return matchesId
-        ? whenFn?.(currentStep as any)
-        : elseFn?.(currentStep as any);
-    },
-    match(state, matches) {
-      const step = steps.find((s) => s.id === state);
-      if (!step) return null;
-      const matchFn = matches[state as keyof typeof matches];
-      return matchFn?.(step as any) ?? null;
-    },
-    is(id) {
-      return currentStep.id === id;
-    },
-  } as StepperFlow<Steps>;
+	const schema = (step as { schema?: StandardSchemaV1 }).schema;
+	if (!schema) {
+		return { success: true, data: value as OutputOf<Steps, Id> };
+	}
+
+	const result = await schema["~standard"].validate(value);
+	if (result.issues) {
+		return { success: false, issues: result.issues };
+	}
+	return { success: true, data: result.value as OutputOf<Steps, Id> };
 }
 
 /**
- * Update the step index.
- * @param steps - The steps to update the step index for.
- * @param newIndex - The new index to update the step index to.
- * @param setter - The setter to update the step index with.
+ * Get the positional status for one step id.
+ *
+ * This is based only on `currentIndex`; explicit completion is tracked by the
+ * React stepper instance.
  */
-export const updateStepIndex = <Steps extends Step[]>(
-  steps: Steps,
-  newIndex: number,
-  setter: (index: number) => void,
-) => {
-  if (newIndex >= 0 && newIndex < steps.length) {
-    setter(newIndex);
-    return;
-  }
+export function getStepStatus<Steps extends readonly Step[]>(
+	steps: Steps,
+	currentIndex: number,
+	id: Get.Id<Steps>,
+): StepStatus {
+	const index = steps.findIndex((step) => step.id === id);
+	if (index === currentIndex) return "active";
+	if (index >= 0 && index < currentIndex) return "previous";
+	return "upcoming";
+}
 
-  const direction = newIndex < 0 ? "prev" : "next";
-  const reason = newIndex < 0 ? "first step" : "last step";
-  throw new Error(`Cannot navigate ${direction}: ${reason}`);
-};
+export function getStepStatuses<Steps extends readonly Step[]>(
+	steps: Steps,
+	currentIndex: number,
+): Record<Get.Id<Steps>, StepStatus> {
+	return steps.reduce(
+		(acc, step) => {
+			acc[step.id as Get.Id<Steps>] = getStepStatus(steps, currentIndex, step.id as Get.Id<Steps>);
+			return acc;
+		},
+		{} as Record<Get.Id<Steps>, StepStatus>,
+	);
+}
+
+export function matchStep<const Steps extends readonly Step[], Result>(
+	steps: Steps,
+	id: Get.Id<Steps>,
+	handlers: Get.Match<Steps, Result>,
+): Result;
+
+export function matchStep<const Steps extends readonly Step[], Result>(
+	steps: Steps,
+	id: Get.Id<Steps>,
+	handlers: Get.Match<Steps, Result>,
+): Result {
+	const step = steps.find((candidate) => candidate.id === id);
+	if (!step) {
+		throw new Error(`Step "${id}" not found.`);
+	}
+
+	const handler = handlers[id as keyof typeof handlers];
+
+	if (!handler) {
+		throw new Error(`No match handler found for step "${id}".`);
+	}
+
+	return handler(step as never);
+}

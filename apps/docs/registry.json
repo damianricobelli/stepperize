@@ -1,271 +1,1005 @@
 {
 	"$schema": "https://ui.shadcn.com/schema/registry.json",
-	"name": "shadcn-stepper",
-	"homepage": "https://stepperize.vercel.app/",
+	"name": "stepperize",
+	"homepage": "https://stepperize.com",
 	"items": [
 		{
-			"name": "radix-ui/stepper-demo",
+			"name": "progress-bar",
 			"type": "registry:component",
-			"title": "Stepper demo",
-			"description": "Simple stepper demo",
-			"dependencies": ["@stepperize/react"],
-			"registryDependencies": ["button"],
+			"title": "Progress Bar Stepper",
+			"description": "A single progress bar that fills as the user advances.",
+			"dependencies": [
+				"@stepperize/react"
+			],
+			"registryDependencies": [],
+			"categories": [
+				"layouts"
+			],
+			"meta": {
+				"capabilities": [
+					"navigation"
+				],
+				"level": "beginner",
+				"tags": [
+					"progress bar",
+					"linear",
+					"minimal",
+					"header"
+				]
+			},
 			"files": [
 				{
-					"path": "registry/radix-ui/blocks/stepper-demo/page.tsx",
-					"type": "registry:page",
-					"target": "app/stepper-demo/page.tsx"
-				},
-				{
-					"path": "registry/radix-ui/blocks/stepper-demo/components/stepper-demo.tsx",
-					"type": "registry:component"
+					"path": "src/components/blocks/progress-bar.tsx",
+					"type": "registry:component",
+					"target": "components/stepperize/progress-bar.tsx"
 				}
 			]
 		},
 		{
-			"name": "radix-ui/stepper-with-description",
+			"name": "segmented",
 			"type": "registry:component",
-			"title": "Stepper with description",
-			"description": "A stepper with a description",
-			"dependencies": ["@stepperize/react"],
-			"registryDependencies": ["button"],
+			"title": "Segmented Tabs Stepper",
+			"description": "Segmented control where each step is a selectable tab.",
+			"dependencies": [
+				"@stepperize/react"
+			],
+			"registryDependencies": [],
+			"categories": [
+				"layouts"
+			],
+			"meta": {
+				"capabilities": [
+					"navigation"
+				],
+				"level": "beginner",
+				"tags": [
+					"tabs",
+					"segmented control",
+					"compact"
+				]
+			},
 			"files": [
 				{
-					"path": "registry/radix-ui/blocks/stepper-with-description/page.tsx",
-					"type": "registry:page",
-					"target": "app/stepper-with-description/page.tsx"
-				},
-				{
-					"path": "registry/radix-ui/blocks/stepper-with-description/components/stepper-with-description.tsx",
-					"type": "registry:component"
+					"path": "src/components/blocks/segmented.tsx",
+					"type": "registry:component",
+					"target": "components/stepperize/segmented.tsx"
 				}
 			]
 		},
 		{
-			"name": "radix-ui/stepper-with-form",
+			"name": "circular",
 			"type": "registry:component",
-			"title": "Stepper with form",
-			"description": "A stepper with a form using zod for validation",
-			"dependencies": ["zod", "@stepperize/react"],
-			"registryDependencies": ["button", "input", "label", "form"],
+			"title": "Circular Stepper",
+			"description": "An SVG progress ring around the current step number.",
+			"dependencies": [
+				"@stepperize/react"
+			],
+			"registryDependencies": [],
+			"categories": [
+				"layouts"
+			],
+			"meta": {
+				"capabilities": [
+					"navigation"
+				],
+				"level": "beginner",
+				"tags": [
+					"ring",
+					"svg",
+					"circular",
+					"percentage"
+				]
+			},
 			"files": [
 				{
-					"path": "registry/radix-ui/blocks/stepper-with-form/page.tsx",
-					"type": "registry:page",
-					"target": "app/stepper-with-form/page.tsx"
-				},
-				{
-					"path": "registry/radix-ui/blocks/stepper-with-form/components/stepper-with-form.tsx",
-					"type": "registry:component"
+					"path": "src/components/blocks/circular.tsx",
+					"type": "registry:component",
+					"target": "components/stepperize/circular.tsx"
 				}
 			]
 		},
 		{
-			"name": "radix-ui/stepper-with-icon",
+			"name": "breadcrumb",
 			"type": "registry:component",
-			"title": "Stepper with icon",
-			"description": "A stepper with an icon",
-			"dependencies": ["@stepperize/react"],
-			"registryDependencies": ["button"],
+			"title": "Breadcrumb Stepper",
+			"description": "A breadcrumb-style trail of steps with chevrons.",
+			"dependencies": [
+				"@stepperize/react",
+				"lucide-react"
+			],
+			"registryDependencies": [],
+			"categories": [
+				"layouts"
+			],
+			"meta": {
+				"capabilities": [
+					"navigation"
+				],
+				"level": "beginner",
+				"tags": [
+					"breadcrumb",
+					"trail",
+					"chevron",
+					"horizontal"
+				]
+			},
 			"files": [
 				{
-					"path": "registry/radix-ui/blocks/stepper-with-icon/page.tsx",
-					"type": "registry:page",
-					"target": "app/stepper-with-icon/page.tsx"
-				},
-				{
-					"path": "registry/radix-ui/blocks/stepper-with-icon/components/stepper-with-icon.tsx",
-					"type": "registry:component"
+					"path": "src/components/blocks/breadcrumb.tsx",
+					"type": "registry:component",
+					"target": "components/stepperize/breadcrumb.tsx"
 				}
 			]
 		},
 		{
-			"name": "radix-ui/stepper-with-label-orientation",
+			"name": "vertical-stepper",
 			"type": "registry:component",
-			"title": "Stepper with label orientation",
-			"description": "A stepper with a label orientation",
-			"dependencies": ["@stepperize/react"],
-			"registryDependencies": ["button", "label", "radio-group"],
+			"title": "Vertical Stepper",
+			"description": "A sidebar-style vertical layout: step rail on the left, long-form content on the right, collapsing to a compact nav on mobile.",
+			"dependencies": [
+				"@stepperize/react",
+				"lucide-react"
+			],
+			"registryDependencies": [],
+			"categories": [
+				"layouts"
+			],
+			"meta": {
+				"capabilities": [
+					"navigation"
+				],
+				"level": "beginner",
+				"tags": [
+					"vertical",
+					"sidebar",
+					"rail",
+					"responsive"
+				]
+			},
 			"files": [
 				{
-					"path": "registry/radix-ui/blocks/stepper-with-label-orientation/page.tsx",
-					"type": "registry:page",
-					"target": "app/stepper-with-label-orientation/page.tsx"
-				},
-				{
-					"path": "registry/radix-ui/blocks/stepper-with-label-orientation/components/stepper-with-label-orientation.tsx",
-					"type": "registry:component"
+					"path": "src/components/blocks/vertical-stepper.tsx",
+					"type": "registry:component",
+					"target": "components/stepperize/vertical-stepper.tsx"
 				}
 			]
 		},
 		{
-			"name": "radix-ui/stepper-with-scroll-tracking",
+			"name": "user-onboarding",
 			"type": "registry:component",
-			"title": "Stepper with scroll tracking",
-			"description": "A stepper with scroll tracking",
-			"dependencies": ["@stepperize/react"],
-			"registryDependencies": ["button", "label", "radio-group"],
+			"title": "User Onboarding",
+			"description": "A three-step account onboarding flow with per-step validation.",
+			"dependencies": [
+				"@stepperize/react",
+				"lucide-react",
+				"zod"
+			],
+			"registryDependencies": [
+				"button",
+				"input",
+				"label",
+				"switch"
+			],
+			"categories": [
+				"onboarding"
+			],
+			"meta": {
+				"capabilities": [
+					"validation"
+				],
+				"level": "beginner",
+				"tags": [
+					"onboarding",
+					"signup",
+					"account",
+					"validation"
+				]
+			},
 			"files": [
 				{
-					"path": "registry/radix-ui/blocks/stepper-with-scroll-tracking/page.tsx",
-					"type": "registry:page",
-					"target": "app/stepper-with-scroll-tracking/page.tsx"
-				},
-				{
-					"path": "registry/radix-ui/blocks/stepper-with-scroll-tracking/components/stepper-with-scroll-tracking.tsx",
-					"type": "registry:component"
+					"path": "src/components/blocks/user-onboarding.tsx",
+					"type": "registry:component",
+					"target": "components/stepperize/user-onboarding.tsx"
 				}
 			]
 		},
 		{
-			"name": "radix-ui/stepper-with-variants",
+			"name": "org-setup",
 			"type": "registry:component",
-			"title": "Stepper with variants",
-			"description": "A stepper with variants",
-			"dependencies": ["@stepperize/react"],
-			"registryDependencies": ["button", "label", "radio-group"],
+			"title": "Organization Setup",
+			"description": "Workspace, branding, and members setup for a new SaaS tenant.",
+			"dependencies": [
+				"@stepperize/react",
+				"lucide-react"
+			],
+			"registryDependencies": [
+				"button",
+				"input",
+				"radio-group"
+			],
+			"categories": [
+				"onboarding"
+			],
+			"meta": {
+				"capabilities": [
+					"navigation"
+				],
+				"level": "intermediate",
+				"tags": [
+					"saas",
+					"workspace",
+					"tenant",
+					"branding"
+				]
+			},
 			"files": [
 				{
-					"path": "registry/radix-ui/blocks/stepper-with-variants/page.tsx",
-					"type": "registry:page",
-					"target": "app/stepper-with-variants/page.tsx"
-				},
-				{
-					"path": "registry/radix-ui/blocks/stepper-with-variants/components/stepper-with-variants.tsx",
-					"type": "registry:component"
+					"path": "src/components/blocks/org-setup.tsx",
+					"type": "registry:component",
+					"target": "components/stepperize/org-setup.tsx"
 				}
 			]
 		},
 		{
-			"name": "base-ui/stepper-demo",
+			"name": "team-invites",
 			"type": "registry:component",
-			"title": "Stepper demo (Base UI)",
-			"description": "Simple stepper demo",
-			"dependencies": ["@stepperize/react"],
-			"registryDependencies": ["button"],
+			"title": "Team Invitations",
+			"description": "Collect invites into draft flow data, then review and send them.",
+			"dependencies": [
+				"@stepperize/react",
+				"lucide-react"
+			],
+			"registryDependencies": [
+				"badge",
+				"button",
+				"input",
+				"select"
+			],
+			"categories": [
+				"onboarding"
+			],
+			"meta": {
+				"capabilities": [
+					"persistence"
+				],
+				"level": "intermediate",
+				"tags": [
+					"invites",
+					"team",
+					"draft data",
+					"review"
+				]
+			},
 			"files": [
 				{
-					"path": "registry/base-ui/blocks/stepper-demo/page.tsx",
-					"type": "registry:page",
-					"target": "app/stepper-demo/page.tsx"
-				},
-				{
-					"path": "registry/base-ui/blocks/stepper-demo/components/stepper-demo.tsx",
-					"type": "registry:component"
+					"path": "src/components/blocks/team-invites.tsx",
+					"type": "registry:component",
+					"target": "components/stepperize/team-invites.tsx"
 				}
 			]
 		},
 		{
-			"name": "base-ui/stepper-with-description",
+			"name": "conditional-onboarding",
 			"type": "registry:component",
-			"title": "Stepper with description (Base UI)",
-			"description": "A stepper with a description",
-			"dependencies": ["@stepperize/react"],
-			"registryDependencies": ["button"],
+			"title": "Conditional Onboarding",
+			"description": "Onboarding whose path is computed from an earlier answer: team accounts visit the invite step, personal accounts skip it.",
+			"dependencies": [
+				"@stepperize/react",
+				"lucide-react"
+			],
+			"registryDependencies": [],
+			"categories": [
+				"onboarding"
+			],
+			"meta": {
+				"capabilities": [
+					"branching"
+				],
+				"level": "intermediate",
+				"tags": [
+					"branching",
+					"conditional",
+					"dynamic path",
+					"skip step"
+				]
+			},
 			"files": [
 				{
-					"path": "registry/base-ui/blocks/stepper-with-description/page.tsx",
-					"type": "registry:page",
-					"target": "app/stepper-with-description/page.tsx"
-				},
-				{
-					"path": "registry/base-ui/blocks/stepper-with-description/components/stepper-with-description.tsx",
-					"type": "registry:component"
+					"path": "src/components/blocks/conditional-onboarding.tsx",
+					"type": "registry:component",
+					"target": "components/stepperize/conditional-onboarding.tsx"
 				}
 			]
 		},
 		{
-			"name": "base-ui/stepper-with-form",
+			"name": "product-tour",
 			"type": "registry:component",
-			"title": "Stepper with form (Base UI)",
-			"description": "A stepper with a form using zod for validation",
-			"dependencies": ["zod", "@stepperize/react"],
-			"registryDependencies": ["button", "input", "label", "field"],
+			"title": "Product Tour",
+			"description": "A card-style onboarding walkthrough with dot indicators and free navigation.",
+			"dependencies": [
+				"@stepperize/react",
+				"lucide-react"
+			],
+			"registryDependencies": [],
+			"categories": [
+				"onboarding"
+			],
+			"meta": {
+				"capabilities": [
+					"non-linear"
+				],
+				"level": "beginner",
+				"tags": [
+					"tour",
+					"walkthrough",
+					"carousel",
+					"dots",
+					"non-linear"
+				]
+			},
 			"files": [
 				{
-					"path": "registry/base-ui/blocks/stepper-with-form/page.tsx",
-					"type": "registry:page",
-					"target": "app/stepper-with-form/page.tsx"
-				},
-				{
-					"path": "registry/base-ui/blocks/stepper-with-form/components/stepper-with-form.tsx",
-					"type": "registry:component"
+					"path": "src/components/blocks/product-tour.tsx",
+					"type": "registry:component",
+					"target": "components/stepperize/product-tour.tsx"
 				}
 			]
 		},
 		{
-			"name": "base-ui/stepper-with-icon",
+			"name": "course-player",
 			"type": "registry:component",
-			"title": "Stepper with icon (Base UI)",
-			"description": "A stepper with an icon",
-			"dependencies": ["@stepperize/react"],
-			"registryDependencies": ["button"],
+			"title": "Course Player",
+			"description": "A lesson playlist with typed per-lesson metadata and a final quiz.",
+			"dependencies": [
+				"@stepperize/react",
+				"lucide-react"
+			],
+			"registryDependencies": [],
+			"categories": [
+				"onboarding"
+			],
+			"meta": {
+				"capabilities": [
+					"metadata",
+					"non-linear"
+				],
+				"level": "beginner",
+				"tags": [
+					"course",
+					"lessons",
+					"playlist",
+					"learning",
+					"metadata"
+				]
+			},
 			"files": [
 				{
-					"path": "registry/base-ui/blocks/stepper-with-icon/page.tsx",
-					"type": "registry:page",
-					"target": "app/stepper-with-icon/page.tsx"
-				},
-				{
-					"path": "registry/base-ui/blocks/stepper-with-icon/components/stepper-with-icon.tsx",
-					"type": "registry:component"
+					"path": "src/components/blocks/course-player.tsx",
+					"type": "registry:component",
+					"target": "components/stepperize/course-player.tsx"
 				}
 			]
 		},
 		{
-			"name": "base-ui/stepper-with-label-orientation",
+			"name": "validated-checkout",
 			"type": "registry:component",
-			"title": "Stepper with label orientation (Base UI)",
-			"description": "A stepper with a label orientation",
-			"dependencies": ["@stepperize/react"],
-			"registryDependencies": ["button", "label", "radio-group"],
+			"title": "Validated Checkout",
+			"description": "A checkout where each step has a Zod schema; validate() inside a beforeStepChange guard blocks invalid input before the review step.",
+			"dependencies": [
+				"@stepperize/react",
+				"lucide-react",
+				"zod"
+			],
+			"registryDependencies": [
+				"button",
+				"input",
+				"label"
+			],
+			"categories": [
+				"commerce"
+			],
+			"meta": {
+				"capabilities": [
+					"validation"
+				],
+				"level": "advanced",
+				"tags": [
+					"checkout",
+					"zod",
+					"validation",
+					"guard",
+					"payment"
+				]
+			},
 			"files": [
 				{
-					"path": "registry/base-ui/blocks/stepper-with-label-orientation/page.tsx",
-					"type": "registry:page",
-					"target": "app/stepper-with-label-orientation/page.tsx"
-				},
-				{
-					"path": "registry/base-ui/blocks/stepper-with-label-orientation/components/stepper-with-label-orientation.tsx",
-					"type": "registry:component"
+					"path": "src/components/blocks/validated-checkout.tsx",
+					"type": "registry:component",
+					"target": "components/stepperize/validated-checkout.tsx"
 				}
 			]
 		},
 		{
-			"name": "base-ui/stepper-with-scroll-tracking",
+			"name": "plan-picker",
 			"type": "registry:component",
-			"title": "Stepper with scroll tracking (Base UI)",
-			"description": "A stepper with scroll tracking",
-			"dependencies": ["@stepperize/react"],
-			"registryDependencies": ["button", "label", "radio-group"],
+			"title": "Plan Picker",
+			"description": "Choose a plan, set billing, then pay — billing path branches on the plan.",
+			"dependencies": [
+				"@stepperize/react",
+				"lucide-react"
+			],
+			"registryDependencies": [
+				"button",
+				"input",
+				"label",
+				"radio-group"
+			],
+			"categories": [
+				"commerce"
+			],
+			"meta": {
+				"capabilities": [
+					"branching"
+				],
+				"level": "intermediate",
+				"tags": [
+					"pricing",
+					"plans",
+					"billing",
+					"subscription",
+					"branching"
+				]
+			},
 			"files": [
 				{
-					"path": "registry/base-ui/blocks/stepper-with-scroll-tracking/page.tsx",
-					"type": "registry:page",
-					"target": "app/stepper-with-scroll-tracking/page.tsx"
-				},
-				{
-					"path": "registry/base-ui/blocks/stepper-with-scroll-tracking/components/stepper-with-scroll-tracking.tsx",
-					"type": "registry:component"
+					"path": "src/components/blocks/plan-picker.tsx",
+					"type": "registry:component",
+					"target": "components/stepperize/plan-picker.tsx"
 				}
 			]
 		},
 		{
-			"name": "base-ui/stepper-with-variants",
+			"name": "appointment",
 			"type": "registry:component",
-			"title": "Stepper with variants (Base UI)",
-			"description": "A stepper with variants",
-			"dependencies": ["@stepperize/react"],
-			"registryDependencies": ["button", "label", "radio-group"],
+			"title": "Appointment Booking",
+			"description": "Service, professional, time slot, and confirmation.",
+			"dependencies": [
+				"@stepperize/react",
+				"lucide-react"
+			],
+			"registryDependencies": [
+				"button",
+				"label",
+				"radio-group"
+			],
+			"categories": [
+				"commerce"
+			],
+			"meta": {
+				"capabilities": [
+					"navigation"
+				],
+				"level": "beginner",
+				"tags": [
+					"booking",
+					"appointment",
+					"calendar",
+					"scheduling"
+				]
+			},
 			"files": [
 				{
-					"path": "registry/base-ui/blocks/stepper-with-variants/page.tsx",
-					"type": "registry:page",
-					"target": "app/stepper-with-variants/page.tsx"
-				},
+					"path": "src/components/blocks/appointment.tsx",
+					"type": "registry:component",
+					"target": "components/stepperize/appointment.tsx"
+				}
+			]
+		},
+		{
+			"name": "two-factor",
+			"type": "registry:component",
+			"title": "Two-Factor Setup",
+			"description": "Pick a method, verify a code, save backup codes.",
+			"dependencies": [
+				"@stepperize/react",
+				"lucide-react"
+			],
+			"registryDependencies": [
+				"button",
+				"input-otp",
+				"label",
+				"radio-group"
+			],
+			"categories": [
+				"auth"
+			],
+			"meta": {
+				"capabilities": [
+					"validation"
+				],
+				"level": "intermediate",
+				"tags": [
+					"2fa",
+					"mfa",
+					"otp",
+					"security",
+					"verification"
+				]
+			},
+			"files": [
 				{
-					"path": "registry/base-ui/blocks/stepper-with-variants/components/stepper-with-variants.tsx",
-					"type": "registry:component"
+					"path": "src/components/blocks/two-factor.tsx",
+					"type": "registry:component",
+					"target": "components/stepperize/two-factor.tsx"
+				}
+			]
+		},
+		{
+			"name": "kyc-verification",
+			"type": "registry:component",
+			"title": "KYC Verification",
+			"description": "Identity, document, and selfie verification steps.",
+			"dependencies": [
+				"@stepperize/react",
+				"lucide-react",
+				"zod"
+			],
+			"registryDependencies": [
+				"alert",
+				"button",
+				"checkbox",
+				"input",
+				"label"
+			],
+			"categories": [
+				"auth"
+			],
+			"meta": {
+				"capabilities": [
+					"navigation"
+				],
+				"level": "intermediate",
+				"tags": [
+					"kyc",
+					"identity",
+					"verification",
+					"documents",
+					"compliance"
+				]
+			},
+			"files": [
+				{
+					"path": "src/components/blocks/kyc-verification.tsx",
+					"type": "registry:component",
+					"target": "components/stepperize/kyc-verification.tsx"
+				}
+			]
+		},
+		{
+			"name": "device-pairing",
+			"type": "registry:component",
+			"title": "Device Pairing",
+			"description": "Discover, pair, configure, and ready a device over an async transition.",
+			"dependencies": [
+				"@stepperize/react",
+				"lucide-react"
+			],
+			"registryDependencies": [],
+			"categories": [
+				"auth"
+			],
+			"meta": {
+				"capabilities": [
+					"async"
+				],
+				"level": "intermediate",
+				"tags": [
+					"device",
+					"pairing",
+					"iot",
+					"async",
+					"connection"
+				]
+			},
+			"files": [
+				{
+					"path": "src/components/blocks/device-pairing.tsx",
+					"type": "registry:component",
+					"target": "components/stepperize/device-pairing.tsx"
+				}
+			]
+		},
+		{
+			"name": "async-provisioning",
+			"type": "registry:component",
+			"title": "Async Provisioning",
+			"description": "A deploy flow with an async guarded transition, pending UI, a failed first attempt, and a retry path.",
+			"dependencies": [
+				"@stepperize/react",
+				"lucide-react"
+			],
+			"registryDependencies": [
+				"alert",
+				"button",
+				"label",
+				"select"
+			],
+			"categories": [
+				"async"
+			],
+			"meta": {
+				"capabilities": [
+					"async"
+				],
+				"level": "advanced",
+				"tags": [
+					"async",
+					"provisioning",
+					"deploy",
+					"retry",
+					"pending"
+				]
+			},
+			"files": [
+				{
+					"path": "src/components/blocks/async-provisioning.tsx",
+					"type": "registry:component",
+					"target": "components/stepperize/async-provisioning.tsx"
+				}
+			]
+		},
+		{
+			"name": "order-tracking",
+			"type": "registry:component",
+			"title": "Order Tracking",
+			"description": "A shipment tracker driven by typed per-step metadata (carrier, location, ETA).",
+			"dependencies": [
+				"@stepperize/react",
+				"lucide-react"
+			],
+			"registryDependencies": [],
+			"categories": [
+				"async"
+			],
+			"meta": {
+				"capabilities": [
+					"metadata"
+				],
+				"level": "beginner",
+				"tags": [
+					"tracking",
+					"shipping",
+					"timeline",
+					"order",
+					"metadata"
+				]
+			},
+			"files": [
+				{
+					"path": "src/components/blocks/order-tracking.tsx",
+					"type": "registry:component",
+					"target": "components/stepperize/order-tracking.tsx"
+				}
+			]
+		},
+		{
+			"name": "cicd-pipeline",
+			"type": "registry:component",
+			"title": "CI/CD Pipeline",
+			"description": "Build, test, deploy, verify pipeline status with typed stage metadata.",
+			"dependencies": [
+				"@stepperize/react",
+				"lucide-react"
+			],
+			"registryDependencies": [],
+			"categories": [
+				"async"
+			],
+			"meta": {
+				"capabilities": [
+					"metadata"
+				],
+				"level": "intermediate",
+				"tags": [
+					"ci",
+					"cd",
+					"pipeline",
+					"stages",
+					"devops",
+					"metadata"
+				]
+			},
+			"files": [
+				{
+					"path": "src/components/blocks/cicd-pipeline.tsx",
+					"type": "registry:component",
+					"target": "components/stepperize/cicd-pipeline.tsx"
+				}
+			]
+		},
+		{
+			"name": "approval-flow",
+			"type": "registry:component",
+			"title": "Approval Flow",
+			"description": "A multi-stage submission and approval chain.",
+			"dependencies": [
+				"@stepperize/react",
+				"lucide-react"
+			],
+			"registryDependencies": [],
+			"categories": [
+				"async"
+			],
+			"meta": {
+				"capabilities": [
+					"navigation"
+				],
+				"level": "intermediate",
+				"tags": [
+					"approval",
+					"workflow",
+					"review",
+					"chain"
+				]
+			},
+			"files": [
+				{
+					"path": "src/components/blocks/approval-flow.tsx",
+					"type": "registry:component",
+					"target": "components/stepperize/approval-flow.tsx"
+				}
+			]
+		},
+		{
+			"name": "approval-timeline",
+			"type": "registry:component",
+			"title": "Approval Timeline",
+			"description": "A vertical audit timeline where each step carries typed metadata (actor, role, SLA hours) read straight off `step` and `stepper.current` with full inference.",
+			"dependencies": [
+				"@stepperize/react",
+				"lucide-react"
+			],
+			"registryDependencies": [],
+			"categories": [
+				"async"
+			],
+			"meta": {
+				"capabilities": [
+					"metadata",
+					"type-safe"
+				],
+				"level": "advanced",
+				"tags": [
+					"timeline",
+					"audit",
+					"approval",
+					"metadata",
+					"type-safe"
+				]
+			},
+			"files": [
+				{
+					"path": "src/components/blocks/approval-timeline.tsx",
+					"type": "registry:component",
+					"target": "components/stepperize/approval-timeline.tsx"
+				}
+			]
+		},
+		{
+			"name": "decision-tree",
+			"type": "registry:component",
+			"title": "Decision Tree",
+			"description": "A plan finder that branches to different follow-up questions and converges on a result computed from the answers.",
+			"dependencies": [
+				"@stepperize/react",
+				"lucide-react"
+			],
+			"registryDependencies": [],
+			"categories": [
+				"flow-control"
+			],
+			"meta": {
+				"capabilities": [
+					"branching"
+				],
+				"level": "advanced",
+				"tags": [
+					"decision tree",
+					"quiz",
+					"branching",
+					"wizard",
+					"recommendation"
+				]
+			},
+			"files": [
+				{
+					"path": "src/components/blocks/decision-tree.tsx",
+					"type": "registry:component",
+					"target": "components/stepperize/decision-tree.tsx"
+				}
+			]
+		},
+		{
+			"name": "save-resume",
+			"type": "registry:component",
+			"title": "Save & Resume",
+			"description": "A controlled wizard whose active step is synced to localStorage and the URL hash.",
+			"dependencies": [
+				"@stepperize/react",
+				"lucide-react"
+			],
+			"registryDependencies": [
+				"alert",
+				"button",
+				"input"
+			],
+			"categories": [
+				"flow-control"
+			],
+			"meta": {
+				"capabilities": [
+					"persistence"
+				],
+				"level": "advanced",
+				"tags": [
+					"persistence",
+					"controlled",
+					"localstorage",
+					"url",
+					"resume"
+				]
+			},
+			"files": [
+				{
+					"path": "src/components/blocks/save-resume.tsx",
+					"type": "registry:component",
+					"target": "components/stepperize/save-resume.tsx"
+				}
+			]
+		},
+		{
+			"name": "ai-workflow",
+			"type": "registry:component",
+			"title": "AI Workflow",
+			"description": "An iterative generation flow where each run is appended to flow data and Refine loops back to the prompt.",
+			"dependencies": [
+				"@stepperize/react",
+				"lucide-react"
+			],
+			"registryDependencies": [
+				"badge",
+				"button",
+				"textarea"
+			],
+			"categories": [
+				"flow-control"
+			],
+			"meta": {
+				"capabilities": [
+					"branching",
+					"persistence"
+				],
+				"level": "advanced",
+				"tags": [
+					"ai",
+					"generation",
+					"iteration",
+					"loop",
+					"refine"
+				]
+			},
+			"files": [
+				{
+					"path": "src/components/blocks/ai-workflow.tsx",
+					"type": "registry:component",
+					"target": "components/stepperize/ai-workflow.tsx"
+				}
+			]
+		},
+		{
+			"name": "typed-wizard",
+			"type": "registry:component",
+			"title": "Typed Wizard",
+			"description": "An exhaustive stepper.match() over every step id — add or remove a step and the match becomes a compile error until you handle it.",
+			"dependencies": [
+				"@stepperize/react"
+			],
+			"registryDependencies": [],
+			"categories": [
+				"flow-control"
+			],
+			"meta": {
+				"capabilities": [
+					"type-safe"
+				],
+				"level": "advanced",
+				"tags": [
+					"type-safe",
+					"match",
+					"exhaustive",
+					"typescript"
+				]
+			},
+			"files": [
+				{
+					"path": "src/components/blocks/typed-wizard.tsx",
+					"type": "registry:component",
+					"target": "components/stepperize/typed-wizard.tsx"
+				}
+			]
+		},
+		{
+			"name": "dashboard-wizard",
+			"type": "registry:component",
+			"title": "Dashboard Wizard",
+			"description": "A SaaS settings wizard with sticky step nav, per-step validation, and an unsaved-changes guard wired through beforeStepChange and beforeunload.",
+			"dependencies": [
+				"@stepperize/react",
+				"lucide-react"
+			],
+			"registryDependencies": [
+				"alert",
+				"badge",
+				"button",
+				"input",
+				"label"
+			],
+			"categories": [
+				"flow-control"
+			],
+			"meta": {
+				"capabilities": [
+					"validation",
+					"persistence"
+				],
+				"level": "advanced",
+				"tags": [
+					"settings",
+					"dashboard",
+					"unsaved changes",
+					"guard",
+					"validation"
+				]
+			},
+			"files": [
+				{
+					"path": "src/components/blocks/dashboard-wizard.tsx",
+					"type": "registry:component",
+					"target": "components/stepperize/dashboard-wizard.tsx"
+				}
+			]
+		},
+		{
+			"name": "progress-overview",
+			"type": "registry:component",
+			"title": "Progress Overview",
+			"description": "A progress panel that computes percent complete and an ETA from typed per-step metadata (estimated minutes).",
+			"dependencies": [
+				"@stepperize/react",
+				"lucide-react"
+			],
+			"registryDependencies": [],
+			"categories": [
+				"flow-control"
+			],
+			"meta": {
+				"capabilities": [
+					"metadata"
+				],
+				"level": "intermediate",
+				"tags": [
+					"progress",
+					"eta",
+					"overview",
+					"metadata",
+					"dashboard"
+				]
+			},
+			"files": [
+				{
+					"path": "src/components/blocks/progress-overview.tsx",
+					"type": "registry:component",
+					"target": "components/stepperize/progress-overview.tsx"
 				}
 			]
 		}

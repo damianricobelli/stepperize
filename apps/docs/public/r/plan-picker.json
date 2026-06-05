@@ -1,0 +1,42 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "plan-picker",
+  "type": "registry:component",
+  "title": "Plan Picker",
+  "description": "Choose a plan, set billing, then pay — billing path branches on the plan.",
+  "author": "Stepperize",
+  "dependencies": [
+    "@stepperize/react",
+    "lucide-react"
+  ],
+  "registryDependencies": [
+    "button",
+    "input",
+    "label",
+    "radio-group"
+  ],
+  "categories": [
+    "commerce"
+  ],
+  "meta": {
+    "capabilities": [
+      "branching"
+    ],
+    "level": "intermediate",
+    "tags": [
+      "pricing",
+      "plans",
+      "billing",
+      "subscription",
+      "branching"
+    ]
+  },
+  "files": [
+    {
+      "path": "components/stepperize/plan-picker.tsx",
+      "type": "registry:component",
+      "target": "components/stepperize/plan-picker.tsx",
+      "content": "import { defineStepper } from \"@stepperize/react\";\nimport { Check } from \"lucide-react\";\nimport { useState } from \"react\";\nimport { buttonVariants } from \"@/components/ui/button\";\nimport { Input } from \"@/components/ui/input\";\nimport { Label } from \"@/components/ui/label\";\nimport { RadioGroup, RadioGroupItem } from \"@/components/ui/radio-group\";\n\nconst { Stepper } = defineStepper([\n\t{ id: \"plan\", title: \"Plan\" },\n\t{ id: \"billing\", title: \"Billing\" },\n\t{ id: \"payment\", title: \"Payment\" },\n\t{ id: \"done\", title: \"Done\" },\n]);\n\nconst PLANS = [\n\t{ id: \"starter\", name: \"Starter\", price: \"$0\", note: \"For individuals\" },\n\t{ id: \"pro\", name: \"Pro\", price: \"$12\", note: \"For small teams\" },\n\t{ id: \"team\", name: \"Team\", price: \"$29\", note: \"For companies\" },\n];\n\nexport function PlanPickerBlock() {\n\tconst [openedDashboard, setOpenedDashboard] = useState(false);\n\n\treturn (\n\t\t<Stepper.Root\n\t\t\tlinear\n\t\t\tclassName=\"w-full max-w-md rounded-xl border bg-background p-6 shadow-sm\"\n\t\t>\n\t\t\t{({ stepper }) => (\n\t\t\t\t<>\n\t\t\t\t\t<Stepper.List className=\"flex items-center justify-between\">\n\t\t\t\t\t\t<Stepper.Items>\n\t\t\t\t\t\t\t{(step, index) => (\n\t\t\t\t\t\t\t\t<div\n\t\t\t\t\t\t\t\t\tkey={step.id}\n\t\t\t\t\t\t\t\t\tclassName=\"flex flex-1 items-center last:flex-none\"\n\t\t\t\t\t\t\t\t>\n\t\t\t\t\t\t\t\t\t<Stepper.Item\n\t\t\t\t\t\t\t\t\t\tstep={step.id}\n\t\t\t\t\t\t\t\t\t\tclassName=\"flex items-center gap-2\"\n\t\t\t\t\t\t\t\t\t>\n\t\t\t\t\t\t\t\t\t\t<Stepper.Indicator className=\"group grid size-7 place-items-center rounded-full border text-xs font-semibold transition-colors data-[status=active]:border-primary data-[status=active]:bg-primary data-[status=active]:text-primary-foreground data-[status=previous]:border-primary data-[status=previous]:bg-primary data-[status=previous]:text-primary-foreground data-[status=upcoming]:border-border data-[status=upcoming]:text-muted-foreground\">\n\t\t\t\t\t\t\t\t\t\t\t<span className=\"group-data-[status=previous]:hidden\">\n\t\t\t\t\t\t\t\t\t\t\t\t{index + 1}\n\t\t\t\t\t\t\t\t\t\t\t</span>\n\t\t\t\t\t\t\t\t\t\t\t<Check className=\"hidden size-3.5 group-data-[status=previous]:block\" />\n\t\t\t\t\t\t\t\t\t\t</Stepper.Indicator>\n\t\t\t\t\t\t\t\t\t\t<Stepper.Title className=\"hidden text-xs font-medium sm:block\" />\n\t\t\t\t\t\t\t\t\t</Stepper.Item>\n\t\t\t\t\t\t\t\t\t{index < stepper.count - 1 && (\n\t\t\t\t\t\t\t\t\t\t<div className=\"mx-2 h-px flex-1 bg-border\" />\n\t\t\t\t\t\t\t\t\t)}\n\t\t\t\t\t\t\t\t</div>\n\t\t\t\t\t\t\t)}\n\t\t\t\t\t\t</Stepper.Items>\n\t\t\t\t\t</Stepper.List>\n\n\t\t\t\t\t<div className=\"mt-6 min-h-40\">\n\t\t\t\t\t\t<Stepper.Content step=\"plan\">\n\t\t\t\t\t\t\t<RadioGroup defaultValue=\"pro\">\n\t\t\t\t\t\t\t\t{PLANS.map((plan) => (\n\t\t\t\t\t\t\t\t\t<Label\n\t\t\t\t\t\t\t\t\t\tkey={plan.id}\n\t\t\t\t\t\t\t\t\t\tclassName=\"flex cursor-pointer items-center gap-3 rounded-lg border p-3 font-normal transition-colors has-[[data-checked]]:border-primary has-[[data-checked]]:bg-primary/5\"\n\t\t\t\t\t\t\t\t\t>\n\t\t\t\t\t\t\t\t\t\t<RadioGroupItem value={plan.id} />\n\t\t\t\t\t\t\t\t\t\t<span className=\"flex-1\">\n\t\t\t\t\t\t\t\t\t\t\t<span className=\"block text-sm font-medium\">\n\t\t\t\t\t\t\t\t\t\t\t\t{plan.name}\n\t\t\t\t\t\t\t\t\t\t\t</span>\n\t\t\t\t\t\t\t\t\t\t\t<span className=\"block text-xs text-muted-foreground\">\n\t\t\t\t\t\t\t\t\t\t\t\t{plan.note}\n\t\t\t\t\t\t\t\t\t\t\t</span>\n\t\t\t\t\t\t\t\t\t\t</span>\n\t\t\t\t\t\t\t\t\t\t<span className=\"text-sm font-semibold\">\n\t\t\t\t\t\t\t\t\t\t\t{plan.price}\n\t\t\t\t\t\t\t\t\t\t\t<span className=\"text-xs font-normal text-muted-foreground\">\n\t\t\t\t\t\t\t\t\t\t\t\t/mo\n\t\t\t\t\t\t\t\t\t\t\t</span>\n\t\t\t\t\t\t\t\t\t\t</span>\n\t\t\t\t\t\t\t\t\t</Label>\n\t\t\t\t\t\t\t\t))}\n\t\t\t\t\t\t\t</RadioGroup>\n\t\t\t\t\t\t</Stepper.Content>\n\n\t\t\t\t\t\t<Stepper.Content step=\"billing\">\n\t\t\t\t\t\t\t<RadioGroup defaultValue=\"monthly\">\n\t\t\t\t\t\t\t\t<Cycle\n\t\t\t\t\t\t\t\t\tvalue=\"monthly\"\n\t\t\t\t\t\t\t\t\tlabel=\"Monthly\"\n\t\t\t\t\t\t\t\t\thint=\"$12 billed monthly\"\n\t\t\t\t\t\t\t\t/>\n\t\t\t\t\t\t\t\t<Cycle\n\t\t\t\t\t\t\t\t\tvalue=\"yearly\"\n\t\t\t\t\t\t\t\t\tlabel=\"Yearly\"\n\t\t\t\t\t\t\t\t\thint=\"$120 billed yearly — save 16%\"\n\t\t\t\t\t\t\t\t/>\n\t\t\t\t\t\t\t</RadioGroup>\n\t\t\t\t\t\t</Stepper.Content>\n\n\t\t\t\t\t\t<Stepper.Content step=\"payment\" className=\"space-y-3\">\n\t\t\t\t\t\t\t<Field label=\"Card number\" placeholder=\"4242 4242 4242 4242\" />\n\t\t\t\t\t\t\t<div className=\"grid grid-cols-2 gap-3\">\n\t\t\t\t\t\t\t\t<Field label=\"Expiry\" placeholder=\"12 / 28\" />\n\t\t\t\t\t\t\t\t<Field label=\"CVC\" placeholder=\"123\" />\n\t\t\t\t\t\t\t</div>\n\t\t\t\t\t\t</Stepper.Content>\n\n\t\t\t\t\t\t<Stepper.Content\n\t\t\t\t\t\t\tstep=\"done\"\n\t\t\t\t\t\t\tclassName=\"grid place-items-center gap-2 py-6 text-center\"\n\t\t\t\t\t\t>\n\t\t\t\t\t\t\t<span className=\"grid size-11 place-items-center rounded-full bg-primary/10 text-primary\">\n\t\t\t\t\t\t\t\t<Check className=\"size-5\" />\n\t\t\t\t\t\t\t</span>\n\t\t\t\t\t\t\t<p className=\"text-sm font-medium\">You're on Pro 🎉</p>\n\t\t\t\t\t\t\t{openedDashboard && (\n\t\t\t\t\t\t\t\t<p className=\"text-xs text-muted-foreground\">\n\t\t\t\t\t\t\t\t\tDashboard opened with your Pro workspace.\n\t\t\t\t\t\t\t\t</p>\n\t\t\t\t\t\t\t)}\n\t\t\t\t\t\t</Stepper.Content>\n\t\t\t\t\t</div>\n\n\t\t\t\t\t<Stepper.Actions className=\"mt-6 flex justify-between\">\n\t\t\t\t\t\t<Stepper.Prev className={buttonVariants({ variant: \"outline\" })}>\n\t\t\t\t\t\t\tBack\n\t\t\t\t\t\t</Stepper.Prev>\n\t\t\t\t\t\t{openedDashboard ? (\n\t\t\t\t\t\t\t<button\n\t\t\t\t\t\t\t\ttype=\"button\"\n\t\t\t\t\t\t\t\tonClick={() => {\n\t\t\t\t\t\t\t\t\tsetOpenedDashboard(false);\n\t\t\t\t\t\t\t\t\tstepper.reset();\n\t\t\t\t\t\t\t\t}}\n\t\t\t\t\t\t\t\tclassName={buttonVariants()}\n\t\t\t\t\t\t\t>\n\t\t\t\t\t\t\t\tRestart checkout\n\t\t\t\t\t\t\t</button>\n\t\t\t\t\t\t) : stepper.isLast ? (\n\t\t\t\t\t\t\t<button\n\t\t\t\t\t\t\t\ttype=\"button\"\n\t\t\t\t\t\t\t\tonClick={() => setOpenedDashboard(true)}\n\t\t\t\t\t\t\t\tclassName={buttonVariants()}\n\t\t\t\t\t\t\t>\n\t\t\t\t\t\t\t\tGo to dashboard\n\t\t\t\t\t\t\t</button>\n\t\t\t\t\t\t) : (\n\t\t\t\t\t\t\t<Stepper.Next className={buttonVariants()}>\n\t\t\t\t\t\t\t\t{stepper.index === stepper.count - 2 ? \"Subscribe\" : \"Continue\"}\n\t\t\t\t\t\t\t</Stepper.Next>\n\t\t\t\t\t\t)}\n\t\t\t\t\t</Stepper.Actions>\n\t\t\t\t</>\n\t\t\t)}\n\t\t</Stepper.Root>\n\t);\n}\n\nfunction Cycle({\n\tvalue,\n\tlabel,\n\thint,\n}: {\n\tvalue: string;\n\tlabel: string;\n\thint: string;\n}) {\n\treturn (\n\t\t<Label className=\"flex cursor-pointer items-center gap-3 rounded-lg border p-3 text-sm font-normal transition-colors has-[[data-checked]]:border-primary has-[[data-checked]]:bg-primary/5\">\n\t\t\t<RadioGroupItem value={value} />\n\t\t\t<span className=\"font-medium\">{label}</span>\n\t\t\t<span className=\"ml-auto text-xs text-muted-foreground\">{hint}</span>\n\t\t</Label>\n\t);\n}\n\nfunction Field({\n\tlabel,\n\t...props\n}: { label: string } & React.ComponentProps<\"input\">) {\n\treturn (\n\t\t<div className=\"space-y-1.5\">\n\t\t\t<Label>{label}</Label>\n\t\t\t<Input {...props} />\n\t\t</div>\n\t);\n}\n"
+    }
+  ]
+}

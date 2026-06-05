@@ -1,0 +1,91 @@
+---
+title: Controlled vs uncontrolled
+description: Choose where stepper state should live.
+---
+
+# Controlled vs uncontrolled
+
+Stepperize follows the same model as a React `<input>`. Three pieces of state can
+each be **uncontrolled** (Stepperize owns them) or **controlled** (you own them):
+the current `step`, the flow `data`, and the `completed` list.
+
+You mix and match freely — controlled step, uncontrolled data, and so on.
+
+## Uncontrolled (the default)
+
+Stepperize holds the state internally. You set a starting point and let it run.
+This is what you want most of the time.
+
+```tsx
+const stepper = checkout.useStepper({ defaultStep: "shipping" });
+// Stepperize owns the current step. next()/prev() just work.
+```
+
+```text
+        ┌──────────────────────────┐
+        │       Stepperize         │
+  next()│  owns current step       │
+ ──────►│  owns values             │──► your UI re-renders
+        │  owns completed          │
+        └──────────────────────────┘
+```
+
+## Controlled
+
+You pass the value **and** a change handler. Stepperize never mutates its own
+copy — it calls your handler and waits for the new prop to flow back in.
+
+```tsx
+const [step, setStep] = React.useState("shipping");
+
+const stepper = checkout.useStepper({
+  step, // you provide the value
+  onStepChange: setStep, // you apply the change
+});
+```
+
+```text
+        ┌─────────────┐   onStepChange(next)   ┌──────────┐
+  next()│ Stepperize  │ ─────────────────────► │   you    │
+ ──────►│ (no internal│                        │ setStep  │
+        │  step state)│ ◄───────────────────── │          │
+        └─────────────┘      step={...}        └──────────┘
+```
+
+<Callout type="warn">
+The #1 mistake: passing `step` **without** `onStepChange`. The stepper becomes
+read-only and "won't move" — because you told it you own the state, then never
+updated it. If you pass a controlled value, you must handle its change.
+</Callout>
+
+## When to control each piece
+
+| Control… | When |
+| --- | --- |
+| `step` / `onStepChange` | The current step lives in the URL, a router, or an external store. |
+| `data` / `onDataChange` | Drafts live in a form store, server state, or are persisted. |
+| `completed` / `onCompletedChange` | Completion is derived from a workflow engine or backend. |
+
+If none of those apply, stay uncontrolled — it's less code and fewer footguns.
+
+## Example: sync the step to the URL
+
+```tsx
+const stepper = checkout.useStepper({
+  step: stepFromUrl,
+  onStepChange: (next) => navigate({ search: { step: next } }),
+  onInvalidStep: () => navigate({ search: { step: "shipping" }, replace: true }),
+});
+```
+
+The controlled `step` option accepts raw external strings. If it is unknown, the
+stepper falls back to `defaultStep` (or the first step) and calls
+`onInvalidStep`, so you can recover — for example by replacing the bad URL.
+External `step` changes are authoritative and never run the
+`beforeStepChange` guard.
+
+Use `checkout.parseStep(value)` when you need to narrow an untrusted value to a
+known step id before passing it to another typed API, such as `goTo(id)`.
+
+The same options work on `Provider` and `Stepper.Root`, so you can control a
+shared instance the same way. See [Sharing a stepper](/docs/latest/guides/shared-state).

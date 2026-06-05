@@ -1,0 +1,11 @@
+{
+	"title": "API Reference",
+	"pages": [
+		"define-stepper",
+		"use-stepper",
+		"stepper-instance",
+		"provider",
+		"primitives",
+		"types"
+	]
+}

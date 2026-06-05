@@ -1,0 +1,90 @@
+---
+title: Provider
+description: Reference the provider for sharing one stepper instance.
+---
+
+# Provider
+
+Every definition exposes a generated provider.
+
+## Example setup
+
+All examples on this page use this stepper definition:
+
+```tsx
+import { defineStepper } from "@stepperize/react";
+
+const checkout = defineStepper([
+  { id: "shipping", title: "Shipping" },
+  { id: "payment", title: "Payment" },
+  { id: "review", title: "Review" },
+]);
+```
+
+```tsx
+function CheckoutShell() {
+  return (
+    <checkout.Provider defaultStep="shipping">
+      <StepperNav />
+      <CheckoutPanel />
+      <Actions />
+    </checkout.Provider>
+  );
+}
+```
+
+Descendants call the same generated hook:
+
+```tsx
+function Actions() {
+  const stepper = checkout.useStepper();
+
+  return (
+    <button type="button" disabled={!stepper.canNext} onClick={() => stepper.next()}>
+      Next
+    </button>
+  );
+}
+```
+
+Inside the provider, `checkout.useStepper()` reads the shared instance. Outside it, it creates local state.
+
+Use `Provider` when your layout already has the right markup and you only need a shared stepper instance in descendant components.
+
+## Props
+
+The provider accepts the same instance options as `useStepper`.
+
+| Prop | Description |
+| --- | --- |
+| `defaultStep` | Initial step for uncontrolled provider state. |
+| `step` / `onStepChange` | Controlled current step. `step` may be a raw external string; `onStepChange` receives known step ids. |
+| `data` / `onDataChange` | Controlled flow data. |
+| `completed` / `onCompletedChange` | Controlled completion. |
+| `onInvalidStep` | Called when a controlled `step` is not a known step id. |
+| `linear` | `true` restricts trigger and list keyboard affordances. Defaults to `false`. |
+| `beforeStepChange` | Guard before navigation. |
+| `onStepChange` | Called after navigation succeeds. |
+
+```tsx
+<checkout.Provider
+  step={step}
+  onStepChange={setStep}
+  data={values}
+  onDataChange={setValues}
+  linear
+>
+  <Checkout />
+</checkout.Provider>
+```
+
+Use `Provider` for shared state with your own UI. Use `Stepper.Root` when the primitive UI should own the provider too.
+
+## Provider vs Stepper.Root
+
+| Use | When |
+| --- | --- |
+| `checkout.Provider` | You want shared state but custom markup. |
+| `checkout.Stepper.Root` | You want shared state plus primitive list, item, trigger, content, and action components. |
+
+Both create the same kind of runtime instance. Descendants still call `checkout.useStepper()`.

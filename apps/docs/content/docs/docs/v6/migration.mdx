@@ -1,0 +1,180 @@
+---
+title: Migrating to v6
+description: Update older projects from v5 to v6.
+---
+
+# Migrating to v6
+
+Guide to migrating from v5 to Stepperize v6.
+
+v6 simplifies the API: a single state shape, explicit lifecycle hooks, no persistence or progress tracking, and typed primitives with render props. There is no built-in persistence, such as `localStorage`, or progress tracking; implement those in your app if needed.
+
+If you are moving to the current API, use this guide to understand the v6 shape and then follow [Migrating to v7](/docs/latest/migration/v7).
+
+## defineStepper
+
+Before v6, some setups may have accepted an optional second argument.
+
+In v6, pass only step objects. There is no second argument.
+
+```tsx
+const { steps, Scoped, useStepper, Stepper } = defineStepper(
+  { id: "first", title: "First" },
+  { id: "second", title: "Second" },
+);
+```
+
+## useStepper - configuration
+
+Before v6, `useStepper` used a nested `initial` object with `step`, `metadata`, and `statuses`.
+
+```tsx
+useStepper({
+  initial: {
+    step: "second",
+    metadata: { first: { saved: true } },
+    statuses: { ... },
+  },
+});
+```
+
+In v6, use top-level `initialStep` and `initialMetadata`. Initial statuses were removed because status is derived from position: `active`, `success`, or `inactive`.
+
+```tsx
+useStepper({
+  initialStep: "second",
+  initialMetadata: { first: { saved: true } },
+});
+```
+
+## useStepper - state shape
+
+Everything lived under `state`, `navigation`, `lookup`, `flow`, `metadata`, and `lifecycle`.
+
+| v5 concept | v6 |
+| --- | --- |
+| Current step object | `stepper.state.current.data` |
+| Current step index | `stepper.state.current.index` |
+| Current step status | `stepper.state.current.status` |
+| Metadata for current step | `stepper.state.current.metadata.get()` / `.set(values)` / `.reset()` |
+| All steps | `stepper.state.all` |
+| First/last flags | `stepper.state.isFirst`, `stepper.state.isLast` |
+| Transition state | `stepper.state.isTransitioning` |
+
+Step-by-id lookup moved under `lookup`: use `stepper.lookup.get(id)` instead of `stepper.get(id)`.
+
+## Lookup
+
+Before v6, lookup helpers could be exposed as `utils` from `defineStepper` or as top-level methods.
+
+In v6, use `stepper.lookup`:
+
+- `stepper.lookup.getAll()` returns all steps.
+- `stepper.lookup.get(id)` returns a step by id.
+- `stepper.lookup.getIndex(id)` returns the step index.
+- `stepper.lookup.getByIndex(index)` returns a step by index.
+- `stepper.lookup.getFirst()` and `stepper.lookup.getLast()` return boundary steps.
+- `stepper.lookup.getNext(id)`, `stepper.lookup.getPrev(id)`, and `stepper.lookup.getNeighbors(id)` return related steps.
+
+There is no `stepper.steps` on the stepper object. Use `stepper.state.all` for the list of steps.
+
+## Navigation
+
+Navigation moved under `navigation`:
+
+- `stepper.navigation.next()`
+- `stepper.navigation.prev()`
+- `stepper.navigation.goTo(id)`
+- `stepper.navigation.reset()`
+
+If your v5 code used names such as `goToNextStep`, replace them with the v6 names above.
+
+## Scoped
+
+Before v6, `Scoped` used an `initial` prop with nested `step`, `metadata`, and `statuses`.
+
+In v6, use flat props:
+
+- `initialStep?` is the initial active step id.
+- `initialMetadata?` is the initial metadata per step.
+- `children` renders inside the scoped provider.
+
+There is no `initial` object and no `statuses` prop.
+
+## Transitions and lifecycle
+
+Before v6, transition callbacks could live in global or config-level options.
+
+In v6, register callbacks on the stepper instance:
+
+- `stepper.lifecycle.onBeforeTransition(cb)` runs before every `next`, `prev`, or `goTo`. Return `false`, or a promise that resolves to `false`, to cancel the transition.
+- `stepper.lifecycle.onAfterTransition(cb)` runs after the transition.
+
+Both methods support multiple callbacks and return an unsubscribe function.
+
+```tsx
+stepper.lifecycle.onBeforeTransition(({ from, to, direction }) => {
+  if (from.id === "shipping" && direction === "next") {
+    return canLeaveShipping();
+  }
+});
+```
+
+Pass metadata in the transition when the hook needs fresh data:
+
+```tsx
+stepper.navigation.next({
+  metadata: {
+    shipping: { valid: true },
+  },
+});
+```
+
+The callback receives a transition context with `from`, `to`, `metadata`, `statuses`, `direction`, `fromIndex`, and `toIndex`.
+
+Use `stepper.state.isTransitioning` for transition state.
+
+## Flow
+
+v6 adds `stepper.flow.is(id)` for simple conditionals:
+
+```tsx
+if (stepper.flow.is("payment")) {
+  return <PaymentForm />;
+}
+```
+
+```tsx
+{stepper.flow.is("confirmation") && <Summary />}
+```
+
+`flow.when`, `flow.switch`, and `flow.match` continue to work.
+
+## Primitives
+
+v6 introduces a full set of typed primitives under `Stepper`:
+
+- `Stepper.Root` is the container. It accepts `orientation?`, `initialStep?`, `initialMetadata?`, and `children` as a render prop `({ stepper }) => ...` or a React node.
+- `Stepper.List` and `Stepper.Item` build the list structure. Each `Item` takes a `step` id.
+- `Stepper.Trigger`, `Stepper.Indicator`, `Stepper.Title`, and `Stepper.Description` render trigger and label content.
+- `Stepper.Separator` renders separators between steps.
+- `Stepper.Content` renders the panel for a step and requires a `step` prop.
+- `Stepper.Actions`, `Stepper.Prev`, and `Stepper.Next` render navigation actions.
+
+Use primitives inside `Scoped`, or inside `Stepper.Root`, which uses `Scoped` internally. For item-level data inside `Stepper.Item`, use `useStepItemContext()` from `@stepperize/react/primitives`.
+
+## Summary table
+
+| Area | v5 | v6 |
+| --- | --- | --- |
+| `defineStepper` | Possibly a second argument | `defineStepper(...steps)` only |
+| `useStepper` config | `initial: { step, metadata, statuses }` | `initialStep?`, `initialMetadata?` |
+| Current step | `currentStep` or `current` | `state.current.data` |
+| All steps | `steps` or `all` on the stepper | `state.all` |
+| Step by id | `get(id)` at the top level | `lookup.get(id)` |
+| Scoped props | `initial` object | `initialStep?`, `initialMetadata?` |
+| Transition callbacks | Config or global callbacks | `lifecycle.onBeforeTransition` / `lifecycle.onAfterTransition` |
+| Conditional by step | `when` / `switch` | `flow.is(id)`, `flow.switch(...)` |
+| UI components | Custom UI | `Stepper.Root`, `Stepper.List`, `Stepper.Item`, and related primitives |
+
+Use [Migrating to v7](/docs/latest/migration/v7) to move from this namespaced API to the current flat API.

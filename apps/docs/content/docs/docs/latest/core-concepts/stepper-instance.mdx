@@ -1,0 +1,62 @@
+---
+title: The stepper instance
+description: Understand the object that drives state, navigation, and rendering.
+---
+
+# The stepper instance
+
+`useStepper()` returns a single flat object. Everything you read (current step,
+index, progress) and everything you do (navigate, save values, complete steps)
+lives directly on it — no nested `state` or `navigation` namespaces.
+
+The fastest way to understand it is to drive one. Click the controls below and
+watch every value react in real time.
+
+<StepperInspector />
+
+## What just happened
+
+- **`next()` / `prev()`** move the active step. Notice `index`, `progress`, and
+  the `current.id` change together — they are all derived from one source.
+- **`canPrev` / `canNext`** flip automatically at the edges. You never compute
+  "am I on the last step?" yourself — bind buttons straight to them.
+- **`setComplete()`** changes `completed` but leaves the position untouched.
+  Completion is independent from where you are — see
+  [Status vs completion](/docs/latest/core-concepts/status-vs-completion).
+- **`goTo(id)`** (click any circle) jumps directly to a step by its typed id.
+
+## The mental model
+
+Think of the instance as **derived state over one pointer**. You move the
+pointer (the current index); everything else — `current`, `progress`, `isLast`,
+each step's `status` — is recomputed for you.
+
+```tsx
+const stepper = onboarding.useStepper();
+
+stepper.current; // the active step object (with your custom fields)
+stepper.index; // where the pointer is
+stepper.next(); // move the pointer forward
+stepper.match({ ... }); // render exactly the active step
+```
+
+You only manage intent ("go next", "jump to review"). Stepperize manages the
+consequences.
+
+## The six you need on day one
+
+Most flows ship with just these:
+
+| Member | What it gives you |
+| --- | --- |
+| `current` | The active step object, including your custom fields. |
+| `match({...})` | Exhaustive, type-checked rendering by step id. |
+| `next()` / `prev()` | Move through the flow. |
+| `canNext` / `canPrev` | Ready-made disabled states for your buttons. |
+
+Everything else — values, completion, events, step-map helpers — is there when
+you need it, and invisible until then. The
+[full instance reference](/docs/latest/api/react/stepper-instance) lists every
+member.
+
+Next: [the navigation lifecycle](/docs/latest/core-concepts/navigation-lifecycle).

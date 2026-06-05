@@ -1,0 +1,121 @@
+---
+title: defineStepper
+description: Reference the API for defining typed flows.
+---
+
+# defineStepper
+
+Creates one typed flow.
+
+```tsx
+import { defineStepper } from "@stepperize/react";
+
+const checkout = defineStepper(
+  [
+    { id: "shipping", title: "Shipping" },
+    { id: "payment", title: "Payment" },
+    { id: "review", title: "Review" },
+  ],
+  {
+    defaultStep: "shipping",
+    linear: true,
+  },
+);
+```
+
+Use one definition per flow: checkout, onboarding, survey, setup wizard.
+
+The definition is static. It does not create React state until you call `useStepper`, render `Provider`, or render `Stepper.Root`.
+
+## Parameters
+
+| Parameter | Description |
+| --- | --- |
+| `steps` | Ordered step objects. Must contain at least one step, and each step needs a unique `id`; every other field is yours. |
+| `options.defaultStep` | Initial step id. Defaults to the first step. |
+| `options.defaultData` | Initial flow data. |
+| `options.defaultCompleted` | Initial completed step ids. |
+| `options.linear` | `false` by default. Set `true` to restrict trigger and list keyboard affordances to adjacent/previous steps. |
+
+Definition options become defaults for every instance created from this
+definition. Lifecycle callbacks (`beforeStepChange`, `onStepChange`) are
+instance-only — pass them to `useStepper`, `Provider`, or `Stepper.Root`.
+
+Duplicate literal ids are caught by TypeScript when the step list is a literal
+tuple. Stepperize also validates ids at runtime, so dynamic or widened step
+arrays still fail early with a clear error.
+
+## Returns
+
+| Property | Description |
+| --- | --- |
+| `steps` | Original steps in order. |
+| `useStepper(options?)` | Hook that returns the flat instance. |
+| `Provider` | Context provider for one shared instance. |
+| `Stepper` | Bound unstyled primitives. |
+| `get(id)` | Pure step access by id. |
+| `at(index)` | Pure step access by index. |
+| `parseStep(value)` | Narrow an arbitrary value to a known step id, or `undefined`. |
+| `validate(id, value)` | Validate an arbitrary value against a step's schema ([Standard Schema](https://standardschema.dev)). Schemaless steps always succeed. |
+
+## Local instance
+
+```tsx
+function Checkout() {
+  const stepper = checkout.useStepper();
+  return <h2>{stepper.current.title}</h2>;
+}
+```
+
+## Shared instance
+
+```tsx
+function Page() {
+  return (
+    <checkout.Provider defaultStep="shipping">
+      <CurrentTitle />
+      <Actions />
+    </checkout.Provider>
+  );
+}
+
+function CurrentTitle() {
+  const stepper = checkout.useStepper();
+  return <h2>{stepper.current.title}</h2>;
+}
+```
+
+## Step access without state
+
+```tsx
+const first = checkout.at(0);
+const payment = checkout.get("payment");
+```
+
+Use these in static config, tests, or setup code. Use instance step access helpers inside running UI.
+
+## Choosing defaults
+
+```tsx
+const checkout = defineStepper(steps, {
+  defaultStep: "shipping",
+  defaultData: {
+    shipping: savedShippingDraft,
+  },
+  defaultCompleted: ["shipping"],
+  linear: true,
+});
+```
+
+Use definition defaults for the normal behavior of the flow. Use `useStepper(options)`, `Provider` props, or `Stepper.Root` props for a specific screen or controlled integration.
+
+## Common mistakes
+
+| Mistake | Fix |
+| --- | --- |
+| Defining steps inside a component on every render | Move static definitions outside the component. |
+| Passing an empty step array | Define at least one step. `defineStepper` throws early for empty arrays. |
+| Reusing a step id | Give every step a unique id. Literal duplicates are type errors when possible; runtime validation catches the rest. |
+| Using labels as ids | Use stable ids like `"shipping"` and keep labels in `title`. |
+| Expecting `defaultStep` to control state after mount | Use controlled `step` / `onStepChange` for external state. |
+| Marking all previous steps complete automatically | Use `setComplete(id)` when your app accepts a step. |

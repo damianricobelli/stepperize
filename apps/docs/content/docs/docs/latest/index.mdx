@@ -1,0 +1,82 @@
+---
+title: Introduction
+description: Learn how Stepperize helps you build typed multi-step flows.
+---
+
+# Stepperize
+
+Define your steps once. Use the generated hook, provider, or primitives anywhere in your React UI.
+
+Stepperize is for flows where the user moves through named steps: checkout, onboarding, account setup, surveys, import wizards, approval flows, and multi-step forms.
+
+```tsx
+import { defineStepper } from "@stepperize/react";
+
+const checkout = defineStepper([
+  { id: "shipping", title: "Shipping" },
+  { id: "payment", title: "Payment" },
+  { id: "review", title: "Review" },
+]);
+
+function Checkout() {
+  const stepper = checkout.useStepper();
+
+  return (
+    <section>
+      <h2>{stepper.current.title}</h2>
+
+      {stepper.match({
+        shipping: () => <Shipping />,
+        payment: () => <Payment />,
+        review: () => <Review />,
+      })}
+
+      <button type="button" disabled={!stepper.canPrev} onClick={() => stepper.prev()}>
+        Back
+      </button>
+      <button type="button" disabled={!stepper.canNext} onClick={() => stepper.next()}>
+        Next
+      </button>
+    </section>
+  );
+}
+```
+
+That is the whole idea: **one typed definition drives everything** — the hook, the provider, the primitives, and exhaustive rendering, all sharing the same step ids.
+
+## Get started
+
+<Cards>
+	<Card
+		href="/docs/latest/getting-started/installation"
+		title="Install in 60 seconds"
+		description="Add the package and create your first typed flow."
+	/>
+	<Card
+		href="/docs/latest/getting-started/first-stepper"
+		title="Build your first stepper"
+		description="A working three-step flow you can paste into your app."
+	/>
+	<Card
+		href="/docs/latest/core-concepts/stepper-instance"
+		title="Understand the instance"
+		description="The flat object that powers everything — explored live."
+	/>
+	<Card
+		href="/blocks"
+		title="Steal a styled UI"
+		description="A gallery of copy-paste stepper blocks built on the primitives."
+	/>
+</Cards>
+
+## How it grows with you
+
+You can stop at the first layer that solves your problem:
+
+1. **Local** — `useStepper()` in one component, your own markup. Most flows start and end here.
+2. **Guarded** — add `beforeStepChange` when a move needs validation or saving.
+3. **Drafts** — add `data` when steps need per-step data for review or persistence.
+4. **Shared** — move to `Provider` when the header, panel, and footer are separate components.
+5. **Primitives** — use `Stepper.*` for a fully accessible, styled stepper UI.
+
+Each layer is additive. You never rewrite — you reach for the next tool when you need it.

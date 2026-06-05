@@ -1,0 +1,37 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "progress-overview",
+  "type": "registry:component",
+  "title": "Progress Overview",
+  "description": "A progress panel that computes percent complete and an ETA from typed per-step metadata (estimated minutes).",
+  "author": "Stepperize",
+  "dependencies": [
+    "@stepperize/react",
+    "lucide-react"
+  ],
+  "registryDependencies": [],
+  "categories": [
+    "flow-control"
+  ],
+  "meta": {
+    "capabilities": [
+      "metadata"
+    ],
+    "level": "intermediate",
+    "tags": [
+      "progress",
+      "eta",
+      "overview",
+      "metadata",
+      "dashboard"
+    ]
+  },
+  "files": [
+    {
+      "path": "components/stepperize/progress-overview.tsx",
+      "type": "registry:component",
+      "target": "components/stepperize/progress-overview.tsx",
+      "content": "import { defineStepper } from \"@stepperize/react\";\nimport { CheckCircle2, Circle, Clock, Loader2 } from \"lucide-react\";\nimport { useState } from \"react\";\n\n// `estMinutes` is typed metadata on each step. Because it lives on the step\n// definition, it's available on every entry of `stepper.steps` with no casting,\n// which lets us compute a live ETA from the remaining steps.\nconst { Stepper } = defineStepper([\n\t{ id: \"account\", title: \"Create account\", estMinutes: 2 },\n\t{ id: \"verify\", title: \"Verify email\", estMinutes: 1 },\n\t{ id: \"profile\", title: \"Complete profile\", estMinutes: 5 },\n\t{ id: \"team\", title: \"Invite team\", estMinutes: 3 },\n\t{ id: \"done\", title: \"Finish\", estMinutes: 1 },\n]);\n\nexport function ProgressOverviewBlock() {\n\tconst [completed, setCompleted] = useState(false);\n\n\treturn (\n\t\t<Stepper.Root className=\"w-full max-w-md rounded-xl border bg-background p-6 shadow-sm\">\n\t\t\t{({ stepper }) => {\n\t\t\t\tconst completedSteps = stepper.index;\n\t\t\t\tconst remaining = stepper.count - stepper.index - 1;\n\t\t\t\tconst percent = Math.round(stepper.progress * 100);\n\t\t\t\t// Sum the typed `estMinutes` of every step the user hasn't finished.\n\t\t\t\tconst minutesLeft = stepper.steps\n\t\t\t\t\t.slice(stepper.index)\n\t\t\t\t\t.reduce((total, step) => total + step.estMinutes, 0);\n\n\t\t\t\treturn (\n\t\t\t\t\t<>\n\t\t\t\t\t\t<div className=\"mb-4 flex items-baseline justify-between\">\n\t\t\t\t\t\t\t<h3 className=\"text-sm font-semibold\">Setup progress</h3>\n\t\t\t\t\t\t\t<span className=\"inline-flex items-center gap-1 text-xs text-muted-foreground\">\n\t\t\t\t\t\t\t\t<Clock className=\"size-3.5\" />\n\t\t\t\t\t\t\t\t{completed ? \"Complete\" : `~${minutesLeft} min left`}\n\t\t\t\t\t\t\t</span>\n\t\t\t\t\t\t</div>\n\n\t\t\t\t\t\t<div className=\"mb-2 h-2 w-full overflow-hidden rounded-full bg-muted\">\n\t\t\t\t\t\t\t<div\n\t\t\t\t\t\t\t\tclassName=\"h-full rounded-full bg-primary transition-all duration-300\"\n\t\t\t\t\t\t\t\tstyle={{ width: `${percent}%` }}\n\t\t\t\t\t\t\t/>\n\t\t\t\t\t\t</div>\n\t\t\t\t\t\t<div className=\"mb-5 flex justify-between text-xs text-muted-foreground\">\n\t\t\t\t\t\t\t<span>\n\t\t\t\t\t\t\t\t{completedSteps} completed · {remaining} remaining\n\t\t\t\t\t\t\t</span>\n\t\t\t\t\t\t\t<span className=\"font-medium text-foreground\">{percent}%</span>\n\t\t\t\t\t\t</div>\n\n\t\t\t\t\t\t{completed ? (\n\t\t\t\t\t\t\t<div className=\"grid place-items-center gap-2 rounded-lg border bg-chart-2/10 p-6 text-center\">\n\t\t\t\t\t\t\t\t<CheckCircle2 className=\"size-9 text-chart-2\" />\n\t\t\t\t\t\t\t\t<p className=\"text-sm font-medium\">Setup complete</p>\n\t\t\t\t\t\t\t\t<p className=\"text-xs text-muted-foreground\">\n\t\t\t\t\t\t\t\t\tAccount, verification, profile, and team invites are finished.\n\t\t\t\t\t\t\t\t</p>\n\t\t\t\t\t\t\t</div>\n\t\t\t\t\t\t) : (\n\t\t\t\t\t\t\t<ol className=\"space-y-1\">\n\t\t\t\t\t\t\t\t{stepper.steps.map((step) => {\n\t\t\t\t\t\t\t\t\tconst status = stepper.status(step.id);\n\t\t\t\t\t\t\t\t\treturn (\n\t\t\t\t\t\t\t\t\t\t<li\n\t\t\t\t\t\t\t\t\t\t\tkey={step.id}\n\t\t\t\t\t\t\t\t\t\t\tclassName=\"flex items-center justify-between rounded-lg px-2 py-1.5 text-sm data-[active=true]:bg-muted\"\n\t\t\t\t\t\t\t\t\t\t\tdata-active={status === \"active\"}\n\t\t\t\t\t\t\t\t\t\t>\n\t\t\t\t\t\t\t\t\t\t\t<span className=\"flex items-center gap-2\">\n\t\t\t\t\t\t\t\t\t\t\t\t{status === \"previous\" ? (\n\t\t\t\t\t\t\t\t\t\t\t\t\t<CheckCircle2 className=\"size-4 text-primary\" />\n\t\t\t\t\t\t\t\t\t\t\t\t) : status === \"active\" ? (\n\t\t\t\t\t\t\t\t\t\t\t\t\t<Loader2 className=\"size-4 animate-spin text-primary\" />\n\t\t\t\t\t\t\t\t\t\t\t\t) : (\n\t\t\t\t\t\t\t\t\t\t\t\t\t<Circle className=\"size-4 text-muted-foreground/50\" />\n\t\t\t\t\t\t\t\t\t\t\t\t)}\n\t\t\t\t\t\t\t\t\t\t\t\t<span\n\t\t\t\t\t\t\t\t\t\t\t\t\tclassName={\n\t\t\t\t\t\t\t\t\t\t\t\t\t\tstatus === \"upcoming\" ? \"text-muted-foreground\" : \"\"\n\t\t\t\t\t\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t\t\t\t\t\t>\n\t\t\t\t\t\t\t\t\t\t\t\t\t{step.title}\n\t\t\t\t\t\t\t\t\t\t\t\t</span>\n\t\t\t\t\t\t\t\t\t\t\t</span>\n\t\t\t\t\t\t\t\t\t\t\t<span className=\"text-xs text-muted-foreground\">\n\t\t\t\t\t\t\t\t\t\t\t\t{step.estMinutes}m\n\t\t\t\t\t\t\t\t\t\t\t</span>\n\t\t\t\t\t\t\t\t\t\t</li>\n\t\t\t\t\t\t\t\t\t);\n\t\t\t\t\t\t\t\t})}\n\t\t\t\t\t\t\t</ol>\n\t\t\t\t\t\t)}\n\n\t\t\t\t\t\t<Stepper.Actions className=\"mt-5 flex gap-2\">\n\t\t\t\t\t\t\t<Stepper.Prev className=\"inline-flex h-9 items-center rounded-lg border bg-background px-4 text-sm font-medium transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-50\">\n\t\t\t\t\t\t\t\tBack\n\t\t\t\t\t\t\t</Stepper.Prev>\n\t\t\t\t\t\t\t{completed ? (\n\t\t\t\t\t\t\t\t<button\n\t\t\t\t\t\t\t\t\ttype=\"button\"\n\t\t\t\t\t\t\t\t\tonClick={() => {\n\t\t\t\t\t\t\t\t\t\tsetCompleted(false);\n\t\t\t\t\t\t\t\t\t\tstepper.reset();\n\t\t\t\t\t\t\t\t\t}}\n\t\t\t\t\t\t\t\t\tclassName=\"inline-flex h-9 flex-1 items-center justify-center rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90\"\n\t\t\t\t\t\t\t\t>\n\t\t\t\t\t\t\t\t\tRestart setup\n\t\t\t\t\t\t\t\t</button>\n\t\t\t\t\t\t\t) : stepper.isLast ? (\n\t\t\t\t\t\t\t\t<button\n\t\t\t\t\t\t\t\t\ttype=\"button\"\n\t\t\t\t\t\t\t\t\tonClick={() => setCompleted(true)}\n\t\t\t\t\t\t\t\t\tclassName=\"inline-flex h-9 flex-1 items-center justify-center rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90\"\n\t\t\t\t\t\t\t\t>\n\t\t\t\t\t\t\t\t\tComplete setup\n\t\t\t\t\t\t\t\t</button>\n\t\t\t\t\t\t\t) : (\n\t\t\t\t\t\t\t\t<Stepper.Next className=\"inline-flex h-9 flex-1 items-center justify-center rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-50\">\n\t\t\t\t\t\t\t\t\tContinue\n\t\t\t\t\t\t\t\t</Stepper.Next>\n\t\t\t\t\t\t\t)}\n\t\t\t\t\t\t</Stepper.Actions>\n\t\t\t\t\t</>\n\t\t\t\t);\n\t\t\t}}\n\t\t</Stepper.Root>\n\t);\n}\n"
+    }
+  ]
+}

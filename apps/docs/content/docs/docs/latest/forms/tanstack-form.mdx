@@ -1,0 +1,174 @@
+---
+title: TanStack Form
+description: Build a checkout flow with TanStack Form.
+---
+
+# TanStack Form
+
+The same flow as the [React Hook Form](/docs/latest/forms/react-hook-form) and
+[Conform](/docs/latest/forms/conform) versions, built with TanStack Form. The
+Stepperize hand-off is identical — only the field API differs.
+
+```bash
+npm install @tanstack/react-form
+```
+
+## Setup
+
+The shared definition is the same in every implementation. Stepperize owns the
+flow; TanStack Form owns each step's fields **and their validation**. With
+form-driven navigation (Pattern 8), TanStack Form's validators run on submit
+*before* `stepper.next()`, so the form library is the validation source of truth.
+
+```tsx
+import { defineStepper } from "@stepperize/react";
+
+export const checkout = defineStepper(
+  [
+    { id: "personal", title: "Personal", schema: personalSchema },
+    { id: "shipping", title: "Shipping", schema: shippingSchema },
+    { id: "payment", title: "Payment", schema: paymentSchema },
+    { id: "review", title: "Review" },
+  ],
+  { linear: true },
+);
+```
+
+<Callout type="info">
+The per-step `schema` types `stepper.data` and drives the TanStack Form validator.
+You *can* also add a library-agnostic `beforeStepChange` guard
+(`ctx.validate()`) as a safety net for non-form navigation paths, but with
+form-driven navigation it is optional — see
+[Schema & validate()](/docs/latest/forms/schema-validation).
+</Callout>
+
+## A step form (save + seed)
+
+`defaultValues` seeds from the saved draft (Pattern 2). A standard-schema
+validator wires field validation. `onSubmit` saves and advances (Pattern 1).
+
+```tsx
+import { useForm } from "@tanstack/react-form";
+
+function PersonalStep() {
+  const stepper = checkout.useStepper();
+
+  const form = useForm({
+    defaultValues: stepper.data.get("personal") ?? { name: "", email: "" },
+    validators: { onChange: personalSchema },
+    onSubmit: async ({ value }) => {
+      const moved = await stepper.next({ data: value });
+      if (moved) stepper.setComplete();
+    },
+  });
+
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        form.handleSubmit();
+      }}
+    >
+      <form.Field name="name">
+        {(field) => (
+          <>
+            <input
+              value={field.state.value}
+              onBlur={field.handleBlur}
+              onChange={(e) => field.handleChange(e.target.value)}
+            />
+            {field.state.meta.errors.length > 0 && (
+              <p role="alert">{field.state.meta.errors.join(", ")}</p>
+            )}
+          </>
+        )}
+      </form.Field>
+
+      <form.Field name="email">
+        {(field) => (
+          <input
+            value={field.state.value}
+            onBlur={field.handleBlur}
+            onChange={(e) => field.handleChange(e.target.value)}
+          />
+        )}
+      </form.Field>
+
+      <button type="submit">{stepper.isLast ? "Place order" : "Next"}</button>
+    </form>
+  );
+}
+```
+
+`form.handleSubmit()` runs the validators; on success `onSubmit` fires, saving the
+value into Stepperize and moving. An invalid step never reaches `stepper.next()`.
+Same [Pattern
+8](/docs/latest/forms/patterns#pattern-8--form-driven-navigation) as the others.
+
+Want TanStack Form state, field meta, or expensive widgets to stay mounted while
+users move between steps? Wrap each step panel with
+[React Activity](/docs/latest/guides/react-activity) and keep Stepperize in
+charge of navigation.
+
+## Review and edit
+
+Identical to every implementation — the review step is pure Stepperize.
+
+```tsx
+function ReviewStep() {
+  const stepper = checkout.useStepper();
+  const all = stepper.data.all();
+
+  return (
+    <>
+      <Summary section="Personal" data={all.personal} onEdit={() => stepper.goTo("personal")} />
+      <Summary section="Shipping" data={all.shipping} onEdit={() => stepper.goTo("shipping")} />
+      <Summary section="Payment"  data={all.payment}  onEdit={() => stepper.goTo("payment")} />
+      <button type="button" onClick={() => api.createOrder(all)}>Place order</button>
+    </>
+  );
+}
+```
+
+## Render the active step
+
+```tsx
+function Checkout() {
+  // One Provider so the step components and this renderer share one instance.
+  return (
+    <checkout.Provider>
+      <CheckoutFlow />
+    </checkout.Provider>
+  );
+}
+
+function CheckoutFlow() {
+  const stepper = checkout.useStepper();
+  return stepper.match({
+    personal: () => <PersonalStep />,
+    shipping: () => <ShippingStep />,
+    payment: () => <PaymentStep />,
+    review: () => <ReviewStep />,
+  });
+}
+```
+
+## How TanStack Form maps to the patterns
+
+| Pattern | TanStack Form |
+| --- | --- |
+| Seed from draft | `useForm({ defaultValues: stepper.data.get(id) })` |
+| Field validation | `validators: { onChange: schema }` |
+| Save + advance | `onSubmit: ({ value }) => stepper.next({ data: value })` |
+| Navigation gate (optional) | `beforeStepChange` on the Provider/instance |
+| Review | `stepper.data.all()` (no form library) |
+| Edit previous | `stepper.goTo(id)` → form re-seeds from draft |
+
+<Callout type="info">
+TanStack Form's Standard Schema support means the *same* schema you put on the
+step (`schema: personalSchema`) can power both the form's field validation and an
+optional `beforeStepChange` gate — one schema, two layers.
+</Callout>
+
+Compare with [React Hook Form](/docs/latest/forms/react-hook-form) and
+[Conform](/docs/latest/forms/conform).

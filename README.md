@@ -1,19 +1,15 @@
 <p align="center">
-  <img src="https://stepperize.vercel.app/banner.png" alt="Stepperize Logo" />
+  <img src="https://stepperize.com/banner.png" alt="Stepperize Logo" />
 </p>
 
 [![Build Size](https://img.shields.io/bundlephobia/minzip/@stepperize/react@latest?label=bundle%20size&style=flat&colorA=000000&colorB=000000)](https://bundlephobia.com/result?p=@stepperize/react@latest)
 [![Version](https://img.shields.io/npm/v/@stepperize/react?style=flat&colorA=000000&colorB=000000)](https://www.npmjs.com/package/@stepperize/react)
 [![Downloads](https://img.shields.io/npm/dt/@stepperize/react.svg?style=flat&colorA=000000&colorB=000000)](https://www.npmjs.com/package/@stepperize/react)
 
-A library for creating step-by-step workflows in your apps
+Stepperize is a type-safe toolkit for building step-by-step workflows in React.
 
-- 🚀 Fast and efficient
-- 🔥 Powerful and flexible
-- 📦 Lightweight
-- 🪄 Fully type-safe
-- 🔗 Composable architecture
-- 🎨 Unstyled for maximum customization
+Define steps once, consume a flat stepper everywhere. Steps are plain objects,
+custom fields stay typed, and the UI is fully yours.
 
 ## Installation
 
@@ -23,58 +19,100 @@ npm install @stepperize/react
 
 ## Quick Start
 
-1. Import the constructor:
-
 ```tsx
 import { defineStepper } from "@stepperize/react";
-```
 
-2. Define your steps (as arguments):
+const checkout = defineStepper([
+  { id: "shipping", title: "Shipping", description: "Enter your address" },
+  { id: "payment", title: "Payment", description: "Payment details" },
+  { id: "review", title: "Review", description: "Confirm your order" },
+]);
 
-```tsx
-const { Scoped, useStepper, steps, Stepper } = defineStepper(
-  { id: "step-1", title: "Step 1", description: "Description for step 1" },
-  { id: "step-2", title: "Step 2", description: "Description for step 2" },
-  { id: "step-3", title: "Step 3", description: "Description for step 3" },
-  { id: "step-4", title: "Step 4", description: "Description for step 4" }
-);
-```
-
-3. Use the hook:
-
-```tsx
-function StepperComponent() {
-  const stepper = useStepper();
+function Checkout() {
+  const stepper = checkout.useStepper();
 
   return (
-    <div>
-      <h2>{stepper.state.current.data.title}</h2>
-      <p>{stepper.state.current.data.description}</p>
-      <button onClick={() => stepper.navigation.prev()}>Previous</button>
-      <button onClick={() => stepper.navigation.next()}>Next</button>
-    </div>
+    <section>
+      <h2>{stepper.current.title}</h2>
+      <p>{stepper.current.description}</p>
+
+      {stepper.match({
+        shipping: () => <ShippingForm />,
+        payment: () => <PaymentForm />,
+        review: () => <ReviewOrder />,
+      })}
+
+      <button onClick={() => stepper.prev()} disabled={!stepper.canPrev}>
+        Back
+      </button>
+      <button onClick={() => stepper.next()} disabled={!stepper.canNext}>
+        Continue
+      </button>
+    </section>
   );
 }
 ```
 
-## How It Works
+## What You Get
 
-Stepperize allows you to define a series of steps with unique IDs. When you create your steps using `defineStepper`, you get:
+- `useStepper()` for local or shared stepper state.
+- `Provider` when multiple descendants need the same instance.
+- `Stepper` primitives for accessible, unstyled UI.
+- Flat state and navigation: `id`, `current`, `index`, `next`, `prev`, `goTo`,
+  `reset`.
+- Typed rendering with `match` and `is`.
+- Step-scoped drafts with `data`, optionally validated via per-step `schema`
+  (Standard Schema).
+- Explicit completion with `setComplete` and `isComplete`.
 
-- A `Scoped` component for context management
-- A `useStepper` hook for step control
-- An array of `steps` for rendering
-- Type-safe `Stepper` primitives for building UI
+## Packages
 
-The only required field for each step is the `id`. You can add any additional properties you need, and they'll be fully type-safe when using the hook.
+This repository is a pnpm workspace managed with Turbo.
+
+- `packages/core` - framework-agnostic utilities and TypeScript types for
+  step-based workflows.
+- `packages/react` - React and React Native bindings, including
+  `defineStepper` and unstyled primitives.
+- `apps/docs` - the Stepperize documentation site, block gallery, changelog,
+  and shadcn-compatible registry.
+
+## Development
+
+Use Node.js 18 or newer and pnpm 10.
+
+```bash
+pnpm install
+pnpm dev
+```
+
+Common workspace commands:
+
+```bash
+pnpm build
+pnpm lint
+pnpm format-and-lint
+pnpm format-and-lint:fix
+```
+
+Target a single package or app with pnpm filters:
+
+```bash
+pnpm --filter @stepperize/react test
+pnpm --filter @stepperize/core build
+pnpm --filter docs dev
+```
 
 ## Documentation
 
-For more detailed information on usage, configuration, and advanced features, visit our [full documentation](https://stepperize.vercel.app).
+Read the full docs at [stepperize.com](https://stepperize.com).
+
+The docs app lives in `apps/docs` and is built with TanStack Start, TanStack
+Router, Fumadocs, MDX, Tailwind CSS, and a generated shadcn registry for the
+example blocks.
 
 ## Contributing
 
-We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for more details.
+We welcome contributions. Please see our [Contributing Guide](CONTRIBUTING.md).
 
 ## License
 

@@ -1,0 +1,190 @@
+---
+title: Stepper instance
+description: Reference the runtime API returned by the hook.
+---
+
+# Stepper instance
+
+`useStepper()` returns one flat object.
+
+## Example setup
+
+All examples on this page use this stepper definition:
+
+```tsx
+import { defineStepper } from "@stepperize/react";
+
+const checkout = defineStepper([
+  { id: "shipping", title: "Shipping" },
+  { id: "payment", title: "Payment" },
+  { id: "review", title: "Review" },
+]);
+```
+
+This page is the checklist for what you can read or call after creating an instance:
+
+```tsx
+const stepper = checkout.useStepper();
+```
+
+## State
+
+| Property | Description |
+| --- | --- |
+| `steps` | All step data in order. |
+| `current` / `id` | Current step object and id. |
+| `index` / `count` | Zero-based index and total count. |
+| `progress` | Number from `0` to `1`. |
+| `completed` | Explicitly completed step ids. |
+| `isFirst` / `isLast` | Edge state. |
+| `canPrev` / `canNext` | Whether prev or next can currently move. |
+| `isPending` | Whether an async change is running. |
+
+```tsx
+const label = `${stepper.index + 1} of ${stepper.count}`;
+const percent = Math.round(stepper.progress * 100);
+```
+
+## Step access
+
+The runtime instance only carries live state and actions. Static step lookups
+live on the **definition** and on the raw `stepper.steps` array:
+
+```tsx
+checkout.get("payment");       // step by id (definition helper)
+checkout.at(0);                // step by index (definition helper)
+checkout.parseStep(urlParam);  // narrow an unknown value to a step id
+
+const index = stepper.steps.findIndex((s) => s.id === stepper.id);
+```
+
+## Status and rendering
+
+```tsx
+stepper.status("shipping"); // "active" | "previous" | "upcoming"
+stepper.is("review"); // boolean
+```
+
+```tsx
+return stepper.match({
+  shipping: () => <Shipping />,
+  payment: () => <Payment />,
+  review: () => <Review />,
+});
+```
+
+## Flow data
+
+Flow data is committed, cross-step data — not live field state. With a per-step
+`schema`, `data.get(id)` is typed as that schema's input.
+
+| Method | Description |
+| --- | --- |
+| `data.get()` | Current step's data (`unknown`). |
+| `data.get(id)` | A specific step's data, typed from its schema. |
+| `data.set(value)` | Set the current step's data. |
+| `data.set(id, value)` | Set a specific step's data. |
+| `data.all()` | All flow data, keyed by step id. |
+| `data.clear(id?)` | Clear one step (or all when no id). |
+| `data.reset()` | Reset to defaults. |
+
+```tsx
+stepper.data.set("profile", { name: "Ada" });
+const all = stepper.data.all(); // for review / summary screens
+```
+
+## Validation
+
+`validate` checks a step's stored data against its `schema` and resolves to a
+discriminated result. Steps without a schema always succeed.
+
+```tsx
+const result = await stepper.validate("shipping"); // defaults to the current step
+if (result.success) {
+  // result.data is the schema OUTPUT type
+} else {
+  // result.issues: readonly { message; path? }[]
+}
+```
+
+## Completion
+
+```tsx
+stepper.setComplete();                 // mark current step complete
+stepper.setComplete("shipping");       // mark a specific step complete
+stepper.setComplete("shipping", false); // mark it incomplete
+stepper.isComplete("shipping");
+```
+
+Completion is separate from positional status.
+
+## Navigation
+
+```tsx
+stepper.next(payload);
+stepper.prev(payload);
+stepper.goTo("review", payload);
+stepper.reset(payload);
+
+stepper.canGoTo("review");
+```
+
+Navigation can be called directly from buttons. Await it when you need the result.
+
+```tsx
+const accepted = await stepper.next(payload);
+```
+
+Navigation resolves to `true` when a change happened and `false` when it did not.
+
+All navigation methods accept an optional `{ data }` payload, staged for the
+**current** step before the guard runs and committed only if the move is
+accepted:
+
+```tsx
+const accepted = await stepper.next({ data: currentStepData });
+```
+
+To write several steps at once, call `stepper.data.set` first, then navigate.
+
+## Lifecycle
+
+The instance does not expose imperative event subscriptions. Register a guard
+and an after-effect through the hook options instead:
+
+```tsx
+const stepper = checkout.useStepper({
+  beforeStepChange: async ({ direction, validate }) => {
+    if (direction === "prev") return true;
+    return (await validate()).success; // false cancels
+  },
+  onStepChange: (step) => analytics.track("step_view", { step }),
+});
+```
+
+For ad-hoc effects on any committed change, use an effect on `stepper.id`:
+
+```tsx
+React.useEffect(() => analytics.track("step_view", { step: stepper.id }), [stepper.id]);
+```
+
+## Change context
+
+`beforeStepChange` and `onStepChange` receive the same context shape.
+
+```ts
+type StepChangeContext = {
+  from: Step;
+  to: Step;
+  fromIndex: number;
+  toIndex: number;
+  direction: "next" | "prev" | "goto" | "reset";
+  data: FlowData;
+  validate: (idOrStep?: StepId | Step) => Promise<ValidationResult>;
+  statuses: Record<StepId, "active" | "previous" | "upcoming">;
+};
+```
+
+In `beforeStepChange`, `data` already includes the pending navigation payload and
+`validate()` validates the step being left against that same data snapshot. In
+`onStepChange`, `statuses` reflect the accepted destination.

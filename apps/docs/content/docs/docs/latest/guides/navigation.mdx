@@ -1,0 +1,218 @@
+---
+title: Navigation
+description: Move between steps, guard transitions, and reset flows.
+---
+
+# Navigation
+
+Use this guide when the user can move forward, go back, jump to a named step, reset the flow, or when a move needs validation before it is accepted.
+
+The instance has four navigation methods:
+
+```tsx
+stepper.next();
+stepper.prev();
+stepper.goTo("payment");
+stepper.reset();
+```
+
+You can call them directly from event handlers. Await them only when you need the result, for example when saving form values before moving on.
+
+```tsx
+const accepted = await stepper.next({ data: formValues });
+
+if (!accepted) return;
+toast.success("Step saved");
+```
+
+Navigation resolves to `true` when the step changed and `false` when it did not.
+
+## The decision tree
+
+| Need | Use |
+| --- | --- |
+| Move one step forward or back | `next()` / `prev()` |
+| Jump to a known step | `goTo(id)` |
+| Return to the initial/default step | `reset()` |
+| Save data while moving | Navigation payloads |
+| Stop a move when invalid | `beforeStepChange` |
+| Run side effects after a move | `onStepChange` |
+
+## Pick a navigation policy
+
+`linear` is a boolean that gates **trigger affordances**, including pointer and
+keyboard navigation through the primitives. It does not gate imperative
+navigation.
+
+| `linear` | Behavior |
+| --- | --- |
+| `false` (default) | `canGoTo` allows any known step; every trigger is enabled. |
+| `true` | `canGoTo` allows previous steps, the current step, and the immediate next one. Primitive triggers and list keyboard navigation follow that rule. |
+
+```tsx
+const checkout = defineStepper(steps, {
+  linear: true,
+});
+```
+
+Use `canGoTo(id)` for jump buttons and step triggers:
+
+```tsx
+<button
+  type="button"
+  disabled={!stepper.canGoTo("review")}
+  onClick={() => stepper.goTo("review")}
+>
+  Review
+</button>
+```
+
+Imperative `stepper.goTo(id)` **always bypasses** the `linear` policy (subject to
+the guard). This is intentional: it lets branching flows jump anywhere
+programmatically while keeping the clickable UI constrained.
+
+## Block navigation
+
+Use `beforeStepChange` for validation, saving, permissions, or any rule that can
+cancel a move. It is an instance option — pass it to `useStepper` (or `Provider`
+/ `Stepper.Root`):
+
+```tsx
+import { defineStepper } from "@stepperize/react";
+import { z } from "zod";
+
+const emailSchema = z.object({
+  email: z.string().email(),
+});
+
+const signup = defineStepper([
+  { id: "account", title: "Account", schema: emailSchema },
+  { id: "review", title: "Review" },
+] as const);
+
+function Signup() {
+  const stepper = signup.useStepper({
+    defaultData: {
+      account: { email: "" },
+    },
+    beforeStepChange: async ({ direction, validate }) => {
+      if (direction === "prev") return true;
+
+      return (await validate()).success;
+    },
+  });
+
+  const account = stepper.data.get("account") ?? { email: "" };
+
+  return (
+    <>
+      {stepper.is("account") && (
+        <input
+          value={account.email}
+          onChange={(event) =>
+            stepper.data.set("account", { email: event.target.value })
+          }
+        />
+      )}
+      {stepper.is("review") && <pre>{JSON.stringify(stepper.data.all())}</pre>}
+      <button type="button" onClick={() => stepper.next()}>
+        Continue
+      </button>
+    </>
+  );
+}
+```
+
+Return `false` to cancel. Return `true`, `undefined`, or nothing to allow.
+
+Navigation payloads are visible before they are committed:
+
+```tsx
+const accepted = await stepper.next({ data: form.getValues() });
+```
+
+If the guard returns `false`, that value is not saved.
+
+Use `ctx.validate()` in guards when you want to validate the step being left.
+Use `stepper.validate(id?)` outside navigation to validate stored draft data.
+Use `signup.validate(id, value)` when you have an arbitrary value to check.
+
+## Handle async transitions
+
+While an async guard or change callback is running, `isPending` is `true`. The navigation booleans also become conservative, so buttons can stay disabled.
+
+```tsx
+<button type="button" disabled={!stepper.canNext} onClick={() => stepper.next()}>
+  {stepper.isPending ? "Saving..." : "Continue"}
+</button>
+```
+
+## React to changes
+
+Use `onStepChange` for analytics, persistence, or side effects after navigation
+succeeds. It also receives the full change context as a second argument.
+
+```tsx
+const stepper = checkout.useStepper({
+  onStepChange: (step) => {
+    analytics.track("checkout_step_changed", { step });
+  },
+});
+```
+
+## Disable buttons
+
+Prefer the built-in booleans:
+
+```tsx
+<button type="button" disabled={!stepper.canPrev} onClick={() => stepper.prev()}>
+  Back
+</button>
+
+<button type="button" disabled={!stepper.canNext} onClick={() => stepper.next()}>
+  {stepper.isPending ? "Saving..." : "Continue"}
+</button>
+```
+
+`canPrev`, `canNext`, and `canGoTo(id)` include edge states, the `linear` policy,
+and transition state.
+
+## Save while moving
+
+All navigation methods accept a `{ data }` payload that is staged for the
+**current** step before the guard runs, then committed only if the move is
+accepted. That lets the guard validate the just-submitted data:
+
+```tsx
+const accepted = await stepper.next({ data: shippingValues });
+```
+
+To write several steps at once, set them with `stepper.data.set` first, then
+navigate:
+
+```tsx
+stepper.data.set("payment", paymentValues);
+const accepted = await stepper.goTo("review", { data: reviewValues });
+```
+
+Use the `{ data }` payload when saving and moving are one action. Use
+`stepper.data.set` when the user is editing without changing steps.
+
+Navigation does not require inactive panels to unmount. For large forms,
+editors, charts, or other expensive step trees, combine these navigation methods
+with [React Activity](/docs/latest/guides/react-activity) so inactive steps stay
+mounted while Stepperize remains the source of truth for the active step.
+
+## Common pattern
+
+```tsx
+async function continueFromCurrentStep(values: unknown) {
+  const accepted = await stepper.next({ data: values });
+
+  if (!accepted) return;
+
+  stepper.setComplete();
+}
+```
+
+Next: [build multi-step forms](/docs/latest/forms).

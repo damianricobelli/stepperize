@@ -1,0 +1,409 @@
+---
+title: Schema & validate()
+description: Validate step data with Standard Schema.
+---
+
+# Schema & validate()
+
+Stepperize can validate a step's data without becoming a form library and without
+locking you to one validation library. This page explains how — and the single
+distinction that makes it click: **draft data is not validated output**.
+
+## Standard Schema, not a specific library
+
+A step may carry an optional `schema`. Stepperize accepts any
+[Standard Schema](https://standardschema.dev)-compatible schema, so the same code
+works with **Zod**, **Valibot**, **ArkType**, or any other compliant library:
+
+```tsx
+import { z } from "zod";
+import * as v from "valibot";
+import { type } from "arktype";
+
+const checkout = defineStepper([
+  { id: "shipping", schema: z.object({ address: z.string().min(1) }) },        // Zod
+  { id: "payment", schema: v.object({ card: v.pipe(v.string(), v.nonEmpty()) }) }, // Valibot
+  { id: "review", schema: type({ accepted: "boolean" }) },                      // ArkType
+]);
+```
+
+Stepperize has **no runtime dependency** on any validation library. It only reads
+the `~standard` interface every compliant schema exposes, so you pick the library;
+Stepperize stays neutral. A step's `schema` does two things:
+
+1. **Types its flow data** — `stepper.data.get(id)` is typed as the schema's input.
+2. **Powers validation** — `ctx.validate()`, `stepper.validate(id)`, and
+   `checkout.validate(id, value)`.
+
+Steps without a schema are still first-class: their data is `unknown`, and
+validation always succeeds (see [below](#schemaless-steps-always-pass)).
+
+### Try it: one API, three libraries
+
+`validate()` reads any Standard Schema through the same `~standard` interface, so
+the call is identical no matter which library defines the schema. Each tab below
+is a **self-contained** example with its own `defineStepper` — pick a library to
+see how its schema is written and watch `validate()` react as you type.
+
+<Tabs items={["Zod", "Valibot", "ArkType"]}>
+<Tab value="Zod">
+	<Preview>
+		<SchemaZodBlock />
+	</Preview>
+
+```tsx
+import { defineStepper } from "@stepperize/react";
+import { useEffect, useState } from "react";
+import { z } from "zod";
+
+const form = defineStepper([
+  {
+    id: "user",
+    schema: z.object({ username: z.string().min(3, "At least 3 characters") }),
+  },
+]);
+
+export function ZodValidationDemo() {
+  const [username, setUsername] = useState("ab");
+  const [result, setResult] =
+    useState<Awaited<ReturnType<typeof form.validate>> | null>(null);
+
+  // `validate()` is async, so we derive the result in an effect — this runs on
+  // mount (validating the initial value) and again on every change.
+  useEffect(() => {
+    form.validate("user", { username }).then(setResult);
+  }, [username]);
+
+  return (
+    <div>
+      <input value={username} onChange={(e) => setUsername(e.target.value)} />
+      {result?.success ? (
+        <pre>{JSON.stringify(result.data, null, 2)}</pre>
+      ) : (
+        result?.issues.map((issue, i) => <p key={i}>{issue.message}</p>)
+      )}
+    </div>
+  );
+}
+```
+
+</Tab>
+<Tab value="Valibot">
+	<Preview>
+		<SchemaValibotBlock />
+	</Preview>
+
+```tsx
+import { defineStepper } from "@stepperize/react";
+import { useEffect, useState } from "react";
+import * as v from "valibot";
+
+const form = defineStepper([
+  {
+    id: "user",
+    schema: v.object({
+      email: v.pipe(v.string(), v.email("Enter a valid email")),
+    }),
+  },
+]);
+
+export function ValibotValidationDemo() {
+  const [email, setEmail] = useState("ada@");
+  const [result, setResult] =
+    useState<Awaited<ReturnType<typeof form.validate>> | null>(null);
+
+  // `validate()` is async, so we derive the result in an effect — this runs on
+  // mount (validating the initial value) and again on every change.
+  useEffect(() => {
+    form.validate("user", { email }).then(setResult);
+  }, [email]);
+
+  return (
+    <div>
+      <input value={email} onChange={(e) => setEmail(e.target.value)} />
+      {result?.success ? (
+        <pre>{JSON.stringify(result.data, null, 2)}</pre>
+      ) : (
+        result?.issues.map((issue, i) => <p key={i}>{issue.message}</p>)
+      )}
+    </div>
+  );
+}
+```
+
+</Tab>
+<Tab value="ArkType">
+	<Preview>
+		<SchemaArktypeBlock />
+	</Preview>
+
+```tsx
+import { defineStepper } from "@stepperize/react";
+import { type } from "arktype";
+import { useEffect, useState } from "react";
+
+const form = defineStepper([
+  {
+    id: "user",
+    schema: type({ code: "/^[A-Z]{3}$/" }),
+  },
+]);
+
+export function ArktypeValidationDemo() {
+  const [code, setCode] = useState("ab");
+  const [result, setResult] =
+    useState<Awaited<ReturnType<typeof form.validate>> | null>(null);
+
+  // `validate()` is async, so we derive the result in an effect — this runs on
+  // mount (validating the initial value) and again on every change.
+  useEffect(() => {
+    form.validate("user", { code }).then(setResult);
+  }, [code]);
+
+  return (
+    <div>
+      <input value={code} onChange={(e) => setCode(e.target.value)} />
+      {result?.success ? (
+        <pre>{JSON.stringify(result.data, null, 2)}</pre>
+      ) : (
+        result?.issues.map((issue, i) => <p key={i}>{issue.message}</p>)
+      )}
+    </div>
+  );
+}
+```
+
+</Tab>
+</Tabs>
+
+## Draft data vs validated output
+
+This is the core mental model. Two different things, two different APIs:
+
+| | `stepper.data.get(id)` | `await stepper.validate(id)` |
+| --- | --- | --- |
+| **Returns** | The stored **draft** (flow data) | A **validation result** |
+| **Typed as** | Schema **input** (`InputOf`) | Schema **output** (`OutputOf`) on success |
+| **Guarantees** | Nothing — may be partial, empty, or invalid | Parsed, validated output |
+| **Use for** | Seeding forms, review screens, branching, persistence | Gating a transition, deriving the clean payload to submit |
+
+```ts
+// DRAFT — whatever was last written. May be incomplete or invalid.
+const draft = stepper.data.get("shipping");
+
+// VALIDATED — runs the step's schema and tells you if it passed.
+const result = await stepper.validate("shipping");
+```
+
+`stepper.data` is a scratchpad: it holds whatever you last saved with
+`data.set(...)` or a `next({ data })` payload. Treat it as **untrusted input**, not
+as validated output. To get validated output, run `validate`.
+
+## The three validation APIs
+
+```ts
+// 1. In beforeStepChange: validate the step being left
+const result = await ctx.validate();
+
+// 2. On the stepper instance: validate STORED draft data
+const result = await stepper.validate("shipping");
+
+// 3. On the definition: validate an ARBITRARY value
+const result = await checkout.validate("shipping", someValue);
+```
+
+- `ctx.validate()` validates the step being left during navigation. It reads the
+  transition's data snapshot, including any pending `next({ data })` payload
+  before it has been committed.
+- `stepper.validate(id?)` validates the data already stored in `stepper.data`.
+- `checkout.validate(id, value)` (on the **definition**) validates a value you pass
+  in. Use this outside a stepper instance, or when you intentionally want to
+  validate a separate value.
+
+In a navigation guard, prefer `ctx.validate()`:
+
+```ts
+beforeStepChange: async ({ direction, validate }) => {
+  if (direction === "prev") return true;
+  return (await validate()).success; // false cancels
+}
+```
+
+If you need to read typed `result.data`, validate a known step id:
+
+```ts
+beforeStepChange: async ({ from, validate }) => {
+  if (from.id !== "shipping") return true;
+
+  const result = await validate("shipping");
+  if (result.success) {
+    result.data.zip; // schema output type for "shipping"
+  }
+
+  return result.success;
+}
+```
+
+Both return the same discriminated result.
+
+## Complete guarded example
+
+This example keeps the input in React state until the user clicks **Continue**.
+The click calls `next({ data })`; the guard validates the pending payload with
+`ctx.validate()`. If validation fails, the step does not change and the payload is
+not committed.
+
+```tsx
+import { defineStepper } from "@stepperize/react";
+import { useState } from "react";
+import { z } from "zod";
+
+const shippingSchema = z.object({
+  address: z.string().min(1, "Address is required"),
+  zip: z.string().regex(/^\d{5}$/, "Enter a 5-digit ZIP"),
+});
+
+const checkout = defineStepper([
+  { id: "shipping", title: "Shipping", schema: shippingSchema },
+  { id: "review", title: "Review" },
+] as const);
+
+type Shipping = z.input<typeof shippingSchema>;
+
+export function CheckoutShippingStep() {
+  const [shipping, setShipping] = useState<Shipping>({
+    address: "",
+    zip: "",
+  });
+  const [errors, setErrors] = useState<string[]>([]);
+
+  const stepper = checkout.useStepper({
+    beforeStepChange: async ({ direction, validate }) => {
+      if (direction === "prev") return true;
+
+      const result = await validate();
+
+      if (!result.success) {
+        setErrors(result.issues.map((issue) => issue.message));
+        return false;
+      }
+
+      setErrors([]);
+      return true;
+    },
+  });
+
+  return (
+    <form onSubmit={(event) => event.preventDefault()}>
+      {stepper.is("shipping") && (
+        <>
+          <label>
+            Address
+            <input
+              value={shipping.address}
+              onChange={(event) =>
+                setShipping({ ...shipping, address: event.target.value })
+              }
+            />
+          </label>
+          <label>
+            ZIP
+            <input
+              value={shipping.zip}
+              onChange={(event) =>
+                setShipping({ ...shipping, zip: event.target.value })
+              }
+            />
+          </label>
+          {errors.map((error) => (
+            <p key={error} role="alert">
+              {error}
+            </p>
+          ))}
+          <button type="button" onClick={() => stepper.next({ data: shipping })}>
+            Continue
+          </button>
+        </>
+      )}
+
+      {stepper.is("review") && (
+        <>
+          <pre>{JSON.stringify(stepper.data.get("shipping"), null, 2)}</pre>
+          <button type="button" onClick={() => stepper.prev()}>
+            Back
+          </button>
+        </>
+      )}
+    </form>
+  );
+}
+```
+
+## The result shape
+
+`validate` always resolves to a `ValidationResult` — never throws for invalid data:
+
+```ts
+const result = await stepper.validate("shipping");
+
+if (result.success) {
+  result.data; // parsed OUTPUT, typed from the schema (OutputOf)
+} else {
+  result.issues; // readonly { message: string; path?: ... }[]
+}
+```
+
+On success you get the schema's **output** (transformed/coerced), which can differ
+from the draft input. On failure you get the schema's **issues** — useful for
+logging or your own messaging, though Stepperize does not render them for you.
+
+## Schemaless steps always pass
+
+A step without a `schema` is not a validation gap — it's a deliberate escape hatch.
+`validate` resolves to `{ success: true, data: <the value unchanged> }`. This keeps
+non-form steps (intros, confirmations, review screens) first-class in the same flow
+as validated steps, with no special casing.
+
+```ts
+const wizard = defineStepper([
+  { id: "intro" },                              // no schema
+  { id: "details", schema: detailsSchema },     // validated
+]);
+
+await wizard.validate("intro", anything); // { success: true, data: anything }
+```
+
+## What validation is — and isn't
+
+`validate()` is a small, focused tool. Be clear about its boundaries:
+
+- ✅ It tells you whether a value satisfies a step's schema.
+- ✅ It returns the parsed output on success and the issues on failure.
+- ✅ It is library-agnostic (any Standard Schema) with zero runtime dependency.
+- ❌ It does **not** render errors, manage field state, track touched/dirty, or
+  register inputs. That's your form library's job.
+- ❌ It does **not** make Stepperize a form library. Stepperize owns the **flow**;
+  validation is just a check you can run against the flow's data.
+
+## When to reach for `data` + `validate()`
+
+`stepper.data` and `validate()` are **optional**. You don't need them when a form
+library already owns field state and validation and navigation is form-driven.
+Reach for them when:
+
+- **No form library** — simple flows where you store values directly and want a
+  schema gate.
+- **A separate form per step** — each step mounts its own form; Stepperize holds
+  the cross-step draft so "Back" and review work.
+- **A review step** — read every draft with `data.all()` and optionally
+  `validate` each before final submit.
+- **Flow data / persistence** — branching decisions, resumable wizards, or
+  mirroring drafts to storage.
+
+If none of those apply, let your form library validate and skip `validate()`
+entirely — it's there when you need it, invisible when you don't.
+
+Next: see the patterns in action with
+[React Hook Form](/docs/latest/forms/react-hook-form),
+[TanStack Form](/docs/latest/forms/tanstack-form), or
+[Conform](/docs/latest/forms/conform).

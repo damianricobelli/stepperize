@@ -3,14 +3,20 @@ packages:
   - packages/*
 
 catalog:
-  "@testing-library/jest-dom": ^6.9.1
-  "@testing-library/react": ^16.3.2
-  "@types/react": ^19.2.14
-  "@types/react-dom": ^19.2.3
-  jsdom: ^28.1.0
-  react: ^19.2.4
-  react-dom: ^19.2.4
-  terser: ^5.46.0
+  '@testing-library/jest-dom': ^6.9.1
+  '@testing-library/react': ^16.3.2
+  '@types/react': ^19.2.16
+  '@types/react-dom': ^19.2.3
+  jsdom: ^29.1.1
+  react: ^19.2.7
+  react-dom: ^19.2.7
+  terser: ^5.48.0
   tsup: ^8.5.1
-  typescript: ^5.9.3
-  vitest: ^4.0.18
+  typescript: ^6.0.3
+  vitest: ^4.1.8
+
+minimumReleaseAge: 0
+
+onlyBuiltDependencies:
+  - esbuild
+  - msw

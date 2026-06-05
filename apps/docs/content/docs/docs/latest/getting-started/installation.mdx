@@ -1,0 +1,86 @@
+---
+title: Installation
+description: Install Stepperize in your React project.
+---
+
+# Installation
+
+Most React apps only install the React package. It includes the React API and depends on the core package for the shared types and pure helpers.
+
+Install the React package with your package manager:
+
+<Tabs items={["pnpm", "npm", "yarn", "bun"]}>
+<Tab value="pnpm">
+
+```bash
+pnpm add @stepperize/react
+```
+
+</Tab>
+<Tab value="npm">
+
+```bash
+npm install @stepperize/react
+```
+
+</Tab>
+<Tab value="yarn">
+
+```bash
+yarn add @stepperize/react
+```
+
+</Tab>
+<Tab value="bun">
+
+```bash
+bun add @stepperize/react
+```
+
+</Tab>
+</Tabs>
+
+## First import
+
+Create the stepper definition near the feature that owns the flow. A definition is not React state; it is the typed description of the flow.
+
+```tsx
+import { defineStepper } from "@stepperize/react";
+
+const checkout = defineStepper([
+  { id: "shipping", title: "Shipping" },
+  { id: "payment", title: "Payment" },
+  { id: "review", title: "Review" },
+]);
+```
+
+Only `id` is required. Everything else is your data and stays typed.
+
+## TypeScript setup
+
+Stepperize works best when TypeScript can keep your ids literal.
+
+```tsx
+const checkout = defineStepper([
+  { id: "shipping", title: "Shipping" },
+  { id: "payment", title: "Payment" },
+  { id: "review", title: "Review" },
+]);
+```
+
+With the inline array above, TypeScript understands that valid ids are `"shipping" | "payment" | "review"`. That is why `stepper.goTo("paymant")` becomes a type error instead of a runtime surprise.
+
+## Packages
+
+| Package | Install when |
+| --- | --- |
+| `@stepperize/react` | You are building a React app. This includes hooks, provider, primitives, and public types. |
+| `@stepperize/core` | You are building adapters, framework-agnostic utilities, or tests around the pure helpers. |
+
+Most apps only need `@stepperize/react`.
+
+## Requirements
+
+Stepperize supports React 17, 18, and 19. It can run in JavaScript too, but you lose most of the type-safety that makes the library useful.
+
+Next: [build your first stepper](/docs/latest/getting-started/first-stepper).

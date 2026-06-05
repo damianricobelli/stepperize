@@ -1,0 +1,165 @@
+---
+title: Common problems
+description: Solve common issues in multi-step forms.
+---
+
+# Common problems
+
+Almost every multi-step form bug is one of these. Each maps to a [core
+pattern](/docs/latest/forms/patterns); most also appear in the general
+[Troubleshooting](/docs/latest/getting-started/troubleshooting) page.
+
+## Validation doesn't block navigation
+
+**Symptom:** the form shows errors, but the user still advances.
+
+**Cause:** field-level validation re-renders the form, but it doesn't stop the
+*navigation*. Two things can go wrong:
+
+1. You navigate **outside** the form's submit handler (a bare `Next` button), so
+   the form never validated.
+2. You rely on `beforeStepChange` but forget it must **return `false`** to cancel —
+   returning `undefined` allows the move.
+
+**Fix:** make navigation form-driven *and* add a `beforeStepChange` gate. In
+Stepperize, validation that blocks a step change belongs in `beforeStepChange`.
+
+```tsx
+// the gate that actually cancels
+beforeStepChange: async ({ direction, validate }) => {
+  if (direction === "prev") return true;
+  const result = await validate();
+  return result.success; // ← must return false to block
+}
+```
+
+See [Pattern 3](/docs/latest/forms/patterns#pattern-3--validate-before-moving-forward).
+
+## Values aren't being saved
+
+**Symptom:** the review step is empty, or `data.all()` returns `{}`.
+
+**Cause:** you moved with `stepper.next()` but never passed the data, or you
+saved *after* navigating and the guard had already cancelled.
+
+**Fix:** pass the data **in** the navigation call, and only treat it as saved when
+the call resolves `true`.
+
+```tsx
+const moved = await stepper.next({ data: data });
+if (moved) stepper.setComplete(); // saved only if accepted
+```
+
+A value passed to a cancelled move is intentionally discarded — submit, then save,
+then move, all in one call. See
+[Pattern 1](/docs/latest/forms/patterns#pattern-1--save-a-steps-values).
+
+## Form state is lost between steps
+
+**Symptom:** going Back shows an empty form; the user has to retype.
+
+**Cause:** each step mounts a fresh form and you didn't seed it from the saved
+draft, so it starts empty.
+
+**Fix:** read the draft on mount and use it as the form's initial values.
+
+```tsx
+const draft = stepper.data.get("personal");
+// pass `draft` as defaultValues / initial state
+```
+
+See [Pattern 2](/docs/latest/forms/patterns#pattern-2--seed-a-step-from-its-draft).
+If the problem is component-local state being destroyed by unmounts, use
+[React Activity](/docs/latest/guides/react-activity) to keep inactive step
+components mounted while Stepperize controls navigation.
+
+## The review page shows stale data
+
+**Symptom:** you edited a step, but Review still shows the old values.
+
+**Cause:** you read the draft into local component state once and cached it, or you
+edited with a form that never wrote back to Stepperize.
+
+**Fix:** read `stepper.data.all()` directly in the review render (it's reactive),
+and make "edit" write back before returning.
+
+```tsx
+function ReviewStep() {
+  const stepper = checkout.useStepper();
+  const all = stepper.data.all(); // re-read every render
+  // ...
+}
+```
+
+When editing in place, persist with `data.set(id, data)` before
+`goTo("review")`. See
+[Pattern 5](/docs/latest/forms/patterns#pattern-5--edit-a-previous-step-then-return).
+
+## The stepper won't move (controlled state)
+
+**Symptom:** clicking Next does nothing, but no error.
+
+**Cause:** you passed a controlled `step` or `data` without the matching
+`onStepChange` / `onDataChange`, so Stepperize asks *you* to apply the change
+and you never do.
+
+**Fix:** always pair a controlled value with its handler.
+
+```tsx
+const stepper = checkout.useStepper({
+  data: values,
+  onDataChange: setValues, // required when `data` is controlled
+});
+```
+
+See [Controlled vs
+uncontrolled](/docs/latest/core-concepts/controlled-vs-uncontrolled).
+
+## Async validation runs but the result is ignored
+
+**Symptom:** your `await`ed schema check passes/fails, yet the move doesn't match.
+
+**Cause:** the navigation call wasn't awaited, so you branched on a Promise (always
+truthy), or `beforeStepChange` didn't `return` the async result.
+
+**Fix:** `await` the navigation, and `return` the async result from the guard.
+
+```tsx
+// guard
+beforeStepChange: async ({ validate }) => {
+  const result = await validate();
+  return result.success; // ← returned, not just computed
+};
+
+// call site
+const moved = await stepper.next({ data: data });
+if (!moved) showErrorBanner();
+```
+
+`beforeStepChange` can be async and the whole pipeline awaits it. While it runs,
+`isPending` is `true`, so bind buttons to `canNext`/`canPrev` to prevent
+double-submits.
+
+## Partial completion is wrong
+
+**Symptom:** the final submit is enabled too early, or never.
+
+**Cause:** you're treating positional **status** as completion. A "previous" step
+is not automatically done.
+
+**Fix:** track completion explicitly and gate submit on it.
+
+```tsx
+stepper.setComplete(); // when a step is accepted
+const allDone = stepper.steps.every((s) => stepper.isComplete(s.id));
+```
+
+See [Status vs
+completion](/docs/latest/core-concepts/status-vs-completion).
+
+---
+
+Ready to build it for real? Pick an implementation:
+[React Hook Form](/docs/latest/forms/react-hook-form),
+[TanStack Form](/docs/latest/forms/tanstack-form), or
+[Conform](/docs/latest/forms/conform).

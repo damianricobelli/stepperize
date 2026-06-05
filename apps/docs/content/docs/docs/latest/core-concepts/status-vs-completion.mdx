@@ -1,0 +1,61 @@
+---
+title: Status vs completion
+description: Understand how step status and completion differ.
+---
+
+# Status vs completion
+
+This is the concept that trips people up most, so let's make it concrete. A step
+has **two unrelated states**, and Stepperize tracks them separately.
+
+Move the active step (click a circle) and toggle completion (the badges)
+independently. Notice they never affect each other.
+
+<StatusCompletionViz />
+
+## Two axes, never linked
+
+| | Status | Completion |
+| --- | --- | --- |
+| **What it is** | Where the step sits relative to the active one | Whether *your app* considers it done |
+| **Who sets it** | Stepperize, automatically | You, explicitly |
+| **Values** | `"previous"` · `"active"` · `"upcoming"` | `true` / `false` |
+| **Read with** | `stepper.status(id)` | `stepper.isComplete(id)` |
+| **Write with** | navigation (`next`, `goTo`, …) | `setComplete(id)` / `setComplete(id, false)` |
+
+The key insight: **a "previous" step is not automatically completed.** The user
+walking past a step says nothing about whether that step is valid, submitted, or
+approved. Only your app knows that.
+
+## Why the split exists
+
+Real flows need both:
+
+- **Status** drives *visual position* — highlight the current step, dim upcoming
+  ones, draw a line behind finished ones. It's UI sugar, derived for free.
+- **Completion** drives *business rules* — enable "Submit" only when every step
+  is complete, show a green check after a step is validated, let users jump back
+  to "completed" steps but not "upcoming" ones.
+
+```tsx
+// Positional: style the step list
+<Stepper.Item /* data-status="active | previous | upcoming" */ />
+
+// Business: gate the final action
+const allDone = stepper.steps.every((s) => stepper.isComplete(s.id));
+<button disabled={!allDone}>Place order</button>
+```
+
+## Common pattern: complete on a valid "next"
+
+Mark a step complete only once it passes its guard:
+
+```tsx
+const accepted = await stepper.next({ data: formValues });
+if (accepted) stepper.setComplete(); // defaults to the current step
+```
+
+That keeps completion meaningful: a step is "done" because it was accepted, not
+merely because the user scrolled past it.
+
+Next: [controlled vs uncontrolled](/docs/latest/core-concepts/controlled-vs-uncontrolled).

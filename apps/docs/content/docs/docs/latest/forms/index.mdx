@@ -1,0 +1,118 @@
+---
+title: Building multi-step forms
+description: Build multi-step forms using your preferred form library.
+---
+
+# Building forms with Stepperize
+
+Multi-step forms are the most common reason people reach for Stepperize. This
+section teaches **how to build them** — the patterns and mental models — using a
+single realistic flow throughout.
+
+The form library you use (React Hook Form, TanStack Form, Conform, or none) is an
+implementation detail. Learn the patterns first; pick a library second.
+
+## Two libraries, two jobs
+
+A multi-step form has two completely separate concerns. Stepperize owns one; your
+form library owns the other.
+
+| | Owns | Examples |
+| --- | --- | --- |
+| **Your form library** | A single step's **fields** | values, touched/dirty, field errors, validation, registration |
+| **Stepperize** | The **flow** across steps | which step is active, navigation, per-step drafts, guards, completion |
+
+Stepperize deliberately does **not** manage field state. There are excellent form
+libraries that already do that well, and field state is intensely
+library-specific. Trying to own it would mean reinventing — worse — what RHF,
+TanStack Form, and Conform already do.
+
+Validation follows the same boundary. Your form library validates fields and
+shows errors. Stepperize validates whether the **transition** is allowed with
+`beforeStepChange`: return `false` to keep the user on the current step.
+
+If you don't use a form library — or want one library-agnostic check — Stepperize
+can validate a step's data itself via an optional per-step `schema` (any
+[Standard Schema](https://standardschema.dev): Zod, Valibot, ArkType, …). That's
+covered in [Schema & validate()](/docs/latest/forms/schema-validation); it's
+optional, and never makes Stepperize a form library.
+
+So the boundary is clean:
+
+```text
+   ┌─────────────────── Stepperize (the flow) ───────────────────┐
+   │                                                             │
+   │   Personal  →  Shipping  →  Payment  →  Review  →  submit    │
+   │     ▲            ▲            ▲                              │
+   │  ┌──┴──┐      ┌──┴──┐      ┌──┴──┐                           │
+   │  │ form│      │ form│      │ form│   ← your form library     │
+   │  │ lib │      │ lib │      │ lib │     owns each step's      │
+   │  └─────┘      └─────┘      └─────┘     fields & validation   │
+   └─────────────────────────────────────────────────────────────┘
+```
+
+Each step mounts its own form. When the user advances, that step's data is handed
+to Stepperize as a **draft**, so the review step (and your backend) can read every
+step's values at the end.
+
+If you want fields, touched state, rich editors, or other component-local UI to
+stay mounted while users move between steps, pair the form flow with
+[React Activity](/docs/latest/guides/react-activity). It preserves inactive step
+components while Stepperize still owns navigation.
+
+## How they hand off
+
+The entire integration is two touch points:
+
+1. **On submit of a step** → save its values into Stepperize and move:
+   `await stepper.next({ data: stepData })`.
+2. **On mount of a step** → seed the form from the saved draft:
+   `stepper.data.get(stepId)`.
+
+Everything else — `beforeStepChange` validation gates, review pages, editing previous
+steps — is built from those two moves plus the [navigation
+lifecycle](/docs/latest/core-concepts/navigation-lifecycle).
+
+## The flow we'll build
+
+Every page in this section implements the same checkout:
+
+1. **Personal** — name, email
+2. **Shipping** — address
+3. **Payment** — card details
+4. **Review** — read every draft, then **submit**
+
+```tsx
+import { defineStepper } from "@stepperize/react";
+
+export const checkout = defineStepper(
+  [
+    { id: "personal", title: "Personal", schema: personalSchema },
+    { id: "shipping", title: "Shipping", schema: shippingSchema },
+    { id: "payment", title: "Payment", schema: paymentSchema },
+    { id: "review", title: "Review" },
+  ],
+  { linear: true },
+);
+```
+
+<Callout type="info">
+"Submit" is the action on the final **Review** step, not a separate step.
+`stepper.isLast` tells you when to show a submit button instead of "Next".
+</Callout>
+
+## Read this section in order
+
+1. **[Core patterns](/docs/latest/forms/patterns)** — the library-agnostic
+   building blocks: drafts, validation gates, review, editing, persistence.
+2. **[Schema & validate()](/docs/latest/forms/schema-validation)** — Standard
+   Schema support and the draft-vs-validated data model.
+3. **[Common problems](/docs/latest/forms/common-problems)** — the handful of
+   bugs every multi-step form hits, and the fix for each.
+4. **Implementations** — the same flow built with
+   [React Hook Form](/docs/latest/forms/react-hook-form),
+   [TanStack Form](/docs/latest/forms/tanstack-form), and
+   [Conform](/docs/latest/forms/conform), so you can compare them directly.
+
+Start with patterns. By the time you reach an implementation, the form library is
+just syntax over ideas you already understand.

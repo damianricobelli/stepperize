@@ -1,0 +1,119 @@
+---
+title: Steps & ids
+description: Model each step with a stable typed id.
+---
+
+# Steps & ids
+
+A step is a plain object. `id` is required. Everything else belongs to your app.
+
+The definition is the contract for the whole flow. Once the ids are defined, the hook, renderer, data API, completion API, and primitives all use those same ids.
+
+```tsx
+const checkout = defineStepper([
+  {
+    id: "shipping",
+    title: "Shipping",
+    description: "Where should we send it?",
+    schema: shippingSchema,
+  },
+  {
+    id: "payment",
+    title: "Payment",
+    description: "How will you pay?",
+    schema: paymentSchema,
+  },
+]);
+```
+
+## Step ids
+
+Use stable, readable ids:
+
+```tsx
+stepper.goTo("payment");
+stepper.data.set("shipping", shippingDraft);
+stepper.isComplete("payment");
+```
+
+Avoid translated labels, array indexes, and generated ids. Stable ids survive copy changes and reordering.
+
+Good ids describe the business step, not the current UI label:
+
+| Good | Avoid |
+| --- | --- |
+| `"shipping"` | `"Step 1"` |
+| `"payment"` | `"Pay now"` |
+| `"review"` | `"confirm-order-2026"` |
+
+## Custom data
+
+Custom fields stay available everywhere Stepperize gives you a step:
+
+```tsx
+function Header() {
+  const stepper = checkout.useStepper();
+
+  return (
+    <header>
+      <h2>{stepper.current.title}</h2>
+      <p>{stepper.current.description}</p>
+    </header>
+  );
+}
+```
+
+Good fields to keep on steps:
+
+| Field | Useful for |
+| --- | --- |
+| `title` / `description` | Labels, headers, primitive defaults. |
+| `schema` | Per-step validation. |
+| `optional` | UI labels and completion rules. |
+| `icon` | Stepper indicators. |
+
+## Reuse the same definition
+
+Keep the definition outside the component when the list is static:
+
+```tsx
+const checkout = defineStepper([
+  { id: "shipping", title: "Shipping" },
+  { id: "payment", title: "Payment" },
+  { id: "review", title: "Review" },
+]);
+```
+
+That lets multiple components import the same typed flow and call the generated `useStepper`, `Provider`, or `Stepper` primitives.
+
+## Keep ids literal
+
+Inline step arrays are inferred as literal ids:
+
+```tsx
+const onboarding = defineStepper([
+  { id: "account", title: "Account" },
+  { id: "profile", title: "Profile" },
+]);
+```
+
+That keeps ids typed as `"account" | "profile"` instead of `string`. If you keep steps in a separate variable, annotate that variable with your own step-id union when you need the same precision.
+
+## Status vs completion
+
+`stepper.status(id)` is positional:
+
+```tsx
+stepper.status("shipping"); // "active" | "previous" | "upcoming"
+```
+
+`stepper.setComplete(id)` is business state:
+
+```tsx
+stepper.setComplete("shipping");
+stepper.isComplete("shipping");
+```
+
+A previous step is not automatically complete. Mark completion when your app decides the step is valid, submitted, or approved.
+
+Next: [meet the stepper instance](/docs/latest/core-concepts/stepper-instance), the live object that ties all of this together.

@@ -1,0 +1,143 @@
+---
+title: useStepper
+description: Reference the hook for reading state and controlling navigation.
+---
+
+# useStepper
+
+Returns the flat runtime instance.
+
+## Example setup
+
+All examples on this page use this stepper definition:
+
+```tsx
+import { defineStepper } from "@stepperize/react";
+
+const checkout = defineStepper([
+  { id: "shipping", title: "Shipping" },
+  { id: "payment", title: "Payment" },
+  { id: "review", title: "Review" },
+]);
+```
+
+```tsx
+const stepper = checkout.useStepper();
+```
+
+Outside a provider, it creates local state. Inside the generated `Provider` or `Stepper.Root`, it reads the shared instance.
+
+Use this hook for custom UI. Use `Stepper.Root` when you want the primitive components to create and share the same instance.
+
+## Options
+
+Options customize one instance and override definition defaults.
+
+| Option | Description |
+| --- | --- |
+| `defaultStep` | Initial step for uncontrolled state. |
+| `step` / `onStepChange` | Controlled current step. `step` may be a raw external string; `onStepChange` receives known step ids. |
+| `onInvalidStep` | Called when a controlled `step` is not a known step id. |
+| `data` / `onDataChange` | Controlled flow data. |
+| `completed` / `onCompletedChange` | Controlled completion state. |
+| `linear` | `true` restricts trigger and list keyboard affordances to adjacent/previous steps. Defaults to `false`. |
+| `beforeStepChange` | Guard before navigation. Return `false` to cancel. |
+| `onStepChange` | Called after navigation succeeds (and to sync controlled `step`). |
+
+```tsx
+const stepper = checkout.useStepper({
+  defaultStep: "payment",
+  linear: true,
+});
+```
+
+Controlled example:
+
+```tsx
+const stepper = checkout.useStepper({
+  step,
+  onStepChange: setStep,
+  data: values,
+  onDataChange: setValues,
+});
+```
+
+When an option is controlled, Stepperize calls the matching change callback instead of owning that piece of state internally.
+
+## Common reads
+
+```tsx
+stepper.current; // current step object
+stepper.id; // current step id
+stepper.index; // zero-based index
+stepper.count; // total steps
+stepper.progress; // 0 to 1
+stepper.canPrev;
+stepper.canNext;
+stepper.isPending;
+```
+
+## Render current content
+
+```tsx
+return stepper.match({
+  shipping: () => <Shipping />,
+  payment: () => <Payment />,
+  review: () => <Review />,
+});
+```
+
+`match` is exhaustive. Add a new step id, and TypeScript asks for a new handler.
+
+Use `is(id)` for small fragments:
+
+```tsx
+{stepper.is("review") && <Summary />}
+```
+
+## Navigate
+
+```tsx
+stepper.next();
+stepper.prev();
+stepper.goTo("review");
+stepper.reset();
+```
+
+Call navigation directly for simple UI. Await it when you need to know whether the move was accepted.
+
+```tsx
+const accepted = await stepper.next({ data: formValues });
+```
+
+Each method resolves to `true` when the step changed.
+
+`false` can mean the stepper is at an edge, the target is unknown, an async change is already running, the same step was requested without a value payload, or `beforeStepChange` cancelled the move. Note that imperative `goTo` is **not** gated by the `linear` policy — that policy only affects `canGoTo`, trigger affordances, and primitive list keyboard navigation.
+
+## Values
+
+```tsx
+stepper.data.set({ email: "ada@example.com" });
+stepper.data.set("profile", { name: "Ada" });
+
+const current = stepper.data.get();
+const all = stepper.data.all();
+```
+
+Payload values are visible to `beforeStepChange` and saved only when navigation
+succeeds. Inside that guard, `ctx.validate()` validates the step being left
+against the same pending data snapshot.
+
+## Lifecycle and effects
+
+There are no imperative event subscriptions. Use the `beforeStepChange` guard
+and `onStepChange` option for flow behavior, and a plain effect for
+component-level reactions to the current step:
+
+```tsx
+React.useEffect(() => {
+  console.log("Moved to", stepper.id);
+}, [stepper.id]);
+```
+
+Next: [inspect the full stepper instance](/docs/latest/api/react/stepper-instance).

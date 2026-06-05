@@ -1,273 +1,530 @@
 {
-	"$schema": "https://ui.shadcn.com/schema/registry.json",
-	"name": "shadcn-stepper",
-	"homepage": "https://stepperize.vercel.app/",
-	"items": [
-		{
-			"name": "radix-ui/stepper-demo",
-			"type": "registry:component",
-			"title": "Stepper demo",
-			"description": "Simple stepper demo",
-			"dependencies": ["@stepperize/react"],
-			"registryDependencies": ["button"],
-			"files": [
-				{
-					"path": "registry/radix-ui/blocks/stepper-demo/page.tsx",
-					"type": "registry:page",
-					"target": "app/stepper-demo/page.tsx"
-				},
-				{
-					"path": "registry/radix-ui/blocks/stepper-demo/components/stepper-demo.tsx",
-					"type": "registry:component"
-				}
-			]
-		},
-		{
-			"name": "radix-ui/stepper-with-description",
-			"type": "registry:component",
-			"title": "Stepper with description",
-			"description": "A stepper with a description",
-			"dependencies": ["@stepperize/react"],
-			"registryDependencies": ["button"],
-			"files": [
-				{
-					"path": "registry/radix-ui/blocks/stepper-with-description/page.tsx",
-					"type": "registry:page",
-					"target": "app/stepper-with-description/page.tsx"
-				},
-				{
-					"path": "registry/radix-ui/blocks/stepper-with-description/components/stepper-with-description.tsx",
-					"type": "registry:component"
-				}
-			]
-		},
-		{
-			"name": "radix-ui/stepper-with-form",
-			"type": "registry:component",
-			"title": "Stepper with form",
-			"description": "A stepper with a form using zod for validation",
-			"dependencies": ["zod", "@stepperize/react"],
-			"registryDependencies": ["button", "input", "label", "form"],
-			"files": [
-				{
-					"path": "registry/radix-ui/blocks/stepper-with-form/page.tsx",
-					"type": "registry:page",
-					"target": "app/stepper-with-form/page.tsx"
-				},
-				{
-					"path": "registry/radix-ui/blocks/stepper-with-form/components/stepper-with-form.tsx",
-					"type": "registry:component"
-				}
-			]
-		},
-		{
-			"name": "radix-ui/stepper-with-icon",
-			"type": "registry:component",
-			"title": "Stepper with icon",
-			"description": "A stepper with an icon",
-			"dependencies": ["@stepperize/react"],
-			"registryDependencies": ["button"],
-			"files": [
-				{
-					"path": "registry/radix-ui/blocks/stepper-with-icon/page.tsx",
-					"type": "registry:page",
-					"target": "app/stepper-with-icon/page.tsx"
-				},
-				{
-					"path": "registry/radix-ui/blocks/stepper-with-icon/components/stepper-with-icon.tsx",
-					"type": "registry:component"
-				}
-			]
-		},
-		{
-			"name": "radix-ui/stepper-with-label-orientation",
-			"type": "registry:component",
-			"title": "Stepper with label orientation",
-			"description": "A stepper with a label orientation",
-			"dependencies": ["@stepperize/react"],
-			"registryDependencies": ["button", "label", "radio-group"],
-			"files": [
-				{
-					"path": "registry/radix-ui/blocks/stepper-with-label-orientation/page.tsx",
-					"type": "registry:page",
-					"target": "app/stepper-with-label-orientation/page.tsx"
-				},
-				{
-					"path": "registry/radix-ui/blocks/stepper-with-label-orientation/components/stepper-with-label-orientation.tsx",
-					"type": "registry:component"
-				}
-			]
-		},
-		{
-			"name": "radix-ui/stepper-with-scroll-tracking",
-			"type": "registry:component",
-			"title": "Stepper with scroll tracking",
-			"description": "A stepper with scroll tracking",
-			"dependencies": ["@stepperize/react"],
-			"registryDependencies": ["button", "label", "radio-group"],
-			"files": [
-				{
-					"path": "registry/radix-ui/blocks/stepper-with-scroll-tracking/page.tsx",
-					"type": "registry:page",
-					"target": "app/stepper-with-scroll-tracking/page.tsx"
-				},
-				{
-					"path": "registry/radix-ui/blocks/stepper-with-scroll-tracking/components/stepper-with-scroll-tracking.tsx",
-					"type": "registry:component"
-				}
-			]
-		},
-		{
-			"name": "radix-ui/stepper-with-variants",
-			"type": "registry:component",
-			"title": "Stepper with variants",
-			"description": "A stepper with variants",
-			"dependencies": ["@stepperize/react"],
-			"registryDependencies": ["button", "label", "radio-group"],
-			"files": [
-				{
-					"path": "registry/radix-ui/blocks/stepper-with-variants/page.tsx",
-					"type": "registry:page",
-					"target": "app/stepper-with-variants/page.tsx"
-				},
-				{
-					"path": "registry/radix-ui/blocks/stepper-with-variants/components/stepper-with-variants.tsx",
-					"type": "registry:component"
-				}
-			]
-		},
-		{
-			"name": "base-ui/stepper-demo",
-			"type": "registry:component",
-			"title": "Stepper demo (Base UI)",
-			"description": "Simple stepper demo",
-			"dependencies": ["@stepperize/react"],
-			"registryDependencies": ["button"],
-			"files": [
-				{
-					"path": "registry/base-ui/blocks/stepper-demo/page.tsx",
-					"type": "registry:page",
-					"target": "app/stepper-demo/page.tsx"
-				},
-				{
-					"path": "registry/base-ui/blocks/stepper-demo/components/stepper-demo.tsx",
-					"type": "registry:component"
-				}
-			]
-		},
-		{
-			"name": "base-ui/stepper-with-description",
-			"type": "registry:component",
-			"title": "Stepper with description (Base UI)",
-			"description": "A stepper with a description",
-			"dependencies": ["@stepperize/react"],
-			"registryDependencies": ["button"],
-			"files": [
-				{
-					"path": "registry/base-ui/blocks/stepper-with-description/page.tsx",
-					"type": "registry:page",
-					"target": "app/stepper-with-description/page.tsx"
-				},
-				{
-					"path": "registry/base-ui/blocks/stepper-with-description/components/stepper-with-description.tsx",
-					"type": "registry:component"
-				}
-			]
-		},
-		{
-			"name": "base-ui/stepper-with-form",
-			"type": "registry:component",
-			"title": "Stepper with form (Base UI)",
-			"description": "A stepper with a form using zod for validation",
-			"dependencies": ["zod", "@stepperize/react"],
-			"registryDependencies": ["button", "input", "label", "field"],
-			"files": [
-				{
-					"path": "registry/base-ui/blocks/stepper-with-form/page.tsx",
-					"type": "registry:page",
-					"target": "app/stepper-with-form/page.tsx"
-				},
-				{
-					"path": "registry/base-ui/blocks/stepper-with-form/components/stepper-with-form.tsx",
-					"type": "registry:component"
-				}
-			]
-		},
-		{
-			"name": "base-ui/stepper-with-icon",
-			"type": "registry:component",
-			"title": "Stepper with icon (Base UI)",
-			"description": "A stepper with an icon",
-			"dependencies": ["@stepperize/react"],
-			"registryDependencies": ["button"],
-			"files": [
-				{
-					"path": "registry/base-ui/blocks/stepper-with-icon/page.tsx",
-					"type": "registry:page",
-					"target": "app/stepper-with-icon/page.tsx"
-				},
-				{
-					"path": "registry/base-ui/blocks/stepper-with-icon/components/stepper-with-icon.tsx",
-					"type": "registry:component"
-				}
-			]
-		},
-		{
-			"name": "base-ui/stepper-with-label-orientation",
-			"type": "registry:component",
-			"title": "Stepper with label orientation (Base UI)",
-			"description": "A stepper with a label orientation",
-			"dependencies": ["@stepperize/react"],
-			"registryDependencies": ["button", "label", "radio-group"],
-			"files": [
-				{
-					"path": "registry/base-ui/blocks/stepper-with-label-orientation/page.tsx",
-					"type": "registry:page",
-					"target": "app/stepper-with-label-orientation/page.tsx"
-				},
-				{
-					"path": "registry/base-ui/blocks/stepper-with-label-orientation/components/stepper-with-label-orientation.tsx",
-					"type": "registry:component"
-				}
-			]
-		},
-		{
-			"name": "base-ui/stepper-with-scroll-tracking",
-			"type": "registry:component",
-			"title": "Stepper with scroll tracking (Base UI)",
-			"description": "A stepper with scroll tracking",
-			"dependencies": ["@stepperize/react"],
-			"registryDependencies": ["button", "label", "radio-group"],
-			"files": [
-				{
-					"path": "registry/base-ui/blocks/stepper-with-scroll-tracking/page.tsx",
-					"type": "registry:page",
-					"target": "app/stepper-with-scroll-tracking/page.tsx"
-				},
-				{
-					"path": "registry/base-ui/blocks/stepper-with-scroll-tracking/components/stepper-with-scroll-tracking.tsx",
-					"type": "registry:component"
-				}
-			]
-		},
-		{
-			"name": "base-ui/stepper-with-variants",
-			"type": "registry:component",
-			"title": "Stepper with variants (Base UI)",
-			"description": "A stepper with variants",
-			"dependencies": ["@stepperize/react"],
-			"registryDependencies": ["button", "label", "radio-group"],
-			"files": [
-				{
-					"path": "registry/base-ui/blocks/stepper-with-variants/page.tsx",
-					"type": "registry:page",
-					"target": "app/stepper-with-variants/page.tsx"
-				},
-				{
-					"path": "registry/base-ui/blocks/stepper-with-variants/components/stepper-with-variants.tsx",
-					"type": "registry:component"
-				}
-			]
-		}
-	]
+  "name": "stepperize",
+  "homepage": "https://stepperize.com",
+  "items": [
+    {
+      "name": "progress-bar",
+      "title": "Progress Bar Stepper",
+      "description": "A single progress bar that fills as the user advances.",
+      "categories": [
+        "layouts"
+      ],
+      "capabilities": [
+        "navigation"
+      ],
+      "level": "beginner",
+      "tags": [
+        "progress bar",
+        "linear",
+        "minimal",
+        "header"
+      ]
+    },
+    {
+      "name": "segmented",
+      "title": "Segmented Tabs Stepper",
+      "description": "Segmented control where each step is a selectable tab.",
+      "categories": [
+        "layouts"
+      ],
+      "capabilities": [
+        "navigation"
+      ],
+      "level": "beginner",
+      "tags": [
+        "tabs",
+        "segmented control",
+        "compact"
+      ]
+    },
+    {
+      "name": "circular",
+      "title": "Circular Stepper",
+      "description": "An SVG progress ring around the current step number.",
+      "categories": [
+        "layouts"
+      ],
+      "capabilities": [
+        "navigation"
+      ],
+      "level": "beginner",
+      "tags": [
+        "ring",
+        "svg",
+        "circular",
+        "percentage"
+      ]
+    },
+    {
+      "name": "breadcrumb",
+      "title": "Breadcrumb Stepper",
+      "description": "A breadcrumb-style trail of steps with chevrons.",
+      "categories": [
+        "layouts"
+      ],
+      "capabilities": [
+        "navigation"
+      ],
+      "level": "beginner",
+      "tags": [
+        "breadcrumb",
+        "trail",
+        "chevron",
+        "horizontal"
+      ]
+    },
+    {
+      "name": "vertical-stepper",
+      "title": "Vertical Stepper",
+      "description": "A sidebar-style vertical layout: step rail on the left, long-form content on the right, collapsing to a compact nav on mobile.",
+      "categories": [
+        "layouts"
+      ],
+      "capabilities": [
+        "navigation"
+      ],
+      "level": "beginner",
+      "tags": [
+        "vertical",
+        "sidebar",
+        "rail",
+        "responsive"
+      ]
+    },
+    {
+      "name": "user-onboarding",
+      "title": "User Onboarding",
+      "description": "A three-step account onboarding flow with per-step validation.",
+      "categories": [
+        "onboarding"
+      ],
+      "capabilities": [
+        "validation"
+      ],
+      "level": "beginner",
+      "tags": [
+        "onboarding",
+        "signup",
+        "account",
+        "validation"
+      ]
+    },
+    {
+      "name": "org-setup",
+      "title": "Organization Setup",
+      "description": "Workspace, branding, and members setup for a new SaaS tenant.",
+      "categories": [
+        "onboarding"
+      ],
+      "capabilities": [
+        "navigation"
+      ],
+      "level": "intermediate",
+      "tags": [
+        "saas",
+        "workspace",
+        "tenant",
+        "branding"
+      ]
+    },
+    {
+      "name": "team-invites",
+      "title": "Team Invitations",
+      "description": "Collect invites into draft flow data, then review and send them.",
+      "categories": [
+        "onboarding"
+      ],
+      "capabilities": [
+        "persistence"
+      ],
+      "level": "intermediate",
+      "tags": [
+        "invites",
+        "team",
+        "draft data",
+        "review"
+      ]
+    },
+    {
+      "name": "conditional-onboarding",
+      "title": "Conditional Onboarding",
+      "description": "Onboarding whose path is computed from an earlier answer: team accounts visit the invite step, personal accounts skip it.",
+      "categories": [
+        "onboarding"
+      ],
+      "capabilities": [
+        "branching"
+      ],
+      "level": "intermediate",
+      "tags": [
+        "branching",
+        "conditional",
+        "dynamic path",
+        "skip step"
+      ]
+    },
+    {
+      "name": "product-tour",
+      "title": "Product Tour",
+      "description": "A card-style onboarding walkthrough with dot indicators and free navigation.",
+      "categories": [
+        "onboarding"
+      ],
+      "capabilities": [
+        "non-linear"
+      ],
+      "level": "beginner",
+      "tags": [
+        "tour",
+        "walkthrough",
+        "carousel",
+        "dots",
+        "non-linear"
+      ]
+    },
+    {
+      "name": "course-player",
+      "title": "Course Player",
+      "description": "A lesson playlist with typed per-lesson metadata and a final quiz.",
+      "categories": [
+        "onboarding"
+      ],
+      "capabilities": [
+        "metadata",
+        "non-linear"
+      ],
+      "level": "beginner",
+      "tags": [
+        "course",
+        "lessons",
+        "playlist",
+        "learning",
+        "metadata"
+      ]
+    },
+    {
+      "name": "validated-checkout",
+      "title": "Validated Checkout",
+      "description": "A checkout where each step has a Zod schema; validate() inside a beforeStepChange guard blocks invalid input before the review step.",
+      "categories": [
+        "commerce"
+      ],
+      "capabilities": [
+        "validation"
+      ],
+      "level": "advanced",
+      "tags": [
+        "checkout",
+        "zod",
+        "validation",
+        "guard",
+        "payment"
+      ]
+    },
+    {
+      "name": "plan-picker",
+      "title": "Plan Picker",
+      "description": "Choose a plan, set billing, then pay — billing path branches on the plan.",
+      "categories": [
+        "commerce"
+      ],
+      "capabilities": [
+        "branching"
+      ],
+      "level": "intermediate",
+      "tags": [
+        "pricing",
+        "plans",
+        "billing",
+        "subscription",
+        "branching"
+      ]
+    },
+    {
+      "name": "appointment",
+      "title": "Appointment Booking",
+      "description": "Service, professional, time slot, and confirmation.",
+      "categories": [
+        "commerce"
+      ],
+      "capabilities": [
+        "navigation"
+      ],
+      "level": "beginner",
+      "tags": [
+        "booking",
+        "appointment",
+        "calendar",
+        "scheduling"
+      ]
+    },
+    {
+      "name": "two-factor",
+      "title": "Two-Factor Setup",
+      "description": "Pick a method, verify a code, save backup codes.",
+      "categories": [
+        "auth"
+      ],
+      "capabilities": [
+        "validation"
+      ],
+      "level": "intermediate",
+      "tags": [
+        "2fa",
+        "mfa",
+        "otp",
+        "security",
+        "verification"
+      ]
+    },
+    {
+      "name": "kyc-verification",
+      "title": "KYC Verification",
+      "description": "Identity, document, and selfie verification steps.",
+      "categories": [
+        "auth"
+      ],
+      "capabilities": [
+        "navigation"
+      ],
+      "level": "intermediate",
+      "tags": [
+        "kyc",
+        "identity",
+        "verification",
+        "documents",
+        "compliance"
+      ]
+    },
+    {
+      "name": "device-pairing",
+      "title": "Device Pairing",
+      "description": "Discover, pair, configure, and ready a device over an async transition.",
+      "categories": [
+        "auth"
+      ],
+      "capabilities": [
+        "async"
+      ],
+      "level": "intermediate",
+      "tags": [
+        "device",
+        "pairing",
+        "iot",
+        "async",
+        "connection"
+      ]
+    },
+    {
+      "name": "async-provisioning",
+      "title": "Async Provisioning",
+      "description": "A deploy flow with an async guarded transition, pending UI, a failed first attempt, and a retry path.",
+      "categories": [
+        "async"
+      ],
+      "capabilities": [
+        "async"
+      ],
+      "level": "advanced",
+      "tags": [
+        "async",
+        "provisioning",
+        "deploy",
+        "retry",
+        "pending"
+      ]
+    },
+    {
+      "name": "order-tracking",
+      "title": "Order Tracking",
+      "description": "A shipment tracker driven by typed per-step metadata (carrier, location, ETA).",
+      "categories": [
+        "async"
+      ],
+      "capabilities": [
+        "metadata"
+      ],
+      "level": "beginner",
+      "tags": [
+        "tracking",
+        "shipping",
+        "timeline",
+        "order",
+        "metadata"
+      ]
+    },
+    {
+      "name": "cicd-pipeline",
+      "title": "CI/CD Pipeline",
+      "description": "Build, test, deploy, verify pipeline status with typed stage metadata.",
+      "categories": [
+        "async"
+      ],
+      "capabilities": [
+        "metadata"
+      ],
+      "level": "intermediate",
+      "tags": [
+        "ci",
+        "cd",
+        "pipeline",
+        "stages",
+        "devops",
+        "metadata"
+      ]
+    },
+    {
+      "name": "approval-flow",
+      "title": "Approval Flow",
+      "description": "A multi-stage submission and approval chain.",
+      "categories": [
+        "async"
+      ],
+      "capabilities": [
+        "navigation"
+      ],
+      "level": "intermediate",
+      "tags": [
+        "approval",
+        "workflow",
+        "review",
+        "chain"
+      ]
+    },
+    {
+      "name": "approval-timeline",
+      "title": "Approval Timeline",
+      "description": "A vertical audit timeline where each step carries typed metadata (actor, role, SLA hours) read straight off `step` and `stepper.current` with full inference.",
+      "categories": [
+        "async"
+      ],
+      "capabilities": [
+        "metadata",
+        "type-safe"
+      ],
+      "level": "advanced",
+      "tags": [
+        "timeline",
+        "audit",
+        "approval",
+        "metadata",
+        "type-safe"
+      ]
+    },
+    {
+      "name": "decision-tree",
+      "title": "Decision Tree",
+      "description": "A plan finder that branches to different follow-up questions and converges on a result computed from the answers.",
+      "categories": [
+        "flow-control"
+      ],
+      "capabilities": [
+        "branching"
+      ],
+      "level": "advanced",
+      "tags": [
+        "decision tree",
+        "quiz",
+        "branching",
+        "wizard",
+        "recommendation"
+      ]
+    },
+    {
+      "name": "save-resume",
+      "title": "Save & Resume",
+      "description": "A controlled wizard whose active step is synced to localStorage and the URL hash.",
+      "categories": [
+        "flow-control"
+      ],
+      "capabilities": [
+        "persistence"
+      ],
+      "level": "advanced",
+      "tags": [
+        "persistence",
+        "controlled",
+        "localstorage",
+        "url",
+        "resume"
+      ]
+    },
+    {
+      "name": "ai-workflow",
+      "title": "AI Workflow",
+      "description": "An iterative generation flow where each run is appended to flow data and Refine loops back to the prompt.",
+      "categories": [
+        "flow-control"
+      ],
+      "capabilities": [
+        "branching",
+        "persistence"
+      ],
+      "level": "advanced",
+      "tags": [
+        "ai",
+        "generation",
+        "iteration",
+        "loop",
+        "refine"
+      ]
+    },
+    {
+      "name": "typed-wizard",
+      "title": "Typed Wizard",
+      "description": "An exhaustive stepper.match() over every step id — add or remove a step and the match becomes a compile error until you handle it.",
+      "categories": [
+        "flow-control"
+      ],
+      "capabilities": [
+        "type-safe"
+      ],
+      "level": "advanced",
+      "tags": [
+        "type-safe",
+        "match",
+        "exhaustive",
+        "typescript"
+      ]
+    },
+    {
+      "name": "dashboard-wizard",
+      "title": "Dashboard Wizard",
+      "description": "A SaaS settings wizard with sticky step nav, per-step validation, and an unsaved-changes guard wired through beforeStepChange and beforeunload.",
+      "categories": [
+        "flow-control"
+      ],
+      "capabilities": [
+        "validation",
+        "persistence"
+      ],
+      "level": "advanced",
+      "tags": [
+        "settings",
+        "dashboard",
+        "unsaved changes",
+        "guard",
+        "validation"
+      ]
+    },
+    {
+      "name": "progress-overview",
+      "title": "Progress Overview",
+      "description": "A progress panel that computes percent complete and an ETA from typed per-step metadata (estimated minutes).",
+      "categories": [
+        "flow-control"
+      ],
+      "capabilities": [
+        "metadata"
+      ],
+      "level": "intermediate",
+      "tags": [
+        "progress",
+        "eta",
+        "overview",
+        "metadata",
+        "dashboard"
+      ]
+    }
+  ]
 }

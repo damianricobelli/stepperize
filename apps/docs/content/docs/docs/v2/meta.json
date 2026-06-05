@@ -1,0 +1,6 @@
+{
+  "title": "v2",
+  "description": "Migration notes for Stepperize v2",
+  "root": true,
+  "pages": ["migration"]
+}

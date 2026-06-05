@@ -1,0 +1,123 @@
+---
+title: Styling
+description: Style the headless primitives with the data attributes the API exposes.
+---
+
+# Styling
+
+Stepperize primitives ship **no styles**. Instead, each primitive exposes the
+current state as `data-*` attributes, and you style against them — with Tailwind
+variants, plain CSS, or any approach that can target an attribute selector. Your
+markup stays yours; the library just tells you what state each element is in.
+
+## The three attributes
+
+These are the only attributes you need to know. Everything below builds on them.
+
+| Attribute | Values | Set on |
+| --- | --- | --- |
+| `data-status` | `active` · `previous` · `upcoming` | `Item`, `Trigger`, `Indicator` |
+| `data-orientation` | `horizontal` · `vertical` | `Root`, `List`, `Separator` |
+| `data-component` | `stepper` · `stepper-list` · `stepper-item` · `stepper-trigger` · `stepper-content` | every primitive |
+
+## `data-status` — the workhorse
+
+`data-status` is the positional state of a step relative to the active one:
+
+- **`active`** — the current step.
+- **`previous`** — a step before the current one (already passed).
+- **`upcoming`** — a step after the current one (not reached yet).
+
+### With Tailwind
+
+Target it with the `data-[…]` variant. A typical step indicator:
+
+```tsx
+<Stepper.Indicator
+  className="
+    grid size-8 place-items-center rounded-full border text-sm font-medium
+    data-[status=active]:border-primary data-[status=active]:bg-primary data-[status=active]:text-primary-foreground
+    data-[status=previous]:border-primary data-[status=previous]:bg-primary/10 data-[status=previous]:text-primary
+    data-[status=upcoming]:border-border data-[status=upcoming]:text-muted-foreground
+  "
+/>
+```
+
+### Styling children with `group-data`
+
+Put `group` on the element that has `data-status`, then read it from a child with
+`group-data-[status=…]`. This is how the blocks swap a number for a checkmark once
+a step is passed, without any JavaScript:
+
+```tsx
+<Stepper.Indicator className="group …">
+  {/* number while active/upcoming, checkmark once previous */}
+  <span className="group-data-[status=previous]:hidden">{index + 1}</span>
+  <Check className="hidden size-4 group-data-[status=previous]:block" />
+</Stepper.Indicator>
+```
+
+> When several elements on the same page each have their own `data-status`, name
+> the group (`group/item` … `group-data-[status=active]/item:`) so a child reads
+> the right one.
+
+### With plain CSS
+
+No Tailwind required — attribute selectors work anywhere:
+
+```css
+[data-component="stepper-indicator"][data-status="active"] {
+  border-color: var(--primary);
+  background: var(--primary);
+}
+[data-component="stepper-item"][data-status="upcoming"] {
+  opacity: 0.6;
+}
+```
+
+Here it is on a real block — the bar fills as `data-status` advances:
+
+<Preview>
+	<ProgressBarBlock />
+</Preview>
+
+## `data-orientation` — responsive layouts
+
+`orientation` on `Stepper.Root` is reflected as `data-orientation` on the root,
+list, and separators (and drives keyboard behavior + `aria-orientation`). Style
+the two layouts from one definition:
+
+```tsx
+<Stepper.List
+  orientation="vertical"
+  className="
+    flex gap-2
+    data-[orientation=horizontal]:flex-row
+    data-[orientation=vertical]:flex-col
+  "
+/>
+```
+
+## `data-component` — stable hooks for global CSS
+
+Every primitive carries a `data-component` value, which gives you a stable
+selector that survives className changes — handy for design-system overrides or
+targeting nested primitives:
+
+```css
+[data-component="stepper-list"] { gap: 0.5rem; }
+[data-component="stepper-content"] { padding-block: 1rem; }
+```
+
+## Status is positional, not completion
+
+`data-status` is derived from the **active index** — it has no idea whether a step
+was actually finished. A "previous" step is simply behind the cursor, even if the
+user skipped its work. For business completion (a green ✓ that means *done*), use
+`stepper.setComplete()` / `stepper.isComplete()` and render your own marker. See
+[Status vs. completion](/docs/latest/core-concepts/status-vs-completion).
+
+## Where to go next
+
+- [Primitives](/docs/latest/api/react/primitives) — the components that emit these attributes.
+- [Blocks gallery](/blocks) — copy-paste components that put all of this together.

@@ -1,0 +1,160 @@
+---
+title: Primitives
+description: Build accessible custom UI with unstyled primitives.
+---
+
+# Primitives
+
+<Callout title="Looking for finished UI?">
+	Every block in the [Blocks gallery](/blocks) is built from these primitives —
+	browse them live, copy the code, or install from the registry.
+</Callout>
+
+Use primitives when you want Stepperize to provide structure, ARIA, keyboard behavior, and data attributes while you keep full control of styling.
+
+For simple flows, regular buttons and `stepper.match` are enough.
+
+## When to choose primitives
+
+| Use regular markup when... | Use primitives when... |
+| --- | --- |
+| The UI is only one panel and two buttons. | You need a visible step list with triggers. |
+| You already own all ARIA and keyboard behavior. | You want tab-like roles, ids, panels, and disabled states wired for you. |
+| You do not need item-level data attributes. | You want `data-status` for active, previous, and upcoming styling. |
+
+## Basic structure
+
+```tsx
+const checkout = defineStepper([
+  { id: "shipping", title: "Shipping", description: "Where should we send it?" },
+  { id: "payment", title: "Payment", description: "How will you pay?" },
+  { id: "review", title: "Review", description: "Confirm the order" },
+]);
+
+const { Stepper } = checkout;
+
+function CheckoutStepper() {
+  return (
+    <Stepper.Root linear>
+      {({ stepper }) => (
+        <>
+          <Stepper.List>
+            <Stepper.Items>
+              {(step) => (
+                <Stepper.Item key={step.id}>
+                  <Stepper.Trigger>
+                    <Stepper.Indicator />
+                    <Stepper.Title>{step.title}</Stepper.Title>
+                    <Stepper.Description>{step.description}</Stepper.Description>
+                  </Stepper.Trigger>
+                  <Stepper.Separator />
+                </Stepper.Item>
+              )}
+            </Stepper.Items>
+          </Stepper.List>
+
+          <Stepper.Content step="shipping">Shipping form</Stepper.Content>
+          <Stepper.Content step="payment">Payment form</Stepper.Content>
+          <Stepper.Content step="review">Review order</Stepper.Content>
+
+          <Stepper.Actions>
+            <Stepper.Prev>Back</Stepper.Prev>
+            <Stepper.Next>{stepper.isLast ? "Finish" : "Next"}</Stepper.Next>
+          </Stepper.Actions>
+        </>
+      )}
+    </Stepper.Root>
+  );
+}
+```
+
+`Stepper.Root` creates and provides one stepper instance. The render prop gives you the same flat instance returned by `useStepper()`.
+
+## How the pieces connect
+
+1. `Stepper.Root` creates the shared instance.
+2. `Stepper.List` renders the tablist container and handles arrow navigation.
+3. `Stepper.Items` iterates over the typed steps.
+4. `Stepper.Item` sets item context for the current step.
+5. `Stepper.Trigger` selects that item step.
+6. `Stepper.Content` renders only when its `step` is active.
+7. `Stepper.Prev` and `Stepper.Next` call `prev()` and `next()`.
+
+## Components
+
+| Component | Use it for |
+| --- | --- |
+| `Stepper.Root` | Provider-backed root for primitive UI. |
+| `Stepper.List` | Step list container. |
+| `Stepper.Items` | Typed iterator over all steps. |
+| `Stepper.Item` | Per-step wrapper. |
+| `Stepper.Trigger` | Button that selects the item step. |
+| `Stepper.Title` / `Stepper.Description` | Step labels. |
+| `Stepper.Indicator` | Number, icon, or status mark. |
+| `Stepper.Separator` | Decorative separator. |
+| `Stepper.Content` | Active-step panel. |
+| `Stepper.Actions` | Wrapper for controls. |
+| `Stepper.Prev` | Previous button. |
+| `Stepper.Next` | Next button. |
+
+## Styling
+
+Primitives expose state with data attributes:
+
+```css
+[data-component="stepper-list"] {
+  display: flex;
+  gap: 0.75rem;
+}
+
+[data-status="active"] {
+  font-weight: 600;
+}
+
+[data-status="upcoming"] {
+  opacity: 0.5;
+}
+```
+
+Status is positional: `active`, `previous`, or `upcoming`. Business completion still comes from `stepper.isComplete(id)`.
+
+`Stepper.Root`, `Stepper.List`, `Stepper.Item`, `Stepper.Trigger`, `Stepper.Content`, and the action buttons also expose `data-component` for stable styling hooks.
+
+## Custom elements
+
+Most primitives accept `render`. It replaces the primitive's root element. Spread
+the props you receive:
+
+```tsx
+<Stepper.Next
+  render={(props) => (
+    <button className="rounded-md bg-black px-3 py-2 text-white" {...props}>
+      Continue
+    </button>
+  )}
+/>
+```
+
+That keeps ARIA, event handlers, and data attributes connected.
+
+## Pass explicit steps outside Items
+
+Inside `Stepper.Items`, `Stepper.Item` receives the step automatically. Outside the iterator, pass the `step` prop:
+
+```tsx
+<Stepper.Item step="payment">
+  <Stepper.Trigger>Payment</Stepper.Trigger>
+</Stepper.Item>
+```
+
+## Root options
+
+`Stepper.Root` accepts the same instance options as `useStepper`: `defaultStep`, controlled `step` / `onStepChange`, `onInvalidStep`, `data`, `completed`, `linear`, and `beforeStepChange`.
+
+```tsx
+<Stepper.Root defaultStep="shipping" linear>
+  {({ stepper }) => <p>{stepper.current.title}</p>}
+</Stepper.Root>
+```
+
+Next: [read the primitives API reference](/docs/latest/api/react/primitives).

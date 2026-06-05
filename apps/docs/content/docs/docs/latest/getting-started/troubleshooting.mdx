@@ -1,0 +1,293 @@
+---
+title: Troubleshooting
+description: Fix common setup and runtime issues.
+---
+
+# Troubleshooting
+
+Every entry below maps a real error message or symptom to its cause and fix. The
+errors come straight from the library, so you can match them by text.
+
+## Runtime errors
+
+### "Missing Stepper.Provider."
+
+A primitive was rendered outside the instance that owns it. `Stepper.Root`,
+`Stepper.List`, `Stepper.Items`, `Stepper.Item`, `Stepper.Trigger`,
+`Stepper.Content`, `Stepper.Next`, and `Stepper.Prev` all read the stepper from
+context.
+
+```tsx
+// ❌ Trigger has no surrounding instance
+<Stepper.Trigger>Shipping</Stepper.Trigger>
+
+// ✅ Render primitives inside Stepper.Root (or the generated Provider)
+<Stepper.Root>
+  {() => (
+    <Stepper.Item step="shipping">
+      <Stepper.Trigger>Shipping</Stepper.Trigger>
+    </Stepper.Item>
+  )}
+</Stepper.Root>
+```
+
+The same error appears if you call `checkout.useStepper()` expecting shared
+state but no `Provider`/`Root` is above the component. Outside a provider the
+hook silently creates its _own_ local instance instead — see
+[Two components, two different steppers](#two-components-two-different-steppers).
+
+### "Missing Stepper.Item."
+
+`Stepper.Trigger` and `Stepper.Indicator` need item context. Wrap them in a
+`Stepper.Item` (directly, or via `Stepper.Items`).
+
+```tsx
+// ❌ No item context
+<Stepper.List>
+  <Stepper.Trigger>Shipping</Stepper.Trigger>
+</Stepper.List>
+
+// ✅
+<Stepper.List>
+  <Stepper.Item step="shipping">
+    <Stepper.Trigger>
+      <Stepper.Indicator />
+      Shipping
+    </Stepper.Trigger>
+  </Stepper.Item>
+</Stepper.List>
+```
+
+### "Stepper.Item needs a step prop or must be used inside Stepper.Items."
+
+A `Stepper.Item` could not figure out which step it represents. Inside
+`Stepper.Items` the step is supplied automatically; anywhere else, pass it.
+
+```tsx
+// ✅ Inside the iterator — no step prop needed
+<Stepper.Items>
+  {(step) => <Stepper.Item key={step.id}>...</Stepper.Item>}
+</Stepper.Items>
+
+// ✅ Standalone — pass the id
+<Stepper.Item step="payment">...</Stepper.Item>
+```
+
+### `Step "payment" not found.`
+
+A step id was used that is not in the definition. This is thrown by
+`stepper.match`, `Stepper.Item`, and `matchStep` when an id does not exist.
+With TypeScript and inline step arrays you normally catch this at compile time;
+it shows up at runtime when ids come from an untyped source such as a URL or
+`localStorage`.
+
+```tsx
+// ✅ Narrow external ids before passing them to typed APIs
+const stepId = checkout.parseStep(raw) ?? "shipping";
+```
+
+### `No match handler found for step "review".`
+
+`stepper.match(...)` was called without a handler for the current step. The
+return type is exhaustive, so this almost always means the handler map was
+widened to `any` (for example, built dynamically). Provide one function per id:
+
+```tsx
+stepper.match({
+  shipping: () => <Shipping />,
+  payment: () => <Payment />,
+  review: () => <Review />, // every id must be present
+});
+```
+
+## Common surprises
+
+### Navigation "doesn't return false" — it returns a Promise
+
+`next`, `prev`, `goTo`, and `reset` are always async (they may run an async
+`beforeStepChange` guard). A bare call returns a **Promise**, which is
+always truthy.
+
+```tsx
+// ❌ `accepted` is a Promise, so this branch never runs
+const accepted = stepper.next();
+if (!accepted) return;
+
+// ✅ await to read the boolean result
+const accepted = await stepper.next();
+if (!accepted) return;
+```
+
+Calling without `await` is fine for fire-and-forget button handlers
+(`onClick={() => stepper.next()}`). Only `await` when you need the result.
+
+### Form validation runs, but the step still changes
+
+Field validation and step navigation are different layers. React Hook Form,
+TanStack Form, Conform, or your own form code can show field errors, but only a
+Stepperize transition guard can cancel a move.
+
+```tsx
+const stepper = checkout.useStepper({
+  beforeStepChange: async ({ direction, validate }) => {
+    if (direction === "prev") return true;
+    return (await validate()).success; // false keeps the current step active
+  },
+});
+```
+
+Use `beforeStepChange` for validation that must block a transition. Pair it with
+form-driven navigation so the form library can still show field-level errors.
+
+### Two components, two different steppers
+
+Calling `useStepper()` in two sibling components that are **not** under a shared
+`Provider`/`Root` creates two independent instances. Moving one will not move the
+other.
+
+```tsx
+// ❌ Panel and Footer each get their own state
+<Panel />   {/* useStepper() #1 */}
+<Footer />  {/* useStepper() #2 */}
+
+// ✅ One instance shared via context
+<checkout.Provider>
+  <Panel />   {/* reads shared state */}
+  <Footer />  {/* reads shared state */}
+</checkout.Provider>
+```
+
+See [Shared state](/docs/latest/guides/shared-state).
+
+### A controlled stepper won't move
+
+When you pass `step`, the stepper is **controlled**: it never updates its own
+current step. You must update the value you passed in from `onStepChange`.
+
+```tsx
+const [step, setStep] = React.useState("shipping");
+
+// ❌ Missing onStepChange — clicking Next does nothing visible
+const stepper = checkout.useStepper({ step });
+
+// ✅
+const stepper = checkout.useStepper({ step, onStepChange: setStep });
+```
+
+The same applies to `data`/`onDataChange` and `completed`/`onCompletedChange`.
+
+### State resets on every render
+
+`defineStepper` builds a context, a provider, and primitives. Call it **once at
+module scope**, not inside a component — otherwise a fresh, empty stepper is
+created on every render.
+
+```tsx
+// ❌ New definition (and new state) each render
+function Checkout() {
+  const checkout = defineStepper([...]);
+  // ...
+}
+
+// ✅ Define once, import where needed
+const checkout = defineStepper([...]);
+
+function Checkout() {
+  const stepper = checkout.useStepper();
+}
+```
+
+### `stepper.progress` is 0 on the first step
+
+`progress` is `index / (count - 1)`, so a 4-step flow reads `0, 0.33, 0.66, 1`.
+That is what you want for a marker that travels between steps. For an
+"N of M" bar that is already partly filled on step one, compute it yourself:
+
+```tsx
+const percent = Math.round(((stepper.index + 1) / stepper.count) * 100);
+```
+
+### `Stepper.Next` is disabled on the last step
+
+`canNext` is `false` once you reach the last step, so the built-in
+`Stepper.Next` button disables itself. Render your own submit button for the
+final action instead of relying on `Next`:
+
+```tsx
+<Stepper.Actions>
+  <Stepper.Prev>Back</Stepper.Prev>
+  {stepper.isLast ? (
+    <button type="button" onClick={onSubmit}>Finish</button>
+  ) : (
+    <Stepper.Next>Next</Stepper.Next>
+  )}
+</Stepper.Actions>
+```
+
+### A step trigger is disabled even though navigation looks fine
+
+With `linear` enabled a `Stepper.Trigger` is disabled when its step is more than
+one ahead of the current step. Keyboard navigation in `Stepper.List` follows the
+same rule. That is the navigation policy, not a bug. Gate your own jump buttons
+with `stepper.canGoTo(id)` to match, or set `linear={false}` (the default). Note
+that imperative `stepper.goTo(id)` always bypasses this policy.
+
+### `data.get()` is typed as `unknown`
+
+Without a schema, Stepperize doesn't know the shape of your step data, so
+`data.get()` is `unknown`. Add a `schema` to the step and `data.get(id)` is typed
+automatically as that schema's input — no generic needed:
+
+```tsx
+const checkout = defineStepper([
+  { id: "shipping", schema: shippingSchema }, // schema types the draft
+]);
+
+const draft = stepper.data.get("shipping"); // ShippingInput | undefined
+```
+
+For a schemaless step, cast at the call site instead:
+
+```tsx
+const draft = stepper.data.get("shipping") as ShippingValues | undefined;
+```
+
+> The generic parameter on `data.get<Id>(id)` is the **step id**, not the value
+> type — it is inferred from the argument, so you never pass it explicitly.
+
+## TypeScript
+
+### Step ids are typed as `string`, not a literal union
+
+Inference only stays literal when the array is inline (or `as const`). If you
+keep steps in a separate variable that has already widened, the ids widen too.
+
+```tsx
+// ❌ `steps` is `{ id: string }[]`, so ids become `string`
+const steps = [{ id: "a" }, { id: "b" }];
+const flow = defineStepper(steps);
+
+// ✅ Inline keeps ids literal
+const flow = defineStepper([{ id: "a" }, { id: "b" }]);
+
+// ✅ Or pin the variable
+const steps = [{ id: "a" }, { id: "b" }] as const;
+```
+
+### A property exists on `current` but TypeScript complains
+
+`stepper.current` is the **union** of all steps. A field only typechecks if every
+step has it. Narrow first with `stepper.match(...)` or `stepper.is(id)`, or make
+the field present on all steps.
+
+```tsx
+stepper.match({
+  // inside a handler, the step is narrowed to that id
+  payment: (step) => <Pay schema={step.schema} />,
+});
+```
+
+<Callout type="info">
+Still stuck? Check the [FAQ](/docs/latest/getting-started/faq) or open an
+issue with a minimal reproduction.
+</Callout>

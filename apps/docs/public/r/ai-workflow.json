@@ -1,0 +1,42 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "ai-workflow",
+  "type": "registry:component",
+  "title": "AI Workflow",
+  "description": "An iterative generation flow where each run is appended to flow data and Refine loops back to the prompt.",
+  "author": "Stepperize",
+  "dependencies": [
+    "@stepperize/react",
+    "lucide-react"
+  ],
+  "registryDependencies": [
+    "badge",
+    "button",
+    "textarea"
+  ],
+  "categories": [
+    "flow-control"
+  ],
+  "meta": {
+    "capabilities": [
+      "branching",
+      "persistence"
+    ],
+    "level": "advanced",
+    "tags": [
+      "ai",
+      "generation",
+      "iteration",
+      "loop",
+      "refine"
+    ]
+  },
+  "files": [
+    {
+      "path": "components/stepperize/ai-workflow.tsx",
+      "type": "registry:component",
+      "target": "components/stepperize/ai-workflow.tsx",
+      "content": "import { defineStepper } from \"@stepperize/react\";\nimport { Bot, Check, Loader2, RefreshCw, Send, Sparkles } from \"lucide-react\";\nimport { useRef, useState } from \"react\";\nimport { Badge } from \"@/components/ui/badge\";\nimport { Button } from \"@/components/ui/button\";\nimport { Textarea } from \"@/components/ui/textarea\";\n\nconst workflow = defineStepper([\n\t{ id: \"prompt\", title: \"Prompt\" },\n\t{ id: \"result\", title: \"Result\" },\n] as const);\n\nconst { Stepper } = workflow;\n\ntype Draft = { version: number; prompt: string; text: string };\ntype Stepper = ReturnType<typeof workflow.useStepper>;\n\nconst sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));\n\n// A canned \"model\" so the demo is self-contained — each call reads the prompt\n// and the iteration number from accumulated flow data.\nfunction generate(prompt: string, version: number): string {\n\tconst tone =\n\t\tversion === 1\n\t\t\t? \"\"\n\t\t\t: version === 2\n\t\t\t\t? \" (tightened up)\"\n\t\t\t\t: ` (revision ${version})`;\n\tconst subject = prompt.trim() || \"your request\";\n\treturn `Here's a draft for “${subject}”${tone}. Warm, concise, and ready to send.`;\n}\n\n/**\n * Iterative flow: generating is an async transition, and every run is appended\n * to `data` so the review step can show the full version history. \"Refine\"\n * loops back with `goTo(\"prompt\")`, keeping prior drafts.\n */\nexport function AiWorkflowBlock() {\n\tconst ref = useRef<Stepper | null>(null);\n\tconst [accepted, setAccepted] = useState(false);\n\n\treturn (\n\t\t<Stepper.Root\n\t\t\tclassName=\"w-full max-w-sm overflow-hidden rounded-xl border bg-background shadow-sm\"\n\t\t\tbeforeStepChange={async ({ from, direction }) => {\n\t\t\t\tif (from.id !== \"prompt\" || direction !== \"next\") return true;\n\t\t\t\tawait sleep(1400); // async \"generation\"\n\t\t\t\tconst stepper = ref.current;\n\t\t\t\tif (!stepper) return true;\n\t\t\t\tconst drafts =\n\t\t\t\t\t(stepper.data.get(\"result\") as Draft[] | undefined) ?? [];\n\t\t\t\tconst prompt = (stepper.data.get(\"prompt\") as string | undefined) ?? \"\";\n\t\t\t\tconst version = drafts.length + 1;\n\t\t\t\tstepper.data.set(\"result\", [\n\t\t\t\t\t...drafts,\n\t\t\t\t\t{ version, prompt, text: generate(prompt, version) },\n\t\t\t\t]);\n\t\t\t\treturn true;\n\t\t\t}}\n\t\t>\n\t\t\t{({ stepper }) => {\n\t\t\t\tref.current = stepper;\n\t\t\t\tconst drafts =\n\t\t\t\t\t(stepper.data.get(\"result\") as Draft[] | undefined) ?? [];\n\t\t\t\tconst latest = drafts[drafts.length - 1];\n\t\t\t\tconst prompt =\n\t\t\t\t\t(stepper.data.get(\"prompt\") as string | undefined) ??\n\t\t\t\t\t\"A friendly welcome email for new users\";\n\n\t\t\t\treturn (\n\t\t\t\t\t<>\n\t\t\t\t\t\t<div className=\"flex items-center gap-2 border-b px-4 py-3\">\n\t\t\t\t\t\t\t<span className=\"grid size-7 place-items-center rounded-lg bg-primary/10 text-primary\">\n\t\t\t\t\t\t\t\t<Bot className=\"size-4\" />\n\t\t\t\t\t\t\t</span>\n\t\t\t\t\t\t\t<span className=\"text-sm font-semibold\">Copy Assistant</span>\n\t\t\t\t\t\t\t{drafts.length > 0 && (\n\t\t\t\t\t\t\t\t<Badge variant=\"secondary\" className=\"ml-auto\">\n\t\t\t\t\t\t\t\t\tv{drafts.length}\n\t\t\t\t\t\t\t\t</Badge>\n\t\t\t\t\t\t\t)}\n\t\t\t\t\t\t</div>\n\n\t\t\t\t\t\t<div className=\"min-h-44 p-4\">\n\t\t\t\t\t\t\t<Stepper.Content step=\"prompt\" className=\"space-y-3\">\n\t\t\t\t\t\t\t\t<p className=\"text-sm text-muted-foreground\">\n\t\t\t\t\t\t\t\t\t{drafts.length\n\t\t\t\t\t\t\t\t\t\t? \"Refine your prompt and regenerate.\"\n\t\t\t\t\t\t\t\t\t\t: \"What should I write?\"}\n\t\t\t\t\t\t\t\t</p>\n\t\t\t\t\t\t\t\t<Textarea\n\t\t\t\t\t\t\t\t\trows={3}\n\t\t\t\t\t\t\t\t\tdefaultValue={prompt}\n\t\t\t\t\t\t\t\t\tonChange={(e) => stepper.data.set(\"prompt\", e.target.value)}\n\t\t\t\t\t\t\t\t\tclassName=\"resize-none\"\n\t\t\t\t\t\t\t\t/>\n\t\t\t\t\t\t\t\t<Button\n\t\t\t\t\t\t\t\t\tclassName=\"w-full\"\n\t\t\t\t\t\t\t\t\tdisabled={stepper.isPending}\n\t\t\t\t\t\t\t\t\tonClick={() => stepper.next()}\n\t\t\t\t\t\t\t\t>\n\t\t\t\t\t\t\t\t\t{stepper.isPending ? (\n\t\t\t\t\t\t\t\t\t\t<>\n\t\t\t\t\t\t\t\t\t\t\t<Loader2 className=\"animate-spin\" /> Generating…\n\t\t\t\t\t\t\t\t\t\t</>\n\t\t\t\t\t\t\t\t\t) : (\n\t\t\t\t\t\t\t\t\t\t<>\n\t\t\t\t\t\t\t\t\t\t\t<Send /> {drafts.length ? \"Regenerate\" : \"Generate\"}\n\t\t\t\t\t\t\t\t\t\t</>\n\t\t\t\t\t\t\t\t\t)}\n\t\t\t\t\t\t\t\t</Button>\n\t\t\t\t\t\t\t</Stepper.Content>\n\n\t\t\t\t\t\t\t<Stepper.Content step=\"result\" className=\"space-y-3\">\n\t\t\t\t\t\t\t\t<div className=\"rounded-lg border bg-muted/30 p-3 text-sm\">\n\t\t\t\t\t\t\t\t\t<p className=\"flex items-center gap-1.5 font-medium text-primary\">\n\t\t\t\t\t\t\t\t\t\t<Sparkles className=\"size-3.5\" /> Draft v{latest?.version}\n\t\t\t\t\t\t\t\t\t</p>\n\t\t\t\t\t\t\t\t\t<p className=\"mt-1.5 text-muted-foreground\">\n\t\t\t\t\t\t\t\t\t\t{accepted\n\t\t\t\t\t\t\t\t\t\t\t? \"Draft accepted and queued for your campaign.\"\n\t\t\t\t\t\t\t\t\t\t\t: latest?.text}\n\t\t\t\t\t\t\t\t\t</p>\n\t\t\t\t\t\t\t\t</div>\n\n\t\t\t\t\t\t\t\t{drafts.length > 1 && (\n\t\t\t\t\t\t\t\t\t<div className=\"space-y-1\">\n\t\t\t\t\t\t\t\t\t\t<p className=\"text-[11px] font-medium uppercase tracking-wide text-muted-foreground\">\n\t\t\t\t\t\t\t\t\t\t\tHistory\n\t\t\t\t\t\t\t\t\t\t</p>\n\t\t\t\t\t\t\t\t\t\t{drafts.slice(0, -1).map((d) => (\n\t\t\t\t\t\t\t\t\t\t\t<p\n\t\t\t\t\t\t\t\t\t\t\t\tkey={d.version}\n\t\t\t\t\t\t\t\t\t\t\t\tclassName=\"truncate text-xs text-muted-foreground/80\"\n\t\t\t\t\t\t\t\t\t\t\t>\n\t\t\t\t\t\t\t\t\t\t\t\tv{d.version}: {d.text}\n\t\t\t\t\t\t\t\t\t\t\t</p>\n\t\t\t\t\t\t\t\t\t\t))}\n\t\t\t\t\t\t\t\t\t</div>\n\t\t\t\t\t\t\t\t)}\n\n\t\t\t\t\t\t\t\t<div className=\"flex gap-2\">\n\t\t\t\t\t\t\t\t\t<Button\n\t\t\t\t\t\t\t\t\t\tvariant=\"outline\"\n\t\t\t\t\t\t\t\t\t\tclassName=\"flex-1\"\n\t\t\t\t\t\t\t\t\t\tonClick={() => stepper.goTo(\"prompt\")}\n\t\t\t\t\t\t\t\t\t>\n\t\t\t\t\t\t\t\t\t\t<RefreshCw /> Refine\n\t\t\t\t\t\t\t\t\t</Button>\n\t\t\t\t\t\t\t\t\t{accepted ? (\n\t\t\t\t\t\t\t\t\t\t<Button\n\t\t\t\t\t\t\t\t\t\t\tclassName=\"flex-1\"\n\t\t\t\t\t\t\t\t\t\t\tonClick={() => {\n\t\t\t\t\t\t\t\t\t\t\t\tsetAccepted(false);\n\t\t\t\t\t\t\t\t\t\t\t\tstepper.data.reset();\n\t\t\t\t\t\t\t\t\t\t\t\tstepper.reset();\n\t\t\t\t\t\t\t\t\t\t\t}}\n\t\t\t\t\t\t\t\t\t\t>\n\t\t\t\t\t\t\t\t\t\t\t<RefreshCw /> Start over\n\t\t\t\t\t\t\t\t\t\t</Button>\n\t\t\t\t\t\t\t\t\t) : (\n\t\t\t\t\t\t\t\t\t\t<Button\n\t\t\t\t\t\t\t\t\t\t\tclassName=\"flex-1\"\n\t\t\t\t\t\t\t\t\t\t\tonClick={() => setAccepted(true)}\n\t\t\t\t\t\t\t\t\t\t>\n\t\t\t\t\t\t\t\t\t\t\t<Check /> Use this\n\t\t\t\t\t\t\t\t\t\t</Button>\n\t\t\t\t\t\t\t\t\t)}\n\t\t\t\t\t\t\t\t</div>\n\t\t\t\t\t\t\t</Stepper.Content>\n\t\t\t\t\t\t</div>\n\t\t\t\t\t</>\n\t\t\t\t);\n\t\t\t}}\n\t\t</Stepper.Root>\n\t);\n}\n"
+    }
+  ]
+}
