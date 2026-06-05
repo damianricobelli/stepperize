@@ -34,6 +34,19 @@ function withClientDirective(content) {
 	return `"use client";\n\n${content}`;
 }
 
+function withDefaultExport(content, source) {
+	if (/\bexport\s+default\b/.test(content)) {
+		return content;
+	}
+
+	const match = content.match(/\bexport\s+function\s+([A-Z][A-Za-z0-9]*Block)\s*\(/);
+	if (!match) {
+		throw new Error(`Block component export not found: ${source}`);
+	}
+
+	return `${content.trimEnd()}\n\nexport default ${match[1]};\n`;
+}
+
 function buildItem({
 	id: name,
 	title,
@@ -50,7 +63,7 @@ function buildItem({
 		throw new Error(`Block source not found: ${source}`);
 	}
 	const sourceContent = readFileSync(abs, "utf8");
-	const content = withClientDirective(sourceContent);
+	const content = withDefaultExport(withClientDirective(sourceContent), source);
 
 	const dependencies = [STEPPERIZE_VERSION];
 	if (content.includes('from "lucide-react"')) dependencies.push("lucide-react");
