@@ -1,5 +1,16 @@
 # docs
 
+## 4.0.0
+
+### Major Changes
+
+- [#172](https://github.com/damianricobelli/stepperize/pull/172) [`dcdd284`](https://github.com/damianricobelli/stepperize/commit/dcdd2847422d7a388b71f7a431ad17c64e0035da) Thanks [@damianricobelli](https://github.com/damianricobelli)! - breaking(v7): release Stepperize v7
+
+### Patch Changes
+
+- Updated dependencies [[`dcdd284`](https://github.com/damianricobelli/stepperize/commit/dcdd2847422d7a388b71f7a431ad17c64e0035da)]:
+  - @stepperize/react@7.0.0
+
 ## 3.0.2
 
 ### Patch Changes
