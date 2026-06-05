@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://stepperize.vercel.app/banner.png" alt="Stepperize Logo" />
+  <img src="https://www.stepperize.com/api/og?title=The+type-safe+way+to+build+multi-step+experiences.&description=Build+type-safe+wizards%2C+forms%2C+and+onboarding+flows+in+React.&section=Documentation&variant=website" alt="Stepperize Logo" />
 </p>
 
 # @stepperize/react
@@ -96,4 +96,4 @@ function PrimitiveWizard() {
 
 ## Documentation
 
-Read the full docs at [stepperize.vercel.app](https://stepperize.vercel.app).
+Read the full docs at [stepperize.com](https://stepperize.com).

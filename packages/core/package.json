@@ -13,7 +13,7 @@
     "url": "https://github.com/damianricobelli/stepperize.git",
     "directory": "packages/core"
   },
-  "homepage": "https://stepperize.vercel.app",
+  "homepage": "https://stepperize.com",
   "sideEffects": false,
   "files": [
     "dist"
