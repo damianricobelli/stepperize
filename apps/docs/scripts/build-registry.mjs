@@ -26,6 +26,14 @@ const STEPPERIZE_VERSION = "@stepperize/react"; // bare name → resolves to ins
 // Catalog is the single source of truth (src/lib/blocks/catalog.mjs); the same
 // file drives the docs gallery, so registry items can never drift from previews.
 
+function withClientDirective(content) {
+	if (content.startsWith('"use client";\n') || content.startsWith("'use client';\n")) {
+		return content;
+	}
+
+	return `"use client";\n\n${content}`;
+}
+
 function buildItem({
 	id: name,
 	title,
@@ -41,7 +49,8 @@ function buildItem({
 	if (!existsSync(abs)) {
 		throw new Error(`Block source not found: ${source}`);
 	}
-	const content = readFileSync(abs, "utf8");
+	const sourceContent = readFileSync(abs, "utf8");
+	const content = withClientDirective(sourceContent);
 
 	const dependencies = [STEPPERIZE_VERSION];
 	if (content.includes('from "lucide-react"')) dependencies.push("lucide-react");
