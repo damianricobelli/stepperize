@@ -167,6 +167,9 @@ importers:
       takumi-js:
         specifier: ^1.7.0
         version: 1.7.0(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      tslib:
+        specifier: ^2.8.1
+        version: 2.8.1
       tw-animate-css:
         specifier: ^1.4.0
         version: 1.4.0

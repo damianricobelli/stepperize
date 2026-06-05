@@ -24,6 +24,9 @@ const config = defineConfig({
 			},
 		],
 	},
+	ssr: {
+		noExternal: ["tslib"],
+	},
 	plugins: [
 		mdx(),
 		devtools(),
