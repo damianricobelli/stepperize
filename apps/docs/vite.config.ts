@@ -17,6 +17,10 @@ const config = defineConfig({
 		// path is dead code for us, so alias it to a no-op stub.
 		alias: [
 			{
+				find: "tslib",
+				replacement: "tslib/tslib.es6.mjs",
+			},
+			{
 				find: "shiki/wasm",
 				replacement: fileURLToPath(
 					new URL("./src/lib/shiki-wasm-stub.ts", import.meta.url),
