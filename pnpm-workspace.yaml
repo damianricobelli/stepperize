@@ -3,17 +3,24 @@ packages:
   - packages/*
 
 catalog:
-  '@testing-library/jest-dom': ^6.9.1
-  '@testing-library/react': ^16.3.2
-  '@types/react': ^19.2.16
-  '@types/react-dom': ^19.2.3
-  jsdom: ^29.1.1
-  react: ^19.2.7
-  react-dom: ^19.2.7
+  '@types/react': ^19.3.0
+  '@types/react-dom': ^19.3.0
+  '@typescript/native': npm:typescript@7.0.2
+  '@vitejs/plugin-react': ^6.1.1
+  '@vitest/browser-playwright': ^5.0.1
+  playwright: ^1.63.0
+  react: ^19.3.0
+  react-dom: ^19.3.0
   terser: ^5.48.0
   tsup: ^8.5.1
-  typescript: ^6.0.3
-  vitest: ^4.1.8
+  typescript: ^7.0.2
+  vite: ^8.3.0
+  vitest: ^5.0.1
+  vitest-browser-react: ^2.3.0
+
+catalogs:
+  legacy-tooling:
+    typescript: npm:@typescript/typescript6@6.0.2
 
 minimumReleaseAge: 0
 

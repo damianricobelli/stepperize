@@ -79,9 +79,7 @@ describe("validateStep", () => {
 			version: 1 as const,
 			vendor: "test",
 			validate: (value: unknown) =>
-				typeof value === "string" && value.length > 0
-					? { value }
-					: { issues: [{ message: "Required" }] },
+				typeof value === "string" && value.length > 0 ? { value } : { issues: [{ message: "Required" }] },
 		},
 	};
 	const withSchema = [{ id: "name", schema }, { id: "done" }] as const;
@@ -146,5 +144,25 @@ describe("matchStep", () => {
 
 	it("throws when no exhaustive handler exists", () => {
 		expect(() => matchStep(steps, "third", { first: (step: any) => step.label } as any)).toThrow(/No match handler/);
+	});
+});
+
+describe("getStepStatuses", () => {
+	it("returns active for current index, previous for past, upcoming for future", () => {
+		expect(getStepStatuses(steps, 0)).toEqual({
+			first: "active",
+			second: "upcoming",
+			third: "upcoming",
+		});
+		expect(getStepStatuses(steps, 1)).toEqual({
+			first: "previous",
+			second: "active",
+			third: "upcoming",
+		});
+		expect(getStepStatuses(steps, 2)).toEqual({
+			first: "previous",
+			second: "previous",
+			third: "active",
+		});
 	});
 });

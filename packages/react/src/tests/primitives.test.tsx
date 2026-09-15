@@ -1,5 +1,6 @@
-import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
+import { page as screen, userEvent } from "vitest/browser";
+import { render } from "vitest-browser-react";
 import { defineStepper } from "../define-stepper";
 
 const steps = [
@@ -14,10 +15,10 @@ const threeSteps = [
 ];
 
 describe("primitives", () => {
-	it("Stepper.Items can render items without passing step to Item", () => {
+	it("Stepper.Items can render items without passing step to Item", async () => {
 		const { Stepper } = defineStepper(steps);
 
-		render(
+		await render(
 			<Stepper.Root>
 				{({ stepper }) => (
 					<Stepper.List>
@@ -37,14 +38,14 @@ describe("primitives", () => {
 			</Stepper.Root>,
 		);
 
-		expect(screen.getByTestId("status-first").textContent).toBe("active");
-		expect(screen.getByTestId("status-second").textContent).toBe("upcoming");
+		expect(screen.getByTestId("status-first").element().textContent).toBe("active");
+		expect(screen.getByTestId("status-second").element().textContent).toBe("upcoming");
 	});
 
-	it("Title and Description read defaults from the item step", () => {
+	it("Title and Description read defaults from the item step", async () => {
 		const { Stepper } = defineStepper(steps);
 
-		render(
+		await render(
 			<Stepper.Root>
 				<Stepper.List>
 					<Stepper.Item step="first">
@@ -55,14 +56,14 @@ describe("primitives", () => {
 			</Stepper.Root>,
 		);
 
-		expect(screen.getByText("First")).toBeTruthy();
-		expect(screen.getByText("First description")).toBeTruthy();
+		expect(screen.getByText("First").element()).toBeTruthy();
+		expect(screen.getByText("First description").element()).toBeTruthy();
 	});
 
-	it("Stepper.Trigger respects preventDefault in onClick", () => {
+	it("Stepper.Trigger respects preventDefault in onClick", async () => {
 		const { Stepper } = defineStepper(steps);
 
-		render(
+		await render(
 			<Stepper.Root>
 				{({ stepper }) => (
 					<>
@@ -87,14 +88,14 @@ describe("primitives", () => {
 			</Stepper.Root>,
 		);
 
-		fireEvent.click(screen.getByRole("tab", { name: "Second" }));
-		expect(screen.getByTestId("current").textContent).toBe("first");
+		await userEvent.click(screen.getByRole("tab", { name: "Second" }).element());
+		expect(screen.getByTestId("current").element().textContent).toBe("first");
 	});
 
-	it("Stepper.Trigger respects linear navigation policy", () => {
+	it("Stepper.Trigger respects linear navigation policy", async () => {
 		const { Stepper } = defineStepper(threeSteps);
 
-		render(
+		await render(
 			<Stepper.Root linear>
 				{({ stepper }) => (
 					<>
@@ -115,17 +116,17 @@ describe("primitives", () => {
 			</Stepper.Root>,
 		);
 
-		const thirdTrigger = screen.getByRole("tab", { name: "Third" });
+		const thirdTrigger = screen.getByRole("tab", { name: "Third" }).element();
 		expect(thirdTrigger).toHaveProperty("disabled", true);
 
-		fireEvent.click(thirdTrigger);
-		expect(screen.getByTestId("current").textContent).toBe("first");
+		await userEvent.click(thirdTrigger, { force: true });
+		expect(screen.getByTestId("current").element().textContent).toBe("first");
 	});
 
-	it("Stepper.Next and Stepper.Prev respect preventDefault in onClick", () => {
-		const { Stepper } = defineStepper(steps);
+	it("Stepper.Next and Stepper.Prev respect preventDefault in onClick", async () => {
+		const { Stepper } = defineStepper(threeSteps);
 
-		render(
+		await render(
 			<Stepper.Root defaultStep="second">
 				{({ stepper }) => (
 					<>
@@ -137,17 +138,17 @@ describe("primitives", () => {
 			</Stepper.Root>,
 		);
 
-		fireEvent.click(screen.getByRole("button", { name: "Prev" }));
-		expect(screen.getByTestId("current").textContent).toBe("second");
+		await userEvent.click(screen.getByRole("button", { name: "Prev" }).element());
+		expect(screen.getByTestId("current").element().textContent).toBe("second");
 
-		fireEvent.click(screen.getByRole("button", { name: "Next" }));
-		expect(screen.getByTestId("current").textContent).toBe("second");
+		await userEvent.click(screen.getByRole("button", { name: "Next" }).element());
+		expect(screen.getByTestId("current").element().textContent).toBe("second");
 	});
 
-	it("Stepper.List respects preventDefault in onKeyDown", () => {
+	it("Stepper.List respects preventDefault in onKeyDown", async () => {
 		const { Stepper } = defineStepper(steps);
 
-		render(
+		await render(
 			<Stepper.Root>
 				{({ stepper }) => (
 					<>
@@ -168,17 +169,17 @@ describe("primitives", () => {
 			</Stepper.Root>,
 		);
 
-		const firstTrigger = screen.getByRole("tab", { name: "First" });
+		const firstTrigger = screen.getByRole("tab", { name: "First" }).element();
 		firstTrigger.focus();
-		fireEvent.keyDown(firstTrigger, { key: "ArrowRight" });
+		await userEvent.keyboard("{ArrowRight}");
 
-		expect(screen.getByTestId("current").textContent).toBe("first");
+		expect(screen.getByTestId("current").element().textContent).toBe("first");
 	});
 
 	it("Stepper.List keeps focus in place when keyboard navigation is canceled", async () => {
 		const { Stepper } = defineStepper(steps);
 
-		render(
+		await render(
 			<Stepper.Root beforeStepChange={() => false}>
 				<Stepper.List>
 					<Stepper.Items>
@@ -194,9 +195,9 @@ describe("primitives", () => {
 			</Stepper.Root>,
 		);
 
-		const firstTrigger = screen.getByRole("tab", { name: "First" });
+		const firstTrigger = screen.getByRole("tab", { name: "First" }).element();
 		firstTrigger.focus();
-		fireEvent.keyDown(firstTrigger, { key: "ArrowRight" });
+		await userEvent.keyboard("{ArrowRight}");
 		await Promise.resolve();
 
 		expect(document.activeElement).toBe(firstTrigger);
@@ -205,7 +206,7 @@ describe("primitives", () => {
 	it("Stepper.List keyboard navigation respects linear policy", async () => {
 		const { Stepper } = defineStepper(threeSteps);
 
-		render(
+		await render(
 			<Stepper.Root linear>
 				{({ stepper }) => (
 					<>
@@ -226,30 +227,30 @@ describe("primitives", () => {
 			</Stepper.Root>,
 		);
 
-		const firstTrigger = screen.getByRole("tab", { name: "First" });
+		const firstTrigger = screen.getByRole("tab", { name: "First" }).element();
 		firstTrigger.focus();
 
-		fireEvent.keyDown(firstTrigger, { key: "End" });
+		await userEvent.keyboard("{End}");
 		await Promise.resolve();
-		expect(screen.getByTestId("current").textContent).toBe("first");
+		expect(screen.getByTestId("current").element().textContent).toBe("first");
 		expect(document.activeElement).toBe(firstTrigger);
 
-		fireEvent.keyDown(firstTrigger, { key: "ArrowRight" });
+		await userEvent.keyboard("{ArrowRight}");
 		await Promise.resolve();
-		expect(screen.getByTestId("current").textContent).toBe("second");
+		expect(screen.getByTestId("current").element().textContent).toBe("second");
 
-		const secondTrigger = screen.getByRole("tab", { name: "Second" });
+		const secondTrigger = screen.getByRole("tab", { name: "Second" }).element();
 		expect(document.activeElement).toBe(secondTrigger);
 
-		fireEvent.keyDown(secondTrigger, { key: "Home" });
+		await userEvent.keyboard("{Home}");
 		await Promise.resolve();
-		expect(screen.getByTestId("current").textContent).toBe("first");
+		expect(screen.getByTestId("current").element().textContent).toBe("first");
 	});
 
-	it("Stepper.Indicator render replaces the root element", () => {
+	it("Stepper.Indicator render replaces the root element", async () => {
 		const { Stepper } = defineStepper(steps);
 
-		render(
+		await render(
 			<Stepper.Root>
 				<Stepper.List>
 					<Stepper.Item step="first">
@@ -259,21 +260,21 @@ describe("primitives", () => {
 			</Stepper.Root>,
 		);
 
-		expect(screen.getByText("Custom").getAttribute("data-component")).toBe("stepper-indicator");
-		expect(screen.getByText("Custom").querySelector("[data-component='stepper-indicator']")).toBeNull();
+		expect(screen.getByText("Custom").element().getAttribute("data-component")).toBe("stepper-indicator");
+		expect(screen.getByText("Custom").element().querySelector("[data-component='stepper-indicator']")).toBeNull();
 	});
 
-	it("Prev and Next buttons disable at edges", () => {
+	it("Prev and Next buttons disable at edges", async () => {
 		const { Stepper } = defineStepper(steps);
 
-		render(
+		await render(
 			<Stepper.Root>
 				<Stepper.Prev>Back</Stepper.Prev>
 				<Stepper.Next>Forward</Stepper.Next>
 			</Stepper.Root>,
 		);
 
-		expect(screen.getByRole("button", { name: "Back" })).toHaveProperty("disabled", true);
-		expect(screen.getByRole("button", { name: "Forward" })).toHaveProperty("disabled", false);
+		expect(screen.getByRole("button", { name: "Back" }).element()).toHaveProperty("disabled", true);
+		expect(screen.getByRole("button", { name: "Forward" }).element()).toHaveProperty("disabled", false);
 	});
 });

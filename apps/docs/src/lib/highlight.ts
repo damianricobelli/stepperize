@@ -13,7 +13,7 @@ type HighlightLang = "tsx" | "ts" | "jsx" | "js" | "json" | "bash";
  * underlying highlighter instance is cached by fumadocs across calls.
  */
 export const highlightCode = createServerFn({ method: "POST" })
-	.inputValidator((data: { code: string; lang?: HighlightLang }) => data)
+	.validator((data: { code: string; lang?: HighlightLang }) => data)
 	.handler(async ({ data }) => {
 		const lang: HighlightLang = data.lang ?? "tsx";
 		const highlighter = await getHighlighter("js", {

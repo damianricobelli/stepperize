@@ -1,44 +1,39 @@
-import type { Step, Stepper } from "@stepperize/core";
+import type { Get, Step } from "@stepperize/core";
 import type React from "react";
-import { useStepItemContext } from "./context";
-import { runClickHandler, useStepperContextOrThrow } from "./helpers";
+import type { StepperScope } from "./context";
+import { panelDomId, triggerDomId } from "./context";
+import { runClick } from "./nav";
+import { renderPrimitive } from "./render";
 import type { PrimitiveComponent, TriggerProps } from "./types";
 
 export function createTrigger<Steps extends readonly Step[]>(
-	StepperContext: React.Context<Stepper<Steps> | null>,
+	scope: StepperScope<Steps>,
 ): PrimitiveComponent<TriggerProps> {
 	return function Trigger(props: TriggerProps) {
 		const { render, children, ...rest } = props;
-		const stepper = useStepperContextOrThrow(StepperContext);
-		const item = useStepItemContext();
-		const stepId = item.data.id;
-		const isActive = stepper.id === stepId;
-		const canGoTo = stepper.canGoTo(stepId as import("@stepperize/core").Get.Id<Steps>);
-		const disabled = rest.disabled || !canGoTo;
-		const handleClick = () => {
-			void stepper.goTo(stepId as import("@stepperize/core").Get.Id<Steps>);
-		};
+		const { store, id: instance } = scope.useValue();
+		const item = scope.useStepItem();
+		const id = item.data.id as Get.Id<Steps>;
+		const disabled = rest.disabled || !item.canGoTo;
 		const domProps = {
+			type: "button" as const,
 			...rest,
-			id: `step-${stepId}`,
+			id: triggerDomId(instance, id),
 			"data-component": "stepper-trigger",
 			"data-status": item.status,
+			"data-complete": item.complete ? "" : undefined,
 			role: "tab" as const,
-			tabIndex: disabled ? -1 : isActive ? 0 : -1,
+			tabIndex: !disabled && item.isActive ? 0 : -1,
 			disabled,
 			"aria-disabled": disabled,
-			"aria-controls": `step-panel-${stepId}`,
-			"aria-current": isActive ? ("step" as const) : undefined,
+			"aria-controls": panelDomId(instance, id),
+			"aria-current": item.isActive ? ("step" as const) : undefined,
 			"aria-posinset": item.index + 1,
-			"aria-setsize": stepper.steps.length,
-			"aria-selected": isActive,
-			onClick: (e: React.MouseEvent<HTMLButtonElement>) => {
-				runClickHandler(e, rest.onClick, handleClick);
-			},
+			"aria-setsize": item.count,
+			"aria-selected": item.isActive,
+			onClick: (e: React.MouseEvent<HTMLButtonElement>) =>
+				runClick(e, rest.onClick, () => void store.getSnapshot().goTo(id)),
 		};
-		if (render) {
-			return render(domProps);
-		}
-		return <button {...domProps}>{children}</button>;
+		return renderPrimitive("button", domProps, render, children);
 	};
 }

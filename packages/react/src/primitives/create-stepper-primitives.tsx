@@ -1,17 +1,13 @@
-import type { Step, Stepper } from "@stepperize/core";
+import type { Step, StepMap } from "@stepperize/core";
 import type React from "react";
-import { createActions } from "./actions";
 import { createContent } from "./content";
-import { createDescription } from "./description";
-import { createIndicator } from "./indicator";
+import type { StepperScope } from "./context";
 import { createItem } from "./item";
 import { createItems } from "./items";
 import { createList } from "./list";
-import { createNext } from "./next";
-import { createPrev } from "./prev";
+import { createNav } from "./nav";
 import { createRoot } from "./root";
-import { createSeparator } from "./separator";
-import { createTitle } from "./title";
+import { createSeparator, createSimple, fromStep, withStatus } from "./simple";
 import { createTrigger } from "./trigger";
 import type {
 	ActionsProps,
@@ -47,22 +43,23 @@ export type StepperPrimitives<Steps extends readonly Step[]> = {
 };
 
 export function createStepperPrimitives<Steps extends readonly Step[]>(
-	StepperContext: React.Context<Stepper<Steps> | null>,
+	map: StepMap<Steps>,
 	Provider: (props: React.PropsWithChildren<any>) => React.ReactElement,
+	scope: StepperScope<Steps>,
 ): StepperPrimitives<Steps> {
 	return {
-		Root: createRoot(StepperContext, Provider),
-		List: createList(StepperContext),
-		Items: createItems(StepperContext),
-		Item: createItem(StepperContext),
-		Trigger: createTrigger(StepperContext),
-		Title: createTitle(),
-		Description: createDescription(),
-		Indicator: createIndicator(),
-		Separator: createSeparator(),
-		Content: createContent(StepperContext),
-		Actions: createActions(),
-		Prev: createPrev(StepperContext),
-		Next: createNext(StepperContext),
+		Root: createRoot<Steps>(Provider, scope),
+		List: createList<Steps>(scope),
+		Items: createItems(map.steps, scope),
+		Item: createItem(map, scope),
+		Trigger: createTrigger<Steps>(scope),
+		Title: createSimple("title", "h4", fromStep("title"), false, scope.ItemContext),
+		Description: createSimple("description", "p", fromStep("description"), false, scope.ItemContext),
+		Indicator: createSimple("indicator", "span", withStatus, true, scope.ItemContext),
+		Separator: createSeparator(scope.OrientationContext),
+		Content: createContent<Steps>(scope),
+		Actions: createSimple("actions", "div", undefined, false, scope.ItemContext),
+		Prev: createNav<Steps>("prev", scope),
+		Next: createNav<Steps>("next", scope),
 	};
 }

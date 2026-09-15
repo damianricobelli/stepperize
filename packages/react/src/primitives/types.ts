@@ -1,9 +1,9 @@
-import type { BeforeStepChange, FlowData, Get, Step, StepChangeContext, Stepper, StepStatus } from "@stepperize/core";
+import type { Get, Step, Stepper, StepStatus } from "@stepperize/core";
 import type * as React from "react";
+import type { UseStepperOptions } from "../types";
 
+export type { ControlledStep } from "../types";
 export type { StepStatus };
-
-export type ControlledStep<Steps extends readonly Step[]> = Get.Id<Steps> | (string & {}) | null;
 
 export type RenderProp<E extends React.ElementType = "div"> = (
 	props: React.ComponentPropsWithoutRef<E>,
@@ -11,7 +11,10 @@ export type RenderProp<E extends React.ElementType = "div"> = (
 
 export type PrimitiveComponent<Props> = (props: Props) => React.ReactNode;
 
-export type PrimitiveProps<E extends React.ElementType = "div"> = Omit<React.ComponentPropsWithoutRef<E>, "children"> & {
+export type PrimitiveProps<E extends React.ElementType = "div"> = Omit<
+	React.ComponentPropsWithoutRef<E>,
+	"children"
+> & {
 	/**
 	 * Spread the received props onto your element so ARIA, data attributes, and
 	 * event handlers keep working.
@@ -20,25 +23,16 @@ export type PrimitiveProps<E extends React.ElementType = "div"> = Omit<React.Com
 	children?: React.ReactNode;
 };
 
-export type RootProps<Steps extends readonly Step[]> = Omit<React.ComponentPropsWithoutRef<"div">, "children"> & {
-	orientation?: "horizontal" | "vertical";
-	defaultStep?: Get.Id<Steps>;
-	/** Controlled current step id. Accepts raw external string values. */
-	step?: ControlledStep<Steps>;
-	onStepChange?: (step: Get.Id<Steps>, context: StepChangeContext<Steps>) => void;
-	/** Called when a controlled `step` is not a known step id. */
-	onInvalidStep?: (raw: unknown) => void;
-	defaultData?: FlowData<Steps>;
-	data?: FlowData<Steps>;
-	onDataChange?: (data: FlowData<Steps>) => void;
-	completed?: Get.Id<Steps>[];
-	onCompletedChange?: (completed: Get.Id<Steps>[]) => void;
-	linear?: boolean;
-	/** Step-change guard for this root instance. Return `false` to cancel. */
-	beforeStepChange?: BeforeStepChange<Steps>;
-	/** Content or render function receiving the current stepper. */
-	children: React.ReactNode | ((props: { stepper: Stepper<Steps> }) => React.ReactNode);
-};
+/**
+ * `Stepper.Root` accepts every `useStepper` option plus `div` props. The state
+ * options are derived from `UseStepperOptions` so the two can never drift.
+ */
+export type RootProps<Steps extends readonly Step[]> = Omit<React.ComponentPropsWithoutRef<"div">, "children"> &
+	UseStepperOptions<Steps> & {
+		orientation?: "horizontal" | "vertical";
+		/** Content or render function receiving the current stepper. */
+		children: React.ReactNode | ((props: { stepper: Stepper<Steps> }) => React.ReactNode);
+	};
 
 export type ListProps = PrimitiveProps<"ol"> & {
 	orientation?: "horizontal" | "vertical";
@@ -72,6 +66,12 @@ export type SeparatorProps = PrimitiveProps<"hr"> & {
 
 export type ContentProps<Steps extends readonly Step[]> = PrimitiveProps<"div"> & {
 	step: Get.Id<Steps>;
+	/**
+	 * Keep the panel mounted when its step is not active. It is rendered with
+	 * `hidden` and `data-state="inactive"`, so form state inside survives
+	 * navigating away and back.
+	 */
+	forceMount?: boolean;
 };
 
 export type ActionsProps = PrimitiveProps<"div">;
