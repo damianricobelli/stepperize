@@ -1,0 +1,179 @@
+---
+title: Performance
+description: Compare v7 and v8 across local state, shared subscriptions, navigation, guards, resets, validation and bundle size, with reproducible measurements.
+---
+
+# Performance
+
+These measurements compare the **v7.0.0 source at the pinned commit below** with the **v8.0.0 working-tree source snapshot**. Both versions are rebuilt with identical settings and use the same installed React and React DOM. This is a source comparison, not a comparison of two npm tarballs.
+
+## Overall benchmark result
+
+<PerformanceHighlights />
+
+The overall index includes every timing scenario below, with equal weight per scenario. It combines local state, shared subscriptions, navigation, guards, resets and schema validation. Bundle sizes and render counts are separate metrics.
+
+For each scenario, divide the v8 median by the v7 median. Take the geometric mean of those ratios, then calculate `100 × (1 − geometric mean)` to express the reduction in the time index. A negative reduction means a regression. Normalizing first prevents a long-running fixture from dominating just because its times are larger.
+
+This is a summary of this particular suite: changing its mix of scenarios changes the index. Selector scenarios compare adopting v8 selectors with v7 full subscriptions. All regressions are included; small differences can be measurement noise. The result does not establish statistical significance or predict browser latency.
+
+Geometric means are also used to summarize normalized benchmark ratios in [SPEC's methodology](https://www.spec.org/cpu2017/Docs/overview.html). These are Stepperize's own tests, not SPEC measurements.
+
+<BenchmarkSummary />
+
+Read each scenario separately, including regressions. v8 is not universally faster or smaller. A reduction in consumer renders does not imply an equal reduction in application latency. These are **Chromium measurements with production React**, orchestrated by Vitest Browser Mode. They measure fixture execution and React commits, not complete application frame times. Previous measurements used an emulated DOM; the runtimes and scheduling differ, so those percentages are not directly comparable.
+
+## What v8 optimizes
+
+- **Local updates:** the single owner receives immutable snapshots through React state. Shared consumers continue to use `useSyncExternalStore` and selectors.
+- **Controlled state:** consumers share one cached view of the Provider's render options. Committing that view preserves its identity, avoiding a second full-state render for the same values.
+- **Repeated work:** instances reuse the definition's step map, and unchanged status/completion helpers are reused between snapshots.
+- **Navigation:** callback contexts are created only when a callback exists. Status maps and abort signals are created when read. Pending guards still settle when cancelled, including guards that never resolve.
+
+These changes keep the existing public API. The tables below are measured results, including any remaining increases; they do not promise a reduction for every workload or every run. Small deltas near the sampling variation need repeated measurements before being treated as reliable wins or regressions.
+
+## Local state
+
+Mount 100 independent local instances in one React root, or make 200 data writes to one local instance. Each renders a span containing its current id or stored data. The 100-step cases show the effect of a larger definition; definitions are created once outside the timer.
+
+<PerformanceTable group="local" />
+
+## Shared subscriptions
+
+One provider supplies a driver and 20 or 100 reader components. The driver subscribes to the whole instance, exposes the latest API to the harness, and returns `null`. Its work is included in elapsed time, but its renders are excluded from the displayed reader counts.
+
+- **Full-state readers:** both versions subscribe to the entire instance and display its id. This is the control case without selectors.
+- **Id readers:** v7 uses `useStepper().id`; v8 uses `useStepperContext((state) => state.id)`. Data changes while the id stays the same. This measures the benefit of adopting selectors, not an automatic improvement for every v8 consumer.
+- **Data readers:** each displays the data being updated. v8's selected value changes on every write, so readers must render.
+- **Completion readers:** each displays a completion flag that changes on every toggle. This also checks work that selectors cannot skip.
+
+After each timed trial, the harness changes the selected value and verifies that every reader updates. A broken subscription cannot appear fast by never updating.
+
+<PerformanceTable group="subscriptions" />
+
+## Navigation
+
+Make 200 accepted transitions, returning to the initial step after every pair. The basic case alternates `next()` and `prev()`. The 100-step case alternates `goTo()` between the first and last ids. The controlled case uses a React state owner and 20 id readers. The payload case passes a distinct `{ data }` value on every move and verifies both source drafts.
+
+Every operation awaits its navigation result and one event-loop turn before starting the next. The measured time therefore includes Promise and scheduling overhead as well as the React commits.
+
+<PerformanceTable group="navigation" />
+
+## Guards and boundaries
+
+The guards return `true`, `false`, or `Promise.resolve(true)`. The async fixture introduces a microtask, with **no artificial delay or network request**. The boundary fixture calls `prev()` at the first step. Results, visited ids, pending state after settlement, and guard call counts are checked for every trial.
+
+A blocked action can still cause rendering when a version exposes a pending state while evaluating its guard. The render counts show that work as well as accepted transitions.
+
+<PerformanceTable group="guards" />
+
+## Reset recipes
+
+v7 and v8 have different reset defaults. These cases compare matching outcomes explicitly:
+
+- **Preserve data:** 100 pairs of `goTo(last)` and reset, so 200 transitions. v7 uses `reset()`; v8 uses `reset({ keepData: true, keepCompleted: true })`. Both must retain the modified draft and completion flag. Navigation out and back is timed.
+- **Full reset:** before each reset, write a dirty draft, complete the first step, and move to the last step. This setup is outside the timer. v7 composes `data.reset()`, `setComplete("step-0", false)` and `reset()` in one synchronous batch; v8 calls `reset()`. Both must restore the initial id, the initial `"seed"` draft, and empty completion state. The displayed time is the sum of 100 reset intervals, including one event-loop turn per reset. This compares application recipes with the same outcome, not identical API calls.
+
+<PerformanceTable group="reset" />
+
+## Schema validation
+
+Call `definition.validate()` 200 times against the last of 100 steps. A shared, minimal Standard Schema fixture accepts numbers and rejects strings. The harness checks every validated value or issue. This isolates step lookup and the validation adapter; it does not benchmark Zod, Valibot or a complete form. No React instance is mounted for these two cases.
+
+<PerformanceTable group="validation" />
+
+## Bundle size
+
+Both sources are bundled as minified ES2022 ESM using the same esbuild version and the automatic JSX transform. This includes the public React entry, primitives and matching core implementation. React is external. Gzip uses level 9; KiB means 1,024 bytes. It is not the size of a specific application's tree-shaken import.
+
+<PerformanceTable group="bundle" />
+
+### Smaller bundles with your own UI
+
+Import `defineStepper` from `@stepperize/react/headless` when you render your own markup or React Native components. It keeps local hooks, Provider, context selectors, controlled state, guards, cancellation, data, completion and validation. It does not return `Stepper` UI primitives.
+
+```tsx
+import { defineStepper } from "@stepperize/react/headless";
+
+const checkout = defineStepper([
+  { id: "shipping", title: "Shipping" },
+  { id: "payment", title: "Payment" },
+]);
+
+export function Checkout() {
+  const stepper = checkout.useStepper();
+  return (
+    <section aria-label="Checkout">
+      <h2>{stepper.current.title}</h2>
+      <button
+        type="button"
+        disabled={!stepper.canNext}
+        onClick={() => void stepper.next()}
+      >
+        Next
+      </button>
+    </section>
+  );
+}
+```
+
+Sharing works the same way: wrap consumers in `checkout.Provider` and read `checkout.useStepperContext(selector)`. Use the main `@stepperize/react` entry when you want `checkout.Stepper.Root`, `Trigger`, `Content` or the other accessible primitives. Define a flow once and share that definition across its consumers; calling both factories creates independent flows.
+
+<HeadlessBundleTable />
+
+This is **v8 full vs v8 headless**, not a like-for-like v7 comparison: the smaller entry excludes the UI layer. The full v7/v8 comparison remains above. Bundlers cannot generally remove individual properties returned by a factory, so importing only `defineStepper` from the main entry still includes its generated primitives. The headless entry separates that module graph without disabling state features. See [esbuild's tree-shaking documentation](https://esbuild.github.io/api/#tree-shaking).
+
+If your app also imports the full entry, its primitives remain in the app's bundle; the saving applies when the UI layer is unused. Final transfer size also depends on your bundler, compression and application code.
+
+Run `pnpm benchmark:size` for a quick check of **built public exports**, their shared chunks, SSR and a minimum 20% gzip saving for headless. It prints minified and gzip sizes without rerunning runtime timings. These built-artifact numbers can differ slightly from the source comparison above because the package build also transforms and splits modules.
+
+The source benchmark now fixes JSX to `automatic` for both versions, matching the library build. Earlier reports that relied on the temporary snapshot's implicit JSX default are not directly comparable.
+
+## Timing and correctness
+
+- React runs in production mode, without Strict Mode or React Compiler transformations. Every timed sample starts with a fresh React root and fresh component instances, except the definition-only schema fixtures.
+- Container/root creation, initial mount and final unmount are excluded from update timings. Mount scenarios time `root.render()` through the synchronous commit. Full resets exclude the per-reset dirty-state setup.
+- Data writes and completion toggles use `flushSync`, forcing a commit per write instead of batching the whole loop. Transition calls also begin inside `flushSync`, then await the result and one `MessageChannel` task. This lets guarded and controlled updates commit before the next call. It is a measurement choice, not a recommendation for application code.
+- Each version gets five warmup samples and 21 recorded samples per scenario. Version order alternates every round. Trials run sequentially in one browser test. Chromium launches with `--js-flags=--expose-gc`. Explicit garbage collection runs before each sample, outside the timer; collection can still happen inside a timed interval.
+- Times use browser `performance.now()` with cross-origin isolation enabled for higher timer precision. Each table shows the median and the interquartile range (IQR). No outliers are removed. Render counts exclude initial mounting, except in mount scenarios. Shared counts include readers only; local counts include the local consumer. If counts vary, the table shows their observed range.
+- State, DOM output, transition results, every visited step, guard calls, draft values, completion flags and validation results are checked outside the measured intervals. Failures stop the benchmark before replacing the result files. Timed navigation loops include collecting outcomes and visited ids for those assertions.
+- The raw JSON contains all individual samples, per-scenario fixture dimensions, min/max render counts, environment details and source hashes. Changing the harness or fixtures produces a new measurement; do not mix it with earlier runs.
+
+References: [React's flushSync contract and caveats](https://react.dev/reference/react-dom/flushSync), [Vitest Browser Mode](https://vitest.dev/guide/browser/), [High Resolution Time](https://www.w3.org/TR/hr-time/), [MessageChannel](https://html.spec.whatwg.org/multipage/web-messaging.html#message-channels).
+
+## Limits
+
+These tests do not isolate layout or paint costs, or measure frame rate, input latency, network transfer, mobile hardware, SSR/hydration, real-world schema complexity or guards with I/O. The async guard measures Promise handling without an external service. Forced commits and explicit event-loop turns differ from normal application batching and scheduling.
+
+Results are a dated snapshot, not a live benchmark in your browser. CPU load, JIT compilation, scheduling and garbage collection affect small timings and percentage changes. Re-run with your actual UI before drawing conclusions about application responsiveness. The timing deltas are descriptive, not statistical significance claims or CI pass/fail thresholds.
+
+## Reproduce
+
+From this repository, with the tested v8 source checkout and the pinned v7 commit available in Git:
+
+```sh
+nvm use
+pnpm install --frozen-lockfile
+pnpm test:install
+pnpm benchmark
+```
+
+The terminal report shows aligned tables for timing, render counts and gzip size. `✓ WIN` means v8 has a lower measured value, `✗ LOSS` means a higher value, and `= TIE` means equal values. The signed percentage compares v8 with v7; these labels describe the measurements, not statistical significance. Interactive terminals use green/red indicators; redirected output stays plain, and `NO_COLOR=1` disables colors. Raw JSON remains available for analysis and powers this page.
+
+The benchmark bundles one shared production React/React DOM runtime with both versions. Vitest orchestrates the browser test; browser automation actions and assertion retries are outside the timed work.
+
+The command reads v7 files from Git and v8 files from the working tree, then compiles temporary copies. It does not switch branches, alter library source, or fetch another v7 package. It uses workspace dependencies and replaces the raw JSON and the compact JSON used by this documentation page after all scenarios pass.
+
+Source hashes, the harness hash and the lockfile hash identify the inputs. A different source snapshot or environment is a new measurement, so expect numbers to change.
+
+- [Download every recorded sample and metadata](/benchmarks/v7-v8.json)
+- [Benchmark build and report script](https://github.com/damianricobelli/stepperize/blob/v8/scripts/benchmarks/compare.mjs)
+- [Measurement fixtures and correctness assertions](https://github.com/damianricobelli/stepperize/blob/v8/scripts/benchmarks/measure.mjs)
+
+## Measured environment
+
+<BenchmarkEnvironment />
+
+## Apply selectors to your flow
+
+Use [context selectors](/docs/v8/api/react/use-stepper-context) for consumers that only need a specific value. Keep subscriptions as broad as the UI requires. The [local and shared state guide](/docs/v8/guides/local-and-shared-state) shows how to choose who owns the instance.

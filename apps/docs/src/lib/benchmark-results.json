@@ -1,0 +1,611 @@
+{
+  "schemaVersion": 2,
+  "measuredAt": "2026-09-15T19:15:06.980Z",
+  "environment": {
+    "node": "v24.18.0",
+    "react": "19.3.0",
+    "reactDom": "19.3.0",
+    "browser": "Chromium 153.0.8010.12",
+    "vitest": "5.0.1",
+    "playwright": "1.63.0",
+    "runtimeBundleSha256": "25452270dc589769dec555b4507bf90ff065e1e627dd5ca8e8a5b093582e91d7",
+    "esbuild": "0.27.2",
+    "os": "darwin 25.5.0",
+    "arch": "arm64",
+    "cpu": "Apple M4 Max",
+    "mode": "production",
+    "lockfileSha256": "6b88c18483aabeaeb951567651f888397e89e8692420485f0545c098f4b56de8"
+  },
+  "harnessSha256": "cc10003aa43124878875403c557e21805c2ef55a6f99ccdc6e21fe5d219563d8",
+  "versions": {
+    "v7": {
+      "version": "7.0.0",
+      "source": "f1b5bfafa5d585de47f6c70eeeb355b76b20ff24",
+      "sourceSha256": "11b4aac450cf4e65146171e5d4490295dadf16efdfd50e38f6acf6fe95a776a2",
+      "bundleSha256": "236854a18e04e3bb1f9a2280e85306ffe805ae5ae94f02a5a0438c2004a590e2",
+      "minifiedBytes": 10198,
+      "gzipBytes": 3757
+    },
+    "v8": {
+      "version": "8.0.0",
+      "source": "working tree",
+      "sourceSha256": "b74b554221dd492f7c57f4b16f08b1feadbf862627f7ef0c6c1ff4e8283a9f3f",
+      "bundleSha256": "6a0adb32413cb02f7d6c9b34b9bfac8c960d37a3c5c3989056e4a8b0d5da66f4",
+      "minifiedBytes": 14011,
+      "gzipBytes": 5621
+    }
+  },
+  "headless": {
+    "minifiedBytes": 8649,
+    "gzipBytes": 3709,
+    "bundleSha256": "b12e9aa54cff63e6c52ab9c615ea8b527b4c1d016c01b2fb24242aa4041c0da8"
+  },
+  "configuration": {
+    "warmups": 5,
+    "repetitions": 21,
+    "scenarioCount": 21,
+    "timer": "performance.now",
+    "scheduler": "MessageChannel",
+    "explicitGc": true,
+    "crossOriginIsolated": true
+  },
+  "scenarios": [
+    {
+      "steps": 10,
+      "readers": 0,
+      "mounts": 100,
+      "operations": 200,
+      "id": "mount",
+      "group": "local",
+      "label": "Mount 100 local flows",
+      "kind": "mount",
+      "v7": {
+        "medianMs": 0.3000001907348633,
+        "q1Ms": 0.27500009536743164,
+        "q3Ms": 0.4550004005432129,
+        "renders": 100,
+        "minRenders": 100,
+        "maxRenders": 100
+      },
+      "v8": {
+        "medianMs": 0.28999996185302734,
+        "q1Ms": 0.25999975204467773,
+        "q3Ms": 0.3249998092651367,
+        "renders": 100,
+        "minRenders": 100,
+        "maxRenders": 100
+      }
+    },
+    {
+      "steps": 100,
+      "readers": 0,
+      "mounts": 100,
+      "operations": 200,
+      "id": "mount-large",
+      "group": "local",
+      "label": "Mount 100 local flows · 100 steps",
+      "kind": "mount",
+      "v7": {
+        "medianMs": 0.47500038146972656,
+        "q1Ms": 0.36499977111816406,
+        "q3Ms": 0.5250000953674316,
+        "renders": 100,
+        "minRenders": 100,
+        "maxRenders": 100
+      },
+      "v8": {
+        "medianMs": 0.28999996185302734,
+        "q1Ms": 0.2200002670288086,
+        "q3Ms": 0.2999997138977051,
+        "renders": 100,
+        "minRenders": 100,
+        "maxRenders": 100
+      }
+    },
+    {
+      "steps": 10,
+      "readers": 0,
+      "mounts": 1,
+      "operations": 200,
+      "id": "local-data",
+      "group": "local",
+      "label": "200 local data writes",
+      "kind": "data",
+      "v7": {
+        "medianMs": 0.5400004386901855,
+        "q1Ms": 0.47499990463256836,
+        "q3Ms": 0.6150002479553223,
+        "renders": 200,
+        "minRenders": 200,
+        "maxRenders": 200
+      },
+      "v8": {
+        "medianMs": 0.630000114440918,
+        "q1Ms": 0.5600004196166992,
+        "q3Ms": 0.755000114440918,
+        "renders": 200,
+        "minRenders": 200,
+        "maxRenders": 200
+      }
+    },
+    {
+      "steps": 100,
+      "readers": 0,
+      "mounts": 1,
+      "operations": 200,
+      "id": "local-data-large",
+      "group": "local",
+      "label": "200 local data writes · 100 steps",
+      "kind": "data",
+      "v7": {
+        "medianMs": 0.5800004005432129,
+        "q1Ms": 0.49499988555908203,
+        "q3Ms": 0.6399998664855957,
+        "renders": 200,
+        "minRenders": 200,
+        "maxRenders": 200
+      },
+      "v8": {
+        "medianMs": 0.5399999618530273,
+        "q1Ms": 0.4650001525878906,
+        "q3Ms": 0.6649999618530273,
+        "renders": 200,
+        "minRenders": 200,
+        "maxRenders": 200
+      }
+    },
+    {
+      "steps": 10,
+      "readers": 20,
+      "mounts": 1,
+      "operations": 200,
+      "id": "shared-full",
+      "group": "subscriptions",
+      "label": "200 data writes · 20 full-state readers",
+      "kind": "data",
+      "v7": {
+        "medianMs": 4.474999904632568,
+        "q1Ms": 4.300000190734863,
+        "q3Ms": 4.880000114440918,
+        "renders": 4000,
+        "minRenders": 4000,
+        "maxRenders": 4000
+      },
+      "v8": {
+        "medianMs": 2.5999999046325684,
+        "q1Ms": 2.3849997520446777,
+        "q3Ms": 2.700000286102295,
+        "renders": 4000,
+        "minRenders": 4000,
+        "maxRenders": 4000
+      }
+    },
+    {
+      "steps": 10,
+      "readers": 20,
+      "mounts": 1,
+      "operations": 200,
+      "id": "shared-id",
+      "group": "subscriptions",
+      "label": "200 data writes · 20 id readers",
+      "kind": "data",
+      "select": "id",
+      "v7": {
+        "medianMs": 4.850000381469727,
+        "q1Ms": 4.559999942779541,
+        "q3Ms": 4.960000038146973,
+        "renders": 4000,
+        "minRenders": 4000,
+        "maxRenders": 4000
+      },
+      "v8": {
+        "medianMs": 0.619999885559082,
+        "q1Ms": 0.5500001907348633,
+        "q3Ms": 0.625,
+        "renders": 0,
+        "minRenders": 0,
+        "maxRenders": 0
+      }
+    },
+    {
+      "steps": 10,
+      "readers": 100,
+      "mounts": 1,
+      "operations": 200,
+      "id": "shared-id-large",
+      "group": "subscriptions",
+      "label": "200 data writes · 100 id readers",
+      "kind": "data",
+      "select": "id",
+      "v7": {
+        "medianMs": 15.199999809265137,
+        "q1Ms": 14.264999866485596,
+        "q3Ms": 17.68000030517578,
+        "renders": 20000,
+        "minRenders": 20000,
+        "maxRenders": 20000
+      },
+      "v8": {
+        "medianMs": 1.4549999237060547,
+        "q1Ms": 1.255000114440918,
+        "q3Ms": 1.5,
+        "renders": 0,
+        "minRenders": 0,
+        "maxRenders": 0
+      }
+    },
+    {
+      "steps": 10,
+      "readers": 20,
+      "mounts": 1,
+      "operations": 200,
+      "id": "shared-data",
+      "group": "subscriptions",
+      "label": "200 data writes · 20 data readers",
+      "kind": "data",
+      "select": "data",
+      "v7": {
+        "medianMs": 4.894999980926514,
+        "q1Ms": 4.65500020980835,
+        "q3Ms": 5.154999732971191,
+        "renders": 4000,
+        "minRenders": 4000,
+        "maxRenders": 4000
+      },
+      "v8": {
+        "medianMs": 3.075000286102295,
+        "q1Ms": 2.9950003623962402,
+        "q3Ms": 3.184999942779541,
+        "renders": 4000,
+        "minRenders": 4000,
+        "maxRenders": 4000
+      }
+    },
+    {
+      "steps": 10,
+      "readers": 20,
+      "mounts": 1,
+      "operations": 200,
+      "id": "shared-completion",
+      "group": "subscriptions",
+      "label": "200 completion toggles · 20 completion readers",
+      "kind": "completion",
+      "select": "completion",
+      "v7": {
+        "medianMs": 5.065000057220459,
+        "q1Ms": 4.744999885559082,
+        "q3Ms": 5.240000247955322,
+        "renders": 4000,
+        "minRenders": 4000,
+        "maxRenders": 4000
+      },
+      "v8": {
+        "medianMs": 3.0500001907348633,
+        "q1Ms": 2.994999885559082,
+        "q3Ms": 3.1600003242492676,
+        "renders": 4000,
+        "minRenders": 4000,
+        "maxRenders": 4000
+      }
+    },
+    {
+      "steps": 10,
+      "readers": 0,
+      "mounts": 1,
+      "operations": 200,
+      "id": "navigation",
+      "group": "navigation",
+      "label": "200 next / prev moves",
+      "kind": "navigation",
+      "v7": {
+        "medianMs": 2.6550002098083496,
+        "q1Ms": 2.5899996757507324,
+        "q3Ms": 2.869999885559082,
+        "renders": 200,
+        "minRenders": 200,
+        "maxRenders": 200
+      },
+      "v8": {
+        "medianMs": 2.419999599456787,
+        "q1Ms": 2.315000057220459,
+        "q3Ms": 2.5949997901916504,
+        "renders": 200,
+        "minRenders": 200,
+        "maxRenders": 200
+      }
+    },
+    {
+      "steps": 100,
+      "readers": 0,
+      "mounts": 1,
+      "operations": 200,
+      "id": "navigation-large",
+      "group": "navigation",
+      "label": "200 first / last jumps · 100 steps",
+      "kind": "jump",
+      "v7": {
+        "medianMs": 4.730000019073486,
+        "q1Ms": 4.519999980926514,
+        "q3Ms": 4.849999904632568,
+        "renders": 200,
+        "minRenders": 200,
+        "maxRenders": 200
+      },
+      "v8": {
+        "medianMs": 2.429999828338623,
+        "q1Ms": 2.3400001525878906,
+        "q3Ms": 2.5450000762939453,
+        "renders": 200,
+        "minRenders": 200,
+        "maxRenders": 200
+      }
+    },
+    {
+      "steps": 10,
+      "readers": 20,
+      "mounts": 1,
+      "operations": 200,
+      "id": "controlled",
+      "group": "navigation",
+      "label": "200 controlled moves · 20 id readers",
+      "kind": "navigation",
+      "select": "id",
+      "controlled": true,
+      "v7": {
+        "medianMs": 7.919999599456787,
+        "q1Ms": 7.664999961853027,
+        "q3Ms": 8.400000095367432,
+        "renders": 4000,
+        "minRenders": 4000,
+        "maxRenders": 4000
+      },
+      "v8": {
+        "medianMs": 6.255000114440918,
+        "q1Ms": 5.974999904632568,
+        "q3Ms": 6.625,
+        "renders": 4000,
+        "minRenders": 4000,
+        "maxRenders": 4000
+      }
+    },
+    {
+      "steps": 10,
+      "readers": 0,
+      "mounts": 1,
+      "operations": 200,
+      "id": "payload",
+      "group": "navigation",
+      "label": "200 next / prev moves with data",
+      "kind": "payload",
+      "v7": {
+        "medianMs": 2.5799999237060547,
+        "q1Ms": 2.5300002098083496,
+        "q3Ms": 2.679999828338623,
+        "renders": 200,
+        "minRenders": 200,
+        "maxRenders": 200
+      },
+      "v8": {
+        "medianMs": 2.4749999046325684,
+        "q1Ms": 2.390000343322754,
+        "q3Ms": 2.559999942779541,
+        "renders": 200,
+        "minRenders": 200,
+        "maxRenders": 200
+      }
+    },
+    {
+      "steps": 10,
+      "readers": 0,
+      "mounts": 1,
+      "operations": 200,
+      "id": "guard-allow",
+      "group": "guards",
+      "label": "200 moves · accepting sync guard",
+      "kind": "navigation",
+      "guard": "allow",
+      "v7": {
+        "medianMs": 3.9600000381469727,
+        "q1Ms": 3.8600001335144043,
+        "q3Ms": 4.059999942779541,
+        "renders": 400,
+        "minRenders": 400,
+        "maxRenders": 400
+      },
+      "v8": {
+        "medianMs": 2.429999828338623,
+        "q1Ms": 2.2950000762939453,
+        "q3Ms": 2.5349998474121094,
+        "renders": 200,
+        "minRenders": 200,
+        "maxRenders": 200
+      }
+    },
+    {
+      "steps": 10,
+      "readers": 0,
+      "mounts": 1,
+      "operations": 200,
+      "id": "guard-block",
+      "group": "guards",
+      "label": "200 attempts · blocking sync guard",
+      "kind": "blocked",
+      "guard": "block",
+      "v7": {
+        "medianMs": 3.7049999237060547,
+        "q1Ms": 3.6500000953674316,
+        "q3Ms": 3.8600001335144043,
+        "renders": 400,
+        "minRenders": 400,
+        "maxRenders": 400
+      },
+      "v8": {
+        "medianMs": 1.2699999809265137,
+        "q1Ms": 1.2300000190734863,
+        "q3Ms": 1.3350000381469727,
+        "renders": 0,
+        "minRenders": 0,
+        "maxRenders": 0
+      }
+    },
+    {
+      "steps": 10,
+      "readers": 0,
+      "mounts": 1,
+      "operations": 200,
+      "id": "guard-async",
+      "group": "guards",
+      "label": "200 moves · accepting microtask guard",
+      "kind": "navigation",
+      "guard": "async",
+      "v7": {
+        "medianMs": 3.7649998664855957,
+        "q1Ms": 3.6349997520446777,
+        "q3Ms": 3.890000343322754,
+        "renders": 400,
+        "minRenders": 400,
+        "maxRenders": 400
+      },
+      "v8": {
+        "medianMs": 3.825000286102295,
+        "q1Ms": 3.5850000381469727,
+        "q3Ms": 3.9700002670288086,
+        "renders": 400,
+        "minRenders": 400,
+        "maxRenders": 400
+      }
+    },
+    {
+      "steps": 10,
+      "readers": 0,
+      "mounts": 1,
+      "operations": 200,
+      "id": "boundary",
+      "group": "guards",
+      "label": "200 prev attempts at the first step",
+      "kind": "boundary",
+      "v7": {
+        "medianMs": 1.065000057220459,
+        "q1Ms": 1.0500001907348633,
+        "q3Ms": 1.075000286102295,
+        "renders": 0,
+        "minRenders": 0,
+        "maxRenders": 0
+      },
+      "v8": {
+        "medianMs": 1.109999656677246,
+        "q1Ms": 1.0850000381469727,
+        "q3Ms": 1.1750001907348633,
+        "renders": 0,
+        "minRenders": 0,
+        "maxRenders": 0
+      }
+    },
+    {
+      "steps": 10,
+      "readers": 0,
+      "mounts": 1,
+      "operations": 200,
+      "id": "reset-preserve",
+      "group": "reset",
+      "label": "100 goTo / reset pairs · preserve data",
+      "kind": "reset-preserve",
+      "v7": {
+        "medianMs": 2.489999771118164,
+        "q1Ms": 2.4099998474121094,
+        "q3Ms": 2.630000114440918,
+        "renders": 200,
+        "minRenders": 200,
+        "maxRenders": 200
+      },
+      "v8": {
+        "medianMs": 2.3949999809265137,
+        "q1Ms": 2.3499999046325684,
+        "q3Ms": 2.494999885559082,
+        "renders": 200,
+        "minRenders": 200,
+        "maxRenders": 200
+      }
+    },
+    {
+      "steps": 10,
+      "readers": 0,
+      "mounts": 1,
+      "operations": 100,
+      "id": "reset-full",
+      "group": "reset",
+      "label": "100 full resets · setup excluded",
+      "kind": "reset-full",
+      "v7": {
+        "medianMs": 1.2350006103515625,
+        "q1Ms": 1.1600003242492676,
+        "q3Ms": 1.284996509552002,
+        "renders": 100,
+        "minRenders": 100,
+        "maxRenders": 100
+      },
+      "v8": {
+        "medianMs": 1.249997615814209,
+        "q1Ms": 1.2150006294250488,
+        "q3Ms": 1.2749991416931152,
+        "renders": 100,
+        "minRenders": 100,
+        "maxRenders": 100
+      }
+    },
+    {
+      "steps": 100,
+      "readers": 0,
+      "mounts": 1,
+      "operations": 200,
+      "id": "schema-valid",
+      "group": "validation",
+      "label": "200 valid schema checks · last of 100 steps",
+      "kind": "validation",
+      "valid": true,
+      "v7": {
+        "medianMs": 0.19500017166137695,
+        "q1Ms": 0.19000005722045898,
+        "q3Ms": 0.21000003814697266,
+        "renders": 0,
+        "minRenders": 0,
+        "maxRenders": 0
+      },
+      "v8": {
+        "medianMs": 0.029999732971191406,
+        "q1Ms": 0.02500009536743164,
+        "q3Ms": 0.03000020980834961,
+        "renders": 0,
+        "minRenders": 0,
+        "maxRenders": 0
+      }
+    },
+    {
+      "steps": 100,
+      "readers": 0,
+      "mounts": 1,
+      "operations": 200,
+      "id": "schema-invalid",
+      "group": "validation",
+      "label": "200 invalid schema checks · last of 100 steps",
+      "kind": "validation",
+      "valid": false,
+      "v7": {
+        "medianMs": 0.18000030517578125,
+        "q1Ms": 0.17500019073486328,
+        "q3Ms": 0.19000005722045898,
+        "renders": 0,
+        "minRenders": 0,
+        "maxRenders": 0
+      },
+      "v8": {
+        "medianMs": 0.02500009536743164,
+        "q1Ms": 0.02500009536743164,
+        "q3Ms": 0.029999732971191406,
+        "renders": 0,
+        "minRenders": 0,
+        "maxRenders": 0
+      }
+    }
+  ]
+}
