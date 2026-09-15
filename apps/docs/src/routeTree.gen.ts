@@ -9,42 +9,27 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
-import { Route as LegacyRouteImport } from './routes/legacy'
-import { Route as DocsRouteImport } from './routes/docs'
-import { Route as ChangelogRouteImport } from './routes/changelog'
-import { Route as BlocksRouteImport } from './routes/blocks'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as DocsIndexRouteImport } from './routes/docs/index'
-import { Route as ChangelogIndexRouteImport } from './routes/changelog/index'
-import { Route as BlocksIndexRouteImport } from './routes/blocks/index'
-import { Route as DocsReactRouteImport } from './routes/docs/react'
-import { Route as DocsSplatRouteImport } from './routes/docs/$'
-import { Route as ChangelogSplatRouteImport } from './routes/changelog/$'
-import { Route as BlocksBlockIdRouteImport } from './routes/blocks/$blockId'
-import { Route as ApiSearchRouteImport } from './routes/api/search'
+import { Route as BlocksRouteImport } from './routes/blocks'
+import { Route as ChangelogRouteImport } from './routes/changelog'
+import { Route as DocsRouteImport } from './routes/docs'
+import { Route as LegacyRouteImport } from './routes/legacy'
+import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as ApiOgRouteImport } from './routes/api/og'
+import { Route as ApiSearchRouteImport } from './routes/api/search'
+import { Route as BlocksIndexRouteImport } from './routes/blocks/index'
+import { Route as BlocksBlockIdRouteImport } from './routes/blocks/$blockId'
+import { Route as ChangelogIndexRouteImport } from './routes/changelog/index'
+import { Route as ChangelogSplatRouteImport } from './routes/changelog/$'
+import { Route as DocsIndexRouteImport } from './routes/docs/index'
+import { Route as DocsSplatRouteImport } from './routes/docs/$'
+import { Route as DocsReactRouteImport } from './routes/docs/react'
 import { Route as DocsReactIndexRouteImport } from './routes/docs/react/index'
 import { Route as DocsReactSplatRouteImport } from './routes/docs/react/$'
 
-const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
-  id: '/sitemap.xml',
-  path: '/sitemap.xml',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LegacyRoute = LegacyRouteImport.update({
-  id: '/legacy',
-  path: '/legacy',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DocsRoute = DocsRouteImport.update({
-  id: '/docs',
-  path: '/docs',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ChangelogRoute = ChangelogRouteImport.update({
-  id: '/changelog',
-  path: '/changelog',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const BlocksRoute = BlocksRouteImport.update({
@@ -52,29 +37,59 @@ const BlocksRoute = BlocksRouteImport.update({
   path: '/blocks',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const ChangelogRoute = ChangelogRouteImport.update({
+  id: '/changelog',
+  path: '/changelog',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DocsIndexRoute = DocsIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => DocsRoute,
+const DocsRoute = DocsRouteImport.update({
+  id: '/docs',
+  path: '/docs',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const ChangelogIndexRoute = ChangelogIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => ChangelogRoute,
+const LegacyRoute = LegacyRouteImport.update({
+  id: '/legacy',
+  path: '/legacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
+  id: '/sitemap.xml',
+  path: '/sitemap.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiOgRoute = ApiOgRouteImport.update({
+  id: '/api/og',
+  path: '/api/og',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSearchRoute = ApiSearchRouteImport.update({
+  id: '/api/search',
+  path: '/api/search',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const BlocksIndexRoute = BlocksIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => BlocksRoute,
 } as any)
-const DocsReactRoute = DocsReactRouteImport.update({
-  id: '/react',
-  path: '/react',
+const BlocksBlockIdRoute = BlocksBlockIdRouteImport.update({
+  id: '/$blockId',
+  path: '/$blockId',
+  getParentRoute: () => BlocksRoute,
+} as any)
+const ChangelogIndexRoute = ChangelogIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ChangelogRoute,
+} as any)
+const ChangelogSplatRoute = ChangelogSplatRouteImport.update({
+  id: '/$',
+  path: '/$',
+  getParentRoute: () => ChangelogRoute,
+} as any)
+const DocsIndexRoute = DocsIndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => DocsRoute,
 } as any)
 const DocsSplatRoute = DocsSplatRouteImport.update({
@@ -82,25 +97,10 @@ const DocsSplatRoute = DocsSplatRouteImport.update({
   path: '/$',
   getParentRoute: () => DocsRoute,
 } as any)
-const ChangelogSplatRoute = ChangelogSplatRouteImport.update({
-  id: '/$',
-  path: '/$',
-  getParentRoute: () => ChangelogRoute,
-} as any)
-const BlocksBlockIdRoute = BlocksBlockIdRouteImport.update({
-  id: '/$blockId',
-  path: '/$blockId',
-  getParentRoute: () => BlocksRoute,
-} as any)
-const ApiSearchRoute = ApiSearchRouteImport.update({
-  id: '/api/search',
-  path: '/api/search',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiOgRoute = ApiOgRouteImport.update({
-  id: '/api/og',
-  path: '/api/og',
-  getParentRoute: () => rootRouteImport,
+const DocsReactRoute = DocsReactRouteImport.update({
+  id: '/react',
+  path: '/react',
+  getParentRoute: () => DocsRoute,
 } as any)
 const DocsReactIndexRoute = DocsReactIndexRouteImport.update({
   id: '/',
@@ -236,32 +236,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/sitemap.xml': {
-      id: '/sitemap.xml'
-      path: '/sitemap.xml'
-      fullPath: '/sitemap.xml'
-      preLoaderRoute: typeof SitemapDotxmlRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/legacy': {
-      id: '/legacy'
-      path: '/legacy'
-      fullPath: '/legacy'
-      preLoaderRoute: typeof LegacyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/docs': {
-      id: '/docs'
-      path: '/docs'
-      fullPath: '/docs'
-      preLoaderRoute: typeof DocsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/changelog': {
-      id: '/changelog'
-      path: '/changelog'
-      fullPath: '/changelog'
-      preLoaderRoute: typeof ChangelogRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/blocks': {
@@ -271,26 +250,47 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BlocksRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/changelog': {
+      id: '/changelog'
+      path: '/changelog'
+      fullPath: '/changelog'
+      preLoaderRoute: typeof ChangelogRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/docs/': {
-      id: '/docs/'
-      path: '/'
-      fullPath: '/docs/'
-      preLoaderRoute: typeof DocsIndexRouteImport
-      parentRoute: typeof DocsRoute
+    '/docs': {
+      id: '/docs'
+      path: '/docs'
+      fullPath: '/docs'
+      preLoaderRoute: typeof DocsRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/changelog/': {
-      id: '/changelog/'
-      path: '/'
-      fullPath: '/changelog/'
-      preLoaderRoute: typeof ChangelogIndexRouteImport
-      parentRoute: typeof ChangelogRoute
+    '/legacy': {
+      id: '/legacy'
+      path: '/legacy'
+      fullPath: '/legacy'
+      preLoaderRoute: typeof LegacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sitemap.xml': {
+      id: '/sitemap.xml'
+      path: '/sitemap.xml'
+      fullPath: '/sitemap.xml'
+      preLoaderRoute: typeof SitemapDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/og': {
+      id: '/api/og'
+      path: '/api/og'
+      fullPath: '/api/og'
+      preLoaderRoute: typeof ApiOgRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/search': {
+      id: '/api/search'
+      path: '/api/search'
+      fullPath: '/api/search'
+      preLoaderRoute: typeof ApiSearchRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/blocks/': {
       id: '/blocks/'
@@ -299,11 +299,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BlocksIndexRouteImport
       parentRoute: typeof BlocksRoute
     }
-    '/docs/react': {
-      id: '/docs/react'
-      path: '/react'
-      fullPath: '/docs/react'
-      preLoaderRoute: typeof DocsReactRouteImport
+    '/blocks/$blockId': {
+      id: '/blocks/$blockId'
+      path: '/$blockId'
+      fullPath: '/blocks/$blockId'
+      preLoaderRoute: typeof BlocksBlockIdRouteImport
+      parentRoute: typeof BlocksRoute
+    }
+    '/changelog/': {
+      id: '/changelog/'
+      path: '/'
+      fullPath: '/changelog/'
+      preLoaderRoute: typeof ChangelogIndexRouteImport
+      parentRoute: typeof ChangelogRoute
+    }
+    '/changelog/$': {
+      id: '/changelog/$'
+      path: '/$'
+      fullPath: '/changelog/$'
+      preLoaderRoute: typeof ChangelogSplatRouteImport
+      parentRoute: typeof ChangelogRoute
+    }
+    '/docs/': {
+      id: '/docs/'
+      path: '/'
+      fullPath: '/docs/'
+      preLoaderRoute: typeof DocsIndexRouteImport
       parentRoute: typeof DocsRoute
     }
     '/docs/$': {
@@ -313,33 +334,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DocsSplatRouteImport
       parentRoute: typeof DocsRoute
     }
-    '/changelog/$': {
-      id: '/changelog/$'
-      path: '/$'
-      fullPath: '/changelog/$'
-      preLoaderRoute: typeof ChangelogSplatRouteImport
-      parentRoute: typeof ChangelogRoute
-    }
-    '/blocks/$blockId': {
-      id: '/blocks/$blockId'
-      path: '/$blockId'
-      fullPath: '/blocks/$blockId'
-      preLoaderRoute: typeof BlocksBlockIdRouteImport
-      parentRoute: typeof BlocksRoute
-    }
-    '/api/search': {
-      id: '/api/search'
-      path: '/api/search'
-      fullPath: '/api/search'
-      preLoaderRoute: typeof ApiSearchRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/og': {
-      id: '/api/og'
-      path: '/api/og'
-      fullPath: '/api/og'
-      preLoaderRoute: typeof ApiOgRouteImport
-      parentRoute: typeof rootRouteImport
+    '/docs/react': {
+      id: '/docs/react'
+      path: '/react'
+      fullPath: '/docs/react'
+      preLoaderRoute: typeof DocsReactRouteImport
+      parentRoute: typeof DocsRoute
     }
     '/docs/react/': {
       id: '/docs/react/'

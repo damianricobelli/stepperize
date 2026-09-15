@@ -6,7 +6,7 @@
   "description": "Segmented control where each step is a selectable tab.",
   "author": "Stepperize",
   "dependencies": [
-    "@stepperize/react"
+    "@stepperize/react@^8.0.0"
   ],
   "registryDependencies": [],
   "categories": [

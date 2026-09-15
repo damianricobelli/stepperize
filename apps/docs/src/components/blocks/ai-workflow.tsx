@@ -152,8 +152,7 @@ export function AiWorkflowBlock() {
 											className="flex-1"
 											onClick={() => {
 												setAccepted(false);
-												stepper.data.reset();
-												stepper.reset();
+												void stepper.reset();
 											}}
 										>
 											<RefreshCw /> Start over

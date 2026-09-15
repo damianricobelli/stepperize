@@ -8,7 +8,7 @@ const tree = defineStepper([
 	{ id: "result", title: "Recommendation" },
 ] as const);
 
-const { Stepper, useStepper } = tree;
+const { Stepper, useStepperContext } = tree;
 
 type Use = "personal" | "business";
 type Answer = "free" | "paid" | "small" | "large";
@@ -37,14 +37,17 @@ const PLANS: Record<string, { name: string; blurb: string }> = {
  */
 export function DecisionTreeBlock() {
 	return (
-		<Stepper.Root className="w-full max-w-sm rounded-xl border bg-background p-6 shadow-sm">
+		<Stepper.Root
+			linear
+			className="w-full max-w-sm rounded-xl border bg-background p-6 shadow-sm"
+		>
 			{() => <Inner />}
 		</Stepper.Root>
 	);
 }
 
 function Inner() {
-	const stepper = useStepper();
+	const stepper = useStepperContext();
 	const use = stepper.data.get("use") as Use | undefined;
 	const answer = stepper.data.get("result") as Answer | undefined;
 
@@ -56,7 +59,7 @@ function Inner() {
 		next: Parameters<typeof stepper.goTo>[0],
 	) => {
 		stepper.data.set(key, value);
-		stepper.goTo(next);
+		stepper.goTo(next, { bypassPolicy: true, complete: true });
 	};
 
 	return (
@@ -66,7 +69,7 @@ function Inner() {
 			</div>
 
 			<div className="min-h-44">
-				<Stepper.Content step="use" className="space-y-2">
+				<Stepper.Content forceMount step="use" className="space-y-2">
 					<p className="text-sm text-muted-foreground">
 						What are you building?
 					</p>

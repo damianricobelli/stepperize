@@ -48,13 +48,14 @@ namespace StandardSchemaV1 {
 	export type InferOutput<Schema extends StandardSchemaV1> = NonNullable<Schema["~standard"]["types"]>["output"];
 }
 
-type SchemaOf<Steps extends readonly Step[], Id extends Get.Id<Steps>> = Get.StepById<Steps, Id> extends {
-	schema: infer S;
-}
-	? S extends StandardSchemaV1
-		? S
-		: never
-	: never;
+type SchemaOf<Steps extends readonly Step[], Id extends Get.Id<Steps>> =
+	Get.StepById<Steps, Id> extends {
+		schema: infer S;
+	}
+		? S extends StandardSchemaV1
+			? S
+			: never
+		: never;
 
 /** Input (draft) type for a step's flow data, or `unknown` when the step has no schema. */
 type InputOf<Steps extends readonly Step[], Id extends Get.Id<Steps>> = [SchemaOf<Steps, Id>] extends [never]
@@ -111,6 +112,8 @@ type StepChangeContextBase<Steps extends readonly Step[], FromId extends Get.Id<
 	data: FlowData<Steps>;
 	validate: StepChangeValidator<Steps, FromId>;
 	statuses: Record<Get.Id<Steps>, StepStatus>;
+	/** Aborted when this transition is superseded or its owner unmounts. */
+	signal: AbortSignal;
 };
 
 /**
@@ -144,13 +147,21 @@ type BeforeStepChange<Steps extends readonly Step[] = readonly Step[]> = (
  */
 type NavigationPayload = {
 	data?: unknown;
+	/** Mark the source step complete only if this transition is accepted. */
+	complete?: boolean;
 };
 
-/**
- * Navigation methods resolve to `false` when the stepper is already at an edge
- * or a guard cancelled the change.
- */
-type NavigationResult = boolean;
+/** Expected navigation outcomes. Exceptions from user callbacks still reject the promise. */
+type NavigationFailureReason = "guard" | "policy" | "pending" | "boundary" | "same-step" | "invalid-step" | "cancelled";
+type NavigationResult<Id extends string = string> =
+	| { accepted: true; from: Id; to: Id }
+	| { accepted: false; reason: NavigationFailureReason };
+
+/** A deliberate jump may bypass linear policy, but never the guard. */
+type GoToOptions = NavigationPayload & { bypassPolicy?: boolean };
+
+/** Restore mount-time defaults. Preserve selected pieces explicitly. */
+type ResetOptions = { keepData?: boolean; keepCompleted?: boolean };
 
 type ValidationResult<T = unknown> =
 	| { success: true; data: T }
@@ -185,6 +196,11 @@ type StepperData<Steps extends readonly Step[] = readonly Step[]> = {
 		(value: unknown): void;
 		<Id extends Get.Id<Steps>>(id: Id, value: InputOf<Steps, Id>): void;
 	};
+	/** Compose an update against the latest value, including preceding writes in the same event. */
+	update: <Id extends Get.Id<Steps>>(
+		id: Id,
+		updater: (previous: InputOf<Steps, Id> | undefined) => InputOf<Steps, Id>,
+	) => void;
 	all: () => FlowData<Steps>;
 	clear: (id?: Get.Id<Steps>) => void;
 	reset: () => void;
@@ -200,8 +216,8 @@ type StepMap<Steps extends readonly Step[] = readonly Step[]> = {
 	ids: Get.Id<Steps>[];
 	get: <Id extends Get.Id<Steps>>(id: Id) => Get.StepById<Steps, Id> | undefined;
 	at: <Index extends number>(index: Index) => Steps[Index] | undefined;
-	/** Get the index for a step id, or `-1` when missing. */
-	indexOf: <Id extends Get.Id<Steps>>(id: Id) => number;
+	/** Get the index for a step id (or any string), or `-1` when missing. */
+	indexOf: (id: Get.Id<Steps> | (string & {})) => number;
 	/** Check whether an arbitrary string is one of the step ids. */
 	has: <Id extends string>(id: Id) => boolean;
 	first: () => Steps[number] | undefined;
@@ -241,19 +257,18 @@ type Stepper<Steps extends readonly Step[] = readonly Step[]> = {
 	 * current step. Steps without a schema always succeed with the stored value.
 	 */
 	validate: <Id extends Get.Id<Steps>>(id?: Id) => Promise<ValidationResult<OutputOf<Steps, Id>>>;
-	/**
-	 * Check whether `goTo(id)` is allowed by the navigation policy and reflected
-	 * by trigger primitives. Imperative `goTo` is not gated by this and always
-	 * proceeds (subject to the guard), which enables branching flows.
-	 */
+	/** Synchronous eligibility under the navigation policy. Does not execute async guards. */
 	canGoTo: <Id extends Get.Id<Steps>>(id: Id) => boolean;
 	is: <Id extends Get.Id<Steps>>(id: Id) => boolean;
 	match: StepMatcher<Steps>;
-	next: (payload?: NavigationPayload) => Promise<NavigationResult>;
-	prev: (payload?: NavigationPayload) => Promise<NavigationResult>;
-	/** Move to a specific step id. Bypasses the navigation policy. Resolves to whether the step changed. */
-	goTo: (id: Get.Id<Steps>, payload?: NavigationPayload) => Promise<NavigationResult>;
-	reset: (payload?: NavigationPayload) => Promise<NavigationResult>;
+	next: (payload?: NavigationPayload) => Promise<NavigationResult<Get.Id<Steps>>>;
+	prev: (payload?: NavigationPayload) => Promise<NavigationResult<Get.Id<Steps>>>;
+	/** Move to a specific step, respecting linear policy unless bypassPolicy is explicit. */
+	goTo: (id: Get.Id<Steps>, options?: GoToOptions) => Promise<NavigationResult<Get.Id<Steps>>>;
+	/**
+	 * Restore the initial step, data and completion. keepData/keepCompleted preserve selected values.
+	 */
+	reset: (options?: ResetOptions) => Promise<NavigationResult<Get.Id<Steps>>>;
 };
 
 namespace Get {
@@ -261,9 +276,12 @@ namespace Get {
 
 	export type StepById<Steps extends readonly Step[], Id extends Get.Id<Steps>> = Extract<Steps[number], { id: Id }>;
 
-	/** Exhaustive handler map keyed by step id. */
+	/**
+	 * Exhaustive handler map keyed by step id. Each handler also receives that
+	 * step's flow data, typed as the step's schema input.
+	 */
 	export type Match<Steps extends readonly Step[], Result> = {
-		[Id in Get.Id<Steps>]: (step: Get.StepById<Steps, Id>) => Result;
+		[Id in Get.Id<Steps>]: (step: Get.StepById<Steps, Id>, data: InputOf<Steps, Id> | undefined) => Result;
 	};
 }
 
@@ -271,11 +289,14 @@ export type {
 	BeforeStepChange,
 	FlowData,
 	Get,
+	GoToOptions,
 	InputOf,
 	MaybePromise,
+	NavigationFailureReason,
 	NavigationPayload,
 	NavigationResult,
 	OutputOf,
+	ResetOptions,
 	StandardSchemaV1,
 	Step,
 	StepChangeContext,

@@ -6,7 +6,7 @@
   "description": "Build, test, deploy, verify pipeline status with typed stage metadata.",
   "author": "Stepperize",
   "dependencies": [
-    "@stepperize/react",
+    "@stepperize/react@^8.0.0",
     "lucide-react"
   ],
   "registryDependencies": [],

@@ -3,9 +3,12 @@ import {
 	createRootRoute,
 	HeadContent,
 	Scripts,
+	useLocation,
 } from "@tanstack/react-router";
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
 import { RootProvider } from "fumadocs-ui/provider/tanstack";
+import { VersionBanner } from "@/components/site/version-banner";
+import { getDocsVersion } from "@/lib/docs-tree";
 import { seo } from "@/lib/seo";
 
 import appCss from "../styles.css?url";
@@ -46,13 +49,20 @@ export const Route = createRootRoute({
 });
 
 function RootDocument({ children }: { children: React.ReactNode }) {
+	const pathname = useLocation({ select: (location) => location.pathname });
+	const version = getDocsVersion(pathname.split("/").filter(Boolean).slice(1));
 	return (
 		<html lang="en" suppressHydrationWarning>
 			<head>
 				<HeadContent />
 			</head>
 			<body className="flex min-h-screen flex-col">
-				<RootProvider>{children}</RootProvider>
+				<RootProvider search={{ options: { defaultTag: version } }}>
+					{(pathname === "/" || pathname.startsWith("/docs/")) && (
+						<VersionBanner />
+					)}
+					{children}
+				</RootProvider>
 				<TanStackDevtools
 					config={{
 						position: "bottom-right",

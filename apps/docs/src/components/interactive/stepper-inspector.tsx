@@ -173,9 +173,6 @@ export function StepperInspector() {
 
 	function reset() {
 		record("Flow reset", "Returned to Account and cleared completion.");
-		for (const id of stepper.completed) {
-			stepper.setComplete(id, false);
-		}
 		stepper.reset();
 	}
 

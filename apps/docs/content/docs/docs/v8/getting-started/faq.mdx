@@ -1,0 +1,133 @@
+---
+title: FAQ
+description: Find quick answers to common Stepperize questions.
+---
+
+# FAQ
+
+## Is Stepperize a form library?
+
+No. Stepperize owns the **flow** — which step is active, how you move between
+steps, and optional per-step drafts. Keep field state, validation, and errors in
+your form library (React Hook Form, Conform, TanStack Form). They compose well:
+see [Building forms with Stepperize](/docs/v8/forms).
+
+## Does it ship any styles or markup?
+
+No. The flat instance (`useStepper`) is logic only. The `Stepper.*` primitives
+render unstyled elements with accessibility wiring and `data-*` attributes, so
+you bring your own CSS. Browse ready-made looks in the
+[Blocks gallery](/blocks).
+
+## How is `status` different from completion?
+
+`stepper.status(id)` is **positional** and derived from the current index:
+`"active"`, `"previous"`, or `"upcoming"`. `stepper.isComplete(id)` is
+**business state** you set explicitly with `setComplete(id)` /
+`setComplete(id, false)`. A step the user walked past is `"previous"`, but it is
+not completed until you say so.
+
+## Do I need `@stepperize/core`?
+
+Not for React apps. `@stepperize/react` depends on it and re-exports the common
+types. Reach for core only when you need its pure helpers (`createStepMap`,
+`matchStep`, the status helpers) in non-React code such as loaders, tests, or
+adapters. See [Core utilities](/docs/v8/api/core/overview).
+
+## When should I use `Provider` vs `Stepper.Root` vs plain `useStepper`?
+
+| Use | When |
+| --- | --- |
+| `useStepper()` | One component owns the whole flow. |
+| `checkout.Provider` | Several components share one instance, but you write your own markup. |
+| `checkout.Stepper.Root` | You want shared state **and** the accessible primitive components. |
+
+All three expose the same instance shape. Shared descendants call `useStepperContext()`; `useStepper()` always creates independent local state. More in
+[Shared state](/docs/v8/guides/shared-state).
+
+## How do I sync the current step to the URL?
+
+Make the step controlled and drive it from your router:
+
+```tsx
+const stepper = checkout.useStepper({
+  step: stepFromUrl,
+  onStepChange: (next) => navigate({ search: { step: next } }),
+  onInvalidStep: () => navigate({ search: { step: "shipping" }, replace: true }),
+});
+```
+
+The controlled `step` option accepts raw URL strings. If the value is unknown,
+Stepperize falls back to the default step and calls `onInvalidStep`. Use
+`parseStep` when you need to narrow a raw value before passing it to another
+typed API.
+
+## How do I validate a step before moving on?
+
+Return `false` from `beforeStepChange`. It runs before the change commits and can be
+async, so you can validate against a schema. Validation that blocks navigation is
+a transition guard, and `beforeStepChange` is the transition guard.
+
+```tsx
+const stepper = checkout.useStepper({
+  beforeStepChange: async ({ direction, validate }) => {
+    if (direction === "prev") return true;
+    return (await validate()).success;
+  },
+});
+```
+
+Pass the value in the same call so the guard can see it before React re-renders:
+`await stepper.next({ data: form.getValues() })`.
+
+## What does navigation return?
+
+A Promise of `{ accepted: true, from, to }` or `{ accepted: false, reason }`. Await it and check `result.accepted`. See [navigation outcomes](/docs/v8/guides/navigation#read-the-result).
+
+## Can I run side effects after a step change?
+
+Yes. Use the `onStepChange` option for flow-wide effects, or a plain effect on
+`stepper.id` for component-level reactions:
+
+```tsx
+React.useEffect(() => track(stepper.id), [stepper.id]);
+```
+
+## How do I handle the final "submit" step?
+
+`Stepper.Next` disables itself on the last step (`canNext` is `false`). Render
+your own button for the final action and key it off `stepper.isLast`. See
+[Troubleshooting](/docs/v8/getting-started/troubleshooting#steppernext-is-disabled-on-the-last-step).
+
+## Can the same step appear twice?
+
+No. Ids must be unique — they are the key for navigation, values, completion,
+rendering, and primitives. Literal duplicates are TypeScript errors when
+possible, and `defineStepper` also throws at runtime if an id appears more than
+once.
+
+## Does it work with Next.js / SSR / React Server Components?
+
+Yes. Keep `defineStepper(...)` at module scope; it has no side effects and is
+safe to import on the server. `useStepper` and the primitives are client APIs, so
+any component that uses them must be a Client Component (`"use client"`).
+
+## Which React versions are supported?
+
+React 18 and 19. It runs in plain JavaScript too, but you lose the
+type-safety that makes the typed ids worthwhile.
+
+## How do I reset the whole flow?
+
+`stepper.reset()` restores mount-time step, data and completion through the guard. Pass `{ keepData: true, keepCompleted: true }` to preserve business state. `data.clear()` empties data; `data.reset()` restores default data only.
+
+## I'm migrating from v6 — what changed?
+
+The instance is now flat (`stepper.next()` instead of
+`stepper.navigation.next()`), steps are passed as an array, metadata became
+`data`, and `Scoped` became `Provider`. Full mapping in
+[Migrating to v7](/docs/v8/migration/v7).
+
+## What changes when migrating from v7?
+
+Explicit shared hooks, structured navigation results, consistent linear policy and full reset semantics. Follow [Migrating to v8](/docs/v8/migration/v8).

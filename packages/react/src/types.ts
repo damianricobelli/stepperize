@@ -1,4 +1,13 @@
-import type { BeforeStepChange, FlowData, Get, OutputOf, Step, StepChangeContext, Stepper, ValidationResult } from "@stepperize/core";
+import type {
+	BeforeStepChange,
+	FlowData,
+	Get,
+	OutputOf,
+	Step,
+	StepChangeContext,
+	Stepper,
+	ValidationResult,
+} from "@stepperize/core";
 import type React from "react";
 import type { StepperPrimitives } from "./primitives/create-stepper-primitives";
 
@@ -11,13 +20,14 @@ export type DefineStepperOptions<Steps extends readonly Step[]> = {
 	/**
 	 * When `true`, `canGoTo`, trigger primitives, and primitive keyboard
 	 * navigation only allow previous steps, the current step, or the immediate
-	 * next step. Imperative `goTo` is not gated by this. Defaults to `false`
+	 * next step. `goTo` follows the same policy unless bypassPolicy is explicit. Defaults to `false`
 	 * (free navigation).
 	 */
 	linear?: boolean;
 };
 
 export type UseStepperOptions<Steps extends readonly Step[]> = {
+	defaultCompleted?: Get.Id<Steps>[];
 	defaultStep?: Get.Id<Steps>;
 	/**
 	 * Controlled current step id. Accepts raw external string values so URL and
@@ -61,14 +71,22 @@ export type ProviderProps<Steps extends readonly Step[]> = React.PropsWithChildr
 /**
  * Object returned by `defineStepper`.
  *
- * It owns the typed step list, hook, provider, primitives, and pure step access
+ * It owns the typed step list, hooks, Provider, and pure step access
  * helpers for a single flow.
  */
-export type StepperDefinition<Steps extends readonly Step[]> = {
+export type HeadlessStepperDefinition<Steps extends readonly Step[]> = {
 	steps: Steps;
+	/** Always create an independent local instance, even inside a Provider. */
 	useStepper: (options?: UseStepperOptions<Steps>) => Stepper<Steps>;
+	/** Consume this definition's nearest Provider; optionally subscribe to a selected value. */
+	useStepperContext: {
+		(): Stepper<Steps>;
+		<Selected>(
+			selector: (stepper: Stepper<Steps>) => Selected,
+			isEqual?: (previous: Selected, next: Selected) => boolean,
+		): Selected;
+	};
 	Provider: (props: ProviderProps<Steps>) => React.ReactElement;
-	Stepper: StepperPrimitives<Steps>;
 	get: <Id extends Get.Id<Steps>>(id: Id) => Get.StepById<Steps, Id> | undefined;
 	at: <Index extends number>(index: Index) => Steps[Index] | undefined;
 	/**
@@ -81,4 +99,9 @@ export type StepperDefinition<Steps extends readonly Step[]> = {
 	 * always succeed with the value unchanged.
 	 */
 	validate: <Id extends Get.Id<Steps>>(id: Id, value: unknown) => Promise<ValidationResult<OutputOf<Steps, Id>>>;
+};
+
+/** Full definition adds the optional UI layer to the same state API. */
+export type StepperDefinition<Steps extends readonly Step[]> = HeadlessStepperDefinition<Steps> & {
+	Stepper: StepperPrimitives<Steps>;
 };

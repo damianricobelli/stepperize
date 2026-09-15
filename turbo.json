@@ -4,7 +4,7 @@
 		"build": {
 			"dependsOn": ["^build"],
 			"inputs": ["$TURBO_DEFAULT$", ".env*"],
-			"outputs": [".next/**", "!.next/cache/**", "dist/**"]
+			"outputs": [".next/**", "!.next/cache/**", "dist/**", ".output/**"]
 		},
 		"lint": {
 			"dependsOn": ["^lint"]
@@ -15,11 +15,19 @@
 		},
 		"dev": {
 			"cache": false,
-			"persistent": true,
-			"dependsOn": ["^build"]
+			"persistent": true
 		},
 		"clean": {
 			"cache": false
+		},
+		"typecheck": {
+			"dependsOn": ["^build"],
+			"outputs": []
+		},
+		"test": {
+			"dependsOn": ["^build"],
+			"cache": false,
+			"passThroughEnv": ["STEPPERIZE_CHROMIUM_PATH"]
 		}
 	}
 }

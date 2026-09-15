@@ -6,7 +6,7 @@
   "description": "Workspace, branding, and members setup for a new SaaS tenant.",
   "author": "Stepperize",
   "dependencies": [
-    "@stepperize/react",
+    "@stepperize/react@^8.0.0",
     "lucide-react"
   ],
   "registryDependencies": [

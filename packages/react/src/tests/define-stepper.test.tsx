@@ -1,6 +1,9 @@
-import { act, render, renderHook, screen } from "@testing-library/react";
+import type { Stepper } from "@stepperize/core";
 import { describe, expect, it, vi } from "vitest";
+import { page as screen } from "vitest/browser";
+import { render, renderHook } from "vitest-browser-react";
 import { defineStepper } from "../define-stepper";
+import { act } from "./act";
 
 const steps = [
 	{ id: "first", title: "First" },
@@ -44,9 +47,9 @@ describe("defineStepper", () => {
 		expect(result.at(0)).toEqual(steps[0]);
 	});
 
-	it("useStepper returns a flat stepper API", () => {
+	it("useStepper returns a flat stepper API", async () => {
 		const { useStepper } = defineStepper(steps);
-		const { result } = renderHook(() => useStepper());
+		const { result } = await renderHook(() => useStepper());
 		const stepper = result.current;
 
 		expect(stepper.steps).toEqual(steps);
@@ -65,12 +68,12 @@ describe("defineStepper", () => {
 		expect(stepper.is("first")).toBe(true);
 	});
 
-	it("uses definition-level defaultStep and defaultData options", () => {
+	it("uses definition-level defaultStep and defaultData options", async () => {
 		const { useStepper } = defineStepper(steps, {
 			defaultStep: "second",
 			defaultData: { first: { saved: true } },
 		});
-		const { result } = renderHook(() => useStepper());
+		const { result } = await renderHook(() => useStepper());
 
 		expect(result.current.id).toBe("second");
 		expect(result.current.index).toBe(1);
@@ -80,35 +83,35 @@ describe("defineStepper", () => {
 
 	it("navigates with next, prev, goTo and reset", async () => {
 		const { useStepper } = defineStepper(steps, { defaultStep: "second" });
-		const { result } = renderHook(() => useStepper());
+		const { result } = await renderHook(() => useStepper());
 
 		await act(async () => {
-			expect(await result.current.next()).toBe(true);
+			expect(await result.current.next()).toMatchObject({ accepted: true });
 		});
 		expect(result.current.id).toBe("third");
 		expect(result.current.isLast).toBe(true);
 		expect(result.current.progress).toBe(1);
 
 		await act(async () => {
-			expect(await result.current.next()).toBe(false);
-			expect(await result.current.prev()).toBe(true);
+			expect(await result.current.next()).toMatchObject({ accepted: false });
+			expect(await result.current.prev()).toMatchObject({ accepted: true });
 		});
 		expect(result.current.id).toBe("second");
 
 		await act(async () => {
-			expect(await result.current.goTo("first")).toBe(true);
+			expect(await result.current.goTo("first")).toMatchObject({ accepted: true });
 		});
 		expect(result.current.id).toBe("first");
 
 		await act(async () => {
-			expect(await result.current.reset()).toBe(true);
+			expect(await result.current.reset()).toMatchObject({ accepted: true });
 		});
 		expect(result.current.id).toBe("second");
 	});
 
 	it("matches exhaustively by current step", async () => {
 		const { useStepper } = defineStepper(steps);
-		const { result } = renderHook(() => useStepper());
+		const { result } = await renderHook(() => useStepper());
 
 		expect(
 			result.current.match({
@@ -131,16 +134,16 @@ describe("defineStepper", () => {
 		).toBe("Third");
 	});
 
-	it("stores and clears flow data for the current or explicit step", () => {
+	it("stores and clears flow data for the current or explicit step", async () => {
 		const { useStepper } = defineStepper(steps);
-		const { result } = renderHook(() => useStepper());
+		const { result } = await renderHook(() => useStepper());
 
-		act(() => {
+		await act(() => {
 			result.current.data.set({ draft: true });
 		});
 		expect(result.current.data.get("first")).toEqual({ draft: true });
 
-		act(() => {
+		await act(() => {
 			result.current.data.set("second", { count: 2 });
 		});
 		expect(result.current.data.all()).toEqual({
@@ -148,12 +151,12 @@ describe("defineStepper", () => {
 			second: { count: 2 },
 		});
 
-		act(() => {
+		await act(() => {
 			result.current.data.clear("first");
 		});
 		expect(result.current.data.all()).toEqual({ second: { count: 2 } });
 
-		act(() => {
+		await act(() => {
 			result.current.data.reset();
 		});
 		expect(result.current.data.all()).toEqual({});
@@ -162,10 +165,10 @@ describe("defineStepper", () => {
 	it("passes payload data to the guard and persists it only when the change completes", async () => {
 		const beforeStepChange = vi.fn().mockResolvedValue(false);
 		const { useStepper } = defineStepper(steps);
-		const { result } = renderHook(() => useStepper({ beforeStepChange }));
+		const { result } = await renderHook(() => useStepper({ beforeStepChange }));
 
 		await act(async () => {
-			expect(await result.current.next({ data: { name: "Ada" } })).toBe(false);
+			expect(await result.current.next({ data: { name: "Ada" } })).toMatchObject({ accepted: false });
 		});
 
 		expect(beforeStepChange.mock.calls[0][0].data.first).toEqual({ name: "Ada" });
@@ -174,7 +177,7 @@ describe("defineStepper", () => {
 
 		beforeStepChange.mockResolvedValueOnce(true);
 		await act(async () => {
-			expect(await result.current.next({ data: { name: "Ada" } })).toBe(true);
+			expect(await result.current.next({ data: { name: "Ada" } })).toMatchObject({ accepted: true });
 		});
 
 		expect(result.current.id).toBe("second");
@@ -184,16 +187,16 @@ describe("defineStepper", () => {
 	it("validates the step being left against the pending transition data", async () => {
 		const wizard = defineStepper([{ id: "name", schema: stringSchema }, { id: "done" }] as const);
 		const beforeStepChange = vi.fn(async ({ validate }) => (await validate()).success);
-		const { result } = renderHook(() => wizard.useStepper({ beforeStepChange }));
+		const { result } = await renderHook(() => wizard.useStepper({ beforeStepChange }));
 
 		await act(async () => {
-			expect(await result.current.next({ data: "" })).toBe(false);
+			expect(await result.current.next({ data: "" })).toMatchObject({ accepted: false });
 		});
 		expect(result.current.id).toBe("name");
 		expect(result.current.data.get("name")).toBeUndefined();
 
 		await act(async () => {
-			expect(await result.current.next({ data: "Ada" })).toBe(true);
+			expect(await result.current.next({ data: "Ada" })).toMatchObject({ accepted: true });
 		});
 		expect(result.current.id).toBe("done");
 		expect(result.current.data.get("name")).toBe("Ada");
@@ -206,10 +209,10 @@ describe("defineStepper", () => {
 			const byStep = await validate(from);
 			return byId.success && byStep.success;
 		});
-		const { result } = renderHook(() => wizard.useStepper({ beforeStepChange }));
+		const { result } = await renderHook(() => wizard.useStepper({ beforeStepChange }));
 
 		await act(async () => {
-			expect(await result.current.next({ data: "Ada" })).toBe(true);
+			expect(await result.current.next({ data: "Ada" })).toMatchObject({ accepted: true });
 		});
 		expect(result.current.id).toBe("done");
 	});
@@ -217,31 +220,31 @@ describe("defineStepper", () => {
 	it("runs beforeStepChange as a guard and cancels on false", async () => {
 		const beforeStepChange = vi.fn().mockResolvedValue(false);
 		const { useStepper } = defineStepper(steps);
-		const { result } = renderHook(() => useStepper({ beforeStepChange }));
+		const { result } = await renderHook(() => useStepper({ beforeStepChange }));
 
 		await act(async () => {
-			expect(await result.current.next()).toBe(false);
+			expect(await result.current.next()).toMatchObject({ accepted: false });
 		});
 		expect(beforeStepChange).toHaveBeenCalledTimes(1);
 		expect(result.current.id).toBe("first");
 
 		beforeStepChange.mockResolvedValueOnce(true);
 		await act(async () => {
-			expect(await result.current.next()).toBe(true);
+			expect(await result.current.next()).toMatchObject({ accepted: true });
 		});
 		expect(result.current.id).toBe("second");
 	});
 
 	it("validates stored data against a step schema, and treats schemaless steps as valid", async () => {
 		const wizard = defineStepper([{ id: "name", schema: stringSchema }, { id: "done" }] as const);
-		const { result } = renderHook(() => wizard.useStepper());
+		const { result } = await renderHook(() => wizard.useStepper());
 
 		await act(async () => {
 			const invalid = await result.current.validate("name");
 			expect(invalid.success).toBe(false);
 		});
 
-		act(() => {
+		await act(() => {
 			result.current.data.set("name", "Ada");
 		});
 		await act(async () => {
@@ -263,17 +266,20 @@ describe("defineStepper", () => {
 		const { useStepper } = defineStepper(steps);
 		type StepId = (typeof steps)[number]["id"];
 		const onStepChange = vi.fn();
-		const { result, rerender } = renderHook(({ step }: { step: StepId }) => useStepper({ step, onStepChange }), {
-			initialProps: { step: "first" as StepId },
-		});
+		const { result, rerender } = await renderHook(
+			({ step }: { step: StepId } = { step: "first" }) => useStepper({ step, onStepChange }),
+			{
+				initialProps: { step: "first" as StepId },
+			},
+		);
 
 		await act(async () => {
-			expect(await result.current.next()).toBe(true);
+			expect(await result.current.next()).toMatchObject({ accepted: true });
 		});
 		expect(result.current.id).toBe("first");
 		expect(onStepChange).toHaveBeenCalledWith("second", expect.objectContaining({ direction: "next" }));
 
-		rerender({ step: "second" as StepId });
+		await rerender({ step: "second" as StepId });
 		expect(result.current.id).toBe("second");
 	});
 
@@ -281,28 +287,31 @@ describe("defineStepper", () => {
 		type StepId = (typeof steps)[number]["id"];
 		const beforeStepChange = vi.fn().mockResolvedValue(true);
 		const { useStepper } = defineStepper(steps);
-		const { result, rerender } = renderHook(({ step }: { step: StepId }) => useStepper({ step, beforeStepChange }), {
-			initialProps: { step: "first" as StepId },
-		});
+		const { result, rerender } = await renderHook(
+			({ step }: { step: StepId } = { step: "first" }) => useStepper({ step, beforeStepChange }),
+			{
+				initialProps: { step: "first" as StepId },
+			},
+		);
 
-		rerender({ step: "third" as StepId });
+		await rerender({ step: "third" as StepId });
 		expect(result.current.id).toBe("third");
 		expect(beforeStepChange).not.toHaveBeenCalled();
 	});
 
-	it("recovers from an invalid controlled step and calls onInvalidStep", () => {
+	it("recovers from an invalid controlled step and calls onInvalidStep", async () => {
 		const { useStepper } = defineStepper(steps, { defaultStep: "second" });
 		const onInvalidStep = vi.fn();
-		const { result } = renderHook(() => useStepper({ step: "nope", onInvalidStep }));
+		const { result } = await renderHook(() => useStepper({ step: "nope", onInvalidStep }));
 
 		expect(result.current.id).toBe("second");
 		expect(onInvalidStep).toHaveBeenCalledWith("nope");
 	});
 
-	it("accepts null as an invalid controlled step from external state", () => {
+	it("accepts null as an invalid controlled step from external state", async () => {
 		const { useStepper } = defineStepper(steps);
 		const onInvalidStep = vi.fn();
-		const { result } = renderHook(() => useStepper({ step: null, onInvalidStep }));
+		const { result } = await renderHook(() => useStepper({ step: null, onInvalidStep }));
 
 		expect(result.current.id).toBe("first");
 		expect(onInvalidStep).toHaveBeenCalledWith(null);
@@ -315,12 +324,12 @@ describe("defineStepper", () => {
 		expect(wizard.parseStep(null)).toBeUndefined();
 	});
 
-	it("supports controlled flow data", () => {
+	it("supports controlled flow data", async () => {
 		const { useStepper } = defineStepper(steps);
 		const onDataChange = vi.fn();
-		const { result } = renderHook(() => useStepper({ data: { first: { a: 1 } }, onDataChange }));
+		const { result } = await renderHook(() => useStepper({ data: { first: { a: 1 } }, onDataChange }));
 
-		act(() => {
+		await act(() => {
 			result.current.data.set({ a: 2 });
 		});
 
@@ -328,31 +337,31 @@ describe("defineStepper", () => {
 		expect(onDataChange).toHaveBeenCalledWith({ first: { a: 2 } });
 	});
 
-	it("tracks explicit completion separately from positional status", () => {
+	it("tracks explicit completion separately from positional status", async () => {
 		const { useStepper } = defineStepper(steps, { defaultCompleted: ["first"] });
-		const { result } = renderHook(() => useStepper());
+		const { result } = await renderHook(() => useStepper());
 
 		expect(result.current.status("first")).toBe("active");
 		expect(result.current.isComplete("first")).toBe(true);
 		expect(result.current.completed).toEqual(["first"]);
 
-		act(() => {
+		await act(() => {
 			result.current.setComplete("second");
 		});
 		expect(result.current.completed).toEqual(["first", "second"]);
 
-		act(() => {
+		await act(() => {
 			result.current.setComplete("first", false);
 		});
 		expect(result.current.completed).toEqual(["second"]);
 	});
 
-	it("supports controlled completion", () => {
+	it("supports controlled completion", async () => {
 		const { useStepper } = defineStepper(steps);
 		const onCompletedChange = vi.fn();
-		const { result } = renderHook(() => useStepper({ completed: ["first"], onCompletedChange }));
+		const { result } = await renderHook(() => useStepper({ completed: ["first"], onCompletedChange }));
 
-		act(() => {
+		await act(() => {
 			result.current.setComplete("second");
 		});
 
@@ -360,35 +369,36 @@ describe("defineStepper", () => {
 		expect(onCompletedChange).toHaveBeenCalledWith(["first", "second"]);
 	});
 
-	it("gates canGoTo with linear policy but lets imperative goTo bypass it", async () => {
+	it("gates both canGoTo and goTo, with an explicit policy bypass", async () => {
 		const { useStepper } = defineStepper(steps, { linear: true });
-		const { result } = renderHook(() => useStepper());
+		const { result } = await renderHook(() => useStepper());
 
 		expect(result.current.canGoTo("third")).toBe(false);
 
 		await act(async () => {
-			expect(await result.current.goTo("third")).toBe(true);
+			expect(await result.current.goTo("third")).toEqual({ accepted: false, reason: "policy" });
+			expect(await result.current.goTo("third", { bypassPolicy: true })).toMatchObject({ accepted: true });
 		});
 		expect(result.current.id).toBe("third");
 	});
 
 	it("Provider shares stepper state with children", async () => {
-		const { Provider, useStepper } = defineStepper(steps, { defaultStep: "second" });
-		const seenSteppers: ReturnType<typeof useStepper>[] = [];
+		const { Provider, useStepperContext } = defineStepper(steps, { defaultStep: "second" });
+		const seenSteppers: Stepper<typeof steps>[] = [];
 
 		function Child() {
-			const childStepper = useStepper();
+			const childStepper = useStepperContext();
 			seenSteppers[0] = childStepper;
 			return <span data-testid="child">{childStepper.id}</span>;
 		}
 
-		render(
+		await render(
 			<Provider>
 				<Child />
 			</Provider>,
 		);
 
 		expect(seenSteppers[0]?.id).toBe("second");
-		expect(screen.getByTestId("child").textContent).toBe("second");
+		expect(screen.getByTestId("child").element().textContent).toBe("second");
 	});
 });

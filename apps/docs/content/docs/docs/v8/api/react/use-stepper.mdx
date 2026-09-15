@@ -1,0 +1,70 @@
+---
+title: useStepper
+description: Create an independent local stepper instance.
+---
+
+# useStepper
+
+`definition.useStepper(options?)` creates one local instance for the calling component. **Every call owns independent state**, even inside a `Provider` or `Stepper.Root`.
+
+```tsx
+import { defineStepper } from "@stepperize/react";
+
+const checkout = defineStepper([
+  { id: "shipping", title: "Shipping" },
+  { id: "payment", title: "Payment" },
+  { id: "review", title: "Review" },
+]);
+
+export function Checkout() {
+  const stepper = checkout.useStepper({ linear: true });
+  return (
+    <section>
+      <h2>{stepper.current.title}</h2>
+      <p>Step {stepper.index + 1} of {stepper.count}</p>
+      <button type="button" disabled={!stepper.canPrev} onClick={() => stepper.prev()}>Back</button>
+      <button type="button" disabled={!stepper.canNext} onClick={() => stepper.next()}>Next</button>
+      <button type="button" onClick={() => stepper.reset()}>Start again</button>
+    </section>
+  );
+}
+```
+
+Rendering two `Checkout` components creates two independent flows. To share one flow across children, use [useStepperContext](/docs/v8/api/react/use-stepper-context).
+
+## Options
+
+The generated `Provider` and `Stepper.Root` accept these same options.
+
+| Option | Description |
+| --- | --- |
+| `defaultStep` | Uncontrolled initial step and reset target; otherwise the first step. |
+| `defaultData` | Initial flow data, restored by `reset()` and `data.reset()`. |
+| `defaultCompleted` | Initial completed ids, restored by `reset()`. |
+| `step` / `onStepChange` | Controlled step and callback requesting a new known id. |
+| `onInvalidStep` | Reports an unknown controlled id; the view falls back to the default step. |
+| `data` / `onDataChange` | Controlled flow data and callback requesting new data. |
+| `completed` / `onCompletedChange` | Controlled completed ids and change callback. |
+| `linear` | Restricts `goTo`, triggers and list keyboard navigation to current, previous or immediate next steps. Default: `false`. |
+| `beforeStepChange` | Synchronous or asynchronous guard. Return `false` to reject navigation. |
+
+Instance options override definition defaults. Defaults are captured at mount: changing them later does not reset the flow. Treat step definitions, defaults, and snapshots as immutable. Use a new React `key` to start an instance with different defaults.
+
+Controlled values remain authoritative until their owner supplies updated props. An accepted transition requests that change; it does not guarantee that a controlled parent applied it. External controlled changes do not run the navigation guard.
+
+## Result and lifecycle
+
+```tsx
+const result = await stepper.next({ data: formValues, complete: true });
+if (!result.accepted) {
+  console.log(result.reason);
+  return;
+}
+console.log(result.from, result.to);
+```
+
+The payload saves data and marks the **source** step complete only after the guard accepts. See [navigation](/docs/v8/guides/navigation) for outcomes, cancellation, policy and reset semantics.
+
+The returned object is a snapshot of a render. Navigation and write methods act on the latest committed instance state. Read fresh state through the hook after React renders; use the navigation result for the accepted source and target.
+
+Next: [full instance reference](/docs/v8/api/react/stepper-instance).

@@ -1,0 +1,55 @@
+---
+title: The navigation lifecycle
+description: Understand staged data, guards, atomic commits and results.
+---
+
+# The navigation lifecycle
+
+Every imperative move (`next`, `prev`, `goTo`, `reset`) follows the same contract. Try an accepted or rejected transition below.
+
+## Try a real transition
+
+1. Enable **Reject in guard**, edit the draft, then choose **Save and continue**. The committed draft and completion stay unchanged.
+2. Disable rejection and try a name shorter than three characters: schema validation still blocks the move.
+3. Enter a valid name and continue. While validation is pending, try a duplicate request to see `pending` in the event log.
+4. Reset, continue again, and choose **Write data while pending**. The immediate write cancels the old move; its staged payload cannot overwrite the external edit.
+
+The demo uses the actual Stepperize instance. Only the 800 ms validation delay is simulated; no data is sent to a server. The result line shows the last resolved request, and the event log preserves earlier outcomes.
+
+<InteractiveExample name="lifecycle" />
+
+## The sequence
+
+1. **Eligibility:** reject an overlapping request, boundary, unknown id, policy violation or no-op.
+2. **Stage:** prepare source data and optional source completion. Reset instead prepares mount-time defaults, honoring its keep options.
+3. **Guard:** call `beforeStepChange(context)`. It sees the staged data. Return `false` to reject; an async guard sets `isPending`.
+4. **Commit:** update uncontrolled step, data and completion together. Controlled pieces are requested through their matching callbacks.
+5. **Notify:** call `onStepChange(id, context)` and resolve `{ accepted: true, from, to }`.
+
+Rejected navigation resolves `{ accepted: false, reason }`. The staged payload and completion are discarded. Direct `data.set` calls are immediate writes, so they are not rolled back by a later rejected navigation.
+
+## Submit data and complete the source
+
+```tsx
+const result = await stepper.next({ data: formValues, complete: true });
+if (!result.accepted) {
+  console.log(result.reason);
+  return;
+}
+```
+
+`context.validate()` checks the source step's schema against that staged data, without waiting for a React render. It does not automatically replace draft data with transformed schema output.
+
+Configure callbacks on the owner: local `useStepper`, shared `Provider`, or `Stepper.Root`. Consumers use `useStepperContext()` to access the same instance.
+
+## Pending and cancellation
+
+An async guard holds `isPending` until it settles or is cancelled. Another navigation returns `pending`. Unmounting or updating authoritative state cancels the old transition; `context.signal` lets your asynchronous work observe cancellation.
+
+`onStepChange` is a synchronous notification callback; asynchronous work that must block navigation belongs in `beforeStepChange`. Errors thrown by callbacks reject the navigation promise. Effects on `stepper.id` can observe rendered state, including external controlled changes that do not run navigation callbacks.
+
+<Callout type="warn">
+Both a Promise and a result object are truthy. Use `const result = await stepper.next()` and check `result.accepted`.
+</Callout>
+
+See [all outcomes and reset options](/docs/v8/guides/navigation), then [status vs completion](/docs/v8/core-concepts/status-vs-completion).

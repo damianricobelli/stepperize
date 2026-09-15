@@ -8,7 +8,7 @@ const onboarding = defineStepper([
 	{ id: "done", title: "All set" },
 ] as const);
 
-const { Stepper, useStepper } = onboarding;
+const { Stepper, useStepperContext } = onboarding;
 
 type AccountType = "personal" | "team";
 
@@ -29,14 +29,17 @@ function pathFor(
  */
 export function ConditionalOnboardingBlock() {
 	return (
-		<Stepper.Root className="w-full max-w-md rounded-xl border bg-background p-6 shadow-sm">
+		<Stepper.Root
+			linear
+			className="w-full max-w-md rounded-xl border bg-background p-6 shadow-sm"
+		>
 			{() => <Inner />}
 		</Stepper.Root>
 	);
 }
 
 function Inner() {
-	const stepper = useStepper();
+	const stepper = useStepperContext();
 	const type =
 		(stepper.data.get("account") as AccountType | undefined) ?? "team";
 	const path = pathFor(type);
@@ -44,7 +47,7 @@ function Inner() {
 
 	const goNext = () => {
 		const next = path[pos + 1];
-		if (next) stepper.goTo(next);
+		if (next) stepper.goTo(next, { bypassPolicy: true, complete: true });
 	};
 	const goBack = () => {
 		const prev = path[pos - 1];
@@ -86,7 +89,7 @@ function Inner() {
 					/>
 				</Stepper.Content>
 
-				<Stepper.Content step="profile" className="space-y-3">
+				<Stepper.Content forceMount step="profile" className="space-y-3">
 					<p className="text-sm font-semibold">Tell us about you</p>
 					<input
 						placeholder="Display name"
@@ -98,7 +101,7 @@ function Inner() {
 					/>
 				</Stepper.Content>
 
-				<Stepper.Content step="team" className="space-y-3">
+				<Stepper.Content forceMount step="team" className="space-y-3">
 					<p className="text-sm font-semibold">Invite your team</p>
 					<input
 						placeholder="teammate@company.com"

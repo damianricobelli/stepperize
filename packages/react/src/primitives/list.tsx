@@ -1,57 +1,42 @@
-import type { Get, Step, Stepper } from "@stepperize/core";
+import type { Get, Step } from "@stepperize/core";
 import React from "react";
+import type { StepperScope } from "./context";
+import { triggerDomId } from "./context";
+import { renderPrimitive } from "./render";
 import type { ListProps, PrimitiveComponent } from "./types";
 
-const ARROW_KEYS = ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End"] as const;
+// Key -> index delta per orientation; Home/End jump to the edges.
+const KEYS: Record<string, [horizontal: number, vertical: number]> = {
+	ArrowRight: [1, 0],
+	ArrowLeft: [-1, 0],
+	ArrowDown: [0, 1],
+	ArrowUp: [0, -1],
+};
 
-export function createList<Steps extends readonly Step[]>(
-	StepperContext: React.Context<Stepper<Steps> | null>,
-): PrimitiveComponent<ListProps> {
+export function createList<Steps extends readonly Step[]>(scope: StepperScope<Steps>): PrimitiveComponent<ListProps> {
 	return function List(props: ListProps) {
-		const { orientation = "horizontal", render, children, onKeyDown, ...rest } = props;
-		const stepper = React.useContext(StepperContext);
+		const inheritedOrientation = React.useContext(scope.OrientationContext);
+		const { orientation = inheritedOrientation, render, children, onKeyDown, ...rest } = props;
+		// Read the stepper lazily in the handler so List never re-renders on navigation.
+		const { store, id: instance } = scope.useValue();
 
-		const handleKeyDown = React.useCallback(
-			(e: React.KeyboardEvent<HTMLOListElement>) => {
-				onKeyDown?.(e);
-				if (e.defaultPrevented) return;
-				if (!ARROW_KEYS.includes(e.key as (typeof ARROW_KEYS)[number])) return;
-				const target = e.target as HTMLElement;
-				if (target.getAttribute?.("role") !== "tab") return;
-
-				const steps = stepper?.steps;
-				if (!stepper || !steps?.length) return;
-
-				const currentIndex = stepper.index;
-				const isHorizontal = orientation === "horizontal";
-				const isNext = (isHorizontal && e.key === "ArrowRight") || (!isHorizontal && e.key === "ArrowDown");
-				const isPrev = (isHorizontal && e.key === "ArrowLeft") || (!isHorizontal && e.key === "ArrowUp");
-				const isHome = e.key === "Home";
-				const isEnd = e.key === "End";
-
-				if (!isNext && !isPrev && !isHome && !isEnd) return;
-
-				e.preventDefault();
-
-				let nextIndex: number;
-				if (isHome) nextIndex = 0;
-				else if (isEnd) nextIndex = steps.length - 1;
-				else if (isNext) nextIndex = Math.min(currentIndex + 1, steps.length - 1);
-				else nextIndex = Math.max(currentIndex - 1, 0);
-
-				if (nextIndex === currentIndex) return;
-
-				const targetStep = steps[nextIndex];
-				const targetId = targetStep.id as Get.Id<Steps>;
-				if (!stepper.canGoTo(targetId)) return;
-
-				void Promise.resolve(stepper.goTo(targetId)).then((changed) => {
-					if (!changed) return;
-					document.getElementById(`step-${targetStep.id}`)?.focus();
-				});
-			},
-			[stepper, orientation, onKeyDown],
-		);
+		const handleKeyDown = (e: React.KeyboardEvent<HTMLOListElement>) => {
+			onKeyDown?.(e);
+			if (e.defaultPrevented || (e.target as HTMLElement).getAttribute?.("role") !== "tab") return;
+			const stepper = store.getSnapshot();
+			const last = stepper.steps.length - 1;
+			const delta = KEYS[e.key]?.[orientation === "horizontal" ? 0 : 1];
+			const to =
+				e.key === "Home" ? 0 : e.key === "End" ? last : delta ? Math.min(last, Math.max(0, stepper.index + delta)) : -1;
+			if (to === -1) return;
+			e.preventDefault();
+			if (to === stepper.index) return;
+			const id = stepper.steps[to].id as Get.Id<Steps>;
+			if (!stepper.canGoTo(id)) return;
+			void stepper.goTo(id).then((result) => {
+				if (result.accepted) document.getElementById(triggerDomId(instance, id))?.focus();
+			});
+		};
 
 		const domProps = {
 			"data-component": "stepper-list",
@@ -61,8 +46,6 @@ export function createList<Steps extends readonly Step[]>(
 			...rest,
 			onKeyDown: handleKeyDown,
 		};
-
-		if (render) return render(domProps);
-		return <ol {...domProps}>{children}</ol>;
+		return renderPrimitive("ol", domProps, render, children);
 	};
 }

@@ -6,9 +6,8 @@
  * over the rendered elements.
  */
 
+export type { StepItemValue } from "./context";
 export type { StepperPrimitives } from "./create-stepper-primitives";
-
-export { createStepperPrimitives } from "./create-stepper-primitives";
 export type {
 	ActionsProps,
 	ContentProps,

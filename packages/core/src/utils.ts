@@ -1,11 +1,28 @@
 import type { FlowData, Get, OutputOf, StandardSchemaV1, Step, StepMap, StepStatus, ValidationResult } from "./types";
 
+// Step definitions are immutable. Cache only the index; never runtime flow state.
+const indexes = new WeakMap<readonly Step[], Map<string, number>>();
+function getIndex(steps: readonly Step[]) {
+	let index = indexes.get(steps);
+	if (!index) {
+		index = new Map();
+		for (let position = 0; position < steps.length; position++) {
+			const id = steps[position].id;
+			if (!index.has(id)) index.set(id, position);
+		}
+		indexes.set(steps, index);
+	}
+	return index;
+}
+
 /**
  * Create pure step access helpers without state, safe for Node, SSR,
  * validation code, tests, and framework adapters.
  */
 export function createStepMap<const Steps extends readonly Step[]>(steps: Steps): StepMap<Steps> {
-	const indexOf = (id: Get.Id<Steps>) => steps.findIndex((step) => step.id === id);
+	const indexById = getIndex(steps);
+
+	const indexOf = (id: string) => indexById.get(id) ?? -1;
 
 	const at = <Index extends number>(index: Index) => steps[index];
 
@@ -13,12 +30,13 @@ export function createStepMap<const Steps extends readonly Step[]>(steps: Steps)
 		steps,
 		ids: steps.map((step) => step.id) as Get.Id<Steps>[],
 		get(id) {
-			return steps.find((step) => step.id === id) as Get.StepById<Steps, typeof id> | undefined;
+			const index = indexOf(id);
+			return (index === -1 ? undefined : steps[index]) as Get.StepById<Steps, typeof id> | undefined;
 		},
 		at,
 		indexOf,
 		has(id) {
-			return steps.some((step) => step.id === id);
+			return indexById.has(id);
 		},
 		first() {
 			return at(0);
@@ -50,7 +68,7 @@ export function createStepMap<const Steps extends readonly Step[]>(steps: Steps)
  * Returns `0` when no initial id is provided or when the id is not found.
  */
 export function getInitialStepIndex<Steps extends readonly Step[]>(steps: Steps, initial?: Get.Id<Steps>) {
-	const index = steps.findIndex((step) => step.id === initial);
+	const index = initial === undefined ? -1 : (getIndex(steps).get(initial) ?? -1);
 	return index === -1 ? 0 : index;
 }
 
@@ -64,7 +82,7 @@ export function parseStep<const Steps extends readonly Step[]>(
 	steps: Steps,
 	value: unknown,
 ): Get.Id<Steps> | undefined {
-	return steps.some((step) => step.id === value) ? (value as Get.Id<Steps>) : undefined;
+	return typeof value === "string" && getIndex(steps).has(value) ? (value as Get.Id<Steps>) : undefined;
 }
 
 export function getInitialData<Steps extends readonly Step[]>(data?: FlowData<Steps>) {
@@ -81,7 +99,7 @@ export async function validateStep<const Steps extends readonly Step[], Id exten
 	id: Id,
 	value: unknown,
 ): Promise<ValidationResult<OutputOf<Steps, Id>>> {
-	const step = steps.find((candidate) => candidate.id === id);
+	const step = steps[getIndex(steps).get(id) ?? -1];
 	if (!step) {
 		throw new Error(`Step "${id}" not found.`);
 	}
@@ -109,7 +127,7 @@ export function getStepStatus<Steps extends readonly Step[]>(
 	currentIndex: number,
 	id: Get.Id<Steps>,
 ): StepStatus {
-	const index = steps.findIndex((step) => step.id === id);
+	const index = getIndex(steps).get(id) ?? -1;
 	if (index === currentIndex) return "active";
 	if (index >= 0 && index < currentIndex) return "previous";
 	return "upcoming";
@@ -124,22 +142,21 @@ export function getStepStatuses<Steps extends readonly Step[]>(
 			acc[step.id as Get.Id<Steps>] = getStepStatus(steps, currentIndex, step.id as Get.Id<Steps>);
 			return acc;
 		},
-		{} as Record<Get.Id<Steps>, StepStatus>,
+		Object.create(null) as Record<Get.Id<Steps>, StepStatus>,
 	);
 }
 
+/**
+ * Run the handler for `id`. When `data` is provided, the handler receives that
+ * step's flow data as a typed second argument.
+ */
 export function matchStep<const Steps extends readonly Step[], Result>(
 	steps: Steps,
 	id: Get.Id<Steps>,
 	handlers: Get.Match<Steps, Result>,
-): Result;
-
-export function matchStep<const Steps extends readonly Step[], Result>(
-	steps: Steps,
-	id: Get.Id<Steps>,
-	handlers: Get.Match<Steps, Result>,
+	data?: FlowData<Steps>,
 ): Result {
-	const step = steps.find((candidate) => candidate.id === id);
+	const step = steps[getIndex(steps).get(id) ?? -1];
 	if (!step) {
 		throw new Error(`Step "${id}" not found.`);
 	}
@@ -150,5 +167,5 @@ export function matchStep<const Steps extends readonly Step[], Result>(
 		throw new Error(`No match handler found for step "${id}".`);
 	}
 
-	return handler(step as never);
+	return handler(step as never, data?.[id] as never);
 }

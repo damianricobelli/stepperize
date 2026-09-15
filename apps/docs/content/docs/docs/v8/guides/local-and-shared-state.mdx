@@ -1,0 +1,170 @@
+---
+title: Local and shared state
+description: Choose who owns a flow, with complete examples and an interactive comparison.
+---
+
+# Local and shared state
+
+In v8, the hook name tells you where the state lives:
+
+| API | What it does |
+| --- | --- |
+| `flow.useStepper(options)` | Creates independent local state on every call. |
+| `flow.Provider` | Creates state and shares it with descendants. |
+| `flow.useStepperContext()` | Reads the nearest matching provider. |
+| `flow.useStepperContext(selector, isEqual?)` | Reads and subscribes to part of that shared state. |
+| `flow.Stepper.Root` | Creates shared state and a primitive container. |
+
+Try moving the two local flows separately. The shared example has a header, panel and controls implemented as separate components consuming one provider.
+
+Move the outer shared checkout, then try **Local checkout inside Provider** and **Nested shared checkout**. Neither should move the outer checkout. The nested provider starts at payment and resets to payment, its own default.
+
+<InteractiveExample name="ownership" />
+
+## One definition, many instances
+
+Keep the definition outside React components. It contains static step metadata and typed APIs; it does not contain an application-wide active step.
+
+```tsx title="checkout.ts"
+import { defineStepper } from "@stepperize/react";
+
+export const checkout = defineStepper([
+  { id: "shipping", title: "Shipping" },
+  { id: "payment", title: "Payment" },
+  { id: "review", title: "Review" },
+], { linear: true });
+```
+
+## Complete local example
+
+Use this when one component owns the whole flow. Every mounted `LocalCheckout` has its own current step, data and completion.
+
+```tsx title="local-checkout.tsx"
+"use client";
+import { checkout } from "./checkout";
+
+export function LocalCheckout() {
+  const stepper = checkout.useStepper();
+  return (
+    <section aria-label="Local checkout">
+      <h2>{stepper.current.title}</h2>
+      <p>Step {stepper.index + 1} of {stepper.count}</p>
+      {stepper.match({
+        shipping: () => <p>Choose a shipping address.</p>,
+        payment: () => <p>Choose a payment method.</p>,
+        review: () => <p>Review your order.</p>,
+      })}
+      <button type="button" disabled={!stepper.canPrev} onClick={() => stepper.prev()}>Back</button>
+      <button type="button" disabled={!stepper.canNext} onClick={() => stepper.next()}>Next</button>
+      <button type="button" onClick={() => stepper.reset()}>Start again</button>
+    </section>
+  );
+}
+```
+
+## Complete shared example
+
+Split the same UI into components. Put one provider above them and replace local hook calls with `useStepperContext`.
+
+```tsx title="shared-checkout.tsx"
+"use client";
+import { checkout } from "./checkout";
+
+export function SharedCheckout() {
+  return (
+    <checkout.Provider defaultStep="shipping">
+      <section aria-label="Shared checkout">
+        <Header />
+        <Panel />
+        <Actions />
+      </section>
+    </checkout.Provider>
+  );
+}
+
+function Header() {
+  const index = checkout.useStepperContext((stepper) => stepper.index);
+  return <p>Step {index + 1} of {checkout.steps.length}</p>;
+}
+
+function Panel() {
+  const stepper = checkout.useStepperContext();
+  return (
+    <div aria-live="polite">
+      <h2>{stepper.current.title}</h2>
+      {stepper.match({
+        shipping: () => <p>Choose a shipping address.</p>,
+        payment: () => <p>Choose a payment method.</p>,
+        review: () => <p>Review your order.</p>,
+      })}
+    </div>
+  );
+}
+
+function Actions() {
+  const stepper = checkout.useStepperContext();
+  return (
+    <div>
+      <button type="button" disabled={!stepper.canPrev} onClick={() => stepper.prev()}>Back</button>
+      <button type="button" disabled={!stepper.canNext} onClick={() => stepper.next()}>Next</button>
+      <button type="button" onClick={() => stepper.reset()}>Start again</button>
+    </div>
+  );
+}
+```
+
+`Header` subscribes only to the index, so writing unrelated data does not cause a store-driven render. The panel and controls subscribe to the full snapshot.
+
+## Use primitives with the same ownership model
+
+Replace the Provider with a Root when you need its container and primitive presentation. Root accepts the same options and supplies the same context hook.
+
+```tsx
+export function PrimitiveCheckout() {
+  const { Stepper } = checkout;
+  return (
+    <Stepper.Root orientation="vertical" linear>
+      <Header />
+      <Stepper.List aria-label="Checkout steps">
+        <Stepper.Items>
+          {(step) => (
+            <Stepper.Item key={step.id}>
+              <Stepper.Trigger>
+                <Stepper.Indicator />
+                <Stepper.Title>{step.title}</Stepper.Title>
+              </Stepper.Trigger>
+              <Stepper.Content step={step.id}><p>{step.title} content</p></Stepper.Content>
+              <Stepper.Separator />
+            </Stepper.Item>
+          )}
+        </Stepper.Items>
+      </Stepper.List>
+      <Actions />
+    </Stepper.Root>
+  );
+}
+```
+
+The List and Separator inherit vertical orientation. Each Root gets its own DOM identifiers, so two checkouts on one page do not share tab/panel ids.
+
+## Nested flows and missing providers
+
+A nested provider of the same definition creates a new independent scope for its descendants. A provider from another definition leaves the outer flow available. Always import the same definition object in consumers.
+
+Calling `useStepperContext()` without a matching owner throws; it does not silently create a new flow. Calling `useStepper()` under a Provider deliberately creates a local flow.
+
+For a focused subscription demo, try [context selectors](/docs/v8/api/react/use-stepper-context#try-independent-subscriptions).
+
+## Saving and completing together
+
+The ownership choice does not change navigation. A local or shared instance uses the same atomic action:
+
+```tsx
+const result = await stepper.next({ data: formValues, complete: true });
+if (!result.accepted) {
+  // The payload and source completion were not committed.
+  console.log(result.reason);
+}
+```
+
+The form library owns editable fields. Stepperize stores accepted flow data for review, branching and persistence. See [form patterns](/docs/v8/forms/patterns) and [navigation](/docs/v8/guides/navigation).

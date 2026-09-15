@@ -1,0 +1,61 @@
+---
+title: Shared state
+description: Configure shared and controlled flows with explicit instance ownership.
+---
+
+# Shared state
+
+Use `Provider` when multiple components need one flow. Descendants call `useStepperContext()`; `useStepper()` always creates a separate local instance.
+
+Start with the [complete local and shared examples](/docs/v8/guides/local-and-shared-state), including an interactive comparison.
+
+## Controlled shared state
+
+Each piece of state can be controlled independently. This complete example puts the active step in the parent while the Provider owns data and completion:
+
+```tsx
+import { useState } from "react";
+import { defineStepper } from "@stepperize/react";
+
+const checkout = defineStepper([
+  { id: "shipping", title: "Shipping" },
+  { id: "payment", title: "Payment" },
+  { id: "review", title: "Review" },
+]);
+
+export function Checkout() {
+  const [step, setStep] = useState("shipping");
+  return (
+    <checkout.Provider step={step} onStepChange={setStep}>
+      <Panel />
+      <Actions />
+    </checkout.Provider>
+  );
+}
+
+function Panel() {
+  const title = checkout.useStepperContext((stepper) => stepper.current.title);
+  return <h2>{title}</h2>;
+}
+
+function Actions() {
+  const stepper = checkout.useStepperContext();
+  return <button type="button" disabled={!stepper.canNext} onClick={() => stepper.next()}>Next</button>;
+}
+```
+
+A controlled value remains the source of truth. Navigation invokes its change callback, and the view changes when the parent supplies the new prop. External prop changes bypass guards. Store `data` and `completed` outside the Provider too when persistence or an application store owns them.
+
+## URL integration
+
+Pass the current route value to the owner's `step` prop. In `onStepChange`, update the route; in `onInvalidStep`, replace an unknown route value with a valid default. These callbacks use your router's navigation API.
+
+`step` accepts a raw external string or `null`. `onStepChange` emits only known ids. `definition.parseStep(value)` narrows untrusted input before passing it to other typed APIs. Data from storage still needs its own schema validation.
+
+## Defaults and resets
+
+`defaultStep`, `defaultData`, and `defaultCompleted` are captured at mount. Instance defaults override definition defaults. `reset()` restores that original snapshot through the navigation guard. To navigate back while keeping business state, call `reset({ keepData: true, keepCompleted: true })`.
+
+## Keep form components mounted
+
+Use `Stepper.Content forceMount` to retain inactive panels in the DOM with `hidden`, or [React Activity](/docs/v8/guides/react-activity) on supported React versions to retain component state while disconnecting inactive effects. This is separate from sharing the stepper instance.

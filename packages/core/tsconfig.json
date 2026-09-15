@@ -1,18 +1,19 @@
 {
-  "compilerOptions": {
-    "outDir": "dist",
-    "declaration": true,
-    "declarationMap": true,
-    "sourceMap": true,
-    "removeComments": false,
-    "module": "esnext",
-    "target": "esnext",
-    "moduleResolution": "bundler",
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "strict": true,
-    "ignoreDeprecations": "6.0",
-  },
-  "include": ["src/index.ts", "src/types.ts", "src/utils.ts"],
-  "exclude": ["node_modules", "dist", "src/tests", "**/*.test.ts", "**/*.test.tsx"],
+	"compilerOptions": {
+		"outDir": "dist",
+		"declaration": true,
+		"declarationMap": true,
+		"sourceMap": true,
+		"removeComments": false,
+		"module": "esnext",
+		"target": "esnext",
+		"moduleResolution": "bundler",
+		"esModuleInterop": true,
+		"skipLibCheck": true,
+		"strict": true,
+		"noUnusedLocals": true,
+		"noUnusedParameters": true
+	},
+	"include": ["src/index.ts", "src/types.ts", "src/utils.ts"],
+	"exclude": ["node_modules", "dist", "src/tests", "**/*.test.ts", "**/*.test.tsx"]
 }

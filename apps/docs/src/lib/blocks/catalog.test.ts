@@ -80,7 +80,7 @@ describe("built registry (run registry:build first)", () => {
 			const item = JSON.parse(readFileSync(file, "utf8"));
 			expect(item.name).toBe(block.id);
 			expect(item.files?.[0]?.content?.length ?? 0).toBeGreaterThan(0);
-			expect(item.dependencies).toContain("@stepperize/react");
+			expect(item.dependencies).toContain("@stepperize/react@^8.0.0");
 		}
 	});
 

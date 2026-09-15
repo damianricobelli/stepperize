@@ -40,6 +40,13 @@ export function SiteFooter() {
 					>
 						Primitives
 					</Link>
+					<Link
+						to="/docs/$"
+						params={{ _splat: "v8/guides/performance" }}
+						className="hover:text-foreground"
+					>
+						Performance
+					</Link>
 					<a
 						href={GITHUB}
 						target="_blank"

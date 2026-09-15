@@ -1,0 +1,123 @@
+---
+title: Conform
+description: A complete shared form flow with validation, review and final submission.
+---
+
+# Conform
+
+This complete two-step example separates editable fields from saved flow data. Conform validates the profile on submit; Stepperize saves it and marks the source complete in one accepted transition. The review screen can reopen the saved draft.
+
+```bash
+npm install @stepperize/react@^8.0.0 zod @conform-to/react @conform-to/zod
+```
+
+## Complete example
+
+Provide `onFinish` from your application to perform the final request. It should reject on failure. This example handles that error and lets the user retry. It uses Zod 4; see the [Conform Zod integration](https://conform.guide/api/zod/parseWithZod) for library-specific validation details.
+
+```tsx title="signup.tsx"
+"use client";
+import { useState } from "react";
+import { defineStepper } from "@stepperize/react";
+import { z } from "zod";
+import { useForm, getInputProps } from "@conform-to/react";
+import { parseWithZod } from "@conform-to/zod/v4";
+
+const profileSchema = z.object({
+  name: z.string().min(1, "Enter your name"),
+  email: z.string().email("Enter a valid email"),
+});
+type Profile = z.infer<typeof profileSchema>;
+const signup = defineStepper([
+  { id: "profile", title: "Profile", schema: profileSchema },
+  { id: "review", title: "Review" },
+]);
+type Props = { onFinish: (profile: Profile) => Promise<void> };
+
+export function Signup({ onFinish }: Props) {
+  return <signup.Provider><Flow onFinish={onFinish} /></signup.Provider>;
+}
+
+function Flow({ onFinish }: Props) {
+  const stepper = signup.useStepperContext();
+  return stepper.match({
+    profile: () => <ProfileForm />,
+    review: () => <Review onFinish={onFinish} />,
+  });
+}
+
+function ProfileForm() {
+  const stepper = signup.useStepperContext();
+  const [form, fields] = useForm({
+    defaultValue: stepper.data.get("profile") ?? { name: "", email: "" },
+    onValidate({ formData }) {
+      return parseWithZod(formData, { schema: profileSchema });
+    },
+    onSubmit(event, { submission }) {
+      event.preventDefault();
+      if (submission?.status === "success") {
+        void stepper.next({ data: submission.value, complete: true });
+      }
+    },
+    shouldValidate: "onSubmit",
+    shouldRevalidate: "onInput",
+  });
+  return (
+    <form id={form.id} onSubmit={form.onSubmit} noValidate>
+      <label htmlFor={fields.name.id}>Name</label>
+      <input {...getInputProps(fields.name, { type: "text" })} />
+      <p id={fields.name.errorId} role="alert">{fields.name.errors}</p>
+      <label htmlFor={fields.email.id}>Email</label>
+      <input {...getInputProps(fields.email, { type: "email" })} />
+      <p id={fields.email.errorId} role="alert">{fields.email.errors}</p>
+      <button type="submit" disabled={!stepper.canNext}>Review</button>
+    </form>
+  );
+}
+
+function Review({ onFinish }: Props) {
+  const stepper = signup.useStepperContext();
+  const profile = stepper.data.get("profile");
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState("");
+  const [finished, setFinished] = useState(false);
+  async function finish() {
+    if (!profile || pending) return;
+    setPending(true);
+    setError("");
+    try {
+      await onFinish(profile);
+      stepper.setComplete("review");
+      setFinished(true);
+    } catch {
+      setError("Could not save. Please try again.");
+    } finally {
+      setPending(false);
+    }
+  }
+  if (finished) return <p role="status">Saved successfully.</p>;
+  return (
+    <section>
+      <h2>Review</h2>
+      <p>{profile?.name} — {profile?.email}</p>
+      {error && <p role="alert">{error}</p>}
+      <button type="button" disabled={pending} onClick={() => stepper.prev()}>Edit</button>
+      <button type="button" disabled={!profile || pending} onClick={finish}>
+        {pending ? "Saving…" : "Finish"}
+      </button>
+    </section>
+  );
+}
+```
+
+## Why this works
+
+- One Provider owns the flow. Every child uses `useStepperContext()`.
+- Field errors prevent the form submit callback from navigating.
+- `next({ data, complete: true })` saves the profile and completes the profile step together.
+- Returning to the profile remounts the form, seeded from `data.get("profile")`.
+- The final screen calls your application's `onFinish`; it does not call `next()` at a boundary.
+
+If you expose other navigation paths, protect forward transitions with `beforeStepChange` on the Provider as well. `linear` controls eligible targets; it does not validate form fields. For async guards, handle rejected results and errors in the form submit path.
+
+For keeping unsaved component-local fields mounted, see [React Activity](/docs/v8/guides/react-activity) or `Content forceMount`. Compare [form patterns](/docs/v8/forms/patterns) and [local/shared ownership](/docs/v8/guides/local-and-shared-state).

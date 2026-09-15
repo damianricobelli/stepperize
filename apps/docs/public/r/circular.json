@@ -6,7 +6,7 @@
   "description": "An SVG progress ring around the current step number.",
   "author": "Stepperize",
   "dependencies": [
-    "@stepperize/react"
+    "@stepperize/react@^8.0.0"
   ],
   "registryDependencies": [],
   "categories": [

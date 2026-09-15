@@ -1,6 +1,6 @@
 /**
  * Plain-text Q&A pairs mirrored from
- * `content/docs/docs/latest/getting-started/faq.mdx`, used to emit
+ * `content/docs/docs/v8/getting-started/faq.mdx`, used to emit
  * `FAQPage` JSON-LD so the FAQ can surface as a rich result. Keep in sync with
  * the MDX when questions change.
  */
@@ -28,7 +28,7 @@ export const FAQ_ITEMS: { question: string; answer: string }[] = [
 	{
 		question: "When should I use Provider vs Stepper.Root vs plain useStepper?",
 		answer:
-			"Use useStepper() when one component owns the whole flow, the Provider when several components share one instance with your own markup, and Stepper.Root when you want shared state plus the accessible primitive components. All three produce the same flat instance.",
+			"Use useStepper() when one component owns the whole flow, the Provider when several components share one instance with your own markup, and Stepper.Root when you want shared state plus the accessible primitive components. Shared descendants use useStepperContext(); useStepper() always creates independent local state.",
 	},
 	{
 		question: "How do I sync the current step to the URL?",
@@ -43,7 +43,7 @@ export const FAQ_ITEMS: { question: string; answer: string }[] = [
 	{
 		question: "What does navigation return?",
 		answer:
-			"A boolean wrapped in a Promise: true if the step changed, false if it did not — at an edge, an unknown id, an async change already running, the same step without a value payload, or cancelled by beforeStepChange. Await it when you need the result.",
+			"A Promise of { accepted: true, from, to } or { accepted: false, reason }. Await it and inspect result.accepted; a result object is always truthy.",
 	},
 	{
 		question: "Can I run side effects after a step change?",
@@ -68,16 +68,21 @@ export const FAQ_ITEMS: { question: string; answer: string }[] = [
 	{
 		question: "Which React versions are supported?",
 		answer:
-			"React 17, 18 and 19. It runs in plain JavaScript too, but you lose the type-safety that makes the typed ids worthwhile.",
+			"React 18 and 19. It runs in plain JavaScript too, but you lose the type-safety that makes the typed ids worthwhile.",
 	},
 	{
 		question: "How do I reset the whole flow?",
 		answer:
-			"stepper.reset() returns to the initial/default step. Reset drafts and completion separately with stepper.data.reset() and setComplete(id, false), since those are independent business state.",
+			"stepper.reset() restores mount-time step, data and completion through the guard. Use keepData and keepCompleted to preserve selected state. data.clear() empties data; data.reset() restores defaults.",
 	},
 	{
 		question: "I'm migrating from v6 — what changed?",
 		answer:
 			"The instance is now flat (stepper.next() instead of stepper.navigation.next()), steps are passed as an array, metadata became data, and Scoped became Provider. Full mapping is in the v7 migration guide.",
+	},
+	{
+		question: "What changes when migrating from v7?",
+		answer:
+			"Explicit shared hooks, structured navigation results, consistent linear policy and full reset semantics. Follow the v8 migration guide.",
 	},
 ];

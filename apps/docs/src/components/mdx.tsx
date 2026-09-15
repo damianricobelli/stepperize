@@ -39,14 +39,28 @@ import { TypedWizardBlock } from "./blocks/typed-wizard";
 import { UserOnboardingBlock } from "./blocks/user-onboarding";
 import { ValidatedCheckoutBlock } from "./blocks/validated-checkout";
 import { VerticalStepperBlock } from "./blocks/vertical-stepper";
+import { InteractiveExample } from "./interactive/interactive-example";
 import { LifecycleViz } from "./interactive/lifecycle-viz";
+import { OwnershipDemo } from "./interactive/ownership-demo";
 import { ReactActivityDemo } from "./interactive/react-activity-demo";
 import { StatusCompletionViz } from "./interactive/status-completion-viz";
 import { StepperInspector } from "./interactive/stepper-inspector";
+import {
+	BenchmarkEnvironment,
+	BenchmarkSummary,
+	HeadlessBundleTable,
+	PerformanceHighlights,
+	PerformanceTable,
+} from "./performance-table";
 
 export function getMDXComponents(components?: MDXComponents) {
 	return {
 		...defaultMdxComponents,
+		PerformanceTable,
+		BenchmarkEnvironment,
+		BenchmarkSummary,
+		HeadlessBundleTable,
+		PerformanceHighlights,
 		CodeBlock,
 		Popup,
 		PopupContent,
@@ -62,6 +76,8 @@ export function getMDXComponents(components?: MDXComponents) {
 		ReactActivityDemo,
 		StatusCompletionViz,
 		LifecycleViz,
+		InteractiveExample,
+		OwnershipDemo,
 		UserOnboardingBlock,
 		KycVerificationBlock,
 		ProductTourBlock,

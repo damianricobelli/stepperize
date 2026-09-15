@@ -16,6 +16,7 @@ export default defineConfig({
   plugins: [lastModified()],
   mdxOptions: {
     rehypeCodeOptions: {
+      langs: ["js", "jsx", "ts", "tsx"],
       themes: {
         light: "github-light",
         dark: "github-dark",
