@@ -87,7 +87,8 @@ try {
 		const code = bundle.outputFiles[0].contents;
 		writeFileSync(join(dir, `${version}.mjs`), code);
 		versions[version] = {
-			version: version === "v7" ? "7.0.0" : JSON.parse(readFileSync(join(root, "packages/react/package.json"))).version,
+			// Compare release targets even before Changesets updates the workspace versions.
+			version: version === "v7" ? "7.0.0" : "8.0.0",
 			source: version === "v7" ? baseline : "working tree",
 			sourceSha256: hash.digest("hex"),
 			bundleSha256: sha(code),

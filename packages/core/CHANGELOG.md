@@ -1,17 +1,5 @@
 # @stepperize/core
 
-## 4.0.0
-
-### Breaking changes
-
-- Update the shared runtime types for v8: discriminated navigation results, policy bypass options, reset preservation options and cancellable step-change context.
-- Match handlers receive the step's typed flow data as a second argument.
-
-### Added and improved
-
-- Typed functional data updates and atomic source-completion navigation payloads.
-- Cache static indexes by immutable step array for constant-time lookups and linear-time status maps. Status records safely support arbitrary step ids.
-
 ## 3.0.0
 
 ### Major Changes

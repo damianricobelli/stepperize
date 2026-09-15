@@ -1,48 +1,5 @@
 # @stepperize/react
 
-## 8.0.0
-
-- Run React and interactive example tests in Vitest Browser Mode with Chromium; remove jsdom and Testing Library. Keep core/server tests in Node and compare v7/v8 performance with a shared production React browser bundle.
-
-- Preserve v7 documentation at `/docs/v7` and version v8 pages at `/docs/v8`, with an explicit version selector and a compatible `latest` alias.
-
-### Breaking changes
-
-- Require React 18 or 19. `useStepper()` always creates local state; shared consumers use `useStepperContext(selector?, isEqual?)` under the matching Provider or Root.
-- Navigation returns `NavigationResult`: `{ accepted: true, from, to }` or `{ accepted: false, reason }`.
-- `goTo` respects linear policy. Intentional branches can pass `bypassPolicy: true`; guards still run.
-- `reset()` restores mount-time step, data and completion. Replace old reset payloads with `keepData` / `keepCompleted` options.
-- `createStepperPrimitives` is internal. Use each definition's generated `Stepper` primitives.
-
-### Added
-
-- Optional `@stepperize/react/headless` entry: the same typed hooks, Provider and state features without generated UI primitives.
-
-- Atomic source data and completion with `next/prev/goTo({ data, complete: true })`.
-- `defaultCompleted` on hooks, Provider and Root; typed functional `data.update`; typed data in `match` handlers.
-- Selector subscriptions with optional equality, independent nested scopes, `context.signal` cancellation and structured rejection reasons.
-- Root orientation inheritance, `Content forceMount`, explicit `data-complete` and instance-scoped accessible IDs.
-
-### Fixed
-
-- Same-event duplicate navigation, lost compound writes, stale controlled state/callbacks in child effects, and uncached object selector loops.
-- Cancelled/unmounted async guards cannot commit stale transitions or leak rejected promises.
-- Triggers default to button type inside forms. Static step lookup indexes and linear-time status computation reduce repeated work.
-
-### Performance
-
-- Remove an unused internal status alias, an unreachable step-map fallback and redundant partial-update checks in navigation commits. Keep unused-symbol checks enabled for both packages.
-
-- Use React state for local snapshot updates and share cached controlled views across Provider consumers.
-- Reuse the definition's step map and unchanged snapshot helpers; avoid duplicate renders when controlled snapshots commit.
-- Create navigation contexts and abort controllers only when needed, and settle cancelled guards without an extra abort-event subscription.
-- Compare 21 unchanged v7/v8 benchmark scenarios with raw samples, source hashes and remaining regressions documented.
-
-### Documentation and examples
-
-- New local/shared guide and interactive demo, context-hook reference and v7-to-v8 migration guide.
-- Updated API references, form integrations, FAQ, AI-readable documentation and v8-compatible registry examples.
-
 ## 7.0.0
 
 ### Major Changes

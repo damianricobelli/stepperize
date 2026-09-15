@@ -1,21 +1,5 @@
 # docs
 
-## 4.1.0
-
-- Run React and interactive example tests in Vitest Browser Mode with Chromium; remove jsdom and Testing Library. Keep core/server tests in Node and compare v7/v8 performance with a shared production React browser bundle.
-
-- Document the lightweight React entry and compare full/headless bundle sizes, with reproducible built-export checks.
-
-- Add a dedicated v7/v8 performance guide with expanded reproducible benchmarks, raw samples and methodology. Link to it from the site footer.
-
-- Refresh the landing page for v8 with feature highlights, direct guide links and a hero badge. Add a dismissible Fumadocs announcement banner and simplify the version selector label to `v8`.
-
-- Add live v8 demos for guarded navigation, cancellation, reset options, controlled state, context selectors and linear policy. Expand ownership examples with local hooks inside providers and nested scopes. Every demo includes its exact, copyable source and guided exercises.
-
-- Preserve v7 documentation at `/docs/v7` and version v8 pages at `/docs/v8`, with an explicit version selector and a compatible `latest` alias.
-
-Update the documentation and examples for Stepperize v8. Add an interactive local/shared state guide, migration guide, selector reference and updated registry blocks.
-
 ## 4.0.0
 
 ### Major Changes
