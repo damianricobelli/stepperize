@@ -25,7 +25,7 @@ const { Stepper } = team;
 /**
  * Draft values and review: invites are stored in `stepper.data` as they're
  * added, then the review step reads them back before sending. Inner components
- * call `team.useStepper()` to read the same instance the Root provides.
+ * call `team.useStepperContext()` to read the same instance the Root provides.
  */
 export function TeamInvitesBlock() {
 	return (
@@ -46,7 +46,7 @@ export function TeamInvitesBlock() {
 }
 
 function useInvites() {
-	const stepper = team.useStepper();
+	const stepper = team.useStepperContext();
 	const invites = (stepper.data.get("invite") as Invite[] | undefined) ?? [];
 	return { stepper, invites };
 }
@@ -168,8 +168,7 @@ function ReviewStep() {
 				</Button>
 				<Button
 					onClick={() => {
-						stepper.setComplete("review");
-						stepper.next();
+						void stepper.next({ complete: true });
 					}}
 				>
 					<Send /> Send invites
@@ -197,8 +196,7 @@ function SentStep() {
 				variant="link"
 				size="sm"
 				onClick={() => {
-					stepper.data.reset();
-					stepper.reset();
+					void stepper.reset();
 				}}
 			>
 				Invite more

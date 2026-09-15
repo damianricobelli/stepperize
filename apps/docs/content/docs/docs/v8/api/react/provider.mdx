@@ -1,0 +1,60 @@
+---
+title: Provider
+description: Own and share one stepper instance without adding markup.
+---
+
+# Provider
+
+`definition.Provider` owns one shared instance and adds no DOM element. Each mounted provider has independent state.
+
+```tsx
+import { defineStepper } from "@stepperize/react";
+
+const checkout = defineStepper([
+  { id: "shipping", title: "Shipping" },
+  { id: "payment", title: "Payment" },
+  { id: "review", title: "Review" },
+]);
+
+export function Checkout() {
+  return (
+    <checkout.Provider linear defaultCompleted={[]}>
+      <Progress />
+      <Actions />
+    </checkout.Provider>
+  );
+}
+
+function Progress() {
+  const title = checkout.useStepperContext((stepper) => stepper.current.title);
+  return <h2>{title}</h2>;
+}
+
+function Actions() {
+  const stepper = checkout.useStepperContext();
+  return (
+    <>
+      <button type="button" disabled={!stepper.canPrev} onClick={() => stepper.prev()}>Back</button>
+      <button type="button" disabled={!stepper.canNext} onClick={() => stepper.next()}>Next</button>
+    </>
+  );
+}
+```
+
+## Options
+
+All [useStepper options](/docs/v8/api/react/use-stepper#options) are supported, including `defaultCompleted`, controlled state and lifecycle callbacks. Put options on the owner; consumers only read the shared instance.
+
+## Provider or Root?
+
+| Owner | Purpose |
+| --- | --- |
+| `useStepper(options)` | Local state for custom UI in one component. |
+| `Provider` | Shared state with your own markup. |
+| `Stepper.Root` | Shared state plus a styled-by-you container, orientation and optional render prop. |
+
+`Stepper.Root` creates its own provider. Do not wrap it in another provider expecting it to reuse that outer instance. Use one owner for a flow: a Root, or a Provider containing individual primitives.
+
+Children of either owner call `useStepperContext()`. A Root render prop receives that same shared snapshot as `{ stepper }`.
+
+See [local and shared state](/docs/v8/guides/local-and-shared-state) for complete examples and the interactive comparison.

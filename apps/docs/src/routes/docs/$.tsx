@@ -5,12 +5,14 @@ import { useFumadocsLoader } from "fumadocs-core/source/client";
 import { DocsLayout } from "fumadocs-ui/layouts/docs";
 import { type DocsPageProps, renderDocsPage } from "@/components/docs-page";
 import {
+	getCanonicalDocsPath,
 	getDocsPageSlugs,
 	getDocsTree,
 	getDocsVersion,
 	getDocsVersionTabs,
 } from "@/lib/docs-tree";
 import { FAQ_ITEMS } from "@/lib/faq-data";
+import { FAQ_ITEMS_V7 } from "@/lib/faq-data-v7";
 import { baseOptions } from "@/lib/layout.shared";
 import {
 	breadcrumbLd,
@@ -37,14 +39,24 @@ const BLOCKS_CATEGORY_REDIRECTS: Record<string, string> = {
 
 export const Route = createFileRoute("/docs/$")({
 	component: Page,
-	beforeLoad: ({ params }) => {
+	beforeLoad: ({ params, location }) => {
 		const splat = params._splat ?? "";
-		if (splat === "latest/blocks" || splat.startsWith("latest/blocks/")) {
-			const page = splat.replace(/^latest\/blocks\/?/, "").split("#")[0];
+		if (/^(latest|v8)\/blocks(?:\/|$)/.test(splat)) {
+			const page = splat.replace(/^(latest|v8)\/blocks\/?/, "").split("#")[0];
 			const category = BLOCKS_CATEGORY_REDIRECTS[page];
 			throw redirect({
 				to: "/blocks",
 				search: category ? { category } : {},
+			});
+		}
+		const canonical = getCanonicalDocsPath(splat.split("/").filter(Boolean));
+		if (`/docs/${splat}` !== canonical) {
+			throw redirect({
+				href:
+					canonical +
+					location.searchStr +
+					(location.hash ? `#${location.hash}` : ""),
+				replace: true,
 			});
 		}
 	},
@@ -75,8 +87,12 @@ export const Route = createFileRoute("/docs/$")({
 			jsonLdScript(breadcrumbLd(docsBreadcrumb(splat, title))),
 		];
 
-		if (splat.endsWith("getting-started/faq")) {
-			scripts.push(jsonLdScript(faqPageLd(FAQ_ITEMS)));
+		if (/^v[78]\/getting-started\/faq$/.test(splat)) {
+			scripts.push(
+				jsonLdScript(
+					faqPageLd(splat.startsWith("v7/") ? FAQ_ITEMS_V7 : FAQ_ITEMS),
+				),
+			);
 		}
 
 		return {
@@ -93,7 +109,7 @@ export const Route = createFileRoute("/docs/$")({
 });
 
 const loadDocsPage = createServerFn({ method: "GET" })
-	.inputValidator((data: { slugs: string[] }) => data)
+	.validator((data: { slugs: string[] }) => data)
 	.handler(async ({ data }) => {
 		const pageSlugs = getDocsPageSlugs(data.slugs);
 		const page = source.getPage(pageSlugs);

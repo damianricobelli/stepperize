@@ -1,3 +1,4 @@
+import { getCanonicalDocsPath, getDocsVersion } from "./docs-tree";
 /**
  * Centralized SEO helpers for the docs site.
  *
@@ -527,6 +528,23 @@ export const DOC_KEYWORDS: Record<string, readonly string[]> = {
 		"framework-agnostic stepper",
 		"stepper helpers",
 	],
+	"latest/migration/v8": [
+		"Stepperize v8 migration",
+		"React 18",
+		"useStepperContext",
+		"NavigationResult",
+	],
+	"latest/guides/local-and-shared-state": [
+		"local stepper",
+		"shared stepper",
+		"Provider",
+		"useStepperContext",
+	],
+	"latest/api/react/use-stepper-context": [
+		"useStepperContext",
+		"stepper selector",
+		"shared state",
+	],
 	"latest/migration/v7": [
 		"Stepperize v7 migration",
 		"upgrade Stepperize",
@@ -541,7 +559,8 @@ export const DOC_KEYWORDS: Record<string, readonly string[]> = {
 
 /** Resolve the keyword set for a docs splat. */
 export function docKeywords(splat: string): readonly string[] | undefined {
-	return DOC_KEYWORDS[splat];
+	const normalized = splat.replace(/^(v8|v7)(?=\/|$)/, "latest");
+	return DOC_KEYWORDS[normalized];
 }
 
 const BREADCRUMB_LABELS = { docs: "Docs" } as const;
@@ -562,22 +581,25 @@ export function docsBreadcrumb(
 	splat: string,
 	pageTitle: string,
 ): { name: string; url: string }[] {
+	const segments = splat.split("/").filter(Boolean);
+	const version = getDocsVersion(segments);
 	const trail: { name: string; url: string }[] = [
 		{ name: "Stepperize", url: "/" },
-		{ name: BREADCRUMB_LABELS.docs, url: "/docs/latest" },
+		{ name: `${BREADCRUMB_LABELS.docs} ${version}`, url: `/docs/${version}` },
 	];
-	const segments = splat.split("/").filter(Boolean);
-	// Drop leading "latest" version segment from the visible trail.
-	const visible = segments[0] === "latest" ? segments.slice(1) : segments;
+	const visible =
+		segments[0] === "latest" || /^v\d+$/.test(segments[0] ?? "")
+			? segments.slice(1)
+			: segments;
 	if (visible.length > 1) {
 		// Section label (e.g. "getting-started" -> "Getting started").
 		const section = visible[0];
 		trail.push({
 			name: SECTION_LABELS[section] ?? humanize(section),
-			url: `/docs/latest/${section}`,
+			url: `/docs/${version}/${section}`,
 		});
 	}
-	trail.push({ name: pageTitle, url: `/docs/${splat}` });
+	trail.push({ name: pageTitle, url: getCanonicalDocsPath(segments) });
 	return trail;
 }
 

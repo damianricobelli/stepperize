@@ -6,7 +6,7 @@
   "description": "A shipment tracker driven by typed per-step metadata (carrier, location, ETA).",
   "author": "Stepperize",
   "dependencies": [
-    "@stepperize/react",
+    "@stepperize/react@^8.0.0",
     "lucide-react"
   ],
   "registryDependencies": [],

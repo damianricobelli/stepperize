@@ -12,7 +12,7 @@ const redirects: Record<string, string> = {
 	"examples/forms": "/docs/latest/forms",
 	"examples/react-hook-form": "/docs/latest/forms/react-hook-form",
 	installation: "/docs/latest/getting-started/installation",
-	"migration/migrating-to-v7": "/docs/latest/migration/v7",
+	"migration/migrating-to-v7": "/docs/v7/migration/v7",
 	"my-first-stepper": "/docs/latest/getting-started/first-stepper",
 	shadcn: "/docs/latest/blocks",
 };
@@ -22,12 +22,12 @@ export const Route = createFileRoute("/docs/react/$")({
 		const splat = params._splat ?? "";
 
 		if (splat.startsWith("migration/legacy/")) {
-			const version = splat.replace(
-				"migration/legacy/migrating-to-",
-				"",
-			);
+			const version = splat.replace("migration/legacy/migrating-to-", "");
 			throw redirect({
-				href: version === "v7" ? "/docs/latest/migration/v7" : `/docs/${version}/migration`,
+				href:
+					version === "v7"
+						? "/docs/v7/migration/v7"
+						: `/docs/${version}/migration`,
 			});
 		}
 

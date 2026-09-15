@@ -6,7 +6,7 @@
   "description": "A multi-stage submission and approval chain.",
   "author": "Stepperize",
   "dependencies": [
-    "@stepperize/react",
+    "@stepperize/react@^8.0.0",
     "lucide-react"
   ],
   "registryDependencies": [],

@@ -12,31 +12,41 @@ const wizard = defineStepper([
 	{ id: "done", title: "Done" },
 ] as const);
 
-const { Stepper, useStepper } = wizard;
+const { Stepper, useStepperContext } = wizard;
 
 type StepId = (typeof wizard.steps)[number]["id"];
 const STEP_IDS = wizard.steps.map((s) => s.id) as StepId[];
 
 const KEY = "stepperize:save-resume";
 
-type Saved = { step: StepId; name: string };
+type Saved = { step: StepId; name: string; industry: string; teamSize: string };
 
 // localStorage + URL are the source of truth for *where the user left off*.
 // The stepper runs in controlled mode, so this external state drives it.
 function load(): Saved | null {
 	if (typeof window === "undefined") return null;
-	const fromHash = new URLSearchParams(window.location.hash.slice(1)).get(
-		"sr",
-	) as StepId | null;
+	const fromHash = wizard.parseStep(
+		new URLSearchParams(window.location.hash.slice(1)).get("sr"),
+	);
 	try {
 		const raw = window.localStorage.getItem(KEY);
-		const saved = raw ? (JSON.parse(raw) as Saved) : null;
-		const step =
-			fromHash && STEP_IDS.includes(fromHash) ? fromHash : saved?.step;
+		const parsed: unknown = raw ? JSON.parse(raw) : null;
+		const saved =
+			parsed && typeof parsed === "object"
+				? (parsed as Record<string, unknown>)
+				: {};
+		const step = fromHash ?? wizard.parseStep(saved.step);
 		if (!step) return null;
-		return { step, name: saved?.name ?? "" };
+		return {
+			step,
+			name: typeof saved.name === "string" ? saved.name : "",
+			industry: typeof saved.industry === "string" ? saved.industry : "",
+			teamSize: typeof saved.teamSize === "string" ? saved.teamSize : "",
+		};
 	} catch {
-		return null;
+		return fromHash
+			? { step: fromHash, name: "", industry: "", teamSize: "" }
+			: null;
 	}
 }
 
@@ -73,6 +83,8 @@ function clear() {
 export function SaveResumeBlock() {
 	const [step, setStep] = useState<StepId>("workspace");
 	const [name, setName] = useState("");
+	const [industry, setIndustry] = useState("");
+	const [teamSize, setTeamSize] = useState("");
 	const [resumed, setResumed] = useState(false);
 
 	// Hydrate from storage after mount (avoids SSR/client mismatch).
@@ -81,12 +93,14 @@ export function SaveResumeBlock() {
 		if (saved) {
 			setStep(saved.step);
 			setName(saved.name);
+			setIndustry(saved.industry);
+			setTeamSize(saved.teamSize);
 			if (saved.step !== "workspace" || saved.name) setResumed(true);
 		}
 	}, []);
 
 	const persist = (next: Partial<Saved>) => {
-		const data: Saved = { step, name, ...next };
+		const data: Saved = { step, name, industry, teamSize, ...next };
 		save(data);
 	};
 
@@ -94,6 +108,8 @@ export function SaveResumeBlock() {
 		clear();
 		setStep("workspace");
 		setName("");
+		setIndustry("");
+		setTeamSize("");
 		setResumed(false);
 	};
 
@@ -132,6 +148,7 @@ export function SaveResumeBlock() {
 									setName(e.target.value);
 									persist({ name: e.target.value });
 								}}
+								aria-label="Workspace name"
 								placeholder="Acme Inc."
 							/>
 							<p className="text-xs text-muted-foreground">
@@ -141,14 +158,34 @@ export function SaveResumeBlock() {
 
 						<Stepper.Content step="details" className="space-y-3">
 							<p className="text-sm font-semibold">A few details</p>
-							<Input placeholder="Industry" />
-							<Input placeholder="Team size" />
+							<Input
+								aria-label="Industry"
+								placeholder="Industry"
+								value={industry}
+								onChange={(event) => {
+									setIndustry(event.target.value);
+									persist({ industry: event.target.value });
+								}}
+							/>
+							<Input
+								aria-label="Team size"
+								placeholder="Team size"
+								value={teamSize}
+								onChange={(event) => {
+									setTeamSize(event.target.value);
+									persist({ teamSize: event.target.value });
+								}}
+							/>
 						</Stepper.Content>
 
 						<Stepper.Content step="review" className="space-y-2 text-sm">
 							<p className="font-semibold">Review</p>
 							<div className="rounded-lg border bg-muted/30 p-3">
-								Workspace: <span className="font-medium">{name || "—"}</span>
+								<p>
+									Workspace: <span className="font-medium">{name || "—"}</span>
+								</p>
+								<p>Industry: {industry || "—"}</p>
+								<p>Team size: {teamSize || "—"}</p>
 							</div>
 						</Stepper.Content>
 
@@ -188,7 +225,7 @@ function Crumbs({ current }: { current: StepId }) {
 }
 
 function Footer() {
-	const stepper = useStepper();
+	const stepper = useStepperContext();
 	if (stepper.is("done")) return null;
 	return (
 		<Stepper.Actions className="mt-5 flex justify-between">

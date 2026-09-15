@@ -135,8 +135,7 @@ export function UserOnboardingBlock() {
 								onClick={() => {
 									setCreated(false);
 									setErrors({});
-									stepper.data.reset();
-									stepper.reset();
+									void stepper.reset();
 								}}
 								className={buttonVariants()}
 							>
@@ -162,7 +161,7 @@ export function UserOnboardingBlock() {
 
 // Controlled fields write to `stepper.data` so `validate()` can read them.
 function AccountFields({ errors }: { errors: Errors }) {
-	const stepper = onboarding.useStepper();
+	const stepper = onboarding.useStepperContext();
 	const account = stepper.data.get("account") ?? { name: "", email: "" };
 	const set = (patch: Partial<typeof account>) =>
 		stepper.data.set("account", { ...account, ...patch });

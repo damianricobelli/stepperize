@@ -1,8 +1,8 @@
 import { C, CodeFrame, F, K, P, S, T } from "./shared";
 
 /**
- * A hand-tokenized, accurate v7 snippet. Shows the entire mental model:
- * defineStepper → useStepper → match → next/prev — the whole API at a glance.
+ * A hand-tokenized, v8 local-flow snippet. Shows the entire mental model:
+ * defineStepper → useStepper → match. Shared consumers use useStepperContext.
  */
 export function CodePreview() {
 	return (

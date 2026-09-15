@@ -1,0 +1,138 @@
+---
+title: Navigation
+description: Save, complete, guard, branch and reset with consistent outcomes.
+---
+
+# Navigation
+
+The four navigation methods return a promise with a discriminated result. Await the result when the next action depends on whether the move was accepted.
+
+```tsx
+const result = await stepper.next({ data: formValues, complete: true });
+if (!result.accepted) {
+  console.log(result.reason);
+  return;
+}
+console.log(`Moved from ${result.from} to ${result.to}`);
+```
+
+## Navigation methods
+
+| Method | Behavior |
+| --- | --- |
+| `next(payload?)` | Move one step forward. |
+| `prev(payload?)` | Move one step backward. |
+| `goTo(id, options?)` | Request a known target, respecting linear policy. |
+| `reset(options?)` | Restore mount-time step, data and completion. |
+
+`next`, `prev`, and `goTo` accept `{ data?, complete? }`. Data belongs to the **source** step. `complete: true` marks that source complete, not the destination. Both changes commit together only if the guard accepts.
+
+`data.set` and `data.update` commit immediately, independently of a later navigation result. Use a navigation payload when saving and moving must succeed together.
+
+## Read the result
+
+```ts
+type NavigationResult<Id extends string = string> =
+  | { accepted: true; from: Id; to: Id }
+  | { accepted: false; reason:
+      | "guard" | "policy" | "pending" | "boundary"
+      | "same-step" | "invalid-step" | "cancelled" };
+```
+
+| Reason | Meaning |
+| --- | --- |
+| `guard` | `beforeStepChange` returned `false`. |
+| `policy` | The target skips ahead while linear policy is enabled. |
+| `pending` | Another navigation owns the transition gate. |
+| `boundary` | There is no previous or next step. |
+| `same-step` | The request changes neither the step nor data/completion. |
+| `invalid-step` | An unknown id reached navigation at runtime. |
+| `cancelled` | The owner unmounted or state changed while a guard was pending. |
+
+An accepted same-step request can still save a payload or restore defaults. In controlled mode, acceptance means the callbacks requested the new state; the owner must apply it. Exceptions from user callbacks reject the promise and should be handled by the application.
+
+## Linear policy and branching
+
+`linear: false` allows any known target. With `linear: true`, previous steps, the current step and the immediate next step are eligible. This rule applies to `goTo`, `canGoTo`, triggers and list keyboard navigation.
+
+```tsx
+await stepper.goTo("review"); // follows policy
+await stepper.goTo("review", { bypassPolicy: true }); // deliberate branch
+```
+
+`bypassPolicy` never skips `beforeStepChange`. Completion is independent of policy: linear mode does not automatically require completion or validate a form.
+
+### Try policy and guard rejection
+
+At the initial step, choose **Go to review**: the result is `policy`, and the guard has not run. Choose **Bypass policy** to reach review. Reset, disable **Guard allows navigation**, and bypass again: the result is now `guard`.
+
+<InteractiveExample name="policy" />
+
+## Guard a transition
+
+Configure the guard on `useStepper`, `Provider`, or `Stepper.Root`:
+
+```tsx
+const stepper = checkout.useStepper({
+  beforeStepChange: async ({ fromIndex, toIndex, direction, validate }) => {
+    if (direction === "reset" || toIndex <= fromIndex) return true;
+    return (await validate()).success;
+  },
+});
+```
+
+This assumes the steps have schemas. `validate()` checks the step being left against the staged payload. Steps without schemas always succeed. Use your form library to display errors, or render `result.issues` from validation.
+
+Return `false` to block; `true` or `undefined` allows the move. External controlled prop changes are authoritative and do not run the guard.
+
+## Async work and cancellation
+
+While an async guard is pending, `isPending` is true and navigation affordances disable themselves. A synchronous gate also rejects duplicate calls in the same event. Sequential awaited navigation remains supported.
+
+```tsx
+<button type="button" disabled={!stepper.canNext} onClick={() => stepper.next()}>
+  {stepper.isPending ? "Saving…" : "Continue"}
+</button>
+```
+
+Use the guard's `signal` with cancellable work:
+
+```tsx
+beforeStepChange: async ({ data, signal }) => {
+  const response = await fetch("/api/check-draft", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+    signal,
+  });
+  return response.ok;
+}
+```
+
+This endpoint is application code. Unmounting, changing controlled state or writing data/completion during a pending guard cancels the old transition and discards its payload. A later completion of that old work cannot move the flow. Cancellation cannot undo external side effects already performed by a server.
+
+## Reset deliberately
+
+```tsx
+await stepper.reset();
+await stepper.reset({ keepData: true });
+await stepper.reset({ keepData: true, keepCompleted: true });
+stepper.data.clear();
+stepper.data.reset();
+```
+
+`reset()` restores the `defaultStep`, `defaultData` and `defaultCompleted` captured at mount, including definition defaults. It runs the guard. The `keep` options preserve their selected current values. `data.clear()` empties data; `data.reset()` restores default data without navigation.
+
+### Compare reset options
+
+Edit the saved draft and choose **Complete details and advance** before each comparison. Then try **Reset everything**, **Keep data**, **Keep completion**, and **Keep both**. Compare the before/after panels: the step always returns to `details`, while the selected values are preserved.
+
+The starting draft is deliberately non-empty. Restoring defaults is different from clearing data. This demo writes directly to `stepper.data`; the draft is already committed before navigation.
+
+<InteractiveExample name="reset" />
+
+## Final submission
+
+`next()` at the last step returns `boundary`. Render your own final action: validate/submit the complete flow, handle application errors, then call `setComplete(stepper.id)` or show a success view. A stepper does not submit a form or perform a purchase on its own.
+
+Next: [form patterns](/docs/v8/forms/patterns).

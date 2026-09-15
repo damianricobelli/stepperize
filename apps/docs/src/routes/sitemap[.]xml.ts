@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { BLOCKS } from "@/lib/blocks/catalog.mjs";
+import { CURRENT_DOCS_VERSION } from "@/lib/docs-tree";
 import { SITE } from "@/lib/seo";
 import { docRouteForSlugs } from "@/lib/sitemap-urls";
 import { source } from "@/lib/source";
@@ -18,7 +19,7 @@ function buildSitemap(): string {
 	};
 
 	add("/", "1.0", now);
-	add("/docs/latest", "0.9", now);
+	add(`/docs/${CURRENT_DOCS_VERSION}`, "0.9", now);
 
 	// Blocks gallery + every block detail page.
 	add("/blocks", "0.9", now);
@@ -33,7 +34,7 @@ function buildSitemap(): string {
 			page.data.lastModified instanceof Date
 				? page.data.lastModified.toISOString()
 				: undefined;
-		const priority = page.slugs[1] === "latest" ? "0.8" : "0.4";
+		const priority = page.slugs[1] === CURRENT_DOCS_VERSION ? "0.8" : "0.4";
 		add(route, priority, lastmod);
 	}
 

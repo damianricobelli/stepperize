@@ -1,143 +1,170 @@
 "use client";
 
+import { defineStepper } from "@stepperize/react";
 import { useState } from "react";
-import { cn } from "@/lib/utils";
 
-type StageId = "payload" | "before" | "commit" | "after" | "done";
+const checkout = defineStepper(
+	[
+		{
+			id: "details",
+			title: "Details",
+			schema: {
+				"~standard": {
+					version: 1 as const,
+					vendor: "demo",
+					validate: (value: unknown) =>
+						typeof value === "string" && value.trim().length >= 3
+							? { value }
+							: { issues: [{ message: "Enter at least 3 characters." }] },
+				},
+			},
+		},
+		{ id: "review", title: "Review" },
+	],
+	{ defaultData: { details: "Original draft" } },
+);
+const buttonClass =
+	"rounded-md border px-3 py-2 text-sm hover:bg-muted disabled:opacity-40";
 
-const STAGES: { id: StageId; label: string; detail: string }[] = [
-	{
-		id: "payload",
-		label: "payload",
-		detail: "next({ data }) — pending data is prepared",
-	},
-	{
-		id: "before",
-		label: "beforeStepChange",
-		detail: "sees the pending data; return false to cancel",
-	},
-	{
-		id: "commit",
-		label: "commit",
-		detail: "data is saved and the current step changes",
-	},
-	{ id: "after", label: "onStepChange", detail: "runs after the move is accepted" },
-	{
-		id: "done",
-		label: "returns true",
-		detail: "navigation resolves to whether it changed",
-	},
-];
+// The timer only simulates server latency. Stepperize owns the transition.
+function delay(signal: AbortSignal) {
+	return new Promise<void>((resolve) => {
+		if (signal.aborted) return resolve();
+		const finish = () => {
+			clearTimeout(timer);
+			signal.removeEventListener("abort", finish);
+			resolve();
+		};
+		const timer = setTimeout(finish, 800);
+		signal.addEventListener("abort", finish, { once: true });
+	});
+}
 
-const STEP_ORDER: StageId[] = ["payload", "before", "commit", "after", "done"];
-
-/**
- * Navigation lifecycle — press next() and watch the payload flow through
- * beforeStepChange → commit → onStepChange. Flip "reject in beforeStepChange" to
- * see the change cancel before anything commits.
- */
 export function LifecycleViz() {
-	const [activeStage, setActiveStage] = useState<StageId | null>(null);
+	const [draft, setDraft] = useState("Ada");
 	const [reject, setReject] = useState(false);
-	const [running, setRunning] = useState(false);
-	const [result, setResult] = useState<null | "accepted" | "cancelled">(null);
+	const [events, setEvents] = useState<string[]>([]);
+	const [outcome, setOutcome] = useState("No request yet");
+	const record = (event: string) =>
+		setEvents((previous) => [...previous.slice(-7), event]);
+	const stepper = checkout.useStepper({
+		beforeStepChange: async ({ direction, data, validate, signal }) => {
+			if (direction === "reset") return true;
+			record(`Guard received staged data: ${JSON.stringify(data.details)}`);
+			await delay(signal);
+			if (signal.aborted) return false;
+			const result = await validate();
+			const allowed = result.success && !reject;
+			record(
+				allowed
+					? "Guard accepted"
+					: "Guard rejected: invalid name or rejection enabled",
+			);
+			return allowed;
+		},
+		onStepChange: (id) => record(`onStepChange: ${id}`),
+	});
 
-	async function run() {
-		if (running) return;
-		setRunning(true);
-		setResult(null);
-		for (const stage of STEP_ORDER) {
-			// Cancel path: stop right after beforeChange.
-			if (reject && stage === "commit") {
-				setActiveStage("before");
-				await wait(500);
-				setActiveStage(null);
-				setResult("cancelled");
-				setRunning(false);
-				return;
-			}
-			setActiveStage(stage);
-			await wait(650);
+	async function move() {
+		try {
+			const result = await stepper.next({ data: draft, complete: true });
+			setOutcome(JSON.stringify(result));
+			record(`Result: ${JSON.stringify(result)}`);
+		} catch (error) {
+			setOutcome(error instanceof Error ? error.message : "Unexpected error");
 		}
-		setActiveStage(null);
-		setResult("accepted");
-		setRunning(false);
 	}
 
 	return (
-		<div className="not-prose my-6 rounded-xl border bg-card p-4 md:p-6">
-			<div className="mb-4 flex flex-wrap items-center gap-3">
+		<section
+			aria-label="Navigation lifecycle demo"
+			className="not-prose my-6 space-y-4 rounded-xl border bg-card p-5"
+		>
+			<label className="grid gap-2 text-sm">
+				Draft name
+				<input
+					className="rounded-md border bg-background px-3 py-2"
+					value={draft}
+					disabled={stepper.id !== "details" || stepper.isPending}
+					onChange={(event) => setDraft(event.target.value)}
+				/>
+			</label>
+			<label className="flex items-center gap-2 text-sm">
+				<input
+					type="checkbox"
+					checked={reject}
+					disabled={stepper.isPending}
+					onChange={(event) => setReject(event.target.checked)}
+				/>{" "}
+				Reject in guard
+			</label>
+			<div className="flex flex-wrap gap-2">
 				<button
 					type="button"
-					onClick={run}
-					disabled={running}
-					className="inline-flex h-9 items-center rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
+					className={buttonClass}
+					disabled={!stepper.canNext}
+					onClick={() => void move()}
 				>
-					{running ? "running…" : "stepper.next()"}
+					{stepper.isPending ? "Validating…" : "Save and continue"}
 				</button>
-				<label className="flex cursor-pointer select-none items-center gap-2 text-sm text-muted-foreground">
-					<input
-						type="checkbox"
-						checked={reject}
-						onChange={(e) => setReject(e.target.checked)}
-						className="h-4 w-4 accent-rose-500"
-					/>
-					reject in <code className="text-xs">beforeStepChange</code>
-				</label>
-				{result && (
-					<span
-						className={cn(
-							"ml-auto rounded-md px-2 py-1 text-xs font-semibold",
-							result === "accepted"
-								? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-								: "bg-rose-500/10 text-rose-600 dark:text-rose-400",
-						)}
-					>
-						{result === "accepted" ? "→ returns true" : "→ returns false"}
-					</span>
-				)}
+				<button
+					type="button"
+					className={buttonClass}
+					disabled={!stepper.isPending}
+					onClick={() => void move()}
+				>
+					Try duplicate request
+				</button>
+				<button
+					type="button"
+					className={buttonClass}
+					disabled={!stepper.isPending}
+					onClick={() => {
+						stepper.data.set("details", "External edit");
+						record("Immediate external write cancelled the pending move");
+					}}
+				>
+					Write data while pending
+				</button>
+				<button
+					type="button"
+					className={buttonClass}
+					disabled={stepper.isPending}
+					onClick={async () => {
+						await stepper.reset();
+						setOutcome("Reset to mount-time defaults");
+						setEvents([]);
+					}}
+				>
+					Reset demo
+				</button>
 			</div>
-
-			<ol className="space-y-2">
-				{STAGES.map((stage) => {
-					const isActive = activeStage === stage.id;
-					const isCancelStage =
-						reject &&
-						(stage.id === "commit" ||
-							stage.id === "after" ||
-							stage.id === "done");
-					return (
-						<li
-							key={stage.id}
-							className={cn(
-								"flex items-start gap-3 rounded-lg border p-3 transition-all",
-								isActive
-									? "border-primary bg-primary/10"
-									: "border-border bg-muted/20",
-								isCancelStage && "opacity-40",
-							)}
-						>
-							<code
-								className={cn(
-									"shrink-0 rounded px-1.5 py-0.5 text-xs font-semibold",
-									isActive
-										? "bg-primary text-primary-foreground"
-										: "bg-muted text-muted-foreground",
-								)}
-							>
-								{stage.label}
-							</code>
-							<span className="text-xs text-muted-foreground">
-								{stage.detail}
-							</span>
-						</li>
-					);
-				})}
-			</ol>
-		</div>
+			<p role="status">
+				Current: {stepper.id} · Pending: {String(stepper.isPending)}
+			</p>
+			<section aria-label="Committed state">
+				<pre className="overflow-auto rounded-lg bg-muted p-3 text-xs">
+					{JSON.stringify(
+						{ data: stepper.data.all(), completed: stepper.completed },
+						null,
+						2,
+					)}
+				</pre>
+			</section>
+			<p
+				role="status"
+				className="break-all text-sm"
+				aria-label="Navigation result"
+			>
+				{outcome}
+			</p>
+			<pre
+				role="log"
+				aria-label="Navigation events"
+				className="whitespace-pre-wrap rounded-lg border p-3 text-xs"
+			>
+				{events.join("\n") || "Events will appear here."}
+			</pre>
+		</section>
 	);
-}
-
-function wait(ms: number) {
-	return new Promise((resolve) => setTimeout(resolve, ms));
 }

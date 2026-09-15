@@ -173,8 +173,7 @@ export function KycVerificationBlock() {
 								onClick={() => {
 									setSubmitted(false);
 									setErrors({});
-									stepper.data.reset();
-									stepper.reset();
+									void stepper.reset();
 								}}
 								className={buttonVariants()}
 							>
@@ -199,7 +198,7 @@ export function KycVerificationBlock() {
 }
 
 function IdentityFields({ errors }: { errors: Errors }) {
-	const stepper = kyc.useStepper();
+	const stepper = kyc.useStepperContext();
 	const identity = stepper.data.get("identity") ?? { legalName: "", dob: "" };
 	const set = (patch: Partial<typeof identity>) =>
 		stepper.data.set("identity", { ...identity, ...patch });
@@ -236,7 +235,7 @@ function UploadAck({
 	hint: string;
 	label: string;
 }) {
-	const stepper = kyc.useStepper();
+	const stepper = kyc.useStepperContext();
 	const confirmed =
 		(stepper.data.get(stepId) as { confirmed?: boolean } | undefined)
 			?.confirmed ?? false;

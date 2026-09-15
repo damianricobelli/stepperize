@@ -1,0 +1,121 @@
+---
+title: Migrating to v8
+description: Upgrade from v7 to explicit state ownership and consistent navigation.
+---
+
+# Migrating to v8
+
+v8 requires **React 18 or 19**. Upgrade `react` and `react-dom` together. React Native projects should use a release with a supported React version; DOM primitives remain web-only.
+
+Install `@stepperize/react@^8.0.0`. Direct core consumers should upgrade to `@stepperize/core@^4.0.0`.
+
+## 1. Make shared hook calls explicit
+
+```tsx
+// v7: the same hook might create or consume an instance.
+const stepper = checkout.useStepper();
+
+// v8: local owner, including inside a Provider.
+const localStepper = checkout.useStepper();
+
+// v8: consume the nearest matching Provider or Root.
+const sharedStepper = checkout.useStepperContext();
+```
+
+Review every old hook call inside a Provider or Root. Change shared consumers to `useStepperContext()`. Put options and callbacks on the owner. Calling the context hook without that definition's provider throws.
+
+Selectors are optional:
+
+```tsx
+const currentId = checkout.useStepperContext((stepper) => stepper.id);
+```
+
+See [complete examples](/docs/v8/guides/local-and-shared-state). A Root always creates its own instance; remove redundant outer Providers where one shared flow is intended.
+
+## 2. Read the navigation result
+
+```tsx
+// v7
+const moved = await stepper.next();
+if (!moved) return;
+
+// v8
+const result = await stepper.next();
+if (!result.accepted) {
+  console.log(result.reason);
+  return;
+}
+console.log(result.from, result.to);
+```
+
+All four navigation methods return `NavigationResult`. Failure reasons are `guard`, `policy`, `pending`, `boundary`, `same-step`, `invalid-step`, or `cancelled`. Do not test the result object's truthiness. Exceptions thrown by your callbacks still reject the promise.
+
+## 3. Respect linear policy everywhere
+
+```tsx
+// Normal navigation follows linear policy.
+await stepper.goTo("review");
+
+// A deliberate branch can skip ahead; the guard still runs.
+await stepper.goTo("review", { bypassPolicy: true });
+```
+
+With `linear: true`, previous steps, the current step, and the immediate next step are eligible. Add `bypassPolicy` only to intentional branch jumps; update custom triggers to use `canGoTo(id)`.
+
+## 4. Save and complete the source atomically
+
+```tsx
+// v7: a separate completion write can mark the wrong current step.
+await stepper.next({ data: values });
+stepper.setComplete();
+
+// v8: both writes commit only if the guard accepts.
+await stepper.next({ data: values, complete: true });
+```
+
+`complete: true` marks the step being left. It also works with `prev` and `goTo`. For a final submission with no next step, perform the final action and then call `setComplete(id)` explicitly.
+
+## 5. Update reset semantics
+
+```tsx
+await stepper.reset(); // restore mount-time step, data and completion
+await stepper.reset({ keepData: true, keepCompleted: true });
+stepper.data.clear(); // empty all flow data
+stepper.data.reset(); // restore default data only
+```
+
+`reset` now accepts `ResetOptions`, not a data payload. It still runs the guard; a rejection preserves the current state. In controlled mode it requests default values through the change callbacks. Use `defaultCompleted` on the hook, Provider or Root for initial completion.
+
+## 6. Update data and rendering code
+
+```tsx
+stepper.data.update("shipping", (previous) => ({
+  ...previous,
+  address: "New address",
+}));
+
+stepper.match({
+  shipping: (step, data) => <p>{step.title}: {data?.address}</p>,
+  payment: () => <p>Payment</p>,
+  review: () => <p>Review</p>,
+});
+```
+
+The example assumes `shipping.schema` types an `address` string. Both `data.update(id, updater)` and the second `match` argument use each step's schema input type. Updaters compose against preceding writes in the same event; do not mutate previous data.
+
+## 7. Primitives and exports
+
+- Use the generated `definition.Stepper`; `createStepperPrimitives` is now internal.
+- `Stepper.List` and `Stepper.Separator` inherit Root orientation unless overridden.
+- `Stepper.Content forceMount` keeps inactive panels mounted and hidden.
+- Triggers default to `type="button"`, so navigating inside a form does not submit it.
+- `data-complete` represents explicit completion separately from `data-status`.
+- DOM ids and nested contexts are scoped to each instance.
+
+## 8. Async guards and stable definitions
+
+An overlapping navigation request returns `pending`. Unmounting the owner, changing authoritative state, or writing data/completion during an async guard cancels the old transition. Use `context.signal` to cancel your own asynchronous work. Cancelled payloads are not committed.
+
+Keep `defineStepper` at module scope and treat its step array as immutable. Keep selectors pure. Test React Strict Mode, controlled updates, nested flows, rejected validation, and reset behavior before release.
+
+Coming from v6? First follow the [historical v7 migration](/docs/v8/migration/v7), then apply this guide.

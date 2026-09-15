@@ -6,7 +6,7 @@
   "description": "A SaaS settings wizard with sticky step nav, per-step validation, and an unsaved-changes guard wired through beforeStepChange and beforeunload.",
   "author": "Stepperize",
   "dependencies": [
-    "@stepperize/react",
+    "@stepperize/react@^8.0.0",
     "lucide-react"
   ],
   "registryDependencies": [

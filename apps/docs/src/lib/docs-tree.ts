@@ -1,7 +1,8 @@
 import type * as PageTree from "fumadocs-core/page-tree";
 import type { LayoutTab } from "fumadocs-ui/layouts/shared";
 
-type DocsVersion = "latest" | "v7" | "v6" | "v5" | "v4" | "v3" | "v2";
+export const CURRENT_DOCS_VERSION = "v8";
+type DocsVersion = "v8" | "v7" | "v6" | "v5" | "v4" | "v3" | "v2";
 
 export function getDocsTree(
 	tree: PageTree.Root,
@@ -10,11 +11,17 @@ export function getDocsTree(
 	const folder = findDocsVersionFolder(tree, version);
 
 	if (!folder) {
-		return tree;
+		return {
+			...tree,
+			$id: `${tree.$id ?? "docs"}:${version ?? CURRENT_DOCS_VERSION}`,
+			children: [],
+		};
 	}
 
 	return {
 		...tree,
+		// Fumadocs caches navigation by root id, so each version needs its own identity.
+		$id: `${tree.$id ?? "docs"}:${version ?? CURRENT_DOCS_VERSION}`,
 		children: folder.children,
 		name: folder.name,
 	};
@@ -22,19 +29,23 @@ export function getDocsTree(
 
 export function getDocsVersion(slugs: string[]): DocsVersion {
 	const version = slugs[0];
-	return isDocsVersion(version) ? version : "latest";
+	return isDocsVersion(version) ? version : CURRENT_DOCS_VERSION;
 }
 
 export function getDocsPageSlugs(slugs: string[]): string[] {
 	const version = getDocsVersion(slugs);
-	return isDocsVersion(slugs[0])
-		? ["docs", ...slugs]
-		: ["docs", version, ...slugs];
+	const page =
+		isDocsVersion(slugs[0]) || slugs[0] === "latest" ? slugs.slice(1) : slugs;
+	return ["docs", version, ...page];
+}
+
+export function getCanonicalDocsPath(slugs: string[]): string {
+	return `/${getDocsPageSlugs(slugs).join("/")}`;
 }
 
 const DOCS_TAB_LABELS = {
-	latest: "Latest",
-	current: "Current documentation",
+	latest: "v8",
+	current: "Version 8 documentation",
 	migration: "Migration notes",
 };
 
@@ -43,7 +54,12 @@ export function getDocsVersionTabs(): LayoutTab[] {
 		{
 			title: DOCS_TAB_LABELS.latest,
 			description: DOCS_TAB_LABELS.current,
-			url: "/docs/latest",
+			url: "/docs/v8",
+		},
+		{
+			title: "v7",
+			description: "Version 7 documentation",
+			url: "/docs/v7",
 		},
 		{
 			title: "v6",
@@ -75,7 +91,7 @@ export function getDocsVersionTabs(): LayoutTab[] {
 
 function findDocsVersionFolder(
 	node: PageTree.Root | PageTree.Folder,
-	version = "latest",
+	version = CURRENT_DOCS_VERSION,
 ): PageTree.Folder | undefined {
 	for (const child of node.children) {
 		if (child.type !== "folder") {
@@ -83,7 +99,7 @@ function findDocsVersionFolder(
 		}
 
 		const name = typeof child.name === "string" ? child.name : undefined;
-		const ref = typeof child.$ref === "string" ? child.$ref : undefined;
+		const ref = child.$ref?.meta;
 
 		if (
 			name?.toLowerCase() === version ||
@@ -102,7 +118,7 @@ function findDocsVersionFolder(
 
 function isDocsVersion(value: string | undefined): value is DocsVersion {
 	return (
-		value === "latest" ||
+		value === "v8" ||
 		value === "v7" ||
 		value === "v6" ||
 		value === "v5" ||

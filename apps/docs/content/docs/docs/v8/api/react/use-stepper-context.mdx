@@ -1,0 +1,56 @@
+---
+title: useStepperContext
+description: Read a shared instance or subscribe to a selected value.
+---
+
+# useStepperContext
+
+`definition.useStepperContext()` reads the nearest `Provider` or `Stepper.Root` created by **the same definition**. It never creates state. Calling it without a matching provider throws a helpful error.
+
+```tsx
+const stepper = checkout.useStepperContext();
+const currentId = checkout.useStepperContext((stepper) => stepper.id);
+```
+
+Configure the instance on its `Provider` or `Stepper.Root`. This hook takes an optional selector and equality function, not instance options.
+
+## Select only what a component renders
+
+```tsx
+function Progress() {
+  const index = checkout.useStepperContext((stepper) => stepper.index);
+  return <p>Step {index + 1} of {checkout.steps.length}</p>;
+}
+```
+
+A change to unrelated flow data does not trigger a store-driven render of this component when the selected index stays equal. Parent renders still follow normal React rules.
+
+The default equality is `Object.is`. For an object selection, provide an equality function when equivalent objects should reuse the previous selection:
+
+```tsx
+function Actions() {
+  const { canNext, next } = checkout.useStepperContext(
+    (stepper) => ({ canNext: stepper.canNext, next: stepper.next }),
+    (previous, next) => previous.canNext === next.canNext && previous.next === next.next,
+  );
+  return <button type="button" disabled={!canNext} onClick={() => next()}>Next</button>;
+}
+```
+
+Selectors may return new objects without causing an infinite render loop. Selectors and equality functions must be pure. Equality must compare everything the component uses; ignoring fields can leave stale UI.
+
+## Try independent subscriptions
+
+Edit the name: only the **Data subscriber** value changes. Choose **Next**: only the **Step subscriber** changes. Toggle completion: only the **Completion subscriber** changes. Reset restores all initial values.
+
+Each card runs its own selector. Highlights indicate changes to the selected value, not a measurement of React render counts. Parent renders still follow normal React rules. Highlights respect reduced-motion preferences.
+
+<InteractiveExample name="selectors" />
+
+## Nested instances
+
+The nearest provider of the same definition wins. Providers from a different definition do not replace or interfere with it. Primitives follow the same isolation rule, including item context and orientation.
+
+A local `checkout.useStepper()` inside a provider still creates a separate instance. Use it intentionally for an independent embedded flow; use `useStepperContext()` to participate in the surrounding one.
+
+See [complete local and shared examples](/docs/v8/guides/local-and-shared-state).

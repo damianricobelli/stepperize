@@ -6,7 +6,7 @@
   "description": "A sidebar-style vertical layout: step rail on the left, long-form content on the right, collapsing to a compact nav on mobile.",
   "author": "Stepperize",
   "dependencies": [
-    "@stepperize/react",
+    "@stepperize/react@^8.0.0",
     "lucide-react"
   ],
   "registryDependencies": [],

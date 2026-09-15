@@ -6,7 +6,7 @@
   "description": "A deploy flow with an async guarded transition, pending UI, a failed first attempt, and a retry path.",
   "author": "Stepperize",
   "dependencies": [
-    "@stepperize/react",
+    "@stepperize/react@^8.0.0",
     "lucide-react"
   ],
   "registryDependencies": [

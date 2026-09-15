@@ -21,7 +21,7 @@ const BLOCKS_DIR = "src/components/blocks";
 const OUT_DIR = resolve(ROOT, "public/r");
 
 const HOMEPAGE = "https://stepperize.com";
-const STEPPERIZE_VERSION = "@stepperize/react"; // bare name → resolves to installed/latest
+const STEPPERIZE_VERSION = "@stepperize/react@^8.0.0"; // These blocks require the v8 ownership and navigation contracts.
 
 // Catalog is the single source of truth (src/lib/blocks/catalog.mjs); the same
 // file drives the docs gallery, so registry items can never drift from previews.

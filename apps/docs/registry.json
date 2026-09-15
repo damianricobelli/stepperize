@@ -9,7 +9,7 @@
 			"title": "Progress Bar Stepper",
 			"description": "A single progress bar that fills as the user advances.",
 			"dependencies": [
-				"@stepperize/react"
+				"@stepperize/react@^8.0.0"
 			],
 			"registryDependencies": [],
 			"categories": [
@@ -41,7 +41,7 @@
 			"title": "Segmented Tabs Stepper",
 			"description": "Segmented control where each step is a selectable tab.",
 			"dependencies": [
-				"@stepperize/react"
+				"@stepperize/react@^8.0.0"
 			],
 			"registryDependencies": [],
 			"categories": [
@@ -72,7 +72,7 @@
 			"title": "Circular Stepper",
 			"description": "An SVG progress ring around the current step number.",
 			"dependencies": [
-				"@stepperize/react"
+				"@stepperize/react@^8.0.0"
 			],
 			"registryDependencies": [],
 			"categories": [
@@ -104,7 +104,7 @@
 			"title": "Breadcrumb Stepper",
 			"description": "A breadcrumb-style trail of steps with chevrons.",
 			"dependencies": [
-				"@stepperize/react",
+				"@stepperize/react@^8.0.0",
 				"lucide-react"
 			],
 			"registryDependencies": [],
@@ -137,7 +137,7 @@
 			"title": "Vertical Stepper",
 			"description": "A sidebar-style vertical layout: step rail on the left, long-form content on the right, collapsing to a compact nav on mobile.",
 			"dependencies": [
-				"@stepperize/react",
+				"@stepperize/react@^8.0.0",
 				"lucide-react"
 			],
 			"registryDependencies": [],
@@ -170,7 +170,7 @@
 			"title": "User Onboarding",
 			"description": "A three-step account onboarding flow with per-step validation.",
 			"dependencies": [
-				"@stepperize/react",
+				"@stepperize/react@^8.0.0",
 				"lucide-react",
 				"zod"
 			],
@@ -209,7 +209,7 @@
 			"title": "Organization Setup",
 			"description": "Workspace, branding, and members setup for a new SaaS tenant.",
 			"dependencies": [
-				"@stepperize/react",
+				"@stepperize/react@^8.0.0",
 				"lucide-react"
 			],
 			"registryDependencies": [
@@ -246,7 +246,7 @@
 			"title": "Team Invitations",
 			"description": "Collect invites into draft flow data, then review and send them.",
 			"dependencies": [
-				"@stepperize/react",
+				"@stepperize/react@^8.0.0",
 				"lucide-react"
 			],
 			"registryDependencies": [
@@ -284,7 +284,7 @@
 			"title": "Conditional Onboarding",
 			"description": "Onboarding whose path is computed from an earlier answer: team accounts visit the invite step, personal accounts skip it.",
 			"dependencies": [
-				"@stepperize/react",
+				"@stepperize/react@^8.0.0",
 				"lucide-react"
 			],
 			"registryDependencies": [],
@@ -317,7 +317,7 @@
 			"title": "Product Tour",
 			"description": "A card-style onboarding walkthrough with dot indicators and free navigation.",
 			"dependencies": [
-				"@stepperize/react",
+				"@stepperize/react@^8.0.0",
 				"lucide-react"
 			],
 			"registryDependencies": [],
@@ -351,7 +351,7 @@
 			"title": "Course Player",
 			"description": "A lesson playlist with typed per-lesson metadata and a final quiz.",
 			"dependencies": [
-				"@stepperize/react",
+				"@stepperize/react@^8.0.0",
 				"lucide-react"
 			],
 			"registryDependencies": [],
@@ -386,7 +386,7 @@
 			"title": "Validated Checkout",
 			"description": "A checkout where each step has a Zod schema; validate() inside a beforeStepChange guard blocks invalid input before the review step.",
 			"dependencies": [
-				"@stepperize/react",
+				"@stepperize/react@^8.0.0",
 				"lucide-react",
 				"zod"
 			],
@@ -425,7 +425,7 @@
 			"title": "Plan Picker",
 			"description": "Choose a plan, set billing, then pay — billing path branches on the plan.",
 			"dependencies": [
-				"@stepperize/react",
+				"@stepperize/react@^8.0.0",
 				"lucide-react"
 			],
 			"registryDependencies": [
@@ -464,7 +464,7 @@
 			"title": "Appointment Booking",
 			"description": "Service, professional, time slot, and confirmation.",
 			"dependencies": [
-				"@stepperize/react",
+				"@stepperize/react@^8.0.0",
 				"lucide-react"
 			],
 			"registryDependencies": [
@@ -501,7 +501,7 @@
 			"title": "Two-Factor Setup",
 			"description": "Pick a method, verify a code, save backup codes.",
 			"dependencies": [
-				"@stepperize/react",
+				"@stepperize/react@^8.0.0",
 				"lucide-react"
 			],
 			"registryDependencies": [
@@ -540,7 +540,7 @@
 			"title": "KYC Verification",
 			"description": "Identity, document, and selfie verification steps.",
 			"dependencies": [
-				"@stepperize/react",
+				"@stepperize/react@^8.0.0",
 				"lucide-react",
 				"zod"
 			],
@@ -581,7 +581,7 @@
 			"title": "Device Pairing",
 			"description": "Discover, pair, configure, and ready a device over an async transition.",
 			"dependencies": [
-				"@stepperize/react",
+				"@stepperize/react@^8.0.0",
 				"lucide-react"
 			],
 			"registryDependencies": [],
@@ -615,7 +615,7 @@
 			"title": "Async Provisioning",
 			"description": "A deploy flow with an async guarded transition, pending UI, a failed first attempt, and a retry path.",
 			"dependencies": [
-				"@stepperize/react",
+				"@stepperize/react@^8.0.0",
 				"lucide-react"
 			],
 			"registryDependencies": [
@@ -654,7 +654,7 @@
 			"title": "Order Tracking",
 			"description": "A shipment tracker driven by typed per-step metadata (carrier, location, ETA).",
 			"dependencies": [
-				"@stepperize/react",
+				"@stepperize/react@^8.0.0",
 				"lucide-react"
 			],
 			"registryDependencies": [],
@@ -688,7 +688,7 @@
 			"title": "CI/CD Pipeline",
 			"description": "Build, test, deploy, verify pipeline status with typed stage metadata.",
 			"dependencies": [
-				"@stepperize/react",
+				"@stepperize/react@^8.0.0",
 				"lucide-react"
 			],
 			"registryDependencies": [],
@@ -723,7 +723,7 @@
 			"title": "Approval Flow",
 			"description": "A multi-stage submission and approval chain.",
 			"dependencies": [
-				"@stepperize/react",
+				"@stepperize/react@^8.0.0",
 				"lucide-react"
 			],
 			"registryDependencies": [],
@@ -756,7 +756,7 @@
 			"title": "Approval Timeline",
 			"description": "A vertical audit timeline where each step carries typed metadata (actor, role, SLA hours) read straight off `step` and `stepper.current` with full inference.",
 			"dependencies": [
-				"@stepperize/react",
+				"@stepperize/react@^8.0.0",
 				"lucide-react"
 			],
 			"registryDependencies": [],
@@ -791,7 +791,7 @@
 			"title": "Decision Tree",
 			"description": "A plan finder that branches to different follow-up questions and converges on a result computed from the answers.",
 			"dependencies": [
-				"@stepperize/react",
+				"@stepperize/react@^8.0.0",
 				"lucide-react"
 			],
 			"registryDependencies": [],
@@ -825,7 +825,7 @@
 			"title": "Save & Resume",
 			"description": "A controlled wizard whose active step is synced to localStorage and the URL hash.",
 			"dependencies": [
-				"@stepperize/react",
+				"@stepperize/react@^8.0.0",
 				"lucide-react"
 			],
 			"registryDependencies": [
@@ -863,7 +863,7 @@
 			"title": "AI Workflow",
 			"description": "An iterative generation flow where each run is appended to flow data and Refine loops back to the prompt.",
 			"dependencies": [
-				"@stepperize/react",
+				"@stepperize/react@^8.0.0",
 				"lucide-react"
 			],
 			"registryDependencies": [
@@ -902,7 +902,7 @@
 			"title": "Typed Wizard",
 			"description": "An exhaustive stepper.match() over every step id — add or remove a step and the match becomes a compile error until you handle it.",
 			"dependencies": [
-				"@stepperize/react"
+				"@stepperize/react@^8.0.0"
 			],
 			"registryDependencies": [],
 			"categories": [
@@ -934,7 +934,7 @@
 			"title": "Dashboard Wizard",
 			"description": "A SaaS settings wizard with sticky step nav, per-step validation, and an unsaved-changes guard wired through beforeStepChange and beforeunload.",
 			"dependencies": [
-				"@stepperize/react",
+				"@stepperize/react@^8.0.0",
 				"lucide-react"
 			],
 			"registryDependencies": [
@@ -975,7 +975,7 @@
 			"title": "Progress Overview",
 			"description": "A progress panel that computes percent complete and an ETA from typed per-step metadata (estimated minutes).",
 			"dependencies": [
-				"@stepperize/react",
+				"@stepperize/react@^8.0.0",
 				"lucide-react"
 			],
 			"registryDependencies": [],

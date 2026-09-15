@@ -1,6 +1,6 @@
 import { defineStepper } from "@stepperize/react";
 import { Check, CreditCard, MapPin, Pencil } from "lucide-react";
-import { useState } from "react";
+import { useId, useState } from "react";
 import { z } from "zod";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -97,12 +97,18 @@ export function ValidatedCheckoutBlock() {
 
 						{!stepper.is("done") && (
 							<checkout.Stepper.Actions className="mt-6 flex justify-between">
-								<checkout.Stepper.Prev className={buttonVariants({ variant: "outline" })}>
+								<checkout.Stepper.Prev
+									className={buttonVariants({ variant: "outline" })}
+								>
 									Back
 								</checkout.Stepper.Prev>
-								<checkout.Stepper.Next className={buttonVariants()}>
+								<Button
+									type="button"
+									disabled={!stepper.canNext}
+									onClick={() => stepper.next({ complete: true })}
+								>
 									{stepper.is("review") ? "Place order" : "Continue"}
-								</checkout.Stepper.Next>
+								</Button>
 							</checkout.Stepper.Actions>
 						)}
 					</>
@@ -153,17 +159,28 @@ function Field({
 	error?: string;
 	placeholder?: string;
 }) {
+	const id = useId();
 	return (
 		<div className="space-y-1.5">
-			<Label className="text-xs text-muted-foreground">{label}</Label>
+			<Label htmlFor={id} className="text-xs text-muted-foreground">
+				{label}
+			</Label>
 			<Input
+				id={id}
+				aria-describedby={error ? `${id}-error` : undefined}
 				value={value}
 				placeholder={placeholder}
 				onChange={(e) => onChange(e.target.value)}
 				aria-invalid={error ? true : undefined}
 			/>
 			{error && (
-				<p className="text-xs font-medium text-destructive">{error}</p>
+				<p
+					id={`${id}-error`}
+					role="alert"
+					className="text-xs font-medium text-destructive"
+				>
+					{error}
+				</p>
 			)}
 		</div>
 	);
@@ -182,7 +199,11 @@ function ShippingStep({
 		zip: "",
 	};
 	const set = (patch: Partial<typeof value>) =>
-		stepper.data.set("shipping", { ...value, ...patch });
+		stepper.data.update("shipping", (previous) => ({
+			...value,
+			...previous,
+			...patch,
+		}));
 
 	return (
 		<checkout.Stepper.Content step="shipping" className="space-y-3">
@@ -223,7 +244,11 @@ function PaymentStep({
 }) {
 	const value = stepper.data.get("payment") ?? { card: "", cvc: "" };
 	const set = (patch: Partial<typeof value>) =>
-		stepper.data.set("payment", { ...value, ...patch });
+		stepper.data.update("payment", (previous) => ({
+			...value,
+			...previous,
+			...patch,
+		}));
 
 	return (
 		<checkout.Stepper.Content step="payment" className="space-y-3">

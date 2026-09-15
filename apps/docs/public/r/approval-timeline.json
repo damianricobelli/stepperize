@@ -6,7 +6,7 @@
   "description": "A vertical audit timeline where each step carries typed metadata (actor, role, SLA hours) read straight off `step` and `stepper.current` with full inference.",
   "author": "Stepperize",
   "dependencies": [
-    "@stepperize/react",
+    "@stepperize/react@^8.0.0",
     "lucide-react"
   ],
   "registryDependencies": [],
