@@ -4,6 +4,7 @@ const colors = { green: 32, red: 31, dim: 2, bold: 1 };
 
 /** Human-readable console output; the raw samples remain in the JSON artifacts. */
 export function printReport(result, { stream = process.stdout } = {}) {
+	// biome-ignore lint/suspicious/noUndeclaredEnvVars: terminal capability check for a script run outside turbo.
 	const color = stream.isTTY && !Object.hasOwn(process.env, "NO_COLOR") && process.env.TERM !== "dumb";
 	const paint = (text, style) => (color ? `\x1b[${colors[style]}m${text}\x1b[0m` : text);
 	const write = (line = "") => stream.write(`${line}\n`);

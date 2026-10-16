@@ -156,7 +156,9 @@ it("distinguishes accepted controlled requests from prop updates and external gu
 	expect(ui.getByRole("status").element().textContent).toContain(
 		'"reason":"guard"',
 	);
-	await ui.getByRole("combobox", { name: /External step/ }).selectOptions("done");
+	await ui
+		.getByRole("combobox", { name: /External step/ })
+		.selectOptions("done");
 	expect(ui.getByText("Rendered step: done").element()).toBeTruthy();
 	await click(ui.getByRole("button", { name: "Reset demo" }).element());
 	await click(ui.getByRole("button", { name: "Next" }).element());
