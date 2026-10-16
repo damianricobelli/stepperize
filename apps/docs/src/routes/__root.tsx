@@ -23,9 +23,20 @@ export const Route = createRootRoute({
 			},
 			{
 				name: "viewport",
-				content: "width=device-width, initial-scale=1",
+				content: "width=device-width, initial-scale=1, viewport-fit=cover",
 			},
-			{ name: "theme-color", content: "#000000" },
+			// Match the browser chrome to the page background in each scheme.
+			{
+				name: "theme-color",
+				media: "(prefers-color-scheme: light)",
+				content: "#fcfcfd",
+			},
+			{
+				name: "theme-color",
+				media: "(prefers-color-scheme: dark)",
+				content: "#0d0e11",
+			},
+			{ name: "color-scheme", content: "light dark" },
 			{ name: "robots", content: "index, follow" },
 			{
 				name: "googlebot",
@@ -42,7 +53,8 @@ export const Route = createRootRoute({
 			},
 			{ rel: "manifest", href: "/manifest.json" },
 			{ rel: "icon", href: "/favicon.ico", sizes: "any" },
-			{ rel: "apple-touch-icon", href: "/logo192.png" },
+			{ rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
+			{ rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
 		],
 	}),
 	shellComponent: RootDocument,

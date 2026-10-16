@@ -6,41 +6,70 @@ import { cn } from "@/lib/utils";
 export function Section({
 	children,
 	className,
+	id,
 }: {
 	children: ReactNode;
 	className?: string;
+	id?: string;
 }) {
 	return (
-		<section className={className}>
-			<div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:py-24">
+		<section id={id} className={cn("scroll-mt-20", className)}>
+			<div className="mx-auto w-full max-w-7xl px-4 py-20 sm:px-6 lg:py-28">
 				{children}
 			</div>
 		</section>
 	);
 }
 
-export function Eyebrow({
-	children,
-	center,
-}: {
-	children: ReactNode;
-	center?: boolean;
-}) {
+export function Eyebrow({ children }: { children: ReactNode }) {
 	return (
-		<p
-			className={cn(
-				"text-sm font-semibold uppercase tracking-wider text-primary",
-				center && "text-center",
-			)}
-		>
+		<p className="inline-flex items-center gap-2 text-sm font-medium text-primary">
 			{children}
 		</p>
 	);
 }
 
+/**
+ * Eyebrow + title + lede, the opening of every landing section. One component
+ * so rhythm and type scale stay identical from section to section.
+ */
+export function SectionHeading({
+	eyebrow,
+	title,
+	children,
+	align = "start",
+	className,
+}: {
+	eyebrow: ReactNode;
+	title: ReactNode;
+	children?: ReactNode;
+	align?: "start" | "center";
+	className?: string;
+}) {
+	return (
+		<div
+			className={cn(
+				"max-w-2xl",
+				align === "center" && "mx-auto text-center",
+				className,
+			)}
+		>
+			<Eyebrow>{eyebrow}</Eyebrow>
+			<h2 className="mt-3 text-3xl font-semibold leading-[1.1] tracking-[-0.03em] sm:text-[2.5rem]">
+				{title}
+			</h2>
+			{children && (
+				<p className="mt-4 text-base leading-relaxed text-muted-foreground sm:text-[17px]">
+					{children}
+				</p>
+			)}
+		</div>
+	);
+}
+
 export function Code({ children }: { children: ReactNode }) {
 	return (
-		<code className="rounded bg-muted px-1.5 py-0.5 font-mono text-[0.85em] text-foreground">
+		<code className="rounded-md border bg-muted/60 px-1.5 py-0.5 font-mono text-[0.85em] text-foreground">
 			{children}
 		</code>
 	);
@@ -50,19 +79,19 @@ export function Code({ children }: { children: ReactNode }) {
 
 /** Keyword (import, const, return…). */
 export const K = ({ children }: { children: ReactNode }) => (
-	<span className="text-violet-600 dark:text-violet-400">{children}</span>
+	<span className="text-violet-600 dark:text-violet-300">{children}</span>
 );
 /** Function / identifier in call position. */
 export const F = ({ children }: { children: ReactNode }) => (
-	<span className="text-blue-600 dark:text-blue-400">{children}</span>
+	<span className="text-sky-700 dark:text-sky-300">{children}</span>
 );
 /** String literal. */
 export const S = ({ children }: { children: ReactNode }) => (
-	<span className="text-emerald-600 dark:text-emerald-400">{children}</span>
+	<span className="text-emerald-700 dark:text-emerald-300">{children}</span>
 );
 /** Type / component name. */
 export const T = ({ children }: { children: ReactNode }) => (
-	<span className="text-amber-600 dark:text-amber-400">{children}</span>
+	<span className="text-amber-700 dark:text-amber-300">{children}</span>
 );
 /** Comment. */
 export const C = ({ children }: { children: ReactNode }) => (
@@ -70,42 +99,43 @@ export const C = ({ children }: { children: ReactNode }) => (
 );
 /** Punctuation / dim syntax. */
 export const P = ({ children }: { children: ReactNode }) => (
-	<span className="text-foreground/55">{children}</span>
+	<span className="text-foreground/45">{children}</span>
 );
 
 /**
- * A macOS-style editor window chrome with traffic lights and a filename tab.
- * Wraps any tokenized `<pre>` so every code surface on the landing page reads
- * as the same product.
+ * Editor window chrome with a filename tab. Wraps any tokenized `<pre>` so
+ * every code surface on the landing page reads as the same product as the
+ * hero playground.
  */
 export function CodeFrame({
 	filename,
 	children,
-	tone = "default",
+	aside,
 	className,
 }: {
 	filename: string;
 	children: ReactNode;
-	/** `bad` tints the tab red to signal a failing/rejected example. */
-	tone?: "default" | "bad" | "good";
+	/** Right-aligned slot in the title bar (a badge, a toggle). */
+	aside?: ReactNode;
 	className?: string;
 }) {
 	return (
 		<div
 			className={cn(
 				"overflow-hidden rounded-2xl border bg-card shadow-xl",
-				tone === "bad" && "border-red-500/30",
-				tone === "good" && "border-emerald-500/30",
 				className,
 			)}
 		>
-			<div className="flex items-center gap-2 border-b bg-muted/40 px-4 py-2.5">
-				<span className="h-3 w-3 rounded-full bg-red-400/70" />
-				<span className="h-3 w-3 rounded-full bg-amber-400/70" />
-				<span className="h-3 w-3 rounded-full bg-emerald-400/70" />
-				<span className="ml-2 font-mono text-xs text-muted-foreground">
+			<div className="flex h-11 items-center gap-3 border-b bg-muted/40 px-4">
+				<div className="flex gap-1.5" aria-hidden>
+					<span className="size-2.5 rounded-full bg-foreground/15" />
+					<span className="size-2.5 rounded-full bg-foreground/15" />
+					<span className="size-2.5 rounded-full bg-foreground/15" />
+				</div>
+				<span className="font-mono text-xs text-muted-foreground">
 					{filename}
 				</span>
+				{aside && <div className="ml-auto">{aside}</div>}
 			</div>
 			{children}
 		</div>
