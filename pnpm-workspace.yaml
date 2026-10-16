@@ -6,16 +6,16 @@ catalog:
   '@types/react': ^19.3.0
   '@types/react-dom': ^19.3.0
   '@typescript/native': npm:typescript@7.0.2
-  '@vitejs/plugin-react': ^6.1.1
-  '@vitest/browser-playwright': ^5.0.1
-  playwright: ^1.63.0
-  react: ^19.3.0
-  react-dom: ^19.3.0
+  '@vitejs/plugin-react': ^6.1.2
+  '@vitest/browser-playwright': ^5.0.5
+  playwright: ^1.64.1
+  react: ^19.3.1
+  react-dom: ^19.3.1
   terser: ^5.48.0
-  tsup: ^8.5.1
+  tsup: ^9.0.0
   typescript: ^7.0.2
-  vite: ^8.3.0
-  vitest: ^5.0.1
+  vite: ^8.3.4
+  vitest: ^5.0.5
   vitest-browser-react: ^2.3.0
 
 catalogs:
@@ -27,3 +27,8 @@ minimumReleaseAge: 0
 onlyBuiltDependencies:
   - esbuild
   - msw
+
+# Tailwind 4.3.3 pins lightningcss 1.32.0, which warns on fumadocs-ui's `::highlight(fd-search)`.
+# 1.33.0 adds `::highlight` support; drop this once @tailwindcss/node ships it.
+overrides:
+  '@tailwindcss/node>lightningcss': 1.33.0
