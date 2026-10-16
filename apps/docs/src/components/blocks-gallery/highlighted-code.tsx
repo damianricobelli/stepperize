@@ -29,11 +29,14 @@ export function HighlightedCode({
 	code,
 	initialHtml,
 	className,
+	surfaceClassName,
 	maxHeightClass = "max-h-80",
 }: {
 	code: string;
 	initialHtml?: string;
 	className?: string;
+	/** Overrides for the code surface itself, e.g. to drop its border inside a frame. */
+	surfaceClassName?: string;
 	maxHeightClass?: string;
 }) {
 	const [html, setHtml] = useState<string | null>(initialHtml ?? null);
@@ -71,6 +74,7 @@ export function HighlightedCode({
 					className={cn(
 						"block-code overflow-auto rounded-xl border bg-card p-4",
 						maxHeightClass,
+						surfaceClassName,
 					)}
 					// Highlighted markup comes from our own server-side Shiki call.
 					dangerouslySetInnerHTML={{ __html: html }}
@@ -80,6 +84,7 @@ export function HighlightedCode({
 					className={cn(
 						"overflow-auto rounded-xl border bg-card p-4 font-mono text-[0.8125rem] leading-relaxed text-foreground",
 						maxHeightClass,
+						surfaceClassName,
 					)}
 				>
 					<code>{code}</code>
@@ -89,6 +94,7 @@ export function HighlightedCode({
 					className={cn(
 						"space-y-2 rounded-xl border bg-card p-4",
 						maxHeightClass,
+						surfaceClassName,
 					)}
 				>
 					{SKELETON_WIDTHS.map((width) => (

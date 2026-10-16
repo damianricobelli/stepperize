@@ -375,13 +375,13 @@ await wizard.validate("intro", anything); // { success: true, data: anything }
 
 `validate()` is a small, focused tool. Be clear about its boundaries:
 
-- ✅ It tells you whether a value satisfies a step's schema.
-- ✅ It returns the parsed output on success and the issues on failure.
-- ✅ It is library-agnostic (any Standard Schema) with zero runtime dependency.
-- ❌ It does **not** render errors, manage field state, track touched/dirty, or
-  register inputs. That's your form library's job.
-- ❌ It does **not** make Stepperize a form library. Stepperize owns the **flow**;
-  validation is just a check you can run against the flow's data.
+<CheckList>
+  <CheckItem>It tells you whether a value satisfies a step's schema.</CheckItem>
+  <CheckItem>It returns the parsed output on success and the issues on failure.</CheckItem>
+  <CheckItem>It is library-agnostic (any Standard Schema) with zero runtime dependency.</CheckItem>
+  <CrossItem>It does **not** render errors, manage field state, track touched/dirty, or register inputs. That's your form library's job.</CrossItem>
+  <CrossItem>It does **not** make Stepperize a form library. Stepperize owns the **flow**; validation is just a check you can run against the flow's data.</CrossItem>
+</CheckList>
 
 ## When to reach for `data` + `validate()`
 

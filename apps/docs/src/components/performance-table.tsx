@@ -1,5 +1,6 @@
 import results from "@/lib/benchmark-results.json";
 import { summarizePerformance } from "@/lib/benchmark-summary";
+import { StatusIcon } from "./status-icon";
 
 const formatNumber = new Intl.NumberFormat("en-US", {
 	maximumFractionDigits: 0,
@@ -30,7 +31,7 @@ const change = (
 			: `${percent > 0 ? "+" : ""}${Math.abs(percent) < 0.05 ? `${percent < 0 ? "−" : ""}<0.1` : percent.toFixed(1)}% ${unit}`;
 	return (
 		<span className="inline-flex items-center gap-2">
-			<span aria-hidden="true">{tied ? "➖" : improved ? "✅" : "❌"}</span>
+			<StatusIcon tone={tied ? "neutral" : improved ? "yes" : "no"} />
 			<span className="sr-only">
 				{`${subject} ${tied ? "ties" : improved ? "wins" : "loses"}: `}
 			</span>
@@ -46,7 +47,7 @@ export function PerformanceTable({ group }: { group: Group }) {
 				aria-label={`${groups[group]} benchmark results`}
 				// biome-ignore lint/a11y/noNoninteractiveTabindex: Keyboard access to the horizontally scrollable table.
 				tabIndex={0}
-				className="overflow-x-auto rounded-xl border bg-card focus-visible:outline-2 focus-visible:outline-ring"
+				className="relative overflow-x-auto rounded-xl border bg-card focus-visible:outline-2 focus-visible:outline-ring"
 			>
 				<table className="w-full min-w-[620px] text-left text-sm">
 					<caption className="sr-only">
@@ -149,10 +150,19 @@ export function BenchmarkSummary() {
 				a positive change means more time or bytes in v8.
 			</p>
 			<p className="mt-2 text-muted-foreground">
-				<span aria-hidden="true">✅</span> v8 wins ·{" "}
-				<span aria-hidden="true">❌</span> v8 loses ·{" "}
-				<span aria-hidden="true">➖</span> tie. These indicators compare the
-				measured values; they do not establish statistical significance.
+				<span className="inline-flex items-center gap-1 align-middle">
+					<StatusIcon tone="yes" /> v8 wins
+				</span>{" "}
+				·{" "}
+				<span className="inline-flex items-center gap-1 align-middle">
+					<StatusIcon tone="no" /> v8 loses
+				</span>{" "}
+				·{" "}
+				<span className="inline-flex items-center gap-1 align-middle">
+					<StatusIcon tone="neutral" /> tie
+				</span>
+				. These indicators compare the measured values; they do not establish
+				statistical significance.
 			</p>
 			<a
 				href="/benchmarks/v7-v8.json"
@@ -213,7 +223,7 @@ export function BenchmarkEnvironment() {
 
 export function HeadlessBundleTable() {
 	return (
-		<div className="not-prose my-6 overflow-x-auto rounded-xl border bg-card">
+		<div className="not-prose relative my-6 overflow-x-auto rounded-xl border bg-card">
 			<table className="w-full text-left text-sm">
 				<caption className="px-4 py-3 text-left text-muted-foreground">
 					v8 full entry vs v8 headless, including core. React is external.
