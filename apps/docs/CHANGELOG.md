@@ -1,5 +1,15 @@
 # docs
 
+## 4.1.0
+
+### Minor Changes
+
+- [#179](https://github.com/damianricobelli/stepperize/pull/179) [`122b529`](https://github.com/damianricobelli/stepperize/commit/122b5296cc300b89c36c176ff1bbb3d5a914807a) Thanks [@damianricobelli](https://github.com/damianricobelli)! - Redesign the docs site: new homepage with a live playground, one visual system across landing, blocks and docs, a mobile pass, and interactive examples with Preview/Code tabs on every core concept.
+
+### Patch Changes
+
+- [#176](https://github.com/damianricobelli/stepperize/pull/176) [`4cd0c98`](https://github.com/damianricobelli/stepperize/commit/4cd0c9894854bb934a307d7c3554a993f19c565b) Thanks [@dajiaohuang](https://github.com/dajiaohuang)! - docs: consume shared state in v8 definition example
+
 ## 4.0.0
 
 ### Major Changes
