@@ -67,7 +67,7 @@ export function BlocksRail() {
 
 	return (
 		<section className="border-t bg-muted/30 [contain-intrinsic-size:auto_60rem] [content-visibility:auto]">
-			<div className="mx-auto flex w-full max-w-7xl flex-col justify-between gap-6 px-4 pt-20 sm:px-6 md:flex-row md:items-end lg:pt-28">
+			<div className="mx-auto flex w-full max-w-7xl flex-col justify-between gap-6 px-4 pt-16 sm:px-6 sm:pt-20 md:flex-row md:items-end lg:pt-28">
 				<SectionHeading
 					eyebrow="Own your UI"
 					title={`${BLOCKS.length} blocks. Copy, paste, own every line.`}
@@ -109,7 +109,7 @@ export function BlocksRail() {
 				aria-label="Featured blocks"
 				onScroll={syncEdges}
 				style={{ gap: CARD_GAP }}
-				className="mt-12 flex snap-x snap-mandatory scroll-px-(--rail-inset) overflow-x-auto overscroll-x-contain px-(--rail-inset) pb-20 [--rail-inset:1rem] [scrollbar-width:none] sm:[--rail-inset:max(1.5rem,calc((100%-80rem)/2+1.5rem))] lg:pb-28 [&::-webkit-scrollbar]:hidden"
+				className="mt-10 flex snap-x snap-mandatory scroll-px-(--rail-inset) overflow-x-auto overscroll-x-contain px-(--rail-inset) pb-16 sm:pb-20 [--rail-inset:1rem] [scrollbar-width:none] sm:[--rail-inset:max(1.5rem,calc((100%-80rem)/2+1.5rem))] lg:pb-28 [&::-webkit-scrollbar]:hidden"
 			>
 				{FEATURED.map(({ id, Block }) => {
 					const meta = BLOCK_BY_ID.get(id);
@@ -120,7 +120,7 @@ export function BlocksRail() {
 							data-rail-card
 							className="flex w-[min(32rem,calc(100vw-2rem))] shrink-0 snap-start flex-col overflow-hidden rounded-3xl border bg-card shadow-xs"
 						>
-							<div className="relative flex min-h-[33rem] flex-1 items-center justify-center px-3 py-8 sm:px-8">
+							<div className="relative flex min-h-[30rem] flex-1 items-center justify-center px-3 py-6 sm:min-h-[33rem] sm:px-8 sm:py-8">
 								<div
 									aria-hidden
 									className="pointer-events-none absolute inset-0 bg-[radial-gradient(var(--color-border)_1px,transparent_1px)] bg-size-[16px_16px] mask-[radial-gradient(ellipse_75%_70%_at_50%_50%,black,transparent)]"

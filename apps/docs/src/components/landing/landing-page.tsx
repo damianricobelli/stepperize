@@ -52,12 +52,12 @@ function Hero() {
 		<section className="relative overflow-hidden">
 			<HeroBackdrop />
 
-			<div className="relative mx-auto w-full max-w-7xl px-4 pt-14 pb-20 sm:px-6 sm:pt-20 lg:pt-24 lg:pb-28">
+			<div className="relative mx-auto w-full max-w-7xl px-4 pt-10 pb-16 sm:px-6 sm:pt-20 sm:pb-20 lg:pt-24 lg:pb-28">
 				<div className="mx-auto flex max-w-4xl flex-col items-center text-center">
 					<Link
 						to="/docs/$"
 						params={{ _splat: DOCS.whatsNew }}
-						className="lp-rise pressable group inline-flex items-center gap-2 rounded-full border bg-card/70 py-1 pr-2.5 pl-1 text-[13px] text-muted-foreground shadow-xs outline-none backdrop-blur hover:border-foreground/15 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+						className="lp-rise pressable hit-44 group inline-flex items-center gap-2 rounded-full border bg-card/70 py-1 pr-2.5 pl-1 text-[13px] text-muted-foreground shadow-xs outline-none backdrop-blur hover:border-foreground/15 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
 					>
 						<span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
 							<Sparkles className="size-3" aria-hidden />
@@ -121,7 +121,7 @@ function Hero() {
 				</div>
 
 				<div
-					className="lp-rise mx-auto mt-14 max-w-6xl sm:mt-16"
+					className="lp-lift mx-auto mt-12 max-w-6xl sm:mt-16"
 					style={{ animationDelay: "320ms" }}
 				>
 					<HeroPlayground />
@@ -131,7 +131,7 @@ function Hero() {
 					</p>
 				</div>
 
-				<StatBar className="mx-auto mt-14 max-w-4xl" />
+				<StatBar className="mx-auto mt-12 max-w-4xl sm:mt-14" />
 			</div>
 		</section>
 	);
@@ -161,8 +161,8 @@ function HeroBackdrop() {
 
 function FinalCta() {
 	return (
-		<section className="px-4 py-20 sm:px-6 lg:py-28">
-			<div className="relative mx-auto max-w-5xl overflow-hidden rounded-[2rem] border bg-card px-6 py-16 text-center shadow-xl sm:px-12 sm:py-20">
+		<section className="px-4 py-16 sm:px-6 sm:py-20 lg:py-28">
+			<div className="relative mx-auto max-w-5xl overflow-hidden rounded-[2rem] border bg-card px-5 py-12 text-center shadow-xl sm:px-12 sm:py-20">
 				<div
 					aria-hidden
 					className="pointer-events-none absolute inset-0 bg-[radial-gradient(var(--color-border)_1px,transparent_1px)] bg-size-[20px_20px] mask-[radial-gradient(ellipse_60%_80%_at_50%_100%,black,transparent)]"

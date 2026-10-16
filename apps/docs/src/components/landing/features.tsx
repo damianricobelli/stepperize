@@ -20,7 +20,7 @@ export function Features() {
 				without dictating a single line of your markup.
 			</SectionHeading>
 
-			<div className="mt-12 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+			<div className="mt-10 grid gap-4 sm:mt-12 md:grid-cols-2 lg:grid-cols-3">
 				<Cell
 					className="md:col-span-2"
 					title="Your step ids are a type"
@@ -97,7 +97,7 @@ function Cell({
 				className,
 			)}
 		>
-			<div className="relative flex min-h-52 flex-1 items-center justify-center overflow-hidden border-b bg-muted/30 p-5 sm:p-6">
+			<div className="relative flex min-h-44 flex-1 items-center justify-center overflow-hidden border-b bg-muted/30 p-4 sm:min-h-52 sm:p-6">
 				{visual}
 			</div>
 			<div className="p-5 sm:p-6">
@@ -115,7 +115,7 @@ function Cell({
 				<Link
 					to="/docs/$"
 					params={{ _splat: doc }}
-					className="mt-4 inline-flex items-center gap-1 rounded text-sm font-medium text-foreground/80 outline-none hover:text-primary focus-visible:ring-2 focus-visible:ring-ring"
+					className="hit-44 mt-4 inline-flex items-center gap-1 rounded text-sm font-medium text-foreground/80 outline-none hover:text-primary focus-visible:ring-2 focus-visible:ring-ring"
 				>
 					Learn more
 					<ArrowRight

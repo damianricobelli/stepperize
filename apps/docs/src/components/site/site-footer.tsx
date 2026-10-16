@@ -38,8 +38,10 @@ const COLUMNS: { title: string; links: FooterLink[] }[] = [
 	},
 ];
 
+// Vertical padding instead of a hit-area overlay: the links sit close
+// together, and overlapping 44px targets would make taps ambiguous.
 const linkClass =
-	"inline-flex items-center gap-1 rounded text-sm text-muted-foreground outline-none transition-colors duration-150 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring";
+	"inline-flex items-center gap-1 rounded py-1 text-sm text-muted-foreground outline-none transition-colors duration-150 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring";
 
 /** Shared footer for the marketing surfaces (landing + Blocks gallery). */
 export function SiteFooter() {
@@ -72,7 +74,7 @@ export function SiteFooter() {
 							<p className="text-[13px] font-medium text-foreground">
 								{column.title}
 							</p>
-							<ul className="mt-3 space-y-2.5">
+							<ul className="mt-2 space-y-1">
 								{column.links.map((link) => (
 									<li key={link.label}>
 										<FooterItem link={link} />

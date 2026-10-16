@@ -13,6 +13,8 @@
 @custom-variant dark (&:is(.dark *));
 /* Precise pointer that can hover: mouse and trackpad, never touch. */
 @custom-variant pointer-fine (@media (hover: hover) and (pointer: fine));
+/* Finger-sized input: phones, tablets. */
+@custom-variant pointer-coarse (@media (pointer: coarse));
 
 /*
  * One palette for every surface. Neutrals carry a faint cool tint (hue 270)
@@ -301,13 +303,17 @@
     touch-action: manipulation;
   }
 
-  /* iOS zooms into inputs under 16px and never zooms back out. */
-  @media (pointer: coarse) {
-    input,
-    textarea,
-    select {
-      font-size: max(16px, 1em);
-    }
+  /*
+   * A long-press on a control should not select its label or pop the iOS
+   * callout. Content text stays selectable; only controls opt out.
+   */
+  button,
+  summary,
+  [role="button"],
+  [role="tab"] {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
   }
 
   h1,
@@ -333,6 +339,56 @@
 }
 
 /*
+ * iOS zooms into any input under 16px and never zooms back out. Unlayered on
+ * purpose: it has to beat utility classes such as `text-sm` on inputs inside
+ * blocks and demos, which a rule in @layer base cannot.
+ */
+@media (pointer: coarse) {
+  input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"]),
+  textarea,
+  select {
+    font-size: max(16px, 1em);
+  }
+}
+
+/*
+ * Phones: let the announcement banner scroll away instead of stacking a
+ * second sticky bar on top of the header. Fumadocs injects the banner height
+ * from a <style> in the body, so the override needs the extra specificity.
+ */
+@media (max-width: 767px) {
+  :root:root:root {
+    --fd-banner-height: 0px;
+  }
+
+  #stepperize-v8 {
+    position: relative;
+  }
+}
+
+@media (pointer: coarse) {
+  #stepperize-v8 > button {
+    width: 2.5rem;
+    height: 2.5rem;
+  }
+}
+
+/*
+ * Grow a small control's tap target to 44×44 without changing its layout.
+ * Insets resolve against the element's own box, so a 16px-tall link gets
+ * -14px above and below and a 56px-wide tab keeps its width.
+ */
+@utility hit-44 {
+  position: relative;
+  &::before {
+    content: "";
+    position: absolute;
+    inset-block: min(0px, calc((100% - 44px) / 2));
+    inset-inline: min(0px, calc((100% - 44px) / 2));
+  }
+}
+
+/*
  * Press feedback for marketing controls: responds on pointer-down, not on
  * release. Subtle enough for something pressed many times a visit.
  */
@@ -349,6 +405,22 @@
 
 #nd-sidebar [data-radix-scroll-area-viewport] {
   overflow-y: auto !important;
+}
+
+/*
+ * Docs code-block copy button: Fumadocs gives it a blur but no fill, so on a
+ * phone the code scrolls visibly underneath it. A solid chip reads as a
+ * control, and touch gets a bigger target.
+ */
+figure.shiki > div.absolute:has(> button) {
+  background-color: color-mix(in oklch, var(--card) 88%, transparent);
+  box-shadow: 0 0 0 1px var(--border);
+}
+
+@media (pointer: coarse) {
+  figure.shiki > div.absolute:has(> button) > button {
+    padding: 0.5rem;
+  }
 }
 
 /* ── Docs typography ────────────────────────────────────────────────────── */
@@ -374,6 +446,18 @@
   }
 }
 
+/* Large surfaces rise without blur: a blurred 1000px panel is expensive on phones. */
+@keyframes lp-lift {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 @keyframes lp-fade {
   from {
     opacity: 0;
@@ -387,9 +471,14 @@
   animation: lp-rise 700ms var(--ease-out-strong) both;
 }
 
+.lp-lift {
+  animation: lp-lift 800ms var(--ease-out-strong) both;
+}
+
 @media (prefers-reduced-motion: reduce) {
   /* Gentler, not zero: keep the fade, drop the movement. */
-  .lp-rise {
+  .lp-rise,
+  .lp-lift {
     animation: lp-fade 300ms ease both;
   }
 }

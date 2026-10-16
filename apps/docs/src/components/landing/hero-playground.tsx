@@ -74,7 +74,6 @@ const LINES = {
 	match: 17,
 } as const;
 
-const LINE_HEIGHT = 22;
 const CODE_PAD_Y = 16;
 
 type TokenKind = "comment" | "string" | "keyword" | "tag" | "fn" | "punct";
@@ -171,12 +170,17 @@ export function HeroPlayground() {
 				return (
 					<>
 						<WindowBar isPending={stepper.isPending} />
+						{/*
+						 * Desktop: code | preview, inspector across the bottom.
+						 * Phones: preview, then the inspector right under it (so the
+						 * result of a tap is on screen), then the code.
+						 */}
 						<div className="grid lg:grid-cols-[minmax(0,1.08fr)_minmax(0,1fr)]">
 							<CodePane
 								index={stepper.index}
 								guardLine={getGuardLine(lastCall, stepper.isPending)}
 							/>
-							<div className="order-first flex min-w-0 flex-col border-b bg-background/40 p-5 sm:p-6 lg:order-none lg:border-b-0 lg:border-l">
+							<div className="order-1 flex min-w-0 flex-col bg-background/40 p-5 sm:p-6 lg:order-none lg:border-l">
 								<div className="flex items-start justify-between gap-3">
 									<div className="min-w-0">
 										<p className="text-[15px] font-semibold tracking-tight">
@@ -201,7 +205,7 @@ export function HeroPlayground() {
 											>
 												<Stepper.Trigger
 													aria-label={step.title}
-													className="pressable group/trigger relative flex rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card disabled:active:scale-100"
+													className="pressable hit-44 group/trigger flex rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card disabled:active:scale-100"
 												>
 													<Stepper.Indicator className="flex size-8 items-center justify-center rounded-full border text-xs font-semibold tabular-nums transition-[background-color,border-color,color,box-shadow] duration-300 ease-out-strong group-data-[status=active]/trigger:border-primary group-data-[status=active]/trigger:bg-primary group-data-[status=active]/trigger:text-primary-foreground group-data-[status=active]/trigger:shadow-[0_0_0_4px] group-data-[status=active]/trigger:shadow-primary/15 group-data-[status=previous]/trigger:border-primary/30 group-data-[status=previous]/trigger:bg-primary/10 group-data-[status=previous]/trigger:text-primary group-data-[status=upcoming]/trigger:bg-muted group-data-[status=upcoming]/trigger:text-muted-foreground">
 														{stepper.status(step.id) === "previous" ? (
@@ -267,7 +271,7 @@ export function HeroPlayground() {
 											type="button"
 											onClick={() => run("prev")}
 											disabled={stepper.isFirst || stepper.isPending}
-											className="pressable inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-sm font-medium text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-40"
+											className="pressable inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-sm pointer-coarse:h-11 font-medium text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-40"
 										>
 											<ArrowLeft className="size-4" aria-hidden />
 											Back
@@ -276,7 +280,7 @@ export function HeroPlayground() {
 											type="button"
 											onClick={() => run("next")}
 											disabled={stepper.isPending}
-											className="pressable inline-flex h-9 min-w-30 items-center justify-center gap-1.5 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground shadow-sm shadow-primary/25 outline-none hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card disabled:opacity-80"
+											className="pressable inline-flex h-9 min-w-30 items-center pointer-coarse:h-11 justify-center gap-1.5 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground shadow-sm shadow-primary/25 outline-none hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card disabled:opacity-80"
 										>
 											{stepper.isPending ? (
 												<>
@@ -298,13 +302,13 @@ export function HeroPlayground() {
 									</div>
 								)}
 							</div>
+							<Inspector
+								id={stepper.id}
+								index={stepper.index}
+								isPending={stepper.isPending}
+								lastCall={lastCall}
+							/>
 						</div>
-						<Inspector
-							id={stepper.id}
-							index={stepper.index}
-							isPending={stepper.isPending}
-							lastCall={lastCall}
-						/>
 					</>
 				);
 			}}
@@ -318,7 +322,9 @@ export function HeroPlayground() {
  */
 function rejectEmail(input: HTMLInputElement | null) {
 	if (!input) return;
-	input.focus();
+	// Focus helps a keyboard user fix it; on a phone it would throw the
+	// keyboard over the very message explaining what happened.
+	if (window.matchMedia("(pointer: fine)").matches) input.focus();
 	if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 	input.animate(
 		[
@@ -405,10 +411,11 @@ function CodePane({
 	guardLine: GuardHighlight;
 }) {
 	return (
-		<div className="relative min-w-0 overflow-x-auto overscroll-x-contain bg-card">
+		<div className="relative order-3 min-w-0 overflow-x-auto overscroll-x-contain bg-card lg:order-none">
+			{/* --lh drives both the text and the highlight bars, so they stay in register. */}
 			<pre
-				className="relative min-w-max font-mono text-[12.5px]"
-				style={{ paddingBlock: CODE_PAD_Y, lineHeight: `${LINE_HEIGHT}px` }}
+				className="relative min-w-max font-mono text-[11.5px] [--lh:20px] sm:text-[12.5px] sm:[--lh:22px]"
+				style={{ paddingBlock: CODE_PAD_Y, lineHeight: "var(--lh)" }}
 			>
 				{/* Moving highlights: they slide between lines as the state changes. */}
 				<HighlightBar line={LINES.stepDefinition + index} />
@@ -422,8 +429,8 @@ function CodePane({
 							GUARD_TONE[guardLine.tone],
 						)}
 						style={{
-							top: CODE_PAD_Y + guardLine.line * LINE_HEIGHT,
-							height: LINE_HEIGHT,
+							top: `calc(${CODE_PAD_Y}px + var(--lh) * ${guardLine.line})`,
+							height: "var(--lh)",
 						}}
 					/>
 				)}
@@ -470,8 +477,8 @@ function HighlightBar({ line }: { line: number }) {
 			aria-hidden
 			className="absolute inset-x-0 top-0 border-l-2 border-primary bg-primary/[0.07] transition-transform duration-300 ease-in-out-strong motion-reduce:transition-none"
 			style={{
-				height: LINE_HEIGHT,
-				transform: `translateY(${CODE_PAD_Y + line * LINE_HEIGHT}px)`,
+				height: "var(--lh)",
+				transform: `translateY(calc(${CODE_PAD_Y}px + var(--lh) * ${line}))`,
 			}}
 		/>
 	);
@@ -491,8 +498,8 @@ function Inspector({
 	lastCall: LastCall | null;
 }) {
 	return (
-		<div className="flex flex-col gap-x-6 gap-y-2 border-t bg-muted/30 px-4 py-3 font-mono text-[11.5px] sm:flex-row sm:items-center sm:px-5">
-			<div className="flex shrink-0 items-center gap-4 text-muted-foreground">
+		<div className="order-2 flex flex-col gap-x-6 gap-y-2 border-y bg-muted/30 px-4 py-3 font-mono text-[11.5px] sm:flex-row sm:items-center sm:px-5 lg:order-none lg:col-span-2 lg:border-b-0">
+			<div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-1 text-muted-foreground">
 				<Field label="stepper.id">
 					<span className="text-emerald-700 dark:text-emerald-300">"{id}"</span>
 				</Field>
@@ -505,7 +512,7 @@ function Inspector({
 					</span>
 				</Field>
 			</div>
-			<div className="flex min-w-0 items-center gap-2 sm:ml-auto">
+			<div className="flex min-w-0 items-start gap-2 sm:ml-auto sm:items-center">
 				<span className="shrink-0 text-muted-foreground">
 					{lastCall ? `${lastCall.method}() →` : "result →"}
 				</span>
@@ -513,7 +520,7 @@ function Inspector({
 					<span
 						key={JSON.stringify(lastCall)}
 						className={cn(
-							"truncate rounded-md px-1.5 py-0.5 animate-in duration-200 fade-in-0 motion-safe:slide-in-from-bottom-1",
+							"rounded-md px-1.5 py-0.5 [overflow-wrap:anywhere] animate-in sm:truncate duration-200 fade-in-0 motion-safe:slide-in-from-bottom-1",
 							lastCall.result.accepted
 								? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
 								: "bg-red-500/10 text-red-600 dark:text-red-300",
@@ -576,7 +583,7 @@ function AccountStep({
 				<button
 					type="button"
 					onClick={() => onEmailChange(DEMO_EMAIL)}
-					className="rounded text-xs font-medium text-primary outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring"
+					className="hit-44 rounded text-xs font-medium text-primary outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring"
 				>
 					Use demo email
 				</button>

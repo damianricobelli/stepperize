@@ -14,7 +14,7 @@ export function Section({
 }) {
 	return (
 		<section id={id} className={cn("scroll-mt-20", className)}>
-			<div className="mx-auto w-full max-w-7xl px-4 py-20 sm:px-6 lg:py-28">
+			<div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 sm:py-20 lg:py-28">
 				{children}
 			</div>
 		</section>
@@ -55,7 +55,7 @@ export function SectionHeading({
 			)}
 		>
 			<Eyebrow>{eyebrow}</Eyebrow>
-			<h2 className="mt-3 text-3xl font-semibold leading-[1.1] tracking-[-0.03em] sm:text-[2.5rem]">
+			<h2 className="mt-3 text-[1.875rem] font-semibold leading-[1.1] tracking-[-0.03em] sm:text-[2.5rem]">
 				{title}
 			</h2>
 			{children && (

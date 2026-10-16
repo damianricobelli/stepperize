@@ -112,7 +112,20 @@ export function FlowLogic() {
 								aria-selected={selected}
 								aria-controls={`flow-panel-${demo.id}`}
 								tabIndex={selected ? 0 : -1}
-								onClick={() => setActive(demo.id)}
+								onClick={(event) => {
+									setActive(demo.id);
+									// On phones the tabs are a swipeable strip; bring a
+									// half-visible tab fully into view once chosen.
+									event.currentTarget.scrollIntoView({
+										block: "nearest",
+										inline: "nearest",
+										behavior: window.matchMedia(
+											"(prefers-reduced-motion: reduce)",
+										).matches
+											? "auto"
+											: "smooth",
+									});
+								}}
 								onKeyDown={(event) => onKeyDown(event, index)}
 								className={cn(
 									"pressable group relative flex w-[78%] shrink-0 snap-start flex-col items-start rounded-2xl border p-4 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring sm:w-[46%] lg:w-full lg:p-5",
@@ -154,7 +167,7 @@ export function FlowLogic() {
 					})}
 				</div>
 
-				<div className="relative grid min-h-[30rem] overflow-hidden rounded-3xl border bg-muted/30">
+				<div className="relative grid min-h-[28rem] overflow-hidden rounded-3xl border bg-muted/30 sm:min-h-[30rem]">
 					<div
 						aria-hidden
 						className="pointer-events-none absolute inset-0 bg-[radial-gradient(var(--color-border)_1px,transparent_1px)] bg-size-[16px_16px] mask-[radial-gradient(ellipse_70%_70%_at_50%_50%,black,transparent)]"
@@ -180,7 +193,7 @@ export function FlowLogic() {
 			<Link
 				to="/blocks"
 				search={{ category: "flow-control" }}
-				className="mt-8 inline-flex items-center gap-1.5 rounded text-sm font-medium text-primary outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring"
+				className="hit-44 mt-8 inline-flex items-center gap-1.5 rounded text-sm font-medium text-primary outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring"
 			>
 				See every flow-logic block
 				<ArrowRight className="size-4" aria-hidden />

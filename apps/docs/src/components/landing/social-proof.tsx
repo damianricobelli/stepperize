@@ -10,7 +10,7 @@ import { formatCompact, formatKb, useStepperizeStats } from "./stats";
  * Compact star count for the header. Links to the repo and shows the live
  * count when known. The star icon nudges the click that grows the number.
  */
-export function HeaderStars() {
+export function HeaderStars({ className }: { className?: string }) {
 	const { stars } = useStepperizeStats();
 	return (
 		<a
@@ -22,10 +22,13 @@ export function HeaderStars() {
 					? `Stepperize on GitHub, ${stars} stars`
 					: "Stepperize on GitHub"
 			}
-			className="pressable inline-flex h-9 items-center gap-1.5 rounded-lg px-2 text-[13px] font-medium text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+			className={cn(
+				"pressable inline-flex h-9 items-center gap-1.5 rounded-lg px-2 text-[13px] font-medium text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring",
+				className,
+			)}
 		>
 			<GitHubMark className="size-[18px]" />
-			<span className="hidden items-center gap-1 tabular-nums sm:inline-flex">
+			<span className="inline-flex items-center gap-1 tabular-nums">
 				<Star className="size-3 fill-current text-amber-500" aria-hidden />
 				{stars != null ? formatCompact(stars) : "Star"}
 			</span>

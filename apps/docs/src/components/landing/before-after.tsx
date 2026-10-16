@@ -40,7 +40,7 @@ export function BeforeAfter() {
 
 	return (
 		<Section className="border-y bg-muted/30">
-			<div className="grid items-center gap-12 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:gap-16">
+			<div className="grid items-center gap-10 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:gap-16">
 				<div>
 					<SectionHeading
 						eyebrow="Why Stepperize"
@@ -51,7 +51,7 @@ export function BeforeAfter() {
 						replaces all of it with one typed instance.
 					</SectionHeading>
 
-					<fieldset className="relative mt-8 inline-grid grid-cols-2 rounded-xl border bg-card p-1 shadow-xs">
+					<fieldset className="relative mt-8 grid w-full grid-cols-2 rounded-xl border bg-card p-1 shadow-xs sm:inline-grid sm:w-auto">
 						<legend className="sr-only">Compare code</legend>
 						<span
 							aria-hidden
@@ -69,7 +69,7 @@ export function BeforeAfter() {
 								aria-pressed={mode === m}
 								onClick={() => setMode(m)}
 								className={cn(
-									"pressable relative h-9 rounded-lg px-4 text-sm font-medium whitespace-nowrap outline-none focus-visible:ring-2 focus-visible:ring-ring",
+									"pressable relative h-9 rounded-lg px-4 text-sm font-medium whitespace-nowrap pointer-coarse:h-10 outline-none focus-visible:ring-2 focus-visible:ring-ring",
 									mode !== m && "text-muted-foreground hover:text-foreground",
 									mode === m &&
 										(m === "with"
@@ -139,7 +139,7 @@ export function BeforeAfter() {
 								key={m}
 								aria-hidden={mode !== m}
 								className={cn(
-									"col-start-1 row-start-1 p-5 font-mono text-[12.5px] leading-[1.75] transition-[opacity,filter] duration-300 ease-out-strong sm:p-6",
+									"col-start-1 row-start-1 p-4 font-mono text-[11.5px] leading-[1.75] transition-[opacity,filter] sm:p-6 sm:text-[12.5px] duration-300 ease-out-strong",
 									mode === m
 										? "opacity-100"
 										: "pointer-events-none opacity-0 blur-[2px]",

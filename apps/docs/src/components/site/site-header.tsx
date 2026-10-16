@@ -23,7 +23,7 @@ export function SiteHeader({ active }: { active?: NavTarget }) {
 				<Link
 					to="/"
 					aria-label="Stepperize home"
-					className="pressable -ml-1 mr-1 rounded-lg p-1 outline-none focus-visible:ring-2 focus-visible:ring-ring sm:mr-4"
+					className="pressable -ml-1 mr-1 rounded-lg p-1 outline-none pointer-coarse:py-1.5 focus-visible:ring-2 focus-visible:ring-ring sm:mr-4"
 				>
 					<Wordmark />
 				</Link>
@@ -49,7 +49,7 @@ export function SiteHeader({ active }: { active?: NavTarget }) {
 
 				<div className="ml-auto flex items-center gap-1">
 					<SearchButton />
-					<HeaderStars />
+					<HeaderStars className="max-sm:hidden" />
 					<ThemeToggle />
 				</div>
 			</div>
@@ -76,7 +76,7 @@ function NavLink({
 			{...href}
 			aria-current={active ? "page" : undefined}
 			className={cn(
-				"pressable inline-flex h-9 items-center rounded-lg px-2.5 text-sm font-medium outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring sm:px-3",
+				"pressable inline-flex h-9 items-center rounded-lg px-2.5 text-sm font-medium pointer-coarse:h-10 outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring sm:px-3",
 				active ? "text-foreground" : "text-muted-foreground",
 				className,
 			)}
@@ -96,7 +96,7 @@ function SearchButton() {
 			type="button"
 			onClick={() => setOpenSearch(true)}
 			aria-label="Search documentation"
-			className="pressable inline-flex h-9 items-center gap-2 rounded-lg text-sm text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring max-md:w-9 max-md:justify-center md:w-52 md:border md:bg-card/60 md:pr-1.5 md:pl-3 md:shadow-xs md:hover:border-foreground/15"
+			className="pressable inline-flex h-9 items-center gap-2 rounded-lg text-sm text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring max-md:w-9 max-md:justify-center pointer-coarse:max-md:size-10 md:w-52 md:border md:bg-card/60 md:pr-1.5 md:pl-3 md:shadow-xs md:hover:border-foreground/15"
 		>
 			<Search className="size-4 shrink-0" aria-hidden />
 			<span className="hidden flex-1 text-left md:inline">Search docs…</span>
@@ -119,7 +119,7 @@ function ThemeToggle() {
 			type="button"
 			aria-label="Toggle color theme"
 			onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
-			className="pressable relative inline-flex size-9 items-center justify-center rounded-lg text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+			className="pressable relative inline-flex size-9 pointer-coarse:size-10 items-center justify-center rounded-lg text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
 		>
 			<Moon
 				aria-hidden

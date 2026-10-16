@@ -28,7 +28,8 @@ export function Wordmark({ className }: { className?: string }) {
 			)}
 		>
 			<BrandMark />
-			Stepperize
+			{/* The smallest phones (320px) keep the mark and drop the word. */}
+			<span className="max-[359px]:sr-only">Stepperize</span>
 		</span>
 	);
 }

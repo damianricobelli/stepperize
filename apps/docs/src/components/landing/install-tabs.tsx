@@ -60,7 +60,7 @@ export function InstallTabs({ className }: { className?: string }) {
 							aria-pressed={m === manager}
 							onClick={() => setManager(m)}
 							className={cn(
-								"relative h-7 w-14 rounded-md font-mono text-xs outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-ring",
+								"hit-44 h-7 w-14 rounded-md font-mono text-xs outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-ring",
 								m === manager
 									? "text-foreground"
 									: "text-muted-foreground hover:text-foreground",
@@ -80,7 +80,7 @@ export function InstallTabs({ className }: { className?: string }) {
 					type="button"
 					onClick={copy}
 					aria-label={copied ? "Copied" : "Copy install command"}
-					className="pressable relative inline-flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+					className="pressable relative inline-flex size-8 shrink-0 pointer-coarse:size-10 items-center justify-center rounded-md text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
 				>
 					<Copy
 						aria-hidden
