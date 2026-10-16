@@ -1,5 +1,11 @@
 # @stepperize/react
 
+## 8.0.1
+
+### Patch Changes
+
+- [#177](https://github.com/damianricobelli/stepperize/pull/177) [`85b3760`](https://github.com/damianricobelli/stepperize/commit/85b3760cd48e0f7034c7d108e7f11a1c7843af17) Thanks [@damianricobelli](https://github.com/damianricobelli)! - Export the `UniqueStepIds` type from the main and headless entries so declaration bundlers can reference the `defineStepper` parameter type.
+
 ## 8.0.0
 
 ### Major Changes
