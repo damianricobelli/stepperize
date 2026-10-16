@@ -52,11 +52,15 @@ import {
 	PerformanceHighlights,
 	PerformanceTable,
 } from "./performance-table";
+import { CheckItem, CheckList, CrossItem } from "./status-icon";
 
 export function getMDXComponents(components?: MDXComponents) {
 	return {
 		...defaultMdxComponents,
 		PerformanceTable,
+		CheckList,
+		CheckItem,
+		CrossItem,
 		BenchmarkEnvironment,
 		BenchmarkSummary,
 		HeadlessBundleTable,

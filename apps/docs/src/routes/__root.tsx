@@ -7,6 +7,7 @@ import {
 } from "@tanstack/react-router";
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
 import { RootProvider } from "fumadocs-ui/provider/tanstack";
+import { THEME_COLORS, ThemeColorSync } from "@/components/site/theme-color";
 import { VersionBanner } from "@/components/site/version-banner";
 import { getDocsVersion } from "@/lib/docs-tree";
 import { seo } from "@/lib/seo";
@@ -23,9 +24,9 @@ export const Route = createRootRoute({
 			},
 			{
 				name: "viewport",
-				content: "width=device-width, initial-scale=1",
+				content: "width=device-width, initial-scale=1, viewport-fit=cover",
 			},
-			{ name: "theme-color", content: "#000000" },
+			{ name: "color-scheme", content: "light dark" },
 			{ name: "robots", content: "index, follow" },
 			{
 				name: "googlebot",
@@ -42,7 +43,8 @@ export const Route = createRootRoute({
 			},
 			{ rel: "manifest", href: "/manifest.json" },
 			{ rel: "icon", href: "/favicon.ico", sizes: "any" },
-			{ rel: "apple-touch-icon", href: "/logo192.png" },
+			{ rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
+			{ rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
 		],
 	}),
 	shellComponent: RootDocument,
@@ -55,9 +57,25 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 		<html lang="en" suppressHydrationWarning>
 			<head>
 				<HeadContent />
+				{/*
+				 * Rendered here rather than in head(): HeadContent dedupes meta tags by
+				 * name, which would keep only one of the two schemes. ThemeColorSync
+				 * retargets both when the theme is picked with the toggle.
+				 */}
+				<meta
+					name="theme-color"
+					media="(prefers-color-scheme: light)"
+					content={THEME_COLORS.light}
+				/>
+				<meta
+					name="theme-color"
+					media="(prefers-color-scheme: dark)"
+					content={THEME_COLORS.dark}
+				/>
 			</head>
 			<body className="flex min-h-screen flex-col">
 				<RootProvider search={{ options: { defaultTag: version } }}>
+					<ThemeColorSync />
 					{(pathname === "/" || pathname.startsWith("/docs/")) && (
 						<VersionBanner />
 					)}

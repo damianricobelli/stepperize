@@ -3,8 +3,6 @@ title: Steps & ids
 description: Model each step with a stable typed id.
 ---
 
-# Steps & ids
-
 A step is a plain object. `id` is required. Everything else belongs to your app.
 
 The definition is the contract for the whole flow. Once the ids are defined, the hook, renderer, data API, completion API, and primitives all use those same ids.
@@ -45,6 +43,10 @@ Good ids describe the business step, not the current UI label:
 | `"shipping"` | `"Step 1"` |
 | `"payment"` | `"Pay now"` |
 | `"review"` | `"confirm-order-2026"` |
+
+Try it: the ids you define are the only ones the flow accepts.
+
+<InteractiveExample name="ids" />
 
 ## Custom data
 
