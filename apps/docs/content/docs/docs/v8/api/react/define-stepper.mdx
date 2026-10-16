@@ -81,7 +81,7 @@ function Page() {
 }
 
 function CurrentTitle() {
-  const stepper = checkout.useStepper();
+  const stepper = checkout.useStepperContext();
   return <h2>{stepper.current.title}</h2>;
 }
 ```
