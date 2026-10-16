@@ -20,7 +20,7 @@ export type {
 	StepStatus,
 	ValidationResult,
 } from "@stepperize/core";
-
+export type { UniqueStepIds } from "./definition";
 export type {
 	ControlledStep,
 	DefineStepperOptions,

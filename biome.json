@@ -1,7 +1,16 @@
 {
-	"$schema": "https://biomejs.dev/schemas/2.5.13/schema.json",
+	"$schema": "https://biomejs.dev/schemas/2.5.15/schema.json",
 	"files": {
-		"includes": ["**", "!.turbo", "!**/.next", "!**/.source", "!.changeset", "!.pnpm-store", "!packages/react/dist"]
+		"includes": [
+			"**",
+			"!.turbo",
+			"!**/.next",
+			"!**/.source",
+			"!.changeset",
+			"!.pnpm-store",
+			"!packages/*/dist",
+			"!apps/docs/src/lib/benchmark-results.json"
+		]
 	},
 	"assist": {
 		"actions": {
@@ -21,7 +30,7 @@
 	"linter": {
 		"enabled": true,
 		"rules": {
-			"recommended": true,
+			"preset": "recommended",
 			"a11y": {
 				"useKeyWithClickEvents": "off"
 			},

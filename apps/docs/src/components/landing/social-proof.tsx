@@ -13,44 +13,44 @@ const GITHUB = "https://github.com/damianricobelli/stepperize";
  * count when known. The star icon nudges the click that grows the number.
  */
 export function HeaderStars() {
-  const { stars } = useStepperizeStats();
-  return (
-    <a
-      href={GITHUB}
-      target="_blank"
-      rel="noreferrer noopener"
-      aria-label="Star Stepperize on GitHub"
-      className="hidden items-center gap-1.5 rounded-lg border bg-card/60 px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground sm:inline-flex"
-    >
-      <GitHubMark className="size-4" />
-      <Star className="size-3.5 text-amber-500" aria-hidden />
-      <span className="tabular-nums">
-        {stars != null ? formatCompact(stars) : "Star"}
-      </span>
-    </a>
-  );
+	const { stars } = useStepperizeStats();
+	return (
+		<a
+			href={GITHUB}
+			target="_blank"
+			rel="noreferrer noopener"
+			aria-label="Star Stepperize on GitHub"
+			className="hidden items-center gap-1.5 rounded-lg border bg-card/60 px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground sm:inline-flex"
+		>
+			<GitHubMark className="size-4" />
+			<Star className="size-3.5 text-amber-500" aria-hidden />
+			<span className="tabular-nums">
+				{stars != null ? formatCompact(stars) : "Star"}
+			</span>
+		</a>
+	);
 }
 
 function Stat({
-  icon,
-  value,
-  label,
+	icon,
+	value,
+	label,
 }: {
-  icon: ReactNode;
-  value: string;
-  label: string;
+	icon: ReactNode;
+	value: string;
+	label: string;
 }) {
-  return (
-    <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
-      <span className="text-primary" aria-hidden>
-        {icon}
-      </span>
-      <span className="font-semibold tabular-nums text-foreground">
-        {value}
-      </span>
-      <span>{label}</span>
-    </span>
-  );
+	return (
+		<span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+			<span className="text-primary" aria-hidden>
+				{icon}
+			</span>
+			<span className="font-semibold tabular-nums text-foreground">
+				{value}
+			</span>
+			<span>{label}</span>
+		</span>
+	);
 }
 
 /**
@@ -60,49 +60,49 @@ function Stat({
  * static copy when a fetch fails, so the bar is never empty or misleading.
  */
 export function StatBar({ className }: { className?: string }) {
-  const { stars, downloads, gzip } = useStepperizeStats();
+	const { stars, downloads, gzip } = useStepperizeStats();
 
-  return (
-    <div
-      className={cn(
-        "flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-muted-foreground",
-        className,
-      )}
-    >
-      <a
-        href={GITHUB}
-        target="_blank"
-        rel="noreferrer noopener"
-        className="transition-colors hover:text-foreground"
-      >
-        <Stat
-          icon={<Star className="size-3.5" />}
-          value={stars != null ? formatCompact(stars) : "★"}
-          label="GitHub stars"
-        />
-      </a>
-      <a
-        href={`https://www.npmjs.com/package/@stepperize/react`}
-        target="_blank"
-        rel="noreferrer noopener"
-        className="transition-colors hover:text-foreground"
-      >
-        <Stat
-          icon={<Download className="size-3.5" />}
-          value={downloads != null ? `${formatCompact(downloads)}/mo` : "npm"}
-          label="downloads"
-        />
-      </a>
-      <Stat
-        icon={<Scale className="size-3.5" />}
-        value={gzip != null ? formatKb(gzip) : "Tiny"}
-        label="gzipped"
-      />
-      <Stat
-        icon={<Zap className="size-3.5" />}
-        value="Zero"
-        label="dependencies"
-      />
-    </div>
-  );
+	return (
+		<div
+			className={cn(
+				"flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-muted-foreground",
+				className,
+			)}
+		>
+			<a
+				href={GITHUB}
+				target="_blank"
+				rel="noreferrer noopener"
+				className="transition-colors hover:text-foreground"
+			>
+				<Stat
+					icon={<Star className="size-3.5" />}
+					value={stars != null ? formatCompact(stars) : "★"}
+					label="GitHub stars"
+				/>
+			</a>
+			<a
+				href={`https://www.npmjs.com/package/@stepperize/react`}
+				target="_blank"
+				rel="noreferrer noopener"
+				className="transition-colors hover:text-foreground"
+			>
+				<Stat
+					icon={<Download className="size-3.5" />}
+					value={downloads != null ? `${formatCompact(downloads)}/mo` : "npm"}
+					label="downloads"
+				/>
+			</a>
+			<Stat
+				icon={<Scale className="size-3.5" />}
+				value={gzip != null ? formatKb(gzip) : "Tiny"}
+				label="gzipped"
+			/>
+			<Stat
+				icon={<Zap className="size-3.5" />}
+				value="Zero"
+				label="dependencies"
+			/>
+		</div>
+	);
 }
