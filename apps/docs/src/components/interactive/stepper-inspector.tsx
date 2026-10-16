@@ -276,7 +276,8 @@ export function StepperInspector() {
 									<div
 										className={cn(
 											"grid grid-cols-[8.5rem_1fr] items-center gap-x-3 gap-y-0.5 px-3 py-2 transition-colors duration-150 @xl:grid-cols-[8.5rem_9rem_1fr]",
-											focus.includes(row.field) && "bg-primary/[0.07]",
+											focus.includes(row.field) &&
+												"bg-primary/12 shadow-[inset_2px_0_0] shadow-primary",
 										)}
 									>
 										<dt className="font-mono text-[12px]">
