@@ -58,8 +58,8 @@ export function ResetDemo() {
 	}
 
 	return (
-		<section aria-label="Reset demo" className="space-y-5">
-			<div className="grid gap-5 md:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+		<section aria-label="Reset demo" className="@container space-y-5">
+			<div className="grid gap-5 @xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
 				<div className="space-y-3">
 					<p className={eyebrow}>1 · Change the flow</p>
 					<label className="grid gap-1.5">
@@ -119,7 +119,7 @@ export function ResetDemo() {
 				</div>
 			</div>
 
-			<div className="grid items-stretch gap-3 sm:grid-cols-[1fr_auto_1fr]">
+			<div className="grid items-stretch gap-3 @lg:grid-cols-[1fr_auto_1fr]">
 				<div className="min-w-0 rounded-xl border bg-background">
 					<h3 className={`${eyebrow} border-b px-3 py-2`}>Before reset</h3>
 					<section aria-label="Before reset">
@@ -130,7 +130,7 @@ export function ResetDemo() {
 				</div>
 				<div
 					aria-hidden
-					className="hidden items-center justify-center text-muted-foreground sm:flex"
+					className="hidden items-center justify-center text-muted-foreground @lg:flex"
 				>
 					→
 				</div>

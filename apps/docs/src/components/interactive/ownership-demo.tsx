@@ -18,8 +18,8 @@ const primaryButton =
 /** Two independent owners and a shared owner rendered through separate consumers. */
 export function OwnershipDemo() {
 	return (
-		<div className="space-y-4">
-			<div className="grid gap-3 sm:grid-cols-2">
+		<div className="@container space-y-4">
+			<div className="grid gap-3 @lg:grid-cols-2">
 				<LocalCheckout label="Local checkout A" />
 				<LocalCheckout label="Local checkout B" />
 			</div>
@@ -33,7 +33,7 @@ export function OwnershipDemo() {
 						The heading, panel and controls are separate components sharing one
 						Provider.
 					</p>
-					<div className="grid gap-2 sm:grid-cols-3">
+					<div className="grid gap-2 @xl:grid-cols-3">
 						<Consumer name="<SharedHeading />">
 							<SharedHeading />
 						</Consumer>
@@ -51,7 +51,7 @@ export function OwnershipDemo() {
 						creates its own instance; the inner Provider creates a separate
 						shared scope.
 					</p>
-					<div className="grid gap-3 sm:grid-cols-2">
+					<div className="grid gap-3 @lg:grid-cols-2">
 						<LocalCheckout label="Local checkout inside Provider" />
 						<flow.Provider defaultStep="payment">
 							<section

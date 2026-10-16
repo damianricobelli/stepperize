@@ -21,7 +21,7 @@ export function PrimitivesDemo() {
 	const [linear, setLinear] = useState(true);
 
 	return (
-		<div className="space-y-4">
+		<div className="@container space-y-4">
 			<div className="flex items-center justify-between gap-3 rounded-lg border bg-background px-3 py-2.5">
 				<div>
 					<label htmlFor="primitives-linear" className="font-mono text-sm">
@@ -51,7 +51,7 @@ export function PrimitivesDemo() {
 			{/* `linear` is a mount-time option; remount the root when it changes. */}
 			<Stepper.Root key={String(linear)} linear={linear} className="space-y-4">
 				{({ stepper }) => (
-					<div className="grid gap-4 md:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
+					<div className="grid gap-4 @3xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
 						<div className="space-y-4 rounded-xl border bg-background p-4">
 							<Stepper.List className="flex items-start">
 								<Stepper.Items>

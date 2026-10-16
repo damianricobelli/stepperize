@@ -29,7 +29,7 @@ export function PolicyDemo() {
 	const rejected = result.includes('"accepted":false');
 
 	return (
-		<section aria-label="Linear policy demo" className="space-y-5">
+		<section aria-label="Linear policy demo" className="@container space-y-5">
 			<div className="rounded-xl border bg-muted/30 p-4">
 				<div className="flex flex-wrap items-center justify-between gap-2">
 					<p className={eyebrow}>
@@ -76,7 +76,7 @@ export function PolicyDemo() {
 				</p>
 			</div>
 
-			<div className="grid gap-3 sm:grid-cols-2">
+			<div className="grid gap-3 @lg:grid-cols-2">
 				<div className="flex flex-col gap-2 rounded-xl border bg-background p-3">
 					<code className="font-mono text-xs text-muted-foreground">
 						goTo("review")
@@ -119,7 +119,7 @@ export function PolicyDemo() {
 				</div>
 			</div>
 
-			<div className="flex flex-col gap-3 sm:flex-row sm:items-stretch">
+			<div className="flex flex-col gap-3 @lg:flex-row @lg:items-stretch">
 				<div className="flex flex-1 items-center justify-between gap-3 rounded-lg border bg-background px-3 py-2.5">
 					<label htmlFor="policy-guard" className="text-sm font-medium">
 						Guard allows navigation

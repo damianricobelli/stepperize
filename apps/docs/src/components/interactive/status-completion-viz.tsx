@@ -34,7 +34,7 @@ export function StatusCompletionViz() {
 			title="Two independent axes"
 			description="Click a step to move. Click a completion cell to toggle it. Only one row follows the position."
 		>
-			<div className="overflow-x-auto overscroll-x-contain">
+			<div className="@container overflow-x-auto overscroll-x-contain">
 				<table className="w-full min-w-[30rem] border-separate border-spacing-0 text-left">
 					<caption className="sr-only">
 						Status and completion for each step
@@ -162,7 +162,7 @@ export function StatusCompletionViz() {
 				</table>
 			</div>
 
-			<div className="mt-5 grid gap-3 text-[13px] leading-relaxed text-muted-foreground sm:grid-cols-2">
+			<div className="mt-5 grid gap-3 text-[13px] leading-relaxed text-muted-foreground @lg:grid-cols-2">
 				<p>
 					<span className="font-medium text-foreground">Status</span> is
 					positional. Move the active step and every cell in the row recolors,

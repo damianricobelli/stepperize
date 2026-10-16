@@ -58,8 +58,8 @@ export function IdsDemo() {
 	}
 
 	return (
-		<section aria-label="Step id explorer" className="space-y-5">
-			<div className="grid gap-4 md:grid-cols-2">
+		<section aria-label="Step id explorer" className="@container space-y-5">
+			<div className="grid gap-4 @xl:grid-cols-2">
 				<div className="overflow-hidden rounded-xl border bg-background">
 					<p className={`${eyebrow} border-b px-3 py-2`}>Your definition</p>
 					<div className="p-3 font-mono text-[12.5px] leading-7">

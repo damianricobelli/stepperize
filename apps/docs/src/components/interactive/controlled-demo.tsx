@@ -36,8 +36,11 @@ export function ControlledDemo() {
 	const rejected = result.includes('"accepted":false');
 
 	return (
-		<section aria-label="Controlled state demo" className="space-y-5">
-			<div className="grid gap-3 md:grid-cols-2">
+		<section
+			aria-label="Controlled state demo"
+			className="@container space-y-5"
+		>
+			<div className="grid gap-3 @xl:grid-cols-2">
 				{/* The owner: your component holds `step`. */}
 				<div className="space-y-3 rounded-xl border bg-background p-4">
 					<div>
@@ -154,7 +157,7 @@ export function ControlledDemo() {
 
 			<div
 				role="status"
-				className="grid gap-px overflow-hidden rounded-xl border bg-border text-sm sm:grid-cols-[auto_auto_1fr]"
+				className="grid gap-px overflow-hidden rounded-xl border bg-border text-sm @xl:grid-cols-[auto_auto_1fr]"
 			>
 				<p className="bg-background px-3 py-2.5">
 					<span className="text-muted-foreground">Rendered step: </span>

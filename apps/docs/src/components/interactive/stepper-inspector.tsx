@@ -145,7 +145,7 @@ export function StepperInspector() {
 			title="Drive a real instance"
 			description="Every value below is read from useStepper(). Use the controls and watch them change."
 		>
-			<div className="space-y-5">
+			<div className="@container space-y-5">
 				{/* The UI a user would see. */}
 				<div className="rounded-xl border bg-muted/30 p-4">
 					<ol className="flex items-start">
@@ -265,7 +265,7 @@ export function StepperInspector() {
 				</div>
 
 				{/* The instance, as code reads it. */}
-				<div className="grid gap-4 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
+				<div className="grid gap-4 @4xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
 					<div className="overflow-hidden rounded-xl border bg-background">
 						<p className="border-b bg-muted/30 px-3 py-2 font-mono text-[11px] text-muted-foreground">
 							const stepper = onboarding.useStepper();
@@ -275,7 +275,7 @@ export function StepperInspector() {
 								<Flash key={row.field} value={row.raw}>
 									<div
 										className={cn(
-											"grid grid-cols-[7.5rem_1fr] items-center gap-x-3 gap-y-0.5 px-3 py-2 transition-colors duration-150 sm:grid-cols-[7.5rem_9rem_1fr]",
+											"grid grid-cols-[8.5rem_1fr] items-center gap-x-3 gap-y-0.5 px-3 py-2 transition-colors duration-150 @xl:grid-cols-[8.5rem_9rem_1fr]",
 											focus.includes(row.field) && "bg-primary/[0.07]",
 										)}
 									>
@@ -284,7 +284,7 @@ export function StepperInspector() {
 											{row.field}
 										</dt>
 										<dd className="font-mono text-[12px]">{row.value}</dd>
-										<dd className="col-span-2 text-xs text-muted-foreground sm:col-span-1">
+										<dd className="col-span-2 text-xs text-muted-foreground @xl:col-span-1">
 											{row.note}
 										</dd>
 									</div>
@@ -293,7 +293,7 @@ export function StepperInspector() {
 						</dl>
 					</div>
 
-					<div className="flex flex-col gap-3">
+					<div className="grid content-start gap-3 @xl:grid-cols-2 @4xl:grid-cols-1">
 						<div className="rounded-xl border bg-background p-3">
 							<p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
 								Last call

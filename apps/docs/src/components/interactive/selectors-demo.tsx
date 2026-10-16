@@ -15,11 +15,14 @@ const primaryButton =
 export function SelectorsDemo() {
 	return (
 		<flow.Provider>
-			<section aria-label="Context selectors demo" className="space-y-5">
+			<section
+				aria-label="Context selectors demo"
+				className="@container space-y-5"
+			>
 				{/* A value flashes when it is (re)mounted, i.e. when its selection changed. */}
 				<style>{`@keyframes stepperize-selection-flash { from { background-color: color-mix(in oklch, var(--color-primary) 22%, transparent); box-shadow: 0 0 0 1px var(--color-primary); } }
           @media (prefers-reduced-motion: no-preference) { .stepperize-selection-flash { animation: stepperize-selection-flash 900ms cubic-bezier(0.23, 1, 0.32, 1); } }`}</style>
-				<div className="grid gap-3 sm:grid-cols-3">
+				<div className="grid gap-3 @xl:grid-cols-3">
 					<StepSelection />
 					<DataSelection />
 					<CompletionSelection />

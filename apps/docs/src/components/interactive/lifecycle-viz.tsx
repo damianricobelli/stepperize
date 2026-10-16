@@ -131,8 +131,11 @@ export function LifecycleViz() {
 	const rejected = outcome.includes('"accepted":false');
 
 	return (
-		<section aria-label="Navigation lifecycle demo" className="space-y-5">
-			<div className="grid gap-5 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+		<section
+			aria-label="Navigation lifecycle demo"
+			className="@container space-y-5"
+		>
+			<div className="grid gap-5 @xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
 				{/* Inputs: what the user does. */}
 				<div className="space-y-4">
 					<label className="grid gap-1.5">
@@ -227,8 +230,8 @@ export function LifecycleViz() {
 
 				{/* The transition: what Stepperize does with it. */}
 				<div className="rounded-xl border bg-muted/30 p-4">
-					<div className="flex items-center justify-between gap-3">
-						<p className={eyebrow}>The transition</p>
+					<div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+						<p className={`${eyebrow} whitespace-nowrap`}>The transition</p>
 						<p
 							role="status"
 							className="font-mono text-[11px] text-muted-foreground"
@@ -250,7 +253,7 @@ export function LifecycleViz() {
 				</div>
 			</div>
 
-			<div className="grid gap-3 md:grid-cols-2">
+			<div className="grid gap-3 @xl:grid-cols-2">
 				<div className="min-w-0 rounded-xl border bg-background">
 					<p className={`${eyebrow} border-b px-3 py-2`}>Committed state</p>
 					<section aria-label="Committed state">
