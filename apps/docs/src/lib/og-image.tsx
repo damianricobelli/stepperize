@@ -150,7 +150,8 @@ function DocsTemplate({
 							color: TITLE_COLOR,
 							maxWidth: 880,
 							overflow: "hidden",
-							maxHeight: 262,
+							lineClamp: 3,
+							textOverflow: "ellipsis",
 						}}
 					>
 						{title}
@@ -165,7 +166,8 @@ function DocsTemplate({
 							color: MUTED_COLOR,
 							maxWidth: 700,
 							overflow: "hidden",
-							maxHeight: 140,
+							lineClamp: 2,
+							textOverflow: "ellipsis",
 						}}
 					>
 						{description}
