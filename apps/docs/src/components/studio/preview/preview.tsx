@@ -49,6 +49,8 @@ export function PreviewStage() {
 			<div
 				className={cn(
 					"mx-auto w-full overflow-hidden rounded-xl border bg-card shadow-lg transition-opacity duration-150",
+					// In dark mode the muted track is a shade off the card; tracks use the input tone instead.
+					"dark:**:data-[slot=progress-track]:bg-input dark:**:data-[slot=slider-track]:bg-input",
 					mobile ? "max-w-[390px]" : "max-w-3xl",
 					meta.pending && "opacity-80",
 				)}

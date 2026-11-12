@@ -135,6 +135,8 @@ export function ChoiceCards<Value extends string>({
 								id={id}
 								value={choice.value}
 								disabled={disabled}
+								// The input border nearly matches a dark card; lift it so the empty circle reads.
+								className="dark:border-foreground/30"
 							/>
 						</Field>
 					</FieldLabel>
