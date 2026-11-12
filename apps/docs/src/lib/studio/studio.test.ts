@@ -8,6 +8,7 @@ import {
 import { generateProject, toRegistryItem } from "./codegen/generate";
 import { jsxText } from "./codegen/shared";
 import {
+	BASES,
 	DEFAULT_CONFIG,
 	FIELD_TYPES,
 	type FieldType,
@@ -112,12 +113,15 @@ function matrix(): StudioConfig[] {
 		}),
 	);
 	for (const id of PRESET_IDS) out.push(PRESETS[id].config);
-	for (const form of FORMS)
-		for (const validation of VALIDATIONS) {
-			const config = { ...EVERY_FIELD, form, validation };
-			if (!unavailableReason(config, { kind: "validation", value: validation }))
-				out.push(normalizeConfig(config));
-		}
+	for (const base of BASES)
+		for (const form of FORMS)
+			for (const validation of VALIDATIONS) {
+				const config = { ...EVERY_FIELD, base, form, validation };
+				if (
+					!unavailableReason(config, { kind: "validation", value: validation })
+				)
+					out.push(normalizeConfig(config));
+			}
 	return out;
 }
 
@@ -199,6 +203,78 @@ describe("fields", () => {
 		const decoded = decodeConfig(encoded);
 		expect(decoded).toEqual(DEFAULT_CONFIG);
 		expect(decoded && "ui" in decoded).toBe(false);
+	});
+});
+
+describe("shadcn/ui bases", () => {
+	/** All step files of a flow, concatenated. */
+	const steps = (config: StudioConfig) =>
+		generateProject(config)
+			.files.filter((f) => f.path.includes("/steps/"))
+			.map((f) => f.content)
+			.join("\n");
+	const datePicker = (config: StudioConfig) =>
+		generateProject(config).files.find((f) =>
+			f.path.endsWith("/date-picker.tsx"),
+		)?.content ?? "";
+
+	it("opens links from before the choice existed on Radix", () => {
+		const { base: _, ...legacy } = DEFAULT_CONFIG;
+		expect(decodeConfig(encodeConfig(legacy as StudioConfig))?.base).toBe(
+			"radix",
+		);
+	});
+
+	it("spells Radix props", () => {
+		const code = steps({ ...EVERY_FIELD, base: "radix" });
+		expect(code).toContain('<SelectContent position="popper">');
+		expect(code).toContain('value={field.value ?? ""} onValueChange=');
+		expect(code).toContain("field.onChange(checked === true)");
+		expect(code).toContain("field.onChange(value[0] ?? 1)");
+		expect(code).not.toContain("alignItemWithTrigger");
+		expect(datePicker({ ...EVERY_FIELD, base: "radix" })).toContain(
+			"<PopoverTrigger asChild>",
+		);
+	});
+
+	it("spells Base UI props", () => {
+		const code = steps({ ...EVERY_FIELD, base: "base" });
+		expect(code).toContain("<SelectContent alignItemWithTrigger={false}>");
+		expect(code).toContain("value={field.value ?? null} onValueChange=");
+		expect(datePicker({ ...EVERY_FIELD, base: "base" })).toContain(
+			"<PopoverTrigger\n\t\t\t\trender={",
+		);
+	});
+
+	it("spells React Aria props", () => {
+		const aria = { ...EVERY_FIELD, base: "aria" } as const;
+		const code = steps(aria);
+		for (const prop of [
+			"isSelected={field.value ?? false} onChange=",
+			"isInvalid={!!errors.",
+			"minValue={1} maxValue={9}",
+			"<SelectItem key={option} id={option}>",
+			'placeholder="Select…"',
+			"isDisabled={stepper.isFirst} onPress={() => stepper.prev()}",
+		])
+			expect(code).toContain(prop);
+		// The shipped DatePicker keeps its own `onValueChange` on every base.
+		for (const prop of ["onCheckedChange", "alignItemWithTrigger", "onClick="])
+			expect(code).not.toContain(prop);
+		expect(datePicker(aria)).toContain('from "@internationalized/date"');
+		expect(generateProject(aria).dependencies).toContain(
+			"@internationalized/date",
+		);
+	});
+
+	it("submits React Aria sliders from uncontrolled forms through a hidden input", () => {
+		const code = steps({ ...EVERY_FIELD, base: "aria", form: "native" });
+		expect(code).toContain(
+			"const [sliderValue, setSliderValue] = useState<number>(saved?.slider ?? 1);",
+		);
+		expect(code).toContain(
+			'<input type="hidden" name="slider" value={sliderValue} />',
+		);
 	});
 });
 

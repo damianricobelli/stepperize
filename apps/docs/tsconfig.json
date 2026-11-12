@@ -1,5 +1,7 @@
 {
   "include": ["**/*.ts", "**/*.tsx"],
+  // Shipped to Radix and React Aria projects as text; typechecked against those bases elsewhere.
+  "exclude": ["node_modules", "src/components/studio/kit/radix", "src/components/studio/kit/aria"],
   "compilerOptions": {
     "target": "ES2022",
     "jsx": "react-jsx",

@@ -1,5 +1,7 @@
-import DATE_PICKER from "@/components/studio/kit/date-picker.tsx?raw";
-import type { StudioConfig } from "../config";
+import ARIA_DATE_PICKER from "@/components/studio/kit/aria/date-picker.tsx?raw";
+import BASE_DATE_PICKER from "@/components/studio/kit/date-picker.tsx?raw";
+import RADIX_DATE_PICKER from "@/components/studio/kit/radix/date-picker.tsx?raw";
+import type { Base, StudioConfig } from "../config";
 import { generateStep, stepComponent } from "./forms";
 import { generateNav, PROGRESS_RING } from "./layouts";
 import {
@@ -41,6 +43,13 @@ export type GeneratedProject = {
 	/** shadcn/ui components imported from `@/components/ui/*`. */
 	registryDependencies: string[];
 	usage: string;
+};
+
+/** The date picker shipped with flows that have a date field, per base. */
+const DATE_PICKERS: Record<Base, string> = {
+	radix: RADIX_DATE_PICKER,
+	base: BASE_DATE_PICKER,
+	aria: ARIA_DATE_PICKER,
 };
 
 export const STEPPERIZE_DEPENDENCY = "@stepperize/react@^8.0.0";
@@ -266,6 +275,8 @@ function dependenciesOf(
 		deps.add(config.validation === "zod" ? "zod@^4" : config.validation);
 	if (files.some((f) => f.content.includes('from "lucide-react"')))
 		deps.add("lucide-react");
+	if (files.some((f) => f.content.includes('from "@internationalized/date"')))
+		deps.add("@internationalized/date");
 	return [...deps];
 }
 
@@ -325,7 +336,7 @@ export function generateProject(config: StudioConfig): GeneratedProject {
 		files.push(component("progress-ring.tsx", PROGRESS_RING));
 	// The same component the Studio preview renders, shipped verbatim.
 	if (config.steps.some((step) => step.fields.some((f) => f.type === "date")))
-		files.push(component("date-picker.tsx", DATE_PICKER));
+		files.push(component("date-picker.tsx", DATE_PICKERS[config.base]));
 	if (config.behavior.persist) {
 		files.push({
 			path: `${base}/use-saved-draft.ts`,

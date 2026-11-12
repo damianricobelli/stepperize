@@ -1,5 +1,6 @@
 import { z } from "zod";
 import {
+	BASES,
 	FIELD_TYPES,
 	FORMS,
 	FRAMEWORKS,
@@ -47,6 +48,8 @@ const stepSchema = z.object({
 // only kit (they carry a `ui` field) still decode.
 export const studioConfigSchema = z.object({
 	name: text(LIMITS.name).min(1),
+	// Links from before the base choice existed decode as Radix, shadcn's default.
+	base: z.enum(BASES).default("radix"),
 	framework: z.enum(FRAMEWORKS),
 	navigation: z.enum(NAVIGATIONS),
 	layout: z.enum(LAYOUTS),

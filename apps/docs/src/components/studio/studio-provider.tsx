@@ -99,7 +99,7 @@ function reducer(state: StudioState, action: Action): StudioState {
 		case "preset":
 			return {
 				...state,
-				config: PRESETS[action.id].config,
+				config: withBase(action.id, state.config.base),
 				file: null,
 				previewRun: state.previewRun + 1,
 			};
@@ -110,10 +110,19 @@ function reducer(state: StudioState, action: Action): StudioState {
 	}
 }
 
+/**
+ * The base describes the user's project, not the flow: templates keep the
+ * one picked, and picking another doesn't make a template "edited".
+ */
+const withBase = (id: PresetId, base: StudioConfig["base"]): StudioConfig => ({
+	...PRESETS[id].config,
+	base,
+});
+
 function samePreset(config: StudioConfig): PresetId | undefined {
 	const json = JSON.stringify(config);
 	return (Object.keys(PRESETS) as PresetId[]).find(
-		(id) => JSON.stringify(PRESETS[id].config) === json,
+		(id) => JSON.stringify(withBase(id, config.base)) === json,
 	);
 }
 

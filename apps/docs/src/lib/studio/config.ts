@@ -9,6 +9,8 @@
  * shape, so what you see in the Studio is what `shadcn add` installs.
  */
 
+/** shadcn/ui ships each component on one of three primitive libraries. */
+export const BASES = ["radix", "base", "aria"] as const;
 export const FRAMEWORKS = [
 	"nextjs",
 	"tanstack-start",
@@ -51,6 +53,7 @@ export const FIELD_TYPES = [
 	"otp",
 ] as const;
 
+export type Base = (typeof BASES)[number];
 export type Framework = (typeof FRAMEWORKS)[number];
 export type Navigation = (typeof NAVIGATIONS)[number];
 export type Layout = (typeof LAYOUTS)[number];
@@ -96,6 +99,8 @@ export const BEHAVIOR_KEYS = [
 
 export type StudioConfig = {
 	name: string;
+	/** The primitives under the project's shadcn/ui components. */
+	base: Base;
 	framework: Framework;
 	navigation: Navigation;
 	layout: Layout;
@@ -126,6 +131,12 @@ type Option<Value extends string> = {
 	label: string;
 	hint: string;
 };
+
+export const BASE_OPTIONS: Option<Base>[] = [
+	{ value: "radix", label: "Radix UI", hint: "radix-ui" },
+	{ value: "base", label: "Base UI", hint: "@base-ui/react" },
+	{ value: "aria", label: "React Aria", hint: "react-aria-components" },
+];
 
 export const FRAMEWORK_OPTIONS: Option<Framework>[] = [
 	{ value: "nextjs", label: "Next.js", hint: "App Router" },
@@ -327,6 +338,7 @@ const field = (
 ): StudioField => normalizeField({ label, type, required, ...extra });
 
 const BASE: Omit<StudioConfig, "name" | "steps"> = {
+	base: "radix",
 	framework: "nextjs",
 	navigation: "search-params",
 	layout: "horizontal",

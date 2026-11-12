@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
+	BASE_OPTIONS,
 	FORM_OPTIONS,
 	FRAMEWORK_OPTIONS,
 	INDICATOR_OPTIONS,
@@ -222,6 +223,22 @@ export function ConfigPanel() {
 									(option) => option.value === config.indicator,
 								)?.hint
 							}
+						</p>
+					</Section>
+					<Section
+						title="Components"
+						description="The shadcn/ui base your project uses. The generated controls follow its props."
+						aside={<code className="font-mono">components.json</code>}
+					>
+						<Segmented
+							label="Components"
+							value={config.base}
+							onChange={(base) => actions.update((c) => ({ ...c, base }))}
+							choices={BASE_OPTIONS}
+						/>
+						<p className="text-xs text-pretty text-muted-foreground">
+							Use the base in your <code className="font-mono">style</code>,
+							such as <code className="font-mono">{config.base}-nova</code>.
 						</p>
 					</Section>
 				</TabsContent>

@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { generateProject } from "./codegen/generate";
 import {
+	BASE_OPTIONS,
 	BEHAVIOR_KEYS,
 	FIELD_TYPES,
 	FORM_OPTIONS,
@@ -183,6 +184,7 @@ function routeFiles(): string {
 /** A flow written from scratch, as an agent would, to show the shape end to end. */
 export const EXAMPLE_CONFIG: StudioConfig = normalizeConfig({
 	name: "Team signup",
+	base: "radix",
 	framework: "nextjs",
 	navigation: "search-params",
 	layout: "horizontal",
@@ -287,6 +289,10 @@ export function studioAgentGuide(origin = SITE_ORIGIN): string {
 				[
 					"`name`",
 					`string, 1 to ${LIMITS.name} characters. Becomes the folder (\`kebab-case\`), the definition variable (\`camelCase\`) and the component prefix (\`PascalCase\`).`,
+				],
+				[
+					"`base`",
+					`${options(BASE_OPTIONS)}. Match the \`base\` of the project's shadcn/ui components (the \`style\` in components.json starts with it, e.g. \`radix-nova\`). Defaults to \`radix\`.`,
 				],
 				["`framework`", options(FRAMEWORK_OPTIONS)],
 				["`navigation`", options(NAVIGATION_OPTIONS)],
@@ -411,7 +417,7 @@ export function agentPrompt(
 		"",
 		command,
 		"",
-		`It creates components/stepperize/${names.slug}/ with ${names.Flow}Flow, built on @stepperize/react and shadcn/ui, using ${labelOf(FORM_OPTIONS, config.form)} with ${labelOf(VALIDATION_OPTIONS, config.validation)} validation, for ${labelOf(FRAMEWORK_OPTIONS, config.framework)} with ${labelOf(NAVIGATION_OPTIONS, config.navigation).toLowerCase()} navigation.`,
+		`It creates components/stepperize/${names.slug}/ with ${names.Flow}Flow, built on @stepperize/react and shadcn/ui (${labelOf(BASE_OPTIONS, config.base)}), using ${labelOf(FORM_OPTIONS, config.form)} with ${labelOf(VALIDATION_OPTIONS, config.validation)} validation, for ${labelOf(FRAMEWORK_OPTIONS, config.framework)} with ${labelOf(NAVIGATION_OPTIONS, config.navigation).toLowerCase()} navigation.`,
 		`Steps: ${config.steps.map((step) => step.title).join(" → ")}.`,
 		`Usage: ${project.usage}`,
 		"",

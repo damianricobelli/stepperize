@@ -12,6 +12,7 @@ import {
 	sliderRange,
 	valueType,
 } from "../fields";
+import { type Binding, type ControlledBinding, KITS, type Kit } from "./bases";
 import {
 	cls,
 	indent,
@@ -38,22 +39,21 @@ import { RHF_RESOLVERS, schemaName, valuesType } from "./validation";
 /** Components that forward to a DOM element, bound with DOM attributes. */
 type DomKind = "text" | "number" | "textarea";
 
-/** Components with their own value, bound with a value and a change callback (or a name + default). */
-type ValueKind = "checked" | "multi" | "choice" | "slider" | "otp" | "date";
-
 type Wiring = {
 	/** `id` attribute value of the field's main control. */
 	id: string;
 	/** `id` attribute value for one option; `index` is in scope. */
 	optionId: string;
-	/** `aria-invalid` attribute, or "" when the library sets it itself. */
-	invalid: (on: "dom" | "value") => string;
+	/** Invalid-state expression for inputs, or null when the library sets `aria-invalid` itself. */
+	invalidDom: string | null;
+	/** Invalid-state expression for value components. */
+	invalidValue: string | null;
 	/** Error message expression, or null without validation. */
 	message: string | null;
 	/** Attributes for an input or textarea, including `id` and `type`. */
 	dom: (kind: DomKind, type?: string) => string;
-	/** Attributes for a value component (no `id`). `option` is in scope for multi. */
-	value: (kind: ValueKind) => string;
+	/** What value components bind to; the kit spells the props. */
+	bind: Binding;
 	/** Wraps value components, e.g. in React Hook Form's `<Controller>`. */
 	wrap: (jsx: string) => string;
 };
@@ -61,6 +61,7 @@ type Wiring = {
 type FieldContext = {
 	field: StudioField;
 	key: string;
+	kit: Kit;
 	/** Module-level constant holding the field's choices. */
 	options: string;
 	/** `XValues["key"]`, for casts at the edge of untyped events. */
@@ -68,18 +69,26 @@ type FieldContext = {
 	min: number;
 	/** ArkType infers template-literal types from patterns; plain strings need a cast. */
 	castText: boolean;
+	/** `useState` declarations the step component needs, collected while rendering. */
+	state: string[];
 };
 
 const attr = (name: string, expr: string) => ` ${name}={${expr}}`;
+
+/** `expr as T`, parenthesized unless `expr` is a plain identifier. */
+const cast = (expr: string, type: string) =>
+	/^[\w.]+$/.test(expr) ? `${expr} as ${type}` : `(${expr}) as ${type}`;
 
 function reactHookFormWiring(c: FieldContext, validated: boolean): Wiring {
 	const { key } = c;
 	const register = (options = "") =>
 		`{...form.register(${str(key)}${options})}`;
+	const invalid = validated ? `!!errors.${key}` : null;
 	return {
 		id: str(key),
 		optionId: `{\`${key}-\${index}\`}`,
-		invalid: () => (validated ? attr("aria-invalid", `!!errors.${key}`) : ""),
+		invalidDom: invalid,
+		invalidValue: invalid,
 		message: validated ? `errors.${key}?.message` : null,
 		dom: (kind, type) => {
 			switch (kind) {
@@ -91,21 +100,10 @@ function reactHookFormWiring(c: FieldContext, validated: boolean): Wiring {
 					return `id=${str(key)} type="${type ?? "text"}" ${register()}`;
 			}
 		},
-		value: (kind) => {
-			switch (kind) {
-				case "checked":
-					return "checked={field.value ?? false} onCheckedChange={(checked) => field.onChange(checked)}";
-				case "multi":
-					return "checked={field.value?.includes(option) ?? false} onCheckedChange={(checked) => field.onChange(checked ? [...(field.value ?? []), option] : (field.value ?? []).filter((value) => value !== option))}";
-				case "choice":
-					return "value={field.value ?? null} onValueChange={(value) => field.onChange(value)}";
-				case "slider":
-					return `value={[field.value ?? ${c.min}]} onValueChange={(value) => field.onChange(Array.isArray(value) ? value[0] : value)}`;
-				case "otp":
-					return 'value={field.value ?? ""} onChange={(value) => field.onChange(value)}';
-				case "date":
-					return 'value={field.value ?? ""} onValueChange={(value) => field.onChange(value)}';
-			}
+		bind: {
+			controlled: true,
+			get: "field.value",
+			set: (expr) => `field.onChange(${expr})`,
 		},
 		wrap: (jsx) =>
 			[
@@ -122,15 +120,15 @@ function reactHookFormWiring(c: FieldContext, validated: boolean): Wiring {
 
 function tanstackWiring(c: FieldContext, validated: boolean): Wiring {
 	const change = (expr: string) => `field.handleChange(${expr})`;
-	const text = (expr: string) =>
-		c.castText ? `${expr} as ${c.valueOf}` : expr;
+	const text = (expr: string) => (c.castText ? cast(expr, c.valueOf) : expr);
 	const required = fieldSpec(c.field).required;
+	const invalid = validated ? "!field.state.meta.isValid" : null;
 	return {
 		id: "{field.name}",
 		// biome-ignore lint/suspicious/noTemplateCurlyInString: generated source, not a template
 		optionId: "{`${field.name}-${index}`}",
-		invalid: () =>
-			validated ? attr("aria-invalid", "!field.state.meta.isValid") : "",
+		invalidDom: invalid,
+		invalidValue: invalid,
 		message: validated ? "field.state.meta.errors[0]?.message" : null,
 		dom: (kind, type) => {
 			const base =
@@ -147,21 +145,21 @@ function tanstackWiring(c: FieldContext, validated: boolean): Wiring {
 					return `${base} type="${type ?? "text"}" value={field.state.value ?? ""} onChange={(event) => ${change(text("event.target.value"))}}`;
 			}
 		},
-		value: (kind) => {
-			switch (kind) {
-				case "checked":
-					return `checked={field.state.value ?? false} onCheckedChange={(checked) => ${change(`checked as ${c.valueOf}`)}}`;
-				case "multi":
-					return `checked={field.state.value?.includes(option) ?? false} onCheckedChange={(checked) => ${change("checked ? [...(field.state.value ?? []), option] : (field.state.value ?? []).filter((value) => value !== option)")}}`;
-				case "choice":
-					return `value={field.state.value ?? null} onValueChange={(value) => ${change(`value as ${c.valueOf}`)}}`;
-				case "slider":
-					return `value={[field.state.value ?? ${c.min}]} onValueChange={(value) => ${change("Array.isArray(value) ? value[0] : value")}}`;
-				case "otp":
-					return `value={field.state.value ?? ""} onChange={(value) => ${change(text("value"))}}`;
-				case "date":
-					return `value={field.state.value ?? ""} onValueChange={(value) => ${change("value")}}`;
-			}
+		bind: {
+			controlled: true,
+			get: "field.state.value",
+			// Component events are loosely typed (CheckedState, Key | null); narrow them to the field.
+			set: (expr, kind) => {
+				switch (kind) {
+					case "checked":
+					case "choice":
+						return change(cast(expr, c.valueOf));
+					case "otp":
+						return change(text(expr));
+					default:
+						return change(expr);
+				}
+			},
 		},
 		wrap: (jsx) => jsx,
 	};
@@ -173,8 +171,8 @@ function conformWiring(c: FieldContext, helpers: Set<string>): Wiring {
 		id: `{${meta}.id}`,
 		optionId: `{\`\${${meta}.id}-\${index}\`}`,
 		// getInputProps and getTextareaProps already set aria-invalid.
-		invalid: (on) =>
-			on === "value" ? attr("aria-invalid", `!${meta}.valid`) : "",
+		invalidDom: null,
+		invalidValue: `!${meta}.valid`,
 		message: `${meta}.errors?.[0]`,
 		dom: (kind, type) => {
 			if (kind === "textarea") {
@@ -184,22 +182,15 @@ function conformWiring(c: FieldContext, helpers: Set<string>): Wiring {
 			helpers.add("getInputProps");
 			return `{...getInputProps(${meta}, { type: "${kind === "number" ? "number" : (type ?? "text")}" })}`;
 		},
-		// Base UI controls submit through hidden inputs, so Conform reads them from FormData.
-		value: (kind) => {
-			const name = `name={${meta}.name}`;
-			switch (kind) {
-				case "checked":
-					return `${name} defaultChecked={${meta}.initialValue === "on"}`;
-				case "multi":
-					return `${name} value={option} defaultChecked={${meta}.initialValue?.includes(option)}`;
-				case "choice":
-					return `${name} defaultValue={${meta}.initialValue ?? null}`;
-				case "slider":
-					return `${name} defaultValue={[Number(${meta}.initialValue ?? ${c.min})]}`;
-				case "otp":
-				case "date":
-					return `${name} defaultValue={${meta}.initialValue ?? ""}`;
-			}
+		// Value components submit through hidden inputs, so Conform reads them from FormData.
+		bind: {
+			controlled: false,
+			name: `{${meta}.name}`,
+			checked: `${meta}.initialValue === "on"`,
+			multi: `${meta}.initialValue?.includes(option)`,
+			choice: `${meta}.initialValue`,
+			slider: `Number(${meta}.initialValue ?? ${c.min})`,
+			text: `${meta}.initialValue ?? ""`,
 		},
 		wrap: (jsx) => jsx,
 	};
@@ -209,10 +200,12 @@ function nativeWiring(c: FieldContext, validated: boolean): Wiring {
 	const { key } = c;
 	const saved = `saved?.${key}`;
 	const name = `name=${str(key)}`;
+	const invalid = validated ? `!!issues.${key}` : null;
 	return {
 		id: str(key),
 		optionId: `{\`${key}-\${index}\`}`,
-		invalid: () => (validated ? attr("aria-invalid", `!!issues.${key}`) : ""),
+		invalidDom: invalid,
+		invalidValue: invalid,
 		message: validated ? `issues.${key}` : null,
 		dom: (kind, type) => {
 			const base = `id=${str(key)} ${name}`;
@@ -225,20 +218,14 @@ function nativeWiring(c: FieldContext, validated: boolean): Wiring {
 					return `${base} type="${type ?? "text"}" defaultValue={${saved}}`;
 			}
 		},
-		value: (kind) => {
-			switch (kind) {
-				case "checked":
-					return `${name} defaultChecked={${saved} === true}`;
-				case "multi":
-					return `${name} value={option} defaultChecked={${saved}?.includes(option)}`;
-				case "choice":
-					return `${name} defaultValue={${saved} ?? null}`;
-				case "slider":
-					return `${name} defaultValue={[${saved} ?? ${c.min}]}`;
-				case "otp":
-				case "date":
-					return `${name} defaultValue={${saved} ?? ""}`;
-			}
+		bind: {
+			controlled: false,
+			name: str(key),
+			checked: `${saved} === true`,
+			multi: `${saved}?.includes(option)`,
+			choice: saved,
+			slider: `${saved} ?? ${c.min}`,
+			text: `${saved} ?? ""`,
 		},
 		wrap: (jsx) => jsx,
 	};
@@ -302,11 +289,15 @@ const AUTOCOMPLETE: Partial<Record<FieldType, string>> = {
 const autocomplete = (type: FieldType) =>
 	AUTOCOMPLETE[type] ? ` autoComplete="${AUTOCOMPLETE[type]}"` : "";
 
+const capitalize = (value: string) =>
+	`${value[0].toUpperCase()}${value.slice(1)}`;
+
 /** The control alone: no label, no error. */
 function renderControl(c: FieldContext, w: Wiring): string {
-	const { field } = c;
+	const { field, kit } = c;
 	const type = field.type;
-	const { min, max } = sliderRange(field);
+	const range = sliderRange(field);
+	const domInvalid = w.invalidDom ? attr("aria-invalid", w.invalidDom) : "";
 	const each = (body: string) =>
 		[
 			`{${c.options}.map((option${body.includes("index") ? ", index" : ""}) => (`,
@@ -330,19 +321,25 @@ function renderControl(c: FieldContext, w: Wiring): string {
 		case "tel":
 		case "url":
 		case "time":
-			return `<Input ${w.dom("text", FIELD_KINDS[type].input)}${autocomplete(type)}${w.invalid("dom")} />`;
+			return `<Input ${w.dom("text", FIELD_KINDS[type].input)}${autocomplete(type)}${domInvalid} />`;
 		case "number":
-			return `<Input ${w.dom("number")}${w.invalid("dom")} />`;
+			return `<Input ${w.dom("number")}${domInvalid} />`;
 		case "textarea":
-			return `<Textarea ${w.dom("textarea")}${w.invalid("dom")} />`;
+			return `<Textarea ${w.dom("textarea")}${domInvalid} />`;
 		case "date":
 			return w.wrap(
-				`<DatePicker id=${w.id} ${w.value("date")}${w.invalid("value")} />`,
+				`<DatePicker id=${w.id} ${textBinding(w.bind, "date", "onValueChange")}${kit.invalid("date", w.invalidValue)} />`,
 			);
-		case "otp":
+		case "otp": {
+			// input-otp spreads `defaultValue` onto its controlled input, which React warns
+			// about, so uncontrolled forms hold the code in state; `name` still submits it.
+			const bind = w.bind.controlled
+				? w.bind
+				: localState(c, w.bind.text, "string");
+			const name = w.bind.controlled ? "" : `name=${w.bind.name} `;
 			return w.wrap(
 				[
-					`<InputOTP id=${w.id} maxLength={${OTP_LENGTH}} ${w.value("otp")}${w.invalid("value")}>`,
+					`<InputOTP id=${w.id} maxLength={${OTP_LENGTH}} ${name}${textBinding(bind, "otp", "onChange")}${kit.invalid("otp", w.invalidValue)}>`,
 					"\t<InputOTPGroup>",
 					`\t\t{Array.from({ length: ${OTP_LENGTH} }, (_, index) => (`,
 					"\t\t\t<InputOTPSlot key={index} index={index} />",
@@ -351,32 +348,35 @@ function renderControl(c: FieldContext, w: Wiring): string {
 					"</InputOTP>",
 				].join("\n"),
 			);
-		case "slider":
+		}
+		case "slider": {
+			let bind = w.bind;
+			let hidden = "";
+			if (!bind.controlled && kit.base === "aria") {
+				// React Aria slider thumbs take no `name`: keep the value in state and submit it.
+				const local = localState(c, bind.slider, "number");
+				hidden = `\n<input type="hidden" name=${bind.name} value={${local.get}} />`;
+				bind = local;
+			}
 			return w.wrap(
-				`<Slider id=${w.id} min={${min}} max={${max}} ${w.value("slider")}${w.invalid("value")} />`,
+				`<Slider id=${w.id} ${kit.slider(bind, range)}${kit.invalid("slider", w.invalidValue)} />${hidden}`,
 			);
+		}
 		case "select":
 			return w.wrap(
-				[
-					`<Select ${w.value("choice")}>`,
-					`\t<SelectTrigger id=${w.id}${w.invalid("value")} className="w-full">`,
-					'\t\t<SelectValue placeholder="Select…" />',
-					"\t</SelectTrigger>",
-					"\t<SelectContent alignItemWithTrigger={false}>",
-					indent(
-						each(
-							"<SelectItem key={option} value={option}>\n\t{option}\n</SelectItem>",
-						),
-						2,
-					),
-					"\t</SelectContent>",
-					"</Select>",
-				].join("\n"),
+				kit
+					.select({
+						id: w.id,
+						value: kit.choice(w.bind),
+						invalid: w.invalidValue,
+						items: indent(each(kit.selectItem), 2),
+					})
+					.join("\n"),
 			);
 		case "radio":
 			return w.wrap(
 				[
-					`<RadioGroup ${w.value("choice")}${w.invalid("value")}>`,
+					`<RadioGroup ${kit.choice(w.bind)}${kit.invalid("radio", w.invalidValue)}>`,
 					indent(
 						each(option(`<RadioGroupItem id=${w.optionId} value={option} />`)),
 						1,
@@ -389,7 +389,7 @@ function renderControl(c: FieldContext, w: Wiring): string {
 				[
 					'<FieldGroup data-slot="checkbox-group" className="gap-3">',
 					indent(
-						each(option(`<Checkbox id=${w.optionId} ${w.value("multi")} />`)),
+						each(option(`<Checkbox id=${w.optionId} ${kit.multi(w.bind)} />`)),
 						1,
 					),
 					"</FieldGroup>",
@@ -397,13 +397,44 @@ function renderControl(c: FieldContext, w: Wiring): string {
 			);
 		case "checkbox":
 			return w.wrap(
-				`<Checkbox id=${w.id} ${w.value("checked")}${w.invalid("value")} />`,
+				`<Checkbox id=${w.id} ${kit.checked(w.bind)}${kit.invalid("checkbox", w.invalidValue)} />`,
 			);
 		case "switch":
 			return w.wrap(
-				`<Switch id=${w.id} ${w.value("checked")}${w.invalid("value")} />`,
+				`<Switch id=${w.id} ${kit.checked(w.bind)}${kit.invalid("switch", w.invalidValue)} />`,
 			);
 	}
+}
+
+/**
+ * A `useState` pair standing in for an uncontrolled value. Typed explicitly:
+ * schemas may infer a narrower type (ArkType patterns) than the control emits.
+ */
+function localState(
+	c: FieldContext,
+	initial: string,
+	type: "string" | "number",
+): ControlledBinding {
+	const value = `${c.key}Value`;
+	const setter = `set${capitalize(c.key)}Value`;
+	c.state.push(`const [${value}, ${setter}] = useState<${type}>(${initial});`);
+	return {
+		controlled: true,
+		get: value,
+		set: (expr) => `${setter}(${expr})`,
+		defined: true,
+	};
+}
+
+/** OTP and date pickers take a string on every base (`input-otp` and the shipped DatePicker). */
+function textBinding(
+	b: Binding,
+	kind: "otp" | "date",
+	onChange: "onChange" | "onValueChange",
+): string {
+	return b.controlled
+		? `value={${b.defined ? b.get : `${b.get} ?? ""`}} ${onChange}={(value) => ${b.set("value", kind)}}`
+		: `name=${b.name} defaultValue={${b.text}}`;
 }
 
 function labelText(field: StudioField): string {
@@ -510,24 +541,37 @@ function optionConstants(ctx: StepContext): string[] {
 	);
 }
 
-const button = (variant: "back" | "primary", attrs: string, label: string) =>
-	`<Button ${attrs}${variant === "back" ? ' variant="outline"' : ""}>${label}</Button>`;
+type ButtonProps = {
+	type: "button" | "submit";
+	disabled?: string;
+	onClick?: string;
+	variant?: string;
+	size?: string;
+};
 
-function actions({ last, pending }: { last: boolean; pending?: string }) {
+const button = (kit: Kit, props: ButtonProps, label: string) =>
+	`<Button type="${props.type}"${kit.button(props)}${props.variant ? ` variant="${props.variant}"` : ""}${props.size ? ` size="${props.size}"` : ""}>${label}</Button>`;
+
+const back = (kit: Kit, props: Omit<ButtonProps, "type" | "variant">) =>
+	button(kit, { type: "button", variant: "outline", ...props }, "Back");
+
+function actions(
+	kit: Kit,
+	{ last, pending }: { last: boolean; pending?: string },
+) {
 	return [
 		'<div className="flex justify-between gap-2 sm:col-span-2">',
 		indent(
-			button(
-				"back",
-				'type="button" disabled={stepper.isFirst} onClick={() => stepper.prev()}',
-				"Back",
-			),
+			back(kit, {
+				disabled: "stepper.isFirst",
+				onClick: "() => stepper.prev()",
+			}),
 			1,
 		),
 		indent(
 			button(
-				"primary",
-				`type="submit"${pending ? ` disabled={${pending}}` : ""}`,
+				kit,
+				{ type: "submit", disabled: pending },
 				last ? "Finish" : "Continue",
 			),
 			1,
@@ -549,8 +593,11 @@ type StepContext = {
 	Component: string;
 	last: boolean;
 	validation: Validation;
+	kit: Kit;
 	/** `XValues` — imported from schemas or declared locally. */
 	Values: string;
+	/** `useState` declarations collected from the step's fields. */
+	state: string[];
 };
 
 function fieldContext(ctx: StepContext, j: number): FieldContext {
@@ -559,6 +606,8 @@ function fieldContext(ctx: StepContext, j: number): FieldContext {
 	return {
 		field,
 		key,
+		kit: ctx.kit,
+		state: ctx.state,
 		options: optionsName(key),
 		valueOf: `${ctx.Values}[${str(key)}]`,
 		min: sliderRange(field).min,
@@ -653,7 +702,7 @@ function reactHookForm(ctx: StepContext): string {
 		`\t\t\tclassName="${FORM_CLASS}"`,
 		"\t\t>",
 		...blocks.map((b) => indent(b, 3)),
-		indent(actions({ last: ctx.last, pending: "isSubmitting" }), 3),
+		indent(actions(ctx.kit, { last: ctx.last, pending: "isSubmitting" }), 3),
 		"\t\t</form>",
 		"\t);",
 		"}",
@@ -706,7 +755,7 @@ function tanstackForm(ctx: StepContext): string {
 		...blocks.map((b) => indent(b, 3)),
 		"\t\t\t<form.Subscribe selector={(state) => state.isSubmitting}>",
 		"\t\t\t\t{(isSubmitting) => (",
-		indent(actions({ last: ctx.last, pending: "isSubmitting" }), 5),
+		indent(actions(ctx.kit, { last: ctx.last, pending: "isSubmitting" }), 5),
 		"\t\t\t\t)}",
 		"\t\t\t</form.Subscribe>",
 		"\t\t</form>",
@@ -731,6 +780,7 @@ function conform(ctx: StepContext): string {
 	return source([
 		USE_CLIENT,
 		"",
+		ctx.state.length ? 'import { useState } from "react";' : null,
 		`import { ${[...helpers].sort().join(", ")} } from "@conform-to/react";`,
 		`import { ${parser[0]} } from "${parser[1]}";`,
 		...uiImports(ctx.step.fields, true),
@@ -751,11 +801,12 @@ function conform(ctx: StepContext): string {
 		"\t\t\t}",
 		"\t\t},",
 		"\t});",
+		...ctx.state.map((line) => `\t${line}`),
 		"",
 		"\treturn (",
 		`\t\t<form {...getFormProps(form)} noValidate${cls(FORM_CLASS)}>`,
 		...blocks.map((b) => indent(b, 3)),
-		indent(actions({ last: ctx.last }), 3),
+		indent(actions(ctx.kit, { last: ctx.last }), 3),
 		"\t\t</form>",
 		"\t);",
 		"}",
@@ -794,7 +845,7 @@ function nativeForm(ctx: StepContext): string {
 	return source([
 		USE_CLIENT,
 		"",
-		validated
+		validated || ctx.state.length
 			? 'import { type FormEvent, useState } from "react";'
 			: 'import type { FormEvent } from "react";',
 		...uiImports(ctx.step.fields, validated),
@@ -809,6 +860,7 @@ function nativeForm(ctx: StepContext): string {
 		validated
 			? `\tconst [issues, setIssues] = useState<Partial<Record<keyof ${ctx.Values}, string>>>({});`
 			: null,
+		...ctx.state.map((line) => `\t${line}`),
 		"",
 		"\tasync function handleSubmit(event: FormEvent<HTMLFormElement>) {",
 		"\t\tevent.preventDefault();",
@@ -841,7 +893,7 @@ function nativeForm(ctx: StepContext): string {
 		"\treturn (",
 		`\t\t<form noValidate onSubmit={handleSubmit}${cls(FORM_CLASS)}>`,
 		...blocks.map((b) => indent(b, 3)),
-		indent(actions({ last: ctx.last }), 3),
+		indent(actions(ctx.kit, { last: ctx.last }), 3),
 		"\t\t</form>",
 		"\t);",
 		"}",
@@ -894,7 +946,7 @@ function summaryStep(ctx: StepContext): string {
 					'\t\t\t\t\t<div key={section.step} className="rounded-lg border p-4">',
 					'\t\t\t\t\t\t<div className="flex items-center justify-between">',
 					'\t\t\t\t\t\t\t<h3 className="text-sm font-medium">{section.title}</h3>',
-					'\t\t\t\t\t\t\t<Button type="button" variant="link" size="sm" onClick={() => stepper.goTo(section.step)}>Edit</Button>',
+					`\t\t\t\t\t\t\t${button(ctx.kit, { type: "button", variant: "link", size: "sm", onClick: "() => stepper.goTo(section.step)" }, "Edit")}`,
 					"\t\t\t\t\t\t</div>",
 					'\t\t\t\t\t\t<dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">',
 					"\t\t\t\t\t\t\t{section.fields.map(([key, label]) => (",
@@ -913,14 +965,14 @@ function summaryStep(ctx: StepContext): string {
 		'\t\t\t\t<p role="status" className="text-sm font-medium">All done. Send the data to your API here.</p>',
 		"\t\t\t) : (",
 		'\t\t\t\t<div className="flex justify-between gap-2">',
-		indent(
-			button("back", 'type="button" onClick={() => stepper.prev()}', "Back"),
-			5,
-		),
+		indent(back(ctx.kit, { onClick: "() => stepper.prev()" }), 5),
 		indent(
 			button(
-				"primary",
-				`type="button" onClick={() => stepper.setComplete(${str(id)})}`,
+				ctx.kit,
+				{
+					type: "button",
+					onClick: `() => stepper.setComplete(${str(id)})`,
+				},
 				"Finish",
 			),
 			5,
@@ -947,17 +999,16 @@ function contentStep(ctx: StepContext): string {
 		'\t\t\t<p className="text-sm text-muted-foreground">Replace this with the content of this step.</p>',
 		'\t\t\t<div className="flex justify-between gap-2">',
 		indent(
-			button(
-				"back",
-				'type="button" disabled={stepper.isFirst} onClick={() => stepper.prev()}',
-				"Back",
-			),
+			back(ctx.kit, {
+				disabled: "stepper.isFirst",
+				onClick: "() => stepper.prev()",
+			}),
 			4,
 		),
 		indent(
 			button(
-				"primary",
-				'type="button" onClick={() => stepper.next({ complete: true })}',
+				ctx.kit,
+				{ type: "button", onClick: "() => stepper.next({ complete: true })" },
 				"Continue",
 			),
 			4,
@@ -990,7 +1041,9 @@ export function generateStep(
 		Component: stepComponent(id),
 		last: index === config.steps.length - 1,
 		validation: config.validation,
+		kit: KITS[config.base],
 		Values: valuesType(id),
+		state: [],
 	};
 	if (!step.fields.length)
 		return ctx.last ? summaryStep(ctx) : contentStep(ctx);
