@@ -1,5 +1,11 @@
 # docs
 
+## 4.2.0
+
+### Minor Changes
+
+- [#181](https://github.com/damianricobelli/stepperize/pull/181) [`5566627`](https://github.com/damianricobelli/stepperize/commit/5566627d587a663c78622ec6f4f60cf216360fa5) Thanks [@damianricobelli](https://github.com/damianricobelli)! - Add Stepper Studio at `/studio`: configure a flow (steps, sixteen field types from text and selects to date pickers, sliders and one-time codes, layout, form library, validation library and behavior, all on shadcn/ui), choose where the current step lives (a component, search params or one route per step) for Next.js, TanStack Start, React Router or Vite, preview it live on `@stepperize/react`, and install the generated code with the shadcn CLI from a dynamic registry item at `/r/studio/<config>.json`.
+
 ## 4.1.0
 
 ### Minor Changes
