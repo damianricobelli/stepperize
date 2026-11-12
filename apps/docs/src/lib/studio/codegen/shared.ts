@@ -1,4 +1,4 @@
-import type { StudioConfig, StudioStep, UiKit } from "../config";
+import type { StudioConfig, StudioStep } from "../config";
 
 // ─── Identifiers ──────────────────────────────────────────────────────────────
 
@@ -108,9 +108,9 @@ export function source(lines: (string | false | null | undefined)[]): string {
 	return `${out.join("\n").trim()}\n`;
 }
 
-/** ` className="…"` unless the kit is unstyled. */
-export function cls(ui: UiKit, classes: string): string {
-	return ui === "unstyled" ? "" : ` className="${classes}"`;
+/** A ` className="…"` attribute. */
+export function cls(classes: string): string {
+	return ` className="${classes}"`;
 }
 
 export function hasFields(step: StudioStep): boolean {

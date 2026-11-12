@@ -25,7 +25,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import type { Names } from "@/lib/studio/codegen/shared";
-import type { Framework, StudioConfig, UiKit } from "@/lib/studio/config";
+import type { Framework, StudioConfig } from "@/lib/studio/config";
 import { loadSchemaFactory } from "@/lib/studio/runtime-schemas";
 import { cn } from "@/lib/utils";
 import { PreviewField, readField } from "./preview-field";
@@ -245,19 +245,13 @@ export function PreviewFlow({
 				<div className="@container p-5 sm:p-7">
 					<div
 						className={cn(
-							config.ui !== "unstyled" &&
-								(config.layout === "vertical"
-									? "flex flex-col gap-8 @lg:flex-row"
-									: "grid gap-7"),
+							config.layout === "vertical"
+								? "flex flex-col gap-8 @lg:flex-row"
+								: "grid gap-7",
 						)}
 					>
 						<PreviewNav mobile={mobile} />
-						<div
-							className={cn(
-								"grid min-w-0 flex-1 content-start gap-5",
-								config.ui === "unstyled" && "mt-4 block",
-							)}
-						>
+						<div className={cn("grid min-w-0 flex-1 content-start gap-5")}>
 							{blocked ? (
 								<p
 									role="status"
@@ -313,14 +307,8 @@ const INDICATOR =
 function IndicatorBody({ index }: { index: number }) {
 	const { config } = usePreview();
 	if (config.indicator === "dot")
-		return (
-			<span
-				className={cn(
-					config.ui !== "unstyled" && "size-2 rounded-full bg-current",
-				)}
-			/>
-		);
-	if (config.indicator === "check" && config.ui !== "unstyled") {
+		return <span className={cn("size-2 rounded-full bg-current")} />;
+	if (config.indicator === "check") {
 		return (
 			<>
 				<span className="group-data-[status=previous]/indicator:hidden">
@@ -339,8 +327,6 @@ function IndicatorBody({ index }: { index: number }) {
 function PreviewNav({ mobile }: { mobile: boolean }) {
 	const { config, definition } = usePreview();
 	const { Stepper } = definition;
-	const raw = config.ui === "unstyled";
-	const c = (classes: string) => (raw ? undefined : classes);
 
 	switch (config.layout) {
 		case "horizontal":
@@ -350,7 +336,7 @@ function PreviewNav({ mobile }: { mobile: boolean }) {
 			return (
 				<Stepper.List
 					orientation={vertical ? "vertical" : "horizontal"}
-					className={c(
+					className={cn(
 						vertical
 							? "flex shrink-0 flex-col @lg:w-52"
 							: "flex items-center gap-3",
@@ -360,14 +346,14 @@ function PreviewNav({ mobile }: { mobile: boolean }) {
 						{(step, index) => (
 							<Stepper.Item
 								key={step.id}
-								className={c(
+								className={cn(
 									vertical
 										? "group/item relative pb-6 pl-11 last:pb-0"
 										: "group/item flex flex-1 items-center gap-3 last:flex-none",
 								)}
 							>
 								<Stepper.Trigger
-									className={c(
+									className={cn(
 										cn(
 											"flex rounded-md text-left outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed",
 											vertical ? "items-start gap-3" : "items-center gap-2",
@@ -375,7 +361,7 @@ function PreviewNav({ mobile }: { mobile: boolean }) {
 									)}
 								>
 									<Stepper.Indicator
-										className={c(
+										className={cn(
 											cn(
 												"group/indicator",
 												INDICATOR,
@@ -386,19 +372,19 @@ function PreviewNav({ mobile }: { mobile: boolean }) {
 										<IndicatorBody index={index} />
 									</Stepper.Indicator>
 									{vertical ? (
-										<span className={c("pt-1.5")}>
+										<span className={cn("pt-1.5")}>
 											<Stepper.Title
-												className={c("block text-sm font-medium")}
+												className={cn("block text-sm font-medium")}
 											/>
 											<Stepper.Description
-												className={c(
+												className={cn(
 													"mt-0.5 block text-xs text-muted-foreground",
 												)}
 											/>
 										</span>
 									) : (
 										<Stepper.Title
-											className={c(
+											className={cn(
 												cn(
 													"text-sm font-medium whitespace-nowrap",
 													mobile &&
@@ -410,7 +396,7 @@ function PreviewNav({ mobile }: { mobile: boolean }) {
 								</Stepper.Trigger>
 								<span
 									aria-hidden
-									className={c(
+									className={cn(
 										vertical
 											? "absolute top-9 bottom-1 left-4 w-px bg-border group-last/item:hidden group-data-[status=previous]/item:bg-primary"
 											: "h-px min-w-6 flex-1 bg-border transition-colors duration-200 group-last/item:hidden group-data-[status=previous]/item:bg-primary",
@@ -425,13 +411,13 @@ function PreviewNav({ mobile }: { mobile: boolean }) {
 		case "segmented":
 			return (
 				<Stepper.List
-					className={c("flex gap-1 overflow-x-auto rounded-xl bg-muted p-1")}
+					className={cn("flex gap-1 overflow-x-auto rounded-xl bg-muted p-1")}
 				>
 					<Stepper.Items>
 						{(step) => (
-							<Stepper.Item key={step.id} className={c("flex-1")}>
+							<Stepper.Item key={step.id} className={cn("flex-1")}>
 								<Stepper.Trigger
-									className={c(
+									className={cn(
 										"h-9 w-full rounded-lg px-3 text-sm font-medium whitespace-nowrap text-muted-foreground outline-none transition-[background-color,color,box-shadow] duration-200 ease-out focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed data-[status=active]:bg-background data-[status=active]:text-foreground data-[status=active]:shadow-sm data-[status=previous]:text-primary",
 									)}
 								>
@@ -445,22 +431,22 @@ function PreviewNav({ mobile }: { mobile: boolean }) {
 		case "breadcrumb":
 			return (
 				<Stepper.List
-					className={c("flex flex-wrap items-center gap-1 text-sm")}
+					className={cn("flex flex-wrap items-center gap-1 text-sm")}
 				>
 					<Stepper.Items>
 						{(step, index) => (
 							<Stepper.Item
 								key={step.id}
-								className={c("flex items-center gap-1")}
+								className={cn("flex items-center gap-1")}
 							>
-								{index > 0 && !raw ? (
+								{index > 0 ? (
 									<ChevronRight
 										aria-hidden
 										className="size-4 text-muted-foreground/60"
 									/>
 								) : null}
 								<Stepper.Trigger
-									className={c(
+									className={cn(
 										"rounded-md px-2 py-1 font-medium text-muted-foreground outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed data-[status=active]:bg-muted data-[status=active]:text-foreground data-[status=previous]:text-primary",
 									)}
 								>
@@ -482,33 +468,17 @@ function ProgressNav() {
 	const { config, definition } = usePreview();
 	const index = definition.useStepperContext((s) => s.index);
 	const progress = definition.useStepperContext((s) => s.progress);
-	const raw = config.ui === "unstyled";
 	return (
-		<div className={cn(!raw && "grid gap-2")}>
-			<div
-				className={cn(
-					!raw && "flex items-baseline justify-between gap-4 text-sm",
-				)}
-			>
-				<span className={cn(!raw && "font-medium tabular-nums")}>
+		<div className={cn("grid gap-2")}>
+			<div className={cn("flex items-baseline justify-between gap-4 text-sm")}>
+				<span className={cn("font-medium tabular-nums")}>
 					Step {index + 1} of {definition.steps.length}
 				</span>
-				<span className={cn(!raw && "text-muted-foreground")}>
+				<span className={cn("text-muted-foreground")}>
 					{config.steps[index]?.title}
 				</span>
 			</div>
-			{config.ui === "shadcn" ? (
-				<Progress value={progress * 100} aria-label="Progress" />
-			) : raw ? (
-				<progress value={progress} />
-			) : (
-				<div className="h-2 overflow-hidden rounded-full bg-muted">
-					<div
-						className="h-full origin-left bg-primary transition-transform duration-300 ease-out-strong"
-						style={{ transform: `scaleX(${progress})` }}
-					/>
-				</div>
-			)}
+			<Progress value={progress * 100} aria-label="Progress" />
 		</div>
 	);
 }
@@ -520,44 +490,39 @@ function CircularNav() {
 	const index = definition.useStepperContext((s) => s.index);
 	const count = definition.steps.length;
 	const next = config.steps[index + 1];
-	const raw = config.ui === "unstyled";
 	return (
-		<div className={cn(!raw && "flex items-center gap-4")}>
-			{raw ? null : (
-				<div className="relative grid size-16 shrink-0 place-items-center">
-					<svg
-						viewBox="0 0 64 64"
-						className="absolute inset-0 -rotate-90"
-						aria-hidden
-					>
-						<circle
-							cx="32"
-							cy="32"
-							r="26"
-							className="fill-none stroke-muted"
-							strokeWidth={6}
-						/>
-						<circle
-							cx="32"
-							cy="32"
-							r="26"
-							className="fill-none stroke-primary transition-[stroke-dashoffset] duration-300 ease-out-strong"
-							strokeWidth={6}
-							strokeLinecap="round"
-							strokeDasharray={CIRCUMFERENCE}
-							strokeDashoffset={CIRCUMFERENCE * (1 - (index + 1) / count)}
-						/>
-					</svg>
-					<span className="text-sm font-semibold tabular-nums">
-						{index + 1}/{count}
-					</span>
-				</div>
-			)}
+		<div className={cn("flex items-center gap-4")}>
+			<div className="relative grid size-16 shrink-0 place-items-center">
+				<svg
+					viewBox="0 0 64 64"
+					className="absolute inset-0 -rotate-90"
+					aria-hidden
+				>
+					<circle
+						cx="32"
+						cy="32"
+						r="26"
+						className="fill-none stroke-muted"
+						strokeWidth={6}
+					/>
+					<circle
+						cx="32"
+						cy="32"
+						r="26"
+						className="fill-none stroke-primary transition-[stroke-dashoffset] duration-300 ease-out-strong"
+						strokeWidth={6}
+						strokeLinecap="round"
+						strokeDasharray={CIRCUMFERENCE}
+						strokeDashoffset={CIRCUMFERENCE * (1 - (index + 1) / count)}
+					/>
+				</svg>
+				<span className="text-sm font-semibold tabular-nums">
+					{index + 1}/{count}
+				</span>
+			</div>
 			<div>
-				<p className={cn(!raw && "font-semibold")}>
-					{config.steps[index]?.title}
-				</p>
-				<p className={cn(!raw && "text-sm text-muted-foreground")}>
+				<p className={cn("font-semibold")}>{config.steps[index]?.title}</p>
+				<p className={cn("text-sm text-muted-foreground")}>
 					{next ? `Next: ${next.title}` : "Last step"}
 				</p>
 			</div>
@@ -603,23 +568,18 @@ function PreviewContent() {
 }
 
 function StepHeader() {
-	const { config, definition } = usePreview();
+	const { definition } = usePreview();
 	const step = definition.useStepperContext((s) => s.current) as Step & {
 		title?: string;
 		description?: string;
 	};
-	const raw = config.ui === "unstyled";
 	return (
-		<header className={cn(!raw && "grid gap-1")}>
-			<h2
-				className={cn(
-					!raw && "text-lg font-semibold tracking-tight text-balance",
-				)}
-			>
+		<header className={cn("grid gap-1")}>
+			<h2 className={cn("text-lg font-semibold tracking-tight text-balance")}>
 				{step.title}
 			</h2>
 			{step.description ? (
-				<p className={cn(!raw && "text-sm text-muted-foreground")}>
+				<p className={cn("text-sm text-muted-foreground")}>
 					{step.description}
 				</p>
 			) : null}
@@ -692,12 +652,11 @@ function StepForm({ index }: { index: number }) {
 		}
 	}
 
-	const ui = config.ui;
 	return (
 		<form
 			noValidate
 			onSubmit={handleSubmit}
-			className={cn(ui !== "unstyled" && "grid gap-4 @md:grid-cols-2")}
+			className="grid gap-4 @md:grid-cols-2"
 		>
 			{step.fields.map((field, j) => (
 				<PreviewField
@@ -706,19 +665,17 @@ function StepForm({ index }: { index: number }) {
 					name={keys[j]}
 					defaultValue={saved?.[keys[j]]}
 					error={stepIssues[keys[j]]}
-					ui={ui}
 				/>
 			))}
-			<Actions ui={ui}>
+			<Actions>
 				<KitButton
-					ui={ui}
 					variant="back"
 					disabled={stepper.isFirst}
 					onClick={() => stepper.prev()}
 				>
 					Back
 				</KitButton>
-				<KitButton ui={ui} variant="primary" type="submit" disabled={pending}>
+				<KitButton variant="primary" type="submit" disabled={pending}>
 					{last ? "Finish" : "Continue"}
 				</KitButton>
 			</Actions>
@@ -726,77 +683,48 @@ function StepForm({ index }: { index: number }) {
 	);
 }
 
-function Actions({ ui, children }: { ui: UiKit; children: ReactNode }) {
+function Actions({ children }: { children: ReactNode }) {
 	return (
-		<div
-			className={cn(
-				ui === "unstyled"
-					? "mt-3 flex gap-2"
-					: "flex justify-between gap-2 @md:col-span-2",
-			)}
-		>
-			{children}
-		</div>
+		<div className="flex justify-between gap-2 @md:col-span-2">{children}</div>
 	);
 }
 
-const TW_BUTTON = {
-	back: "pressable inline-flex h-9 items-center rounded-md border px-4 text-sm font-medium hover:bg-muted disabled:pointer-events-none disabled:opacity-50",
-	primary:
-		"pressable inline-flex h-9 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-50",
-};
-
 function KitButton({
-	ui,
 	variant,
 	type = "button",
 	disabled,
 	onClick,
 	children,
 }: {
-	ui: UiKit;
 	variant: "back" | "primary";
 	type?: "button" | "submit";
 	disabled?: boolean;
 	onClick?: () => void;
 	children: ReactNode;
 }) {
-	if (ui === "shadcn") {
-		return (
-			<Button
-				type={type}
-				variant={variant === "back" ? "outline" : "default"}
-				disabled={disabled}
-				onClick={onClick}
-			>
-				{children}
-			</Button>
-		);
-	}
 	return (
-		<button
+		<Button
 			type={type}
+			variant={variant === "back" ? "outline" : "default"}
 			disabled={disabled}
 			onClick={onClick}
-			className={cn(ui === "tailwind" && TW_BUTTON[variant])}
 		>
 			{children}
-		</button>
+		</Button>
 	);
 }
 
 function ContentStep() {
-	const { config, definition } = usePreview();
+	const { definition } = usePreview();
 	const stepper = definition.useStepperContext();
 	return (
-		<section className={cn(config.ui !== "unstyled" && "grid gap-4")}>
+		<section className={cn("grid gap-4")}>
 			<p className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
 				No fields here. The generated step renders a placeholder for your own
 				content.
 			</p>
-			<Actions ui={config.ui}>
+			<Actions>
 				<KitButton
-					ui={config.ui}
 					variant="back"
 					disabled={stepper.isFirst}
 					onClick={() => stepper.prev()}
@@ -804,7 +732,6 @@ function ContentStep() {
 					Back
 				</KitButton>
 				<KitButton
-					ui={config.ui}
 					variant="primary"
 					onClick={() => stepper.next({ complete: true })}
 				>
@@ -824,10 +751,9 @@ function display(value: unknown): string {
 function Summary() {
 	const { config, names, definition } = usePreview();
 	const stepper = definition.useStepperContext();
-	const raw = config.ui === "unstyled";
 	const lastId = names.stepIds[names.stepIds.length - 1];
 	return (
-		<section className={cn(!raw && "grid gap-3")}>
+		<section className={cn("grid gap-3")}>
 			{config.steps.slice(0, -1).map((step, i) => {
 				if (!step.fields.length) return null;
 				const id = names.stepIds[i];
@@ -835,44 +761,26 @@ function Summary() {
 					| Record<string, unknown>
 					| undefined;
 				return (
-					<div key={id} className={cn(!raw && "rounded-lg border p-4")}>
-						<div className={cn(!raw && "flex items-center justify-between")}>
-							<h3 className={cn(!raw && "text-sm font-medium")}>
-								{step.title}
-							</h3>
-							{config.ui === "shadcn" ? (
-								<Button
-									type="button"
-									variant="link"
-									size="sm"
-									onClick={() => stepper.goTo(id)}
-								>
-									Edit
-								</Button>
-							) : (
-								<button
-									type="button"
-									onClick={() => stepper.goTo(id)}
-									className={cn(
-										!raw &&
-											"pressable rounded px-1 text-sm font-medium text-primary outline-none focus-visible:ring-2 focus-visible:ring-ring",
-									)}
-								>
-									Edit
-								</button>
-							)}
+					<div key={id} className={cn("rounded-lg border p-4")}>
+						<div className={cn("flex items-center justify-between")}>
+							<h3 className={cn("text-sm font-medium")}>{step.title}</h3>
+							<Button
+								type="button"
+								variant="link"
+								size="sm"
+								onClick={() => stepper.goTo(id)}
+							>
+								Edit
+							</Button>
 						</div>
 						<dl
 							className={cn(
-								!raw &&
-									"mt-2 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm",
+								"mt-2 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm",
 							)}
 						>
 							{step.fields.map((field, j) => (
 								<Fragment key={names.fields[i][j]}>
-									<dt className={cn(!raw && "text-muted-foreground")}>
-										{field.label}
-									</dt>
+									<dt className={cn("text-muted-foreground")}>{field.label}</dt>
 									<dd className="min-w-0 break-words">
 										{display(data?.[names.fields[i][j]])}
 									</dd>
@@ -882,12 +790,11 @@ function Summary() {
 					</div>
 				);
 			})}
-			<Actions ui={config.ui}>
-				<KitButton ui={config.ui} variant="back" onClick={() => stepper.prev()}>
+			<Actions>
+				<KitButton variant="back" onClick={() => stepper.prev()}>
 					Back
 				</KitButton>
 				<KitButton
-					ui={config.ui}
 					variant="primary"
 					onClick={() => stepper.setComplete(lastId)}
 				>

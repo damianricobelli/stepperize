@@ -87,9 +87,9 @@ function FlowName() {
 	return (
 		<InputGroup
 			title={`components/stepperize/${meta.project.names.slug}/`}
-			className="h-8 w-auto max-w-80 min-w-0 bg-muted/50 dark:bg-input/30"
+			className="h-8 w-auto max-w-80 min-w-0 justify-self-center bg-muted/50 dark:bg-input/30"
 		>
-			<InputGroupAddon className="border-r pr-2 text-xs font-normal">
+			<InputGroupAddon className="border-r pr-2 text-xs font-normal @max-3xl:hidden">
 				Flow name
 			</InputGroupAddon>
 			<InputGroupInput
@@ -100,7 +100,7 @@ function FlowName() {
 				onChange={(event) =>
 					actions.update((c) => ({ ...c, name: event.target.value }))
 				}
-				className="w-auto font-medium"
+				className="w-auto min-w-24 font-medium"
 			/>
 			<InputGroupAddon align="inline-end">
 				<Pencil aria-hidden className="size-3.5" />
@@ -112,7 +112,8 @@ function FlowName() {
 function Toolbar() {
 	const { state, actions } = useStudio();
 	return (
-		<div className="grid h-12 grid-cols-[1fr_auto_1fr] items-center gap-2 border-b px-3">
+		// A container, so labels collapse when the workspace is narrow, not only the viewport.
+		<div className="@container grid h-12 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 border-b px-3">
 			<TabsList className="justify-self-start">
 				<TabsTrigger value="preview">
 					<Eye aria-hidden data-icon="inline-start" />
@@ -145,7 +146,7 @@ function Toolbar() {
 					onClick={actions.restartPreview}
 				>
 					<RotateCcw aria-hidden data-icon="inline-start" />
-					<span className="max-sm:sr-only">Reset</span>
+					<span className="@max-2xl:sr-only">Reset</span>
 				</Button>
 				<ShareButton />
 				<InstallButton />
@@ -164,7 +165,7 @@ function ShareButton() {
 			)}
 			label="Copy share link"
 		>
-			<span className="max-sm:sr-only">Share</span>
+			<span className="@max-2xl:sr-only">Share</span>
 		</CopyButton>
 	);
 }

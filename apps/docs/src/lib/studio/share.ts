@@ -9,7 +9,6 @@ import {
 	NAVIGATIONS,
 	normalizeConfig,
 	type StudioConfig,
-	UI_KITS,
 	VALIDATIONS,
 } from "./config";
 
@@ -44,6 +43,8 @@ const stepSchema = z.object({
 	fields: z.array(fieldSchema).max(LIMITS.fields),
 });
 
+// `z.object` strips unknown keys, so links from before shadcn/ui became the
+// only kit (they carry a `ui` field) still decode.
 export const studioConfigSchema = z.object({
 	name: text(LIMITS.name).min(1),
 	framework: z.enum(FRAMEWORKS),
@@ -51,7 +52,6 @@ export const studioConfigSchema = z.object({
 	layout: z.enum(LAYOUTS),
 	form: z.enum(FORMS),
 	validation: z.enum(VALIDATIONS),
-	ui: z.enum(UI_KITS),
 	indicator: z.enum(INDICATORS),
 	behavior: z.object({
 		linear: z.boolean(),

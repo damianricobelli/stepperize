@@ -21,7 +21,6 @@ import {
 	PRESETS,
 	type PresetId,
 	type StudioBehavior,
-	UI_OPTIONS,
 	unavailableReason,
 	VALIDATION_OPTIONS,
 } from "@/lib/studio/config";
@@ -203,18 +202,6 @@ export function ConfigPanel() {
 								actions.update((c) => ({ ...c, indicator }))
 							}
 							choices={INDICATOR_OPTIONS}
-						/>
-					</Section>
-					<Section
-						title="Components"
-						description="What the fields and buttons are built with."
-					>
-						<ChoiceCards
-							name="studio-ui"
-							label="UI kit"
-							value={config.ui}
-							onChange={(ui) => actions.update((c) => ({ ...c, ui }))}
-							choices={UI_OPTIONS}
 						/>
 					</Section>
 				</TabsContent>

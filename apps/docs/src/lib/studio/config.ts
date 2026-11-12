@@ -1,6 +1,9 @@
 /**
  * Stepper Studio configuration model.
  *
+ * Generated code is built on shadcn/ui: the flow installs with the shadcn CLI,
+ * so the project it lands in already has the components it imports.
+ *
  * One serializable object describes a whole flow. The generator, the live
  * preview, the share link and the dynamic registry endpoint all read the same
  * shape, so what you see in the Studio is what `shadcn add` installs.
@@ -28,7 +31,6 @@ export const FORMS = [
 	"native",
 ] as const;
 export const VALIDATIONS = ["zod", "valibot", "arktype", "none"] as const;
-export const UI_KITS = ["shadcn", "tailwind", "unstyled"] as const;
 export const INDICATORS = ["number", "check", "dot"] as const;
 export const FIELD_TYPES = [
 	"text",
@@ -54,7 +56,6 @@ export type Navigation = (typeof NAVIGATIONS)[number];
 export type Layout = (typeof LAYOUTS)[number];
 export type FormLibrary = (typeof FORMS)[number];
 export type Validation = (typeof VALIDATIONS)[number];
-export type UiKit = (typeof UI_KITS)[number];
 export type Indicator = (typeof INDICATORS)[number];
 export type FieldType = (typeof FIELD_TYPES)[number];
 
@@ -93,7 +94,6 @@ export type StudioConfig = {
 	layout: Layout;
 	form: FormLibrary;
 	validation: Validation;
-	ui: UiKit;
 	indicator: Indicator;
 	behavior: StudioBehavior;
 	steps: StudioStep[];
@@ -174,16 +174,6 @@ export const VALIDATION_OPTIONS: Option<Validation>[] = [
 	{ value: "valibot", label: "Valibot", hint: "valibot" },
 	{ value: "arktype", label: "ArkType", hint: "arktype" },
 	{ value: "none", label: "None", hint: "Untyped data" },
-];
-
-export const UI_OPTIONS: Option<UiKit>[] = [
-	{ value: "shadcn", label: "shadcn/ui", hint: "Uses your @/components/ui" },
-	{
-		value: "tailwind",
-		label: "Tailwind",
-		hint: "Plain elements, theme tokens",
-	},
-	{ value: "unstyled", label: "Unstyled", hint: "Data attributes only" },
 ];
 
 export const INDICATOR_OPTIONS: Option<Indicator>[] = [
@@ -323,7 +313,6 @@ const BASE: Omit<StudioConfig, "name" | "steps"> = {
 	layout: "horizontal",
 	form: "react-hook-form",
 	validation: "zod",
-	ui: "shadcn",
 	indicator: "check",
 	behavior: { linear: true, guard: true, persist: false, keepMounted: false },
 };

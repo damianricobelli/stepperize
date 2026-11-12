@@ -3,7 +3,6 @@ import type {
 	StudioConfig,
 	StudioField,
 	StudioStep,
-	UiKit,
 	Validation,
 } from "../config";
 import {
@@ -29,28 +28,17 @@ import { RHF_RESOLVERS, schemaName, valuesType } from "./validation";
  * the library: seed from `stepper.data.get(id)`, validate on submit, then save
  * and complete the step in one transition with `next({ data, complete: true })`.
  *
- * Two independent axes meet here:
- * - a **wiring** says how a form library binds a control (register, a
- *   controlled value, or a named uncontrolled input), and
- * - a **kit** says how the control looks (shadcn/ui, Tailwind, unstyled).
- * Field renderers ask the wiring for attributes, so adding a field type means
- * one renderer, not one per library.
+ * Controls are shadcn/ui components. A **wiring** says how a form library
+ * binds each one (register, a controlled value, or a named uncontrolled
+ * input), so adding a field type means one renderer, not one per library.
  */
 
 // ─── Wiring ──────────────────────────────────────────────────────────────────
 
-/** Native elements bound with DOM attributes. */
-type DomKind =
-	| "text"
-	| "number"
-	| "range"
-	| "checkbox"
-	| "radio"
-	| "multi"
-	| "select"
-	| "textarea";
+/** Components that forward to a DOM element, bound with DOM attributes. */
+type DomKind = "text" | "number" | "textarea";
 
-/** Components bound with a value and a change callback (or a name + default). */
+/** Components with their own value, bound with a value and a change callback (or a name + default). */
 type ValueKind = "checked" | "multi" | "choice" | "slider" | "otp" | "date";
 
 type Wiring = {
@@ -62,7 +50,7 @@ type Wiring = {
 	invalid: (on: "dom" | "value") => string;
 	/** Error message expression, or null without validation. */
 	message: string | null;
-	/** Attributes for a native element, including `id` and `type`. `option` is in scope for radio/multi. */
+	/** Attributes for an input or textarea, including `id` and `type`. */
 	dom: (kind: DomKind, type?: string) => string;
 	/** Attributes for a value component (no `id`). `option` is in scope for multi. */
 	value: (kind: ValueKind) => string;
@@ -86,26 +74,17 @@ const attr = (name: string, expr: string) => ` ${name}={${expr}}`;
 
 function reactHookFormWiring(c: FieldContext, validated: boolean): Wiring {
 	const { key } = c;
-	const optionId = `{\`${key}-\${index}\`}`;
 	const register = (options = "") =>
 		`{...form.register(${str(key)}${options})}`;
 	return {
 		id: str(key),
-		optionId,
+		optionId: `{\`${key}-\${index}\`}`,
 		invalid: () => (validated ? attr("aria-invalid", `!!errors.${key}`) : ""),
 		message: validated ? `errors.${key}?.message` : null,
 		dom: (kind, type) => {
 			switch (kind) {
 				case "number":
 					return `id=${str(key)} type="number" ${register(', { setValueAs: (value) => (value === "" ? undefined : Number(value)) }')}`;
-				case "range":
-					return `id=${str(key)} type="range" ${register(", { valueAsNumber: true }")}`;
-				case "checkbox":
-					return `id=${str(key)} type="checkbox" ${register()}`;
-				case "radio":
-				case "multi":
-					return `id=${optionId} type="${kind === "radio" ? "radio" : "checkbox"}" value={option} ${register()}`;
-				case "select":
 				case "textarea":
 					return `id=${str(key)} ${register()}`;
 				case "text":
@@ -143,36 +122,25 @@ function reactHookFormWiring(c: FieldContext, validated: boolean): Wiring {
 
 function tanstackWiring(c: FieldContext, validated: boolean): Wiring {
 	const change = (expr: string) => `field.handleChange(${expr})`;
-	const blur = "onBlur={field.handleBlur}";
-	const required = fieldSpec(c.field).required;
-	// biome-ignore lint/suspicious/noTemplateCurlyInString: generated source, not a template
-	const optionId = "{`${field.name}-${index}`}";
 	const text = (expr: string) =>
 		c.castText ? `${expr} as ${c.valueOf}` : expr;
+	const required = fieldSpec(c.field).required;
 	return {
 		id: "{field.name}",
-		optionId,
+		// biome-ignore lint/suspicious/noTemplateCurlyInString: generated source, not a template
+		optionId: "{`${field.name}-${index}`}",
 		invalid: () =>
 			validated ? attr("aria-invalid", "!field.state.meta.isValid") : "",
 		message: validated ? "field.state.meta.errors[0]?.message" : null,
 		dom: (kind, type) => {
-			const base = `id={field.name} name={field.name} ${blur}`;
+			const base =
+				"id={field.name} name={field.name} onBlur={field.handleBlur}";
 			switch (kind) {
 				case "number":
 					// valueAsNumber is NaN for an empty input: required fields report it, optional ones clear.
 					return required
 						? `${base} type="number" value={Number.isNaN(field.state.value) ? "" : (field.state.value ?? "")} onChange={(event) => ${change("event.target.valueAsNumber")}}`
 						: `${base} type="number" value={field.state.value ?? ""} onChange={(event) => ${change("Number.isNaN(event.target.valueAsNumber) ? undefined : event.target.valueAsNumber")}}`;
-				case "range":
-					return `${base} type="range" value={field.state.value ?? ${c.min}} onChange={(event) => ${change("event.target.valueAsNumber")}}`;
-				case "checkbox":
-					return `${base} type="checkbox" checked={field.state.value ?? false} onChange={(event) => ${change(`event.target.checked as ${c.valueOf}`)}}`;
-				case "radio":
-					return `id=${optionId} name={field.name} ${blur} type="radio" value={option} checked={field.state.value === option} onChange={() => ${change("option")}}`;
-				case "multi":
-					return `id=${optionId} name={field.name} ${blur} type="checkbox" value={option} checked={field.state.value?.includes(option) ?? false} onChange={(event) => ${change("event.target.checked ? [...(field.state.value ?? []), option] : (field.state.value ?? []).filter((value) => value !== option)")}}`;
-				case "select":
-					return `${base} value={field.state.value ?? ""} onChange={(event) => ${change(`event.target.value as ${c.valueOf}`)}}`;
 				case "textarea":
 					return `${base} value={field.state.value ?? ""} onChange={(event) => ${change("event.target.value")}}`;
 				case "text":
@@ -201,39 +169,20 @@ function tanstackWiring(c: FieldContext, validated: boolean): Wiring {
 
 function conformWiring(c: FieldContext, helpers: Set<string>): Wiring {
 	const meta = `fields.${c.key}`;
-	const optionId = `{\`\${${meta}.id}-\${index}\`}`;
-	const input = (options: string) => {
-		helpers.add("getInputProps");
-		return `{...getInputProps(${meta}, ${options})}`;
-	};
 	return {
 		id: `{${meta}.id}`,
-		optionId,
-		// getInputProps and friends already set aria-invalid on native elements.
+		optionId: `{\`\${${meta}.id}-\${index}\`}`,
+		// getInputProps and getTextareaProps already set aria-invalid.
 		invalid: (on) =>
 			on === "value" ? attr("aria-invalid", `!${meta}.valid`) : "",
 		message: `${meta}.errors?.[0]`,
 		dom: (kind, type) => {
-			switch (kind) {
-				case "number":
-					return input('{ type: "number" }');
-				case "range":
-					return input('{ type: "range" }');
-				case "checkbox":
-					return input('{ type: "checkbox" }');
-				case "radio":
-					return `${input('{ type: "radio", value: option }')} id=${optionId}`;
-				case "multi":
-					return `${input('{ type: "checkbox", value: option }')} id=${optionId}`;
-				case "select":
-					helpers.add("getSelectProps");
-					return `{...getSelectProps(${meta})}`;
-				case "textarea":
-					helpers.add("getTextareaProps");
-					return `{...getTextareaProps(${meta})}`;
-				case "text":
-					return input(`{ type: "${type ?? "text"}" }`);
+			if (kind === "textarea") {
+				helpers.add("getTextareaProps");
+				return `{...getTextareaProps(${meta})}`;
 			}
+			helpers.add("getInputProps");
+			return `{...getInputProps(${meta}, { type: "${kind === "number" ? "number" : (type ?? "text")}" })}`;
 		},
 		// Base UI controls submit through hidden inputs, so Conform reads them from FormData.
 		value: (kind) => {
@@ -260,10 +209,9 @@ function nativeWiring(c: FieldContext, validated: boolean): Wiring {
 	const { key } = c;
 	const saved = `saved?.${key}`;
 	const name = `name=${str(key)}`;
-	const optionId = `{\`${key}-\${index}\`}`;
 	return {
 		id: str(key),
-		optionId,
+		optionId: `{\`${key}-\${index}\`}`,
 		invalid: () => (validated ? attr("aria-invalid", `!!issues.${key}`) : ""),
 		message: validated ? `issues.${key}` : null,
 		dom: (kind, type) => {
@@ -271,15 +219,6 @@ function nativeWiring(c: FieldContext, validated: boolean): Wiring {
 			switch (kind) {
 				case "number":
 					return `${base} type="number" defaultValue={${saved}}`;
-				case "range":
-					return `${base} type="range" defaultValue={${saved} ?? ${c.min}}`;
-				case "checkbox":
-					return `${base} type="checkbox" defaultChecked={${saved} === true}`;
-				case "radio":
-					return `id=${optionId} ${name} type="radio" value={option} defaultChecked={${saved} === option}`;
-				case "multi":
-					return `id=${optionId} ${name} type="checkbox" value={option} defaultChecked={${saved}?.includes(option)}`;
-				case "select":
 				case "textarea":
 					return `${base} defaultValue={${saved} ?? ""}`;
 				case "text":
@@ -305,15 +244,10 @@ function nativeWiring(c: FieldContext, validated: boolean): Wiring {
 	};
 }
 
-// ─── Kits: what each field looks like ────────────────────────────────────────
+// ─── Controls ────────────────────────────────────────────────────────────────
 
-const TW_INPUT =
-	"h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring aria-invalid:border-destructive";
-const TW_SWITCH =
-	"relative h-5 w-9 shrink-0 cursor-pointer appearance-none rounded-full bg-input transition-colors duration-200 before:absolute before:top-0.5 before:left-0.5 before:size-4 before:rounded-full before:bg-background before:shadow-sm before:transition-transform before:duration-200 checked:bg-primary checked:before:translate-x-4 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none";
-
-/** shadcn/ui types rendered by a component with its own value, not a DOM input. */
-export const SHADCN_VALUE_CONTROLS: ReadonlySet<FieldType> = new Set([
+/** Field types rendered by a component with its own value, not a DOM input. */
+export const VALUE_CONTROLS: ReadonlySet<FieldType> = new Set([
 	"date",
 	"otp",
 	"slider",
@@ -325,7 +259,7 @@ export const SHADCN_VALUE_CONTROLS: ReadonlySet<FieldType> = new Set([
 ]);
 
 /** Components a step imports from `@/components/ui`, by field type. */
-const SHADCN_IMPORTS: Record<FieldType, Record<string, string[]>> = {
+const UI_IMPORTS: Record<FieldType, Record<string, string[]>> = {
 	text: { input: ["Input"] },
 	email: { input: ["Input"] },
 	password: { input: ["Input"] },
@@ -369,26 +303,17 @@ const autocomplete = (type: FieldType) =>
 	AUTOCOMPLETE[type] ? ` autoComplete="${AUTOCOMPLETE[type]}"` : "";
 
 /** The control alone: no label, no error. */
-function renderControl(ui: UiKit, c: FieldContext, w: Wiring): string {
+function renderControl(c: FieldContext, w: Wiring): string {
 	const { field } = c;
 	const type = field.type;
-	const kind = FIELD_KINDS[type];
 	const { min, max } = sliderRange(field);
-	const shadcn = ui === "shadcn";
 	const each = (body: string) =>
 		[
 			`{${c.options}.map((option${body.includes("index") ? ", index" : ""}) => (`,
 			indent(body, 1),
 			"))}",
 		].join("\n");
-	const optionLabel = (control: string) =>
-		[
-			`<label key={option}${cls(ui, "flex items-center gap-2 text-sm")}>`,
-			`\t${control}`,
-			"\t{option}",
-			"</label>",
-		].join("\n");
-	const shadcnOption = (control: string) =>
+	const option = (control: string) =>
 		[
 			'<Field key={option} orientation="horizontal">',
 			`\t${control}`,
@@ -405,149 +330,87 @@ function renderControl(ui: UiKit, c: FieldContext, w: Wiring): string {
 		case "tel":
 		case "url":
 		case "time":
-			return shadcn
-				? `<Input ${w.dom("text", kind.input)}${autocomplete(type)}${w.invalid("dom")} />`
-				: `<input ${w.dom("text", kind.input)}${autocomplete(type)}${w.invalid("dom")}${cls(ui, TW_INPUT)} />`;
+			return `<Input ${w.dom("text", FIELD_KINDS[type].input)}${autocomplete(type)}${w.invalid("dom")} />`;
 		case "number":
-			return shadcn
-				? `<Input ${w.dom("number")}${w.invalid("dom")} />`
-				: `<input ${w.dom("number")}${w.invalid("dom")}${cls(ui, TW_INPUT)} />`;
+			return `<Input ${w.dom("number")}${w.invalid("dom")} />`;
 		case "textarea":
-			return shadcn
-				? `<Textarea ${w.dom("textarea")}${w.invalid("dom")} />`
-				: `<textarea ${w.dom("textarea")}${w.invalid("dom")}${cls(ui, TW_INPUT.replace("h-9", "min-h-20 py-2"))} />`;
+			return `<Textarea ${w.dom("textarea")}${w.invalid("dom")} />`;
 		case "date":
-			return shadcn
-				? w.wrap(
-						`<DatePicker id=${w.id} ${w.value("date")}${w.invalid("value")} />`,
-					)
-				: `<input ${w.dom("text", "date")}${w.invalid("dom")}${cls(ui, TW_INPUT)} />`;
+			return w.wrap(
+				`<DatePicker id=${w.id} ${w.value("date")}${w.invalid("value")} />`,
+			);
 		case "otp":
-			return shadcn
-				? w.wrap(
-						[
-							`<InputOTP id=${w.id} maxLength={${OTP_LENGTH}} ${w.value("otp")}${w.invalid("value")}>`,
-							"\t<InputOTPGroup>",
-							`\t\t{Array.from({ length: ${OTP_LENGTH} }, (_, index) => (`,
-							"\t\t\t<InputOTPSlot key={index} index={index} />",
-							"\t\t))}",
-							"\t</InputOTPGroup>",
-							"</InputOTP>",
-						].join("\n"),
-					)
-				: `<input ${w.dom("text", "text")} inputMode="numeric" autoComplete="one-time-code" maxLength={${OTP_LENGTH}}${w.invalid("dom")}${cls(ui, `${TW_INPUT} font-mono tracking-[0.4em]`)} />`;
+			return w.wrap(
+				[
+					`<InputOTP id=${w.id} maxLength={${OTP_LENGTH}} ${w.value("otp")}${w.invalid("value")}>`,
+					"\t<InputOTPGroup>",
+					`\t\t{Array.from({ length: ${OTP_LENGTH} }, (_, index) => (`,
+					"\t\t\t<InputOTPSlot key={index} index={index} />",
+					"\t\t))}",
+					"\t</InputOTPGroup>",
+					"</InputOTP>",
+				].join("\n"),
+			);
 		case "slider":
-			return shadcn
-				? w.wrap(
-						`<Slider id=${w.id} min={${min}} max={${max}} ${w.value("slider")}${w.invalid("value")} />`,
-					)
-				: `<input ${w.dom("range")} min={${min}} max={${max}}${cls(ui, "w-full accent-primary")} />`;
+			return w.wrap(
+				`<Slider id=${w.id} min={${min}} max={${max}} ${w.value("slider")}${w.invalid("value")} />`,
+			);
 		case "select":
-			return shadcn
-				? w.wrap(
-						[
-							`<Select ${w.value("choice")}>`,
-							`\t<SelectTrigger id=${w.id}${w.invalid("value")} className="w-full">`,
-							'\t\t<SelectValue placeholder="Select…" />',
-							"\t</SelectTrigger>",
-							"\t<SelectContent>",
-							indent(
-								each(
-									"<SelectItem key={option} value={option}>\n\t{option}\n</SelectItem>",
-								),
-								2,
-							),
-							"\t</SelectContent>",
-							"</Select>",
-						].join("\n"),
-					)
-				: [
-						`<select ${w.dom("select")}${w.invalid("dom")}${cls(ui, TW_INPUT)}>`,
-						'\t<option value="">Select…</option>',
-						indent(
-							each(
-								"<option key={option} value={option}>\n\t{option}\n</option>",
-							),
-							1,
+			return w.wrap(
+				[
+					`<Select ${w.value("choice")}>`,
+					`\t<SelectTrigger id=${w.id}${w.invalid("value")} className="w-full">`,
+					'\t\t<SelectValue placeholder="Select…" />',
+					"\t</SelectTrigger>",
+					"\t<SelectContent>",
+					indent(
+						each(
+							"<SelectItem key={option} value={option}>\n\t{option}\n</SelectItem>",
 						),
-						"</select>",
-					].join("\n");
+						2,
+					),
+					"\t</SelectContent>",
+					"</Select>",
+				].join("\n"),
+			);
 		case "radio":
-			return shadcn
-				? w.wrap(
-						[
-							`<RadioGroup ${w.value("choice")}${w.invalid("value")}>`,
-							indent(
-								each(
-									shadcnOption(
-										`<RadioGroupItem id=${w.optionId} value={option} />`,
-									),
-								),
-								1,
-							),
-							"</RadioGroup>",
-						].join("\n"),
-					)
-				: [
-						`<div${cls(ui, "grid gap-2")}>`,
-						indent(
-							each(
-								optionLabel(
-									`<input ${w.dom("radio")}${cls(ui, "size-4 accent-primary")} />`,
-								),
-							),
-							1,
-						),
-						"</div>",
-					].join("\n");
+			return w.wrap(
+				[
+					`<RadioGroup ${w.value("choice")}${w.invalid("value")}>`,
+					indent(
+						each(option(`<RadioGroupItem id=${w.optionId} value={option} />`)),
+						1,
+					),
+					"</RadioGroup>",
+				].join("\n"),
+			);
 		case "checkboxes":
-			return shadcn
-				? w.wrap(
-						[
-							'<FieldGroup data-slot="checkbox-group" className="gap-3">',
-							indent(
-								each(
-									shadcnOption(
-										`<Checkbox id=${w.optionId} ${w.value("multi")} />`,
-									),
-								),
-								1,
-							),
-							"</FieldGroup>",
-						].join("\n"),
-					)
-				: [
-						`<div${cls(ui, "grid gap-2")}>`,
-						indent(
-							each(
-								optionLabel(
-									`<input ${w.dom("multi")}${cls(ui, "size-4 accent-primary")} />`,
-								),
-							),
-							1,
-						),
-						"</div>",
-					].join("\n");
+			return w.wrap(
+				[
+					'<FieldGroup data-slot="checkbox-group" className="gap-3">',
+					indent(
+						each(option(`<Checkbox id=${w.optionId} ${w.value("multi")} />`)),
+						1,
+					),
+					"</FieldGroup>",
+				].join("\n"),
+			);
 		case "checkbox":
-			return shadcn
-				? w.wrap(
-						`<Checkbox id=${w.id} ${w.value("checked")}${w.invalid("value")} />`,
-					)
-				: `<input ${w.dom("checkbox")}${w.invalid("dom")}${cls(ui, "size-4 accent-primary")} />`;
+			return w.wrap(
+				`<Checkbox id=${w.id} ${w.value("checked")}${w.invalid("value")} />`,
+			);
 		case "switch":
-			return shadcn
-				? w.wrap(
-						`<Switch id=${w.id} ${w.value("checked")}${w.invalid("value")} />`,
-					)
-				: `<input ${w.dom("checkbox")} role="switch"${w.invalid("dom")}${cls(ui, TW_SWITCH)} />`;
+			return w.wrap(
+				`<Switch id=${w.id} ${w.value("checked")}${w.invalid("value")} />`,
+			);
 	}
 }
 
-function labelText(ui: UiKit, field: StudioField): string {
+function labelText(field: StudioField): string {
 	const spec = fieldSpec(field);
 	const optional =
 		!spec.required && spec.kind !== "boolean"
-			? ` <span${cls(ui, "font-normal text-muted-foreground")}>(optional)</span>`
+			? ` <span${cls("font-normal text-muted-foreground")}>(optional)</span>`
 			: "";
 	return `${jsxText(field.label)}${optional}`;
 }
@@ -562,94 +425,51 @@ const lines = (open: string, children: (string | null)[], close: string) =>
 	].join("\n");
 
 /** Label, control and error, laid out for the field's shape. */
-function fieldBlock(ui: UiKit, c: FieldContext, w: Wiring): string {
+function fieldBlock(c: FieldContext, w: Wiring): string {
 	const { field } = c;
 	const kind = FIELD_KINDS[field.type];
-	const shadcn = ui === "shadcn";
-	const controlJsx = renderControl(ui, c, w);
-	const wide = kind.wide ? "sm:col-span-2" : "";
-	const errorClass =
-		field.type === "checkbox" || field.type === "switch"
-			? "basis-full text-sm text-destructive"
-			: "text-sm text-destructive";
+	const controlJsx = renderControl(c, w);
+	const wide = kind.wide ? ' className="sm:col-span-2"' : "";
 	const error =
-		w.message === null
-			? null
-			: shadcn
-				? `<FieldError>{${w.message}}</FieldError>`
-				: `{${w.message} ? <p role="alert"${cls(ui, errorClass)}>{${w.message}}</p> : null}`;
+		w.message === null ? null : `<FieldError>{${w.message}}</FieldError>`;
 
 	if (kind.fieldset) {
-		return shadcn
-			? lines(
-					`<FieldSet${wide ? ` className="${wide}"` : ""}>`,
-					[
-						`<FieldLegend variant="label">${labelText(ui, field)}</FieldLegend>`,
-						controlJsx,
-						error,
-					],
-					"</FieldSet>",
-				)
-			: lines(
-					`<fieldset${cls(ui, `grid gap-2 ${wide}`.trim())}>`,
-					[
-						`<legend${cls(ui, "mb-1 text-sm font-medium")}>${labelText(ui, field)}</legend>`,
-						controlJsx,
-						error,
-					],
-					"</fieldset>",
-				);
+		return lines(
+			`<FieldSet${wide}>`,
+			[
+				`<FieldLegend variant="label">${labelText(field)}</FieldLegend>`,
+				controlJsx,
+				error,
+			],
+			"</FieldSet>",
+		);
 	}
 
-	const label = shadcn
-		? `<FieldLabel htmlFor=${w.id}>${labelText(ui, field)}</FieldLabel>`
-		: `<label htmlFor=${w.id}${cls(ui, "text-sm font-medium")}>${labelText(ui, field)}</label>`;
+	const label = `<FieldLabel htmlFor=${w.id}>${labelText(field)}</FieldLabel>`;
 
 	if (field.type === "checkbox" || field.type === "switch") {
-		if (shadcn) {
-			return lines(
-				`<Field orientation="horizontal" className="${wide}">`,
-				error
-					? [
-							controlJsx,
-							lines("<FieldContent>", [label, error], "</FieldContent>"),
-						]
-					: [controlJsx, label],
-				"</Field>",
-			);
-		}
 		return lines(
-			`<div${cls(ui, `flex flex-wrap items-center gap-2 ${wide}`)}>`,
-			[controlJsx, label, error],
-			"</div>",
+			`<Field orientation="horizontal"${wide}>`,
+			error
+				? [
+						controlJsx,
+						lines("<FieldContent>", [label, error], "</FieldContent>"),
+					]
+				: [controlJsx, label],
+			"</Field>",
 		);
 	}
 
 	const { min, max } = sliderRange(field);
 	const range =
-		field.type === "slider" && ui !== "unstyled"
+		field.type === "slider"
 			? `<div className="flex justify-between text-xs text-muted-foreground">\n\t<span>${min}</span>\n\t<span>${max}</span>\n</div>`
 			: null;
-	return shadcn
-		? lines(
-				`<Field${wide ? ` className="${wide}"` : ""}>`,
-				[label, controlJsx, range, error],
-				"</Field>",
-			)
-		: lines(
-				`<div${cls(ui, `grid gap-2 ${wide}`.trim())}>`,
-				[label, controlJsx, range, error],
-				"</div>",
-			);
+	return lines(`<Field${wide}>`, [label, controlJsx, range, error], "</Field>");
 }
 
-/** Imports for a shadcn step: field primitives plus each control's component. */
-function kitImports(
-	ui: UiKit,
-	fields: StudioField[],
-	errors: boolean,
-): string[] {
-	if (ui !== "shadcn") return [];
+/** Imports for a step: field primitives plus each control's component. */
+function uiImports(fields: StudioField[], errors: boolean): string[] {
 	const byFile = new Map<string, Set<string>>([
 		["button", new Set(["Button"])],
 		["field", new Set(["Field", "FieldLabel"])],
@@ -660,7 +480,7 @@ function kitImports(
 		byFile.set(file, set);
 	};
 	for (const field of fields) {
-		for (const [file, names] of Object.entries(SHADCN_IMPORTS[field.type]))
+		for (const [file, names] of Object.entries(UI_IMPORTS[field.type]))
 			add(file, names);
 		if (errors) add("field", ["FieldError"]);
 		if (errors && (field.type === "checkbox" || field.type === "switch"))
@@ -690,30 +510,14 @@ function optionConstants(ctx: StepContext): string[] {
 	);
 }
 
-function button(
-	ui: UiKit,
-	variant: "back" | "primary",
-	attrs: string,
-	label: string,
-): string {
-	if (ui === "shadcn")
-		return `<Button ${attrs}${variant === "back" ? ' variant="outline"' : ""}>${label}</Button>`;
-	const classes =
-		variant === "back"
-			? "inline-flex h-9 items-center rounded-md border px-4 text-sm font-medium transition-[background-color,scale] duration-150 ease-out hover:bg-muted active:scale-[0.97] disabled:pointer-events-none disabled:opacity-50"
-			: "inline-flex h-9 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-[background-color,scale] duration-150 ease-out hover:bg-primary/90 active:scale-[0.97] disabled:pointer-events-none disabled:opacity-50";
-	return `<button ${attrs}${cls(ui, classes)}>${label}</button>`;
-}
+const button = (variant: "back" | "primary", attrs: string, label: string) =>
+	`<Button ${attrs}${variant === "back" ? ' variant="outline"' : ""}>${label}</Button>`;
 
-function actions(
-	ui: UiKit,
-	{ last, pending }: { last: boolean; pending?: string },
-): string {
+function actions({ last, pending }: { last: boolean; pending?: string }) {
 	return [
-		`<div${cls(ui, "flex justify-between gap-2 sm:col-span-2")}>`,
+		'<div className="flex justify-between gap-2 sm:col-span-2">',
 		indent(
 			button(
-				ui,
 				"back",
 				'type="button" disabled={stepper.isFirst} onClick={() => stepper.prev()}',
 				"Back",
@@ -722,7 +526,6 @@ function actions(
 		),
 		indent(
 			button(
-				ui,
 				"primary",
 				`type="submit"${pending ? ` disabled={${pending}}` : ""}`,
 				last ? "Finish" : "Continue",
@@ -812,15 +615,12 @@ const header = (ctx: StepContext) => [
 // ─── React Hook Form ─────────────────────────────────────────────────────────
 
 function reactHookForm(ctx: StepContext): string {
-	const { config, names, id, validation } = ctx;
-	const ui = config.ui;
+	const { names, id, validation } = ctx;
 	const validated = validation !== "none";
-	const controller =
-		ui === "shadcn" &&
-		ctx.step.fields.some((f) => SHADCN_VALUE_CONTROLS.has(f.type));
+	const controller = ctx.step.fields.some((f) => VALUE_CONTROLS.has(f.type));
 	const blocks = ctx.step.fields.map((_, j) => {
 		const c = fieldContext(ctx, j);
-		return fieldBlock(ui, c, reactHookFormWiring(c, validated));
+		return fieldBlock(c, reactHookFormWiring(c, validated));
 	});
 	const resolver = RHF_RESOLVERS[validation as Exclude<Validation, "none">];
 	return source([
@@ -830,7 +630,7 @@ function reactHookForm(ctx: StepContext): string {
 			? `import { ${resolver} } from "@hookform/resolvers/${validation}";`
 			: null,
 		`import { ${controller ? "Controller, " : ""}useForm } from "react-hook-form";`,
-		...kitImports(ui, ctx.step.fields, validated),
+		...uiImports(ctx.step.fields, validated),
 		`import { ${names.flow} } from "../definition";`,
 		valuesImport(ctx, true),
 		"",
@@ -850,10 +650,10 @@ function reactHookForm(ctx: StepContext): string {
 		"\t\t<form",
 		"\t\t\tnoValidate",
 		"\t\t\tonSubmit={form.handleSubmit((data) => stepper.next({ data, complete: true }))}",
-		ui === "unstyled" ? null : `\t\t\tclassName="${FORM_CLASS}"`,
+		`\t\t\tclassName="${FORM_CLASS}"`,
 		"\t\t>",
 		...blocks.map((b) => indent(b, 3)),
-		indent(actions(ui, { last: ctx.last, pending: "isSubmitting" }), 3),
+		indent(actions({ last: ctx.last, pending: "isSubmitting" }), 3),
 		"\t\t</form>",
 		"\t);",
 		"}",
@@ -863,15 +663,14 @@ function reactHookForm(ctx: StepContext): string {
 // ─── TanStack Form ───────────────────────────────────────────────────────────
 
 function tanstackForm(ctx: StepContext): string {
-	const { config, names, id, keys, validation } = ctx;
-	const ui = config.ui;
+	const { names, id, keys, validation } = ctx;
 	const validated = validation !== "none";
 	const blocks = ctx.step.fields.map((_, j) => {
 		const c = fieldContext(ctx, j);
 		return [
 			`<form.Field name=${str(keys[j])}>`,
 			"\t{(field) => (",
-			indent(fieldBlock(ui, c, tanstackWiring(c, validated)), 2),
+			indent(fieldBlock(c, tanstackWiring(c, validated)), 2),
 			"\t)}",
 			"</form.Field>",
 		].join("\n");
@@ -880,7 +679,7 @@ function tanstackForm(ctx: StepContext): string {
 		USE_CLIENT,
 		"",
 		'import { useForm } from "@tanstack/react-form";',
-		...kitImports(ui, ctx.step.fields, validated),
+		...uiImports(ctx.step.fields, validated),
 		`import { ${names.flow} } from "../definition";`,
 		valuesImport(ctx, true),
 		"",
@@ -902,12 +701,12 @@ function tanstackForm(ctx: StepContext): string {
 		"\t\t\t\tevent.preventDefault();",
 		"\t\t\t\tvoid form.handleSubmit();",
 		"\t\t\t}}",
-		ui === "unstyled" ? null : `\t\t\tclassName="${FORM_CLASS}"`,
+		`\t\t\tclassName="${FORM_CLASS}"`,
 		"\t\t>",
 		...blocks.map((b) => indent(b, 3)),
 		"\t\t\t<form.Subscribe selector={(state) => state.isSubmitting}>",
 		"\t\t\t\t{(isSubmitting) => (",
-		indent(actions(ui, { last: ctx.last, pending: "isSubmitting" }), 5),
+		indent(actions({ last: ctx.last, pending: "isSubmitting" }), 5),
 		"\t\t\t\t)}",
 		"\t\t\t</form.Subscribe>",
 		"\t\t</form>",
@@ -919,8 +718,7 @@ function tanstackForm(ctx: StepContext): string {
 // ─── Conform ─────────────────────────────────────────────────────────────────
 
 function conform(ctx: StepContext): string {
-	const { config, names, id, validation } = ctx;
-	const ui = config.ui;
+	const { names, id, validation } = ctx;
 	const parser =
 		validation === "valibot"
 			? ["parseWithValibot", "@conform-to/valibot"]
@@ -928,14 +726,14 @@ function conform(ctx: StepContext): string {
 	const helpers = new Set(["getFormProps", "useForm"]);
 	const blocks = ctx.step.fields.map((_, j) => {
 		const c = fieldContext(ctx, j);
-		return fieldBlock(ui, c, conformWiring(c, helpers));
+		return fieldBlock(c, conformWiring(c, helpers));
 	});
 	return source([
 		USE_CLIENT,
 		"",
 		`import { ${[...helpers].sort().join(", ")} } from "@conform-to/react";`,
 		`import { ${parser[0]} } from "${parser[1]}";`,
-		...kitImports(ui, ctx.step.fields, true),
+		...uiImports(ctx.step.fields, true),
 		`import { ${names.flow} } from "../definition";`,
 		`import { ${schemaName(id)} } from "../schemas";`,
 		"",
@@ -955,9 +753,9 @@ function conform(ctx: StepContext): string {
 		"\t});",
 		"",
 		"\treturn (",
-		`\t\t<form {...getFormProps(form)} noValidate${cls(ui, FORM_CLASS)}>`,
+		`\t\t<form {...getFormProps(form)} noValidate${cls(FORM_CLASS)}>`,
 		...blocks.map((b) => indent(b, 3)),
-		indent(actions(ui, { last: ctx.last }), 3),
+		indent(actions({ last: ctx.last }), 3),
 		"\t\t</form>",
 		"\t);",
 		"}",
@@ -987,12 +785,11 @@ export function formDataReader(field: StudioField, key: string): string {
 }
 
 function nativeForm(ctx: StepContext): string {
-	const { config, names, id, keys, validation } = ctx;
-	const ui = config.ui;
+	const { names, id, keys, validation } = ctx;
 	const validated = validation !== "none";
 	const blocks = ctx.step.fields.map((_, j) => {
 		const c = fieldContext(ctx, j);
-		return fieldBlock(ui, c, nativeWiring(c, validated));
+		return fieldBlock(c, nativeWiring(c, validated));
 	});
 	return source([
 		USE_CLIENT,
@@ -1000,7 +797,7 @@ function nativeForm(ctx: StepContext): string {
 		validated
 			? 'import { type FormEvent, useState } from "react";'
 			: 'import type { FormEvent } from "react";',
-		...kitImports(ui, ctx.step.fields, validated),
+		...uiImports(ctx.step.fields, validated),
 		`import { ${names.flow} } from "../definition";`,
 		valuesImport(ctx, false),
 		"",
@@ -1042,9 +839,9 @@ function nativeForm(ctx: StepContext): string {
 		"\t}",
 		"",
 		"\treturn (",
-		`\t\t<form noValidate onSubmit={handleSubmit}${cls(ui, FORM_CLASS)}>`,
+		`\t\t<form noValidate onSubmit={handleSubmit}${cls(FORM_CLASS)}>`,
 		...blocks.map((b) => indent(b, 3)),
-		indent(actions(ui, { last: ctx.last }), 3),
+		indent(actions({ last: ctx.last }), 3),
 		"\t\t</form>",
 		"\t);",
 		"}",
@@ -1055,7 +852,6 @@ function nativeForm(ctx: StepContext): string {
 
 function summaryStep(ctx: StepContext): string {
 	const { config, names, id } = ctx;
-	const ui = config.ui;
 	const sections = config.steps
 		.map((step, i) => ({ step, i }))
 		.filter(
@@ -1072,7 +868,7 @@ function summaryStep(ctx: StepContext): string {
 		USE_CLIENT,
 		"",
 		has ? 'import { Fragment } from "react";' : null,
-		ui === "shadcn" ? 'import { Button } from "@/components/ui/button";' : null,
+		'import { Button } from "@/components/ui/button";',
 		`import { ${names.flow} } from "../definition";`,
 		"",
 		has ? "const SUMMARY = [" : null,
@@ -1089,23 +885,21 @@ function summaryStep(ctx: StepContext): string {
 		`\tconst finished = stepper.isComplete(${str(id)});`,
 		"",
 		"\treturn (",
-		`\t\t<section${cls(ui, "grid gap-4")}>`,
+		'\t\t<section className="grid gap-4">',
 		...(has
 			? [
 					"\t\t\t{SUMMARY.map((section) => {",
 					"\t\t\t\tconst data = stepper.data.get(section.step) as Record<string, unknown> | undefined;",
 					"\t\t\t\treturn (",
-					`\t\t\t\t\t<div key={section.step}${cls(ui, "rounded-lg border p-4")}>`,
-					`\t\t\t\t\t\t<div${cls(ui, "flex items-center justify-between")}>`,
-					`\t\t\t\t\t\t\t<h3${cls(ui, "text-sm font-medium")}>{section.title}</h3>`,
-					ui === "shadcn"
-						? '\t\t\t\t\t\t\t<Button type="button" variant="link" size="sm" onClick={() => stepper.goTo(section.step)}>Edit</Button>'
-						: `\t\t\t\t\t\t\t<button type="button" onClick={() => stepper.goTo(section.step)}${cls(ui, "text-sm font-medium text-primary")}>Edit</button>`,
+					'\t\t\t\t\t<div key={section.step} className="rounded-lg border p-4">',
+					'\t\t\t\t\t\t<div className="flex items-center justify-between">',
+					'\t\t\t\t\t\t\t<h3 className="text-sm font-medium">{section.title}</h3>',
+					'\t\t\t\t\t\t\t<Button type="button" variant="link" size="sm" onClick={() => stepper.goTo(section.step)}>Edit</Button>',
 					"\t\t\t\t\t\t</div>",
-					`\t\t\t\t\t\t<dl${cls(ui, "mt-2 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm")}>`,
+					'\t\t\t\t\t\t<dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">',
 					"\t\t\t\t\t\t\t{section.fields.map(([key, label]) => (",
 					"\t\t\t\t\t\t\t\t<Fragment key={key}>",
-					`\t\t\t\t\t\t\t\t\t<dt${cls(ui, "text-muted-foreground")}>{label}</dt>`,
+					'\t\t\t\t\t\t\t\t\t<dt className="text-muted-foreground">{label}</dt>',
 					"\t\t\t\t\t\t\t\t\t<dd>{display(data?.[key])}</dd>",
 					"\t\t\t\t\t\t\t\t</Fragment>",
 					"\t\t\t\t\t\t\t))}",
@@ -1116,21 +910,15 @@ function summaryStep(ctx: StepContext): string {
 				]
 			: []),
 		"\t\t\t{finished ? (",
-		`\t\t\t\t<p role="status"${cls(ui, "text-sm font-medium")}>All done. Send the data to your API here.</p>`,
+		'\t\t\t\t<p role="status" className="text-sm font-medium">All done. Send the data to your API here.</p>',
 		"\t\t\t) : (",
-		`\t\t\t\t<div${cls(ui, "flex justify-between gap-2")}>`,
+		'\t\t\t\t<div className="flex justify-between gap-2">',
 		indent(
-			button(
-				ui,
-				"back",
-				'type="button" onClick={() => stepper.prev()}',
-				"Back",
-			),
+			button("back", 'type="button" onClick={() => stepper.prev()}', "Back"),
 			5,
 		),
 		indent(
 			button(
-				ui,
 				"primary",
 				`type="button" onClick={() => stepper.setComplete(${str(id)})}`,
 				"Finish",
@@ -1146,22 +934,20 @@ function summaryStep(ctx: StepContext): string {
 }
 
 function contentStep(ctx: StepContext): string {
-	const ui = ctx.config.ui;
 	return source([
 		USE_CLIENT,
 		"",
-		ui === "shadcn" ? 'import { Button } from "@/components/ui/button";' : null,
+		'import { Button } from "@/components/ui/button";',
 		`import { ${ctx.names.flow} } from "../definition";`,
 		"",
 		...header(ctx),
 		"",
 		"\treturn (",
-		`\t\t<section${cls(ui, "grid gap-4")}>`,
-		`\t\t\t<p${cls(ui, "text-sm text-muted-foreground")}>Replace this with the content of this step.</p>`,
-		`\t\t\t<div${cls(ui, "flex justify-between gap-2")}>`,
+		'\t\t<section className="grid gap-4">',
+		'\t\t\t<p className="text-sm text-muted-foreground">Replace this with the content of this step.</p>',
+		'\t\t\t<div className="flex justify-between gap-2">',
 		indent(
 			button(
-				ui,
 				"back",
 				'type="button" disabled={stepper.isFirst} onClick={() => stepper.prev()}',
 				"Back",
@@ -1170,7 +956,6 @@ function contentStep(ctx: StepContext): string {
 		),
 		indent(
 			button(
-				ui,
 				"primary",
 				'type="button" onClick={() => stepper.next({ complete: true })}',
 				"Continue",

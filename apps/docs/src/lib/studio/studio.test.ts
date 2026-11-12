@@ -15,7 +15,6 @@ import {
 	PRESET_IDS,
 	PRESETS,
 	type StudioConfig,
-	UI_KITS,
 	unavailableReason,
 	VALIDATIONS,
 } from "./config";
@@ -66,32 +65,30 @@ function matrix(): StudioConfig[] {
 	for (const framework of FRAMEWORKS)
 		for (const navigation of NAVIGATIONS)
 			for (const form of FORMS)
-				for (const validation of VALIDATIONS)
-					for (const ui of UI_KITS) {
-						const config = {
-							...DEFAULT_CONFIG,
-							framework,
-							navigation,
-							form,
-							validation,
-							ui,
-						};
-						if (
-							unavailableReason(config, {
-								kind: "navigation",
-								value: navigation,
-							})
-						)
-							continue;
-						if (
-							unavailableReason(config, {
-								kind: "validation",
-								value: validation,
-							})
-						)
-							continue;
-						out.push(normalizeConfig(config));
-					}
+				for (const validation of VALIDATIONS) {
+					const config = {
+						...DEFAULT_CONFIG,
+						framework,
+						navigation,
+						form,
+						validation,
+					};
+					if (
+						unavailableReason(config, {
+							kind: "navigation",
+							value: navigation,
+						})
+					)
+						continue;
+					if (
+						unavailableReason(config, {
+							kind: "validation",
+							value: validation,
+						})
+					)
+						continue;
+					out.push(normalizeConfig(config));
+				}
 	for (const layout of LAYOUTS) {
 		for (const indicator of ["number", "check", "dot"] as const) {
 			out.push({ ...DEFAULT_CONFIG, layout, indicator });
@@ -111,14 +108,11 @@ function matrix(): StudioConfig[] {
 	);
 	for (const id of PRESET_IDS) out.push(PRESETS[id].config);
 	for (const form of FORMS)
-		for (const validation of VALIDATIONS)
-			for (const ui of UI_KITS) {
-				const config = { ...EVERY_FIELD, form, validation, ui };
-				if (
-					!unavailableReason(config, { kind: "validation", value: validation })
-				)
-					out.push(normalizeConfig(config));
-			}
+		for (const validation of VALIDATIONS) {
+			const config = { ...EVERY_FIELD, form, validation };
+			if (!unavailableReason(config, { kind: "validation", value: validation }))
+				out.push(normalizeConfig(config));
+		}
 	return out;
 }
 
@@ -184,12 +178,22 @@ describe("fields", () => {
 		expect(decodeConfig(encodeConfig(EVERY_FIELD))).toEqual(EVERY_FIELD);
 	});
 
-	it("ships the date picker only to shadcn flows that use a date", () => {
+	it("ships the date picker only to flows that use a date", () => {
 		const has = (config: StudioConfig) =>
 			paths(config).some((p) => p.endsWith("/date-picker.tsx"));
 		expect(has(EVERY_FIELD)).toBe(true);
-		expect(has({ ...EVERY_FIELD, ui: "tailwind" })).toBe(false);
 		expect(has(DEFAULT_CONFIG)).toBe(false);
+	});
+
+	it("opens links from when the UI kit was configurable, with shadcn/ui", () => {
+		const legacy = { ...DEFAULT_CONFIG, ui: "tailwind" };
+		const encoded = btoa(JSON.stringify(legacy))
+			.replace(/\+/g, "-")
+			.replace(/\//g, "_")
+			.replace(/=+$/, "");
+		const decoded = decodeConfig(encoded);
+		expect(decoded).toEqual(DEFAULT_CONFIG);
+		expect(decoded && "ui" in decoded).toBe(false);
 	});
 });
 
@@ -351,10 +355,6 @@ describe("generated files", () => {
 			"select",
 			"switch",
 		]);
-		expect(
-			generateProject({ ...DEFAULT_CONFIG, ui: "tailwind" })
-				.registryDependencies,
-		).toEqual([]);
 	});
 
 	it("never lets user text escape a string or JSX text", async () => {

@@ -85,7 +85,6 @@ function definitionFile(config: StudioConfig, names: Names): string {
 
 function stepContentFile(config: StudioConfig, names: Names): string {
 	const { flow, Flow, stepIds } = names;
-	const ui = config.ui;
 	const imports = stepIds.map(
 		(id) => `import { ${stepComponent(id)} } from "./steps/${kebab(id)}";`,
 	);
@@ -94,9 +93,9 @@ function stepContentFile(config: StudioConfig, names: Names): string {
 		`\tconst step = ${flow}.useStepperContext((stepper) => stepper.current);`,
 		"",
 		"\treturn (",
-		`\t\t<header${cls(ui, "grid gap-1")}>`,
-		`\t\t\t<h2${cls(ui, "text-lg font-semibold tracking-tight")}>{step.title}</h2>`,
-		`\t\t\t{step.description ? <p${cls(ui, "text-sm text-muted-foreground")}>{step.description}</p> : null}`,
+		`\t\t<header${cls("grid gap-1")}>`,
+		`\t\t\t<h2${cls("text-lg font-semibold tracking-tight")}>{step.title}</h2>`,
+		`\t\t\t{step.description ? <p${cls("text-sm text-muted-foreground")}>{step.description}</p> : null}`,
 		"\t\t</header>",
 		"\t);",
 		"}",
@@ -115,7 +114,7 @@ function stepContentFile(config: StudioConfig, names: Names): string {
 			"// Every panel stays mounted, so unsaved field state survives Back and Next.",
 			`export function ${Flow}StepContent() {`,
 			"\treturn (",
-			`\t\t<div${cls(ui, "grid gap-6")}>`,
+			`\t\t<div${cls("grid gap-6")}>`,
 			`\t\t\t<${Flow}StepHeader />`,
 			...stepIds.map((id) =>
 				[
@@ -149,7 +148,7 @@ function stepContentFile(config: StudioConfig, names: Names): string {
 		"\tconst Step = STEP_COMPONENTS[id];",
 		"",
 		"\treturn (",
-		`\t\t<div${cls(ui, "grid gap-6")}>`,
+		`\t\t<div${cls("grid gap-6")}>`,
 		`\t\t\t<${Flow}StepHeader />`,
 		"\t\t\t<Step />",
 		"\t\t</div>",
@@ -160,7 +159,6 @@ function stepContentFile(config: StudioConfig, names: Names): string {
 
 function flowFile(config: StudioConfig, names: Names): string {
 	const { flow, Flow, slug } = names;
-	const ui = config.ui;
 	const { navigation, layout, behavior } = config;
 	const controlled = navigation !== "component";
 	const routed = navigation === "routes";
@@ -178,14 +176,12 @@ function flowFile(config: StudioConfig, names: Names): string {
 		behavior.persist ? "defaultData={draft.data}" : null,
 		behavior.persist ? "onDataChange={draft.save}" : null,
 		guard ? "beforeStepChange={validateForward}" : null,
-		ui === "unstyled"
-			? null
-			: `className="${vertical ? "flex flex-col gap-8 sm:flex-row" : "grid gap-8"}"`,
+		`className="${vertical ? "flex flex-col gap-8 sm:flex-row" : "grid gap-8"}"`,
 	].filter((p): p is string => p !== null);
 
 	const content = routed ? "{children}" : `<${Flow}StepContent />`;
 	const body = vertical
-		? [`<div${cls(ui, "min-w-0 flex-1")}>`, `\t${content}`, "</div>"]
+		? [`<div${cls("min-w-0 flex-1")}>`, `\t${content}`, "</div>"]
 		: [content];
 
 	return source([
@@ -328,10 +324,7 @@ export function generateProject(config: StudioConfig): GeneratedProject {
 	if (config.layout === "circular")
 		files.push(component("progress-ring.tsx", PROGRESS_RING));
 	// The same component the Studio preview renders, shipped verbatim.
-	if (
-		config.ui === "shadcn" &&
-		config.steps.some((step) => step.fields.some((f) => f.type === "date"))
-	)
+	if (config.steps.some((step) => step.fields.some((f) => f.type === "date")))
 		files.push(component("date-picker.tsx", DATE_PICKER));
 	if (config.behavior.persist) {
 		files.push({
