@@ -177,9 +177,21 @@ export const VALIDATION_OPTIONS: Option<Validation>[] = [
 ];
 
 export const INDICATOR_OPTIONS: Option<Indicator>[] = [
-	{ value: "number", label: "Number", hint: "1 2 3" },
-	{ value: "check", label: "Check", hint: "Check when done" },
-	{ value: "dot", label: "Dot", hint: "A filled dot" },
+	{
+		value: "number",
+		label: "Number",
+		hint: "Every marker shows its step number, done or not.",
+	},
+	{
+		value: "check",
+		label: "Check",
+		hint: "Numbers until a step is complete, then a check. You see it after moving past a step.",
+	},
+	{
+		value: "dot",
+		label: "Dot",
+		hint: "A dot instead of a number. Color alone tells done, current and next apart.",
+	},
 ];
 
 // ─── Compatibility ────────────────────────────────────────────────────────────

@@ -362,7 +362,7 @@ function renderControl(c: FieldContext, w: Wiring): string {
 					`\t<SelectTrigger id=${w.id}${w.invalid("value")} className="w-full">`,
 					'\t\t<SelectValue placeholder="Select…" />',
 					"\t</SelectTrigger>",
-					"\t<SelectContent>",
+					"\t<SelectContent alignItemWithTrigger={false}>",
 					indent(
 						each(
 							"<SelectItem key={option} value={option}>\n\t{option}\n</SelectItem>",

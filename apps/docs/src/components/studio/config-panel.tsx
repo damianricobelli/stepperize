@@ -1,5 +1,6 @@
 "use client";
 
+import { Database, ListOrdered, Palette, Route } from "lucide-react";
 import type { ReactNode } from "react";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -31,6 +32,7 @@ import {
 	SwitchRow,
 	ThumbnailPicker,
 } from "./controls";
+import { IndicatorExample } from "./indicator-example";
 import { LayoutThumbnail } from "./layout-thumbnail";
 import { StepsEditor } from "./steps-editor";
 import { useStudio } from "./studio-provider";
@@ -135,16 +137,26 @@ export function ConfigPanel() {
 	return (
 		<Tabs defaultValue="design" className="flex min-h-0 flex-1 flex-col gap-0">
 			<div className="flex h-12 shrink-0 items-center border-b px-3">
-				<TabsList className="w-full">
-					<TabsTrigger value="design">Design</TabsTrigger>
+				<TabsList className="w-full *:data-[slot=tabs-trigger]:gap-1 *:data-[slot=tabs-trigger]:px-1 [&_svg:not([class*=size-])]:size-3.5">
+					<TabsTrigger value="design">
+						<Palette aria-hidden data-icon="inline-start" />
+						Design
+					</TabsTrigger>
 					<TabsTrigger value="steps">
+						<ListOrdered aria-hidden data-icon="inline-start" />
 						Steps
 						<span className="text-[11px] text-muted-foreground tabular-nums">
 							{config.steps.length}
 						</span>
 					</TabsTrigger>
-					<TabsTrigger value="data">Data</TabsTrigger>
-					<TabsTrigger value="routing">Routing</TabsTrigger>
+					<TabsTrigger value="data">
+						<Database aria-hidden data-icon="inline-start" />
+						Data
+					</TabsTrigger>
+					<TabsTrigger value="routing">
+						<Route aria-hidden data-icon="inline-start" />
+						Routing
+					</TabsTrigger>
 				</TabsList>
 			</div>
 
@@ -171,7 +183,7 @@ export function ConfigPanel() {
 							<SelectTrigger aria-label="Template" className="w-full">
 								<SelectValue placeholder="Custom flow" />
 							</SelectTrigger>
-							<SelectContent>
+							<SelectContent alignItemWithTrigger={false}>
 								{PRESET_IDS.map((id) => (
 									<SelectItem key={id} value={id}>
 										{PRESETS[id].label}
@@ -203,6 +215,14 @@ export function ConfigPanel() {
 							}
 							choices={INDICATOR_OPTIONS}
 						/>
+						<IndicatorExample indicator={config.indicator} />
+						<p className="text-xs text-pretty text-muted-foreground">
+							{
+								INDICATOR_OPTIONS.find(
+									(option) => option.value === config.indicator,
+								)?.hint
+							}
+						</p>
 					</Section>
 				</TabsContent>
 

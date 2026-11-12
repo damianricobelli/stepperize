@@ -153,7 +153,7 @@ function ShadcnControl({
 					<SelectTrigger id={id} aria-invalid={invalid} className="w-full">
 						<SelectValue placeholder="Select…" />
 					</SelectTrigger>
-					<SelectContent>
+					<SelectContent alignItemWithTrigger={false}>
 						{options.map((option) => (
 							<SelectItem key={option} value={option}>
 								{option}

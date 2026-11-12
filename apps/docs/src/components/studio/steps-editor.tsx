@@ -203,7 +203,7 @@ function FieldRow({
 					>
 						<SelectValue />
 					</SelectTrigger>
-					<SelectContent>
+					<SelectContent alignItemWithTrigger={false}>
 						{FIELD_GROUPS.map(({ group, types }) => (
 							<SelectGroup key={group}>
 								<SelectLabel>{group}</SelectLabel>
