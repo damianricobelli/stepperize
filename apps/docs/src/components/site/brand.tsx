@@ -19,7 +19,14 @@ export function BrandMark({ className }: { className?: string }) {
 	);
 }
 
-export function Wordmark({ className }: { className?: string }) {
+export function Wordmark({
+	className,
+	wordClassName = "max-[359px]:sr-only",
+}: {
+	className?: string;
+	/** Classes for the word; by default the smallest phones (320px) drop it. */
+	wordClassName?: string;
+}) {
 	return (
 		<span
 			className={cn(
@@ -28,8 +35,7 @@ export function Wordmark({ className }: { className?: string }) {
 			)}
 		>
 			<BrandMark />
-			{/* The smallest phones (320px) keep the mark and drop the word. */}
-			<span className="max-[359px]:sr-only">Stepperize</span>
+			<span className={wordClassName}>Stepperize</span>
 		</span>
 	);
 }

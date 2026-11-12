@@ -37,7 +37,8 @@ export function SiteHeader({
 					aria-label="Stepperize home"
 					className="pressable -ml-1 mr-1 rounded-lg p-1 outline-none pointer-coarse:py-1.5 focus-visible:ring-2 focus-visible:ring-ring sm:mr-4"
 				>
-					<Wordmark />
+					{/* Below ~420px the word and the three links don't fit together; the mark stays. */}
+					<Wordmark wordClassName="max-[419px]:sr-only" />
 				</Link>
 
 				<nav aria-label="Main" className="flex items-center">

@@ -387,8 +387,10 @@ function PreviewNav({ mobile }: { mobile: boolean }) {
 											className={cn(
 												cn(
 													"text-sm font-medium whitespace-nowrap",
-													mobile &&
-														"not-group-data-[status=active]/item:hidden",
+													// Like the generated `max-sm:` rule, but for the preview's own width.
+													mobile
+														? "not-group-data-[status=active]/item:hidden"
+														: "@max-sm:not-group-data-[status=active]/item:hidden",
 												),
 											)}
 										/>

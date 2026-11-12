@@ -87,7 +87,8 @@ function FlowName() {
 	return (
 		<InputGroup
 			title={`components/stepperize/${meta.project.names.slug}/`}
-			className="h-8 w-auto max-w-80 min-w-0 justify-self-center bg-muted/50 dark:bg-input/30"
+			// On a narrow workspace it takes its own row under the tabs and actions.
+			className="h-8 w-auto max-w-80 min-w-0 justify-self-center bg-muted/50 @max-lg:order-last @max-lg:col-span-3 @max-lg:w-full @max-lg:max-w-none dark:bg-input/30"
 		>
 			<InputGroupAddon className="border-r pr-2 text-xs font-normal @max-3xl:hidden">
 				Flow name
@@ -114,43 +115,49 @@ function Toolbar() {
 	const { state, actions } = useStudio();
 	return (
 		// A container, so labels collapse when the workspace is narrow, not only the viewport.
-		<div className="@container grid h-12 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 border-b px-3">
-			<TabsList className="justify-self-start">
-				<TabsTrigger value="preview">
-					<Eye aria-hidden data-icon="inline-start" />
-					Preview
-				</TabsTrigger>
-				<TabsTrigger value="code">
-					<Code2 aria-hidden data-icon="inline-start" />
-					Code
-				</TabsTrigger>
-			</TabsList>
-			<FlowName />
-			<div className="flex items-center justify-end gap-1.5">
-				<Segmented
-					label="Preview size"
-					value={state.device}
-					onChange={(device) => {
-						actions.setDevice(device);
-						actions.setView("preview");
-					}}
-					choices={DEVICES}
-					className="w-auto"
-					itemClassName="w-8 flex-none"
-				/>
-				<Separator orientation="vertical" className="mx-0.5 h-5" />
-				<Button
-					type="button"
-					variant="ghost"
-					size="sm"
-					title="Reset the preview state"
-					onClick={actions.restartPreview}
-				>
-					<RotateCcw aria-hidden data-icon="inline-start" />
-					<span className="@max-2xl:sr-only">Reset</span>
-				</Button>
-				<ShareButton />
-				<InstallButton />
+		<div className="@container border-b">
+			<div className="grid min-h-12 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 px-3 py-2">
+				<TabsList className="justify-self-start">
+					<TabsTrigger value="preview">
+						<Eye aria-hidden data-icon="inline-start" />
+						Preview
+					</TabsTrigger>
+					<TabsTrigger value="code">
+						<Code2 aria-hidden data-icon="inline-start" />
+						Code
+					</TabsTrigger>
+				</TabsList>
+				<FlowName />
+				<div className="flex items-center justify-end gap-1.5">
+					<Segmented
+						label="Preview size"
+						value={state.device}
+						onChange={(device) => {
+							actions.setDevice(device);
+							actions.setView("preview");
+						}}
+						choices={DEVICES}
+						// A phone-width preview of a phone-width screen says nothing new.
+						className="w-auto @max-lg:hidden"
+						itemClassName="w-8 flex-none"
+					/>
+					<Separator
+						orientation="vertical"
+						className="mx-0.5 h-5 @max-lg:hidden"
+					/>
+					<Button
+						type="button"
+						variant="ghost"
+						size="sm"
+						title="Reset the preview state"
+						onClick={actions.restartPreview}
+					>
+						<RotateCcw aria-hidden data-icon="inline-start" />
+						<span className="@max-2xl:sr-only">Reset</span>
+					</Button>
+					<ShareButton />
+					<InstallButton />
+				</div>
 			</div>
 		</div>
 	);
