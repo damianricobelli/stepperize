@@ -14,7 +14,11 @@ import { Route as BlocksRouteImport } from './routes/blocks'
 import { Route as ChangelogRouteImport } from './routes/changelog'
 import { Route as DocsRouteImport } from './routes/docs'
 import { Route as LegacyRouteImport } from './routes/legacy'
+import { Route as LlmsFullDottxtRouteImport } from './routes/llms-full[.]txt'
+import { Route as LlmsDottxtRouteImport } from './routes/llms[.]txt'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
+import { Route as StudioRouteImport } from './routes/studio'
+import { Route as StudioDotmdRouteImport } from './routes/studio[.]md'
 import { Route as ApiOgRouteImport } from './routes/api/og'
 import { Route as ApiSearchRouteImport } from './routes/api/search'
 import { Route as BlocksIndexRouteImport } from './routes/blocks/index'
@@ -24,8 +28,11 @@ import { Route as ChangelogSplatRouteImport } from './routes/changelog/$'
 import { Route as DocsIndexRouteImport } from './routes/docs/index'
 import { Route as DocsSplatRouteImport } from './routes/docs/$'
 import { Route as DocsReactRouteImport } from './routes/docs/react'
+import { Route as LlmsDotmdxSplatRouteImport } from './routes/llms[.]mdx.$'
 import { Route as DocsReactIndexRouteImport } from './routes/docs/react/index'
 import { Route as DocsReactSplatRouteImport } from './routes/docs/react/$'
+import { Route as RStudioConfigRouteImport } from './routes/r/studio.$config'
+import { Route as RStudioSchemaDotjsonRouteImport } from './routes/r/studio.schema[.]json'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -52,9 +59,29 @@ const LegacyRoute = LegacyRouteImport.update({
   path: '/legacy',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LlmsFullDottxtRoute = LlmsFullDottxtRouteImport.update({
+  id: '/llms-full.txt',
+  path: '/llms-full.txt',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LlmsDottxtRoute = LlmsDottxtRouteImport.update({
+  id: '/llms.txt',
+  path: '/llms.txt',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   id: '/sitemap.xml',
   path: '/sitemap.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StudioRoute = StudioRouteImport.update({
+  id: '/studio',
+  path: '/studio',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StudioDotmdRoute = StudioDotmdRouteImport.update({
+  id: '/studio.md',
+  path: '/studio.md',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiOgRoute = ApiOgRouteImport.update({
@@ -102,6 +129,11 @@ const DocsReactRoute = DocsReactRouteImport.update({
   path: '/react',
   getParentRoute: () => DocsRoute,
 } as any)
+const LlmsDotmdxSplatRoute = LlmsDotmdxSplatRouteImport.update({
+  id: '/llms.mdx/$',
+  path: '/llms.mdx/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DocsReactIndexRoute = DocsReactIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -112,6 +144,16 @@ const DocsReactSplatRoute = DocsReactSplatRouteImport.update({
   path: '/$',
   getParentRoute: () => DocsReactRoute,
 } as any)
+const RStudioConfigRoute = RStudioConfigRouteImport.update({
+  id: '/r/studio/$config',
+  path: '/r/studio/$config',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RStudioSchemaDotjsonRoute = RStudioSchemaDotjsonRouteImport.update({
+  id: '/r/studio/schema.json',
+  path: '/r/studio/schema.json',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -119,32 +161,46 @@ export interface FileRoutesByFullPath {
   '/changelog': typeof ChangelogRouteWithChildren
   '/docs': typeof DocsRouteWithChildren
   '/legacy': typeof LegacyRoute
+  '/llms-full.txt': typeof LlmsFullDottxtRoute
+  '/llms.txt': typeof LlmsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/studio': typeof StudioRoute
+  '/studio.md': typeof StudioDotmdRoute
   '/api/og': typeof ApiOgRoute
   '/api/search': typeof ApiSearchRoute
   '/blocks/$blockId': typeof BlocksBlockIdRoute
   '/changelog/$': typeof ChangelogSplatRoute
   '/docs/$': typeof DocsSplatRoute
   '/docs/react': typeof DocsReactRouteWithChildren
+  '/llms.mdx/$': typeof LlmsDotmdxSplatRoute
   '/blocks/': typeof BlocksIndexRoute
   '/changelog/': typeof ChangelogIndexRoute
   '/docs/': typeof DocsIndexRoute
   '/docs/react/$': typeof DocsReactSplatRoute
+  '/r/studio/$config': typeof RStudioConfigRoute
+  '/r/studio/schema.json': typeof RStudioSchemaDotjsonRoute
   '/docs/react/': typeof DocsReactIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/legacy': typeof LegacyRoute
+  '/llms-full.txt': typeof LlmsFullDottxtRoute
+  '/llms.txt': typeof LlmsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/studio': typeof StudioRoute
+  '/studio.md': typeof StudioDotmdRoute
   '/api/og': typeof ApiOgRoute
   '/api/search': typeof ApiSearchRoute
   '/blocks/$blockId': typeof BlocksBlockIdRoute
   '/changelog/$': typeof ChangelogSplatRoute
   '/docs/$': typeof DocsSplatRoute
+  '/llms.mdx/$': typeof LlmsDotmdxSplatRoute
   '/blocks': typeof BlocksIndexRoute
   '/changelog': typeof ChangelogIndexRoute
   '/docs': typeof DocsIndexRoute
   '/docs/react/$': typeof DocsReactSplatRoute
+  '/r/studio/$config': typeof RStudioConfigRoute
+  '/r/studio/schema.json': typeof RStudioSchemaDotjsonRoute
   '/docs/react': typeof DocsReactIndexRoute
 }
 export interface FileRoutesById {
@@ -154,17 +210,24 @@ export interface FileRoutesById {
   '/changelog': typeof ChangelogRouteWithChildren
   '/docs': typeof DocsRouteWithChildren
   '/legacy': typeof LegacyRoute
+  '/llms-full.txt': typeof LlmsFullDottxtRoute
+  '/llms.txt': typeof LlmsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/studio': typeof StudioRoute
+  '/studio.md': typeof StudioDotmdRoute
   '/api/og': typeof ApiOgRoute
   '/api/search': typeof ApiSearchRoute
   '/blocks/$blockId': typeof BlocksBlockIdRoute
   '/changelog/$': typeof ChangelogSplatRoute
   '/docs/$': typeof DocsSplatRoute
   '/docs/react': typeof DocsReactRouteWithChildren
+  '/llms.mdx/$': typeof LlmsDotmdxSplatRoute
   '/blocks/': typeof BlocksIndexRoute
   '/changelog/': typeof ChangelogIndexRoute
   '/docs/': typeof DocsIndexRoute
   '/docs/react/$': typeof DocsReactSplatRoute
+  '/r/studio/$config': typeof RStudioConfigRoute
+  '/r/studio/schema.json': typeof RStudioSchemaDotjsonRoute
   '/docs/react/': typeof DocsReactIndexRoute
 }
 export interface FileRouteTypes {
@@ -175,32 +238,46 @@ export interface FileRouteTypes {
     | '/changelog'
     | '/docs'
     | '/legacy'
+    | '/llms-full.txt'
+    | '/llms.txt'
     | '/sitemap.xml'
+    | '/studio'
+    | '/studio.md'
     | '/api/og'
     | '/api/search'
     | '/blocks/$blockId'
     | '/changelog/$'
     | '/docs/$'
     | '/docs/react'
+    | '/llms.mdx/$'
     | '/blocks/'
     | '/changelog/'
     | '/docs/'
     | '/docs/react/$'
+    | '/r/studio/$config'
+    | '/r/studio/schema.json'
     | '/docs/react/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/legacy'
+    | '/llms-full.txt'
+    | '/llms.txt'
     | '/sitemap.xml'
+    | '/studio'
+    | '/studio.md'
     | '/api/og'
     | '/api/search'
     | '/blocks/$blockId'
     | '/changelog/$'
     | '/docs/$'
+    | '/llms.mdx/$'
     | '/blocks'
     | '/changelog'
     | '/docs'
     | '/docs/react/$'
+    | '/r/studio/$config'
+    | '/r/studio/schema.json'
     | '/docs/react'
   id:
     | '__root__'
@@ -209,17 +286,24 @@ export interface FileRouteTypes {
     | '/changelog'
     | '/docs'
     | '/legacy'
+    | '/llms-full.txt'
+    | '/llms.txt'
     | '/sitemap.xml'
+    | '/studio'
+    | '/studio.md'
     | '/api/og'
     | '/api/search'
     | '/blocks/$blockId'
     | '/changelog/$'
     | '/docs/$'
     | '/docs/react'
+    | '/llms.mdx/$'
     | '/blocks/'
     | '/changelog/'
     | '/docs/'
     | '/docs/react/$'
+    | '/r/studio/$config'
+    | '/r/studio/schema.json'
     | '/docs/react/'
   fileRoutesById: FileRoutesById
 }
@@ -229,9 +313,16 @@ export interface RootRouteChildren {
   ChangelogRoute: typeof ChangelogRouteWithChildren
   DocsRoute: typeof DocsRouteWithChildren
   LegacyRoute: typeof LegacyRoute
+  LlmsFullDottxtRoute: typeof LlmsFullDottxtRoute
+  LlmsDottxtRoute: typeof LlmsDottxtRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  StudioRoute: typeof StudioRoute
+  StudioDotmdRoute: typeof StudioDotmdRoute
   ApiOgRoute: typeof ApiOgRoute
   ApiSearchRoute: typeof ApiSearchRoute
+  LlmsDotmdxSplatRoute: typeof LlmsDotmdxSplatRoute
+  RStudioConfigRoute: typeof RStudioConfigRoute
+  RStudioSchemaDotjsonRoute: typeof RStudioSchemaDotjsonRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -271,11 +362,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LegacyRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/llms-full.txt': {
+      id: '/llms-full.txt'
+      path: '/llms-full.txt'
+      fullPath: '/llms-full.txt'
+      preLoaderRoute: typeof LlmsFullDottxtRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/llms.txt': {
+      id: '/llms.txt'
+      path: '/llms.txt'
+      fullPath: '/llms.txt'
+      preLoaderRoute: typeof LlmsDottxtRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/sitemap.xml': {
       id: '/sitemap.xml'
       path: '/sitemap.xml'
       fullPath: '/sitemap.xml'
       preLoaderRoute: typeof SitemapDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/studio': {
+      id: '/studio'
+      path: '/studio'
+      fullPath: '/studio'
+      preLoaderRoute: typeof StudioRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/studio.md': {
+      id: '/studio.md'
+      path: '/studio.md'
+      fullPath: '/studio.md'
+      preLoaderRoute: typeof StudioDotmdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/og': {
@@ -341,6 +460,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DocsReactRouteImport
       parentRoute: typeof DocsRoute
     }
+    '/llms.mdx/$': {
+      id: '/llms.mdx/$'
+      path: '/llms.mdx/$'
+      fullPath: '/llms.mdx/$'
+      preLoaderRoute: typeof LlmsDotmdxSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/docs/react/': {
       id: '/docs/react/'
       path: '/'
@@ -354,6 +480,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/docs/react/$'
       preLoaderRoute: typeof DocsReactSplatRouteImport
       parentRoute: typeof DocsReactRoute
+    }
+    '/r/studio/$config': {
+      id: '/r/studio/$config'
+      path: '/r/studio/$config'
+      fullPath: '/r/studio/$config'
+      preLoaderRoute: typeof RStudioConfigRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/r/studio/schema.json': {
+      id: '/r/studio/schema.json'
+      path: '/r/studio/schema.json'
+      fullPath: '/r/studio/schema.json'
+      preLoaderRoute: typeof RStudioSchemaDotjsonRouteImport
+      parentRoute: typeof rootRouteImport
     }
   }
 }
@@ -419,9 +559,16 @@ const rootRouteChildren: RootRouteChildren = {
   ChangelogRoute: ChangelogRouteWithChildren,
   DocsRoute: DocsRouteWithChildren,
   LegacyRoute: LegacyRoute,
+  LlmsFullDottxtRoute: LlmsFullDottxtRoute,
+  LlmsDottxtRoute: LlmsDottxtRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
+  StudioRoute: StudioRoute,
+  StudioDotmdRoute: StudioDotmdRoute,
   ApiOgRoute: ApiOgRoute,
   ApiSearchRoute: ApiSearchRoute,
+  LlmsDotmdxSplatRoute: LlmsDotmdxSplatRoute,
+  RStudioConfigRoute: RStudioConfigRoute,
+  RStudioSchemaDotjsonRoute: RStudioSchemaDotjsonRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

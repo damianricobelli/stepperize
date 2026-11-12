@@ -19,7 +19,6 @@ import { StatBar } from "./social-proof";
  */
 const DOCS = {
 	getStarted: "v8/getting-started/first-stepper",
-	whatsNew: "v8/migration/v8",
 } as const;
 
 /**
@@ -55,15 +54,19 @@ function Hero() {
 			<div className="relative mx-auto w-full max-w-7xl px-4 pt-10 pb-16 sm:px-6 sm:pt-20 sm:pb-20 lg:pt-24 lg:pb-28">
 				<div className="mx-auto flex max-w-4xl flex-col items-center text-center">
 					<Link
-						to="/docs/$"
-						params={{ _splat: DOCS.whatsNew }}
+						to="/studio"
 						className="lp-rise pressable hit-44 group inline-flex items-center gap-2 rounded-full border bg-card/70 py-1 pr-2.5 pl-1 text-[13px] text-muted-foreground shadow-xs outline-none backdrop-blur hover:border-foreground/15 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
 					>
 						<span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
 							<Sparkles className="size-3" aria-hidden />
-							v8
+							New
 						</span>
-						Typed navigation results, shared flows
+						<span>
+							Stepper Studio
+							<span className="max-sm:hidden">
+								: build a flow, install it in one command
+							</span>
+						</span>
 						<ArrowRight
 							className="size-3.5 transition-transform duration-200 ease-out-strong group-hover:translate-x-0.5"
 							aria-hidden

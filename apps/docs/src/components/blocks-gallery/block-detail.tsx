@@ -10,6 +10,7 @@ import {
 	ExternalLink,
 	Package,
 	Paintbrush,
+	SlidersHorizontal,
 	Sparkles,
 } from "lucide-react";
 import {
@@ -22,6 +23,7 @@ import {
 	sourceUrl,
 	v0Url,
 } from "@/lib/blocks";
+import { presetForBlock } from "@/lib/studio/config";
 import { cn } from "@/lib/utils";
 import { DifficultyBadge } from "./block-badges";
 import { BlockInstall } from "./block-install";
@@ -45,6 +47,7 @@ export function BlockDetail({
 	const category = getCategory(block.category);
 	const related = relatedBlocks(block.id);
 	const dependencies = blockDependencies(code);
+	const studioPreset = presetForBlock(block.id);
 
 	return (
 		<div className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6 lg:py-14">
@@ -112,6 +115,16 @@ export function BlockDetail({
 							Open in
 							<V0Logo className="h-3.5 w-auto" />
 						</a>
+						{studioPreset ? (
+							<Link
+								to="/studio"
+								search={{ preset: studioPreset }}
+								className="pressable inline-flex items-center gap-2 rounded-lg border bg-background px-4 py-2.5 text-sm font-semibold hover:bg-muted"
+							>
+								<SlidersHorizontal className="size-4" aria-hidden />
+								Customize in Studio
+							</Link>
+						) : null}
 						<a
 							href={sourceUrl(block.id)}
 							target="_blank"

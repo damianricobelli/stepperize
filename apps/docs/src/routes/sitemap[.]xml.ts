@@ -23,6 +23,7 @@ function buildSitemap(): string {
 
 	// Blocks gallery + every block detail page.
 	add("/blocks", "0.9", now);
+	add("/studio", "0.8", now);
 	for (const block of BLOCKS) {
 		add(`/blocks/${block.id}`, "0.7", now);
 	}

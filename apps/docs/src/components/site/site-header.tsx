@@ -9,23 +9,36 @@ import { HeaderStars } from "@/components/landing/social-proof";
 import { cn } from "@/lib/utils";
 import { Wordmark } from "./brand";
 
-type NavTarget = "docs" | "blocks" | "changelog";
+type NavTarget = "docs" | "blocks" | "studio" | "changelog";
 
 /**
- * Shared top navigation for the marketing surfaces (landing + Blocks gallery).
+ * Shared top navigation for the marketing surfaces (landing, Blocks, Studio).
  * Every primary destination stays visible on phones: the bar is short enough
  * that a hamburger would only hide the two links people came for.
  */
-export function SiteHeader({ active }: { active?: NavTarget }) {
+export function SiteHeader({
+	active,
+	width = "contained",
+}: {
+	active?: NavTarget;
+	/** `full` lines the bar up with full-bleed app surfaces such as the Studio. */
+	width?: "contained" | "full";
+}) {
 	return (
 		<header className="sticky top-[var(--fd-banner-height,0px)] z-40 border-b border-border/70 bg-background/80 backdrop-blur-xl supports-backdrop-filter:bg-background/65">
-			<div className="mx-auto flex h-14 w-full max-w-7xl items-center gap-1 pr-[max(0.75rem,env(safe-area-inset-right))] pl-[max(1rem,env(safe-area-inset-left))] sm:px-6">
+			<div
+				className={cn(
+					"mx-auto flex h-14 w-full items-center gap-1 pr-[max(0.75rem,env(safe-area-inset-right))] pl-[max(1rem,env(safe-area-inset-left))]",
+					width === "contained" ? "max-w-7xl sm:px-6" : "sm:px-4",
+				)}
+			>
 				<Link
 					to="/"
 					aria-label="Stepperize home"
 					className="pressable -ml-1 mr-1 rounded-lg p-1 outline-none pointer-coarse:py-1.5 focus-visible:ring-2 focus-visible:ring-ring sm:mr-4"
 				>
-					<Wordmark />
+					{/* Below ~420px the word and the three links don't fit together; the mark stays. */}
+					<Wordmark wordClassName="max-[419px]:sr-only" />
 				</Link>
 
 				<nav aria-label="Main" className="flex items-center">
@@ -37,6 +50,9 @@ export function SiteHeader({ active }: { active?: NavTarget }) {
 					</NavLink>
 					<NavLink active={active === "blocks"} href={{ to: "/blocks" }}>
 						Blocks
+					</NavLink>
+					<NavLink active={active === "studio"} href={{ to: "/studio" }}>
+						Studio
 					</NavLink>
 					<NavLink
 						active={active === "changelog"}
@@ -66,6 +82,7 @@ function NavLink({
 	href:
 		| { to: "/docs/$"; params: { _splat: string } }
 		| { to: "/blocks" }
+		| { to: "/studio" }
 		| { to: "/changelog" };
 	active: boolean;
 	className?: string;

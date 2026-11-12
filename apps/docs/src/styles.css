@@ -16,6 +16,12 @@
 /* Finger-sized input: phones, tablets. */
 @custom-variant pointer-coarse (@media (pointer: coarse));
 
+/* shadcn/ui (base-nova) styles orientation with data-horizontal/data-vertical,
+   but Base UI only sets data-orientation. Without these, slider tracks,
+   separators, toggle-group corners and tab lists lose their sizing. */
+@custom-variant data-horizontal (&[data-orientation="horizontal"]);
+@custom-variant data-vertical (&[data-orientation="vertical"]);
+
 /*
  * One palette for every surface. Neutrals carry a faint cool tint (hue 270)
  * so the brand blue sits on them naturally; the docs map onto the same
