@@ -23,10 +23,10 @@
 		"test:install": "pnpm --filter @stepperize/react exec playwright install chromium --only-shell"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "2.5.15",
+		"@biomejs/biome": "2.6.7",
 		"@changesets/changelog-github": "1.0.1",
 		"@changesets/cli": "^3.0.3",
-		"turbo": "2.11.8",
+		"turbo": "2.11.11",
 		"typescript": "catalog:"
 	},
 	"packageManager": "pnpm@10.28.0",

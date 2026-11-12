@@ -1,5 +1,5 @@
 {
-	"$schema": "https://biomejs.dev/schemas/2.5.15/schema.json",
+	"$schema": "https://biomejs.dev/schemas/2.6.7/schema.json",
 	"files": {
 		"includes": [
 			"**",
@@ -27,6 +27,16 @@
 			"tailwindDirectives": true
 		}
 	},
+	"markdown": {
+		"formatter": {
+			"enabled": false
+		}
+	},
+	"yaml": {
+		"formatter": {
+			"enabled": false
+		}
+	},
 	"linter": {
 		"enabled": true,
 		"rules": {
@@ -35,7 +45,7 @@
 				"useKeyWithClickEvents": "off"
 			},
 			"nursery": {
-				"useSortedClasses": "off"
+				"useTailwindSortedClasses": "off"
 			},
 			"style": {
 				"useBlockStatements": "off"
@@ -54,5 +64,17 @@
 				"noBannedTypes": "error"
 			}
 		}
-	}
+	},
+	"overrides": [
+		{
+			"includes": ["packages/react/src/**"],
+			"linter": {
+				"rules": {
+					"correctness": {
+						"noComponentHookFactories": "off"
+					}
+				}
+			}
+		}
+	]
 }
