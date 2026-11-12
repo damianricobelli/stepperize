@@ -1,11 +1,16 @@
 "use client";
 
-import { FileCode2, FolderOpen } from "lucide-react";
-import { useMemo } from "react";
-import { Button } from "@/components/ui/button";
+import { Fragment, useMemo } from "react";
+import {
+	ResizableHandle,
+	ResizablePanel,
+	ResizablePanelGroup,
+} from "@/components/ui/resizable";
+import { useIsMobile } from "@/hooks/use-mobile";
 import type { GeneratedFile } from "@/lib/studio/codegen/generate";
 import { type TokenKind, tokenize } from "@/lib/studio/highlight";
 import { CopyButton } from "./controls";
+import { FileTree } from "./file-tree";
 import { useStudio } from "./studio-provider";
 
 const TOKEN_CLASS: Record<TokenKind, string | undefined> = {
@@ -16,18 +21,6 @@ const TOKEN_CLASS: Record<TokenKind, string | undefined> = {
 	comment: "text-muted-foreground italic",
 	number: "text-amber-700 dark:text-amber-300",
 };
-
-/** Groups files by folder so route files read apart from the component folder. */
-function groupFiles(
-	files: GeneratedFile[],
-): { dir: string; files: GeneratedFile[] }[] {
-	const groups = new Map<string, GeneratedFile[]>();
-	for (const file of files) {
-		const dir = file.path.slice(0, file.path.lastIndexOf("/"));
-		groups.set(dir, [...(groups.get(dir) ?? []), file]);
-	}
-	return [...groups].map(([dir, files]) => ({ dir, files }));
-}
 
 function Code({ source }: { source: string }) {
 	const lines = useMemo(() => tokenize(source.replace(/\n$/, "")), [source]);
@@ -55,62 +48,75 @@ function Code({ source }: { source: string }) {
 	);
 }
 
+/** The open file's path, with the file name standing out from its folders. */
+function PathCrumbs({ path }: { path: string }) {
+	const parts = path.split("/");
+	const name = parts.pop();
+	return (
+		<p className="flex min-w-0 items-center gap-1 text-xs" title={path}>
+			<span className="truncate text-muted-foreground">
+				{parts.map((part) => (
+					<Fragment key={part}>
+						{part}
+						<span className="px-0.5 text-muted-foreground/50">/</span>
+					</Fragment>
+				))}
+			</span>
+			<span className="shrink-0 font-medium text-foreground">{name}</span>
+		</p>
+	);
+}
+
+/** The open file with its path and a copy action. */
+function FileContent({ file }: { file: GeneratedFile }) {
+	return (
+		<div className="h-full min-w-0 overflow-auto bg-card">
+			<div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b bg-card/95 px-4 py-2 backdrop-blur">
+				<PathCrumbs path={file.path} />
+				<CopyButton value={file.content} label={`Copy ${file.path}`} size="xs">
+					Copy
+				</CopyButton>
+			</div>
+			<Code source={file.content} />
+		</div>
+	);
+}
+
 export function CodeView() {
 	const { state, actions, meta } = useStudio();
+	const mobile = useIsMobile();
 	const { files } = meta.project;
 	const active = files.find((f) => f.path === state.file) ?? files[0];
-	const groups = groupFiles(files);
+	const tree = (
+		<FileTree files={files} active={active} onSelect={actions.selectFile} />
+	);
+
+	// Phones stack the tree above the code; wider screens split them with a handle.
+	if (mobile) {
+		return (
+			<div className="grid h-full min-h-0 grid-rows-[auto_minmax(0,1fr)]">
+				<div className="max-h-56 overflow-y-auto border-b bg-sidebar/60 p-2">
+					{tree}
+				</div>
+				<FileContent file={active} />
+			</div>
+		);
+	}
 
 	return (
-		<div className="grid h-full min-h-0 grid-rows-[auto_minmax(0,1fr)] md:grid-cols-[15rem_minmax(0,1fr)] md:grid-rows-1">
-			<nav
-				aria-label="Generated files"
-				className="flex gap-0.5 overflow-x-auto border-b bg-muted/30 p-2 md:flex-col md:overflow-y-auto md:border-r md:border-b-0"
+		<ResizablePanelGroup orientation="horizontal" className="h-full min-h-0">
+			<ResizablePanel
+				defaultSize={256}
+				minSize={180}
+				maxSize="50"
+				className="bg-sidebar/60"
 			>
-				{groups.map((group) => (
-					<div key={group.dir} className="contents md:grid md:gap-0.5 md:pb-2">
-						<p className="hidden items-center gap-1.5 px-2 pt-1 pb-0.5 font-mono text-[11px] break-all text-muted-foreground md:flex">
-							<FolderOpen aria-hidden className="size-3 shrink-0" />
-							{group.dir}/
-						</p>
-						{group.files.map((file) => (
-							<Button
-								key={file.path}
-								type="button"
-								variant={file === active ? "secondary" : "ghost"}
-								size="sm"
-								aria-current={file === active ? "true" : undefined}
-								title={file.path}
-								onClick={() => actions.selectFile(file.path)}
-								className="shrink-0 justify-start font-mono text-xs font-normal text-muted-foreground aria-[current]:text-foreground md:w-full"
-							>
-								<FileCode2 aria-hidden data-icon="inline-start" />
-								<span className="truncate">
-									{file.path.slice(group.dir.length + 1)}
-								</span>
-							</Button>
-						))}
-					</div>
-				))}
-			</nav>
-			<div className="min-w-0 overflow-auto bg-card">
-				<div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b bg-card/95 px-4 py-2 backdrop-blur">
-					<span className="truncate font-mono text-xs text-muted-foreground">
-						{active.path}
-					</span>
-					<span className="ml-auto shrink-0 text-xs text-muted-foreground tabular-nums">
-						{files.length} files
-					</span>
-					<CopyButton
-						value={active.content}
-						label={`Copy ${active.path}`}
-						size="xs"
-					>
-						Copy
-					</CopyButton>
-				</div>
-				<Code source={active.content} />
-			</div>
-		</div>
+				<div className="h-full overflow-y-auto p-2">{tree}</div>
+			</ResizablePanel>
+			<ResizableHandle withHandle />
+			<ResizablePanel minSize="40">
+				<FileContent file={active} />
+			</ResizablePanel>
+		</ResizablePanelGroup>
 	);
 }
