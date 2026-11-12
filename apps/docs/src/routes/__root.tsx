@@ -45,6 +45,8 @@ export const Route = createRootRoute({
 			{ rel: "icon", href: "/favicon.ico", sizes: "any" },
 			{ rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
 			{ rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
+			// Machine-readable docs index (https://llmstxt.org).
+			{ rel: "alternate", type: "text/plain", href: "/llms.txt" },
 		],
 	}),
 	shellComponent: RootDocument,

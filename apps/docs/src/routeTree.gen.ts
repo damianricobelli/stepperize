@@ -14,6 +14,8 @@ import { Route as BlocksRouteImport } from './routes/blocks'
 import { Route as ChangelogRouteImport } from './routes/changelog'
 import { Route as DocsRouteImport } from './routes/docs'
 import { Route as LegacyRouteImport } from './routes/legacy'
+import { Route as LlmsFullDottxtRouteImport } from './routes/llms-full[.]txt'
+import { Route as LlmsDottxtRouteImport } from './routes/llms[.]txt'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as StudioRouteImport } from './routes/studio'
 import { Route as ApiOgRouteImport } from './routes/api/og'
@@ -25,6 +27,7 @@ import { Route as ChangelogSplatRouteImport } from './routes/changelog/$'
 import { Route as DocsIndexRouteImport } from './routes/docs/index'
 import { Route as DocsSplatRouteImport } from './routes/docs/$'
 import { Route as DocsReactRouteImport } from './routes/docs/react'
+import { Route as LlmsDotmdxSplatRouteImport } from './routes/llms[.]mdx.$'
 import { Route as DocsReactIndexRouteImport } from './routes/docs/react/index'
 import { Route as DocsReactSplatRouteImport } from './routes/docs/react/$'
 import { Route as RStudioConfigRouteImport } from './routes/r/studio.$config'
@@ -52,6 +55,16 @@ const DocsRoute = DocsRouteImport.update({
 const LegacyRoute = LegacyRouteImport.update({
   id: '/legacy',
   path: '/legacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LlmsFullDottxtRoute = LlmsFullDottxtRouteImport.update({
+  id: '/llms-full.txt',
+  path: '/llms-full.txt',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LlmsDottxtRoute = LlmsDottxtRouteImport.update({
+  id: '/llms.txt',
+  path: '/llms.txt',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
@@ -109,6 +122,11 @@ const DocsReactRoute = DocsReactRouteImport.update({
   path: '/react',
   getParentRoute: () => DocsRoute,
 } as any)
+const LlmsDotmdxSplatRoute = LlmsDotmdxSplatRouteImport.update({
+  id: '/llms.mdx/$',
+  path: '/llms.mdx/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DocsReactIndexRoute = DocsReactIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -131,6 +149,8 @@ export interface FileRoutesByFullPath {
   '/changelog': typeof ChangelogRouteWithChildren
   '/docs': typeof DocsRouteWithChildren
   '/legacy': typeof LegacyRoute
+  '/llms-full.txt': typeof LlmsFullDottxtRoute
+  '/llms.txt': typeof LlmsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/studio': typeof StudioRoute
   '/api/og': typeof ApiOgRoute
@@ -139,6 +159,7 @@ export interface FileRoutesByFullPath {
   '/changelog/$': typeof ChangelogSplatRoute
   '/docs/$': typeof DocsSplatRoute
   '/docs/react': typeof DocsReactRouteWithChildren
+  '/llms.mdx/$': typeof LlmsDotmdxSplatRoute
   '/blocks/': typeof BlocksIndexRoute
   '/changelog/': typeof ChangelogIndexRoute
   '/docs/': typeof DocsIndexRoute
@@ -149,6 +170,8 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/legacy': typeof LegacyRoute
+  '/llms-full.txt': typeof LlmsFullDottxtRoute
+  '/llms.txt': typeof LlmsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/studio': typeof StudioRoute
   '/api/og': typeof ApiOgRoute
@@ -156,6 +179,7 @@ export interface FileRoutesByTo {
   '/blocks/$blockId': typeof BlocksBlockIdRoute
   '/changelog/$': typeof ChangelogSplatRoute
   '/docs/$': typeof DocsSplatRoute
+  '/llms.mdx/$': typeof LlmsDotmdxSplatRoute
   '/blocks': typeof BlocksIndexRoute
   '/changelog': typeof ChangelogIndexRoute
   '/docs': typeof DocsIndexRoute
@@ -170,6 +194,8 @@ export interface FileRoutesById {
   '/changelog': typeof ChangelogRouteWithChildren
   '/docs': typeof DocsRouteWithChildren
   '/legacy': typeof LegacyRoute
+  '/llms-full.txt': typeof LlmsFullDottxtRoute
+  '/llms.txt': typeof LlmsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/studio': typeof StudioRoute
   '/api/og': typeof ApiOgRoute
@@ -178,6 +204,7 @@ export interface FileRoutesById {
   '/changelog/$': typeof ChangelogSplatRoute
   '/docs/$': typeof DocsSplatRoute
   '/docs/react': typeof DocsReactRouteWithChildren
+  '/llms.mdx/$': typeof LlmsDotmdxSplatRoute
   '/blocks/': typeof BlocksIndexRoute
   '/changelog/': typeof ChangelogIndexRoute
   '/docs/': typeof DocsIndexRoute
@@ -193,6 +220,8 @@ export interface FileRouteTypes {
     | '/changelog'
     | '/docs'
     | '/legacy'
+    | '/llms-full.txt'
+    | '/llms.txt'
     | '/sitemap.xml'
     | '/studio'
     | '/api/og'
@@ -201,6 +230,7 @@ export interface FileRouteTypes {
     | '/changelog/$'
     | '/docs/$'
     | '/docs/react'
+    | '/llms.mdx/$'
     | '/blocks/'
     | '/changelog/'
     | '/docs/'
@@ -211,6 +241,8 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/legacy'
+    | '/llms-full.txt'
+    | '/llms.txt'
     | '/sitemap.xml'
     | '/studio'
     | '/api/og'
@@ -218,6 +250,7 @@ export interface FileRouteTypes {
     | '/blocks/$blockId'
     | '/changelog/$'
     | '/docs/$'
+    | '/llms.mdx/$'
     | '/blocks'
     | '/changelog'
     | '/docs'
@@ -231,6 +264,8 @@ export interface FileRouteTypes {
     | '/changelog'
     | '/docs'
     | '/legacy'
+    | '/llms-full.txt'
+    | '/llms.txt'
     | '/sitemap.xml'
     | '/studio'
     | '/api/og'
@@ -239,6 +274,7 @@ export interface FileRouteTypes {
     | '/changelog/$'
     | '/docs/$'
     | '/docs/react'
+    | '/llms.mdx/$'
     | '/blocks/'
     | '/changelog/'
     | '/docs/'
@@ -253,10 +289,13 @@ export interface RootRouteChildren {
   ChangelogRoute: typeof ChangelogRouteWithChildren
   DocsRoute: typeof DocsRouteWithChildren
   LegacyRoute: typeof LegacyRoute
+  LlmsFullDottxtRoute: typeof LlmsFullDottxtRoute
+  LlmsDottxtRoute: typeof LlmsDottxtRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   StudioRoute: typeof StudioRoute
   ApiOgRoute: typeof ApiOgRoute
   ApiSearchRoute: typeof ApiSearchRoute
+  LlmsDotmdxSplatRoute: typeof LlmsDotmdxSplatRoute
   RStudioConfigRoute: typeof RStudioConfigRoute
 }
 
@@ -295,6 +334,20 @@ declare module '@tanstack/react-router' {
       path: '/legacy'
       fullPath: '/legacy'
       preLoaderRoute: typeof LegacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/llms-full.txt': {
+      id: '/llms-full.txt'
+      path: '/llms-full.txt'
+      fullPath: '/llms-full.txt'
+      preLoaderRoute: typeof LlmsFullDottxtRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/llms.txt': {
+      id: '/llms.txt'
+      path: '/llms.txt'
+      fullPath: '/llms.txt'
+      preLoaderRoute: typeof LlmsDottxtRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/sitemap.xml': {
@@ -373,6 +426,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/docs/react'
       preLoaderRoute: typeof DocsReactRouteImport
       parentRoute: typeof DocsRoute
+    }
+    '/llms.mdx/$': {
+      id: '/llms.mdx/$'
+      path: '/llms.mdx/$'
+      fullPath: '/llms.mdx/$'
+      preLoaderRoute: typeof LlmsDotmdxSplatRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/docs/react/': {
       id: '/docs/react/'
@@ -459,10 +519,13 @@ const rootRouteChildren: RootRouteChildren = {
   ChangelogRoute: ChangelogRouteWithChildren,
   DocsRoute: DocsRouteWithChildren,
   LegacyRoute: LegacyRoute,
+  LlmsFullDottxtRoute: LlmsFullDottxtRoute,
+  LlmsDottxtRoute: LlmsDottxtRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   StudioRoute: StudioRoute,
   ApiOgRoute: ApiOgRoute,
   ApiSearchRoute: ApiSearchRoute,
+  LlmsDotmdxSplatRoute: LlmsDotmdxSplatRoute,
   RStudioConfigRoute: RStudioConfigRoute,
 }
 export const routeTree = rootRouteImport

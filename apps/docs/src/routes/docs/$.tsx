@@ -95,14 +95,24 @@ export const Route = createFileRoute("/docs/$")({
 			);
 		}
 
+		const head = seo({
+			fullTitle: title,
+			description,
+			keywords: docKeywords(splat),
+			canonical,
+			type: "article",
+		});
 		return {
-			...seo({
-				fullTitle: title,
-				description,
-				keywords: docKeywords(splat),
-				canonical,
-				type: "article",
-			}),
+			...head,
+			links: [
+				...head.links,
+				// The same page as markdown, for LLMs and coding agents.
+				{
+					rel: "alternate",
+					type: "text/markdown",
+					href: `/llms.mdx/${getDocsPageSlugs(splat.split("/").filter(Boolean)).join("/")}`,
+				},
+			],
 			scripts,
 		};
 	},
