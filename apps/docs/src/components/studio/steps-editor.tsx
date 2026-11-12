@@ -22,7 +22,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import { Toggle } from "@/components/ui/toggle";
+import { Switch } from "@/components/ui/switch";
 import { deriveNames } from "@/lib/studio/codegen/shared";
 import {
 	CHOICE_TYPES,
@@ -159,6 +159,7 @@ function FieldRow({
 			updateStep(c, stepIndex, (s) => updateField(s, fieldIndex, next)),
 		);
 	const { min, max } = sliderRange(field);
+	const requiredId = `field-${stepIndex}-${fieldIndex}-required`;
 
 	return (
 		<div className="grid gap-1.5 rounded-lg border bg-background p-2">
@@ -216,22 +217,30 @@ function FieldRow({
 						))}
 					</SelectContent>
 				</Select>
-				<Toggle
-					variant="outline"
-					size="sm"
-					aria-label="Required"
-					disabled={field.type === "slider"}
+				<Field
+					orientation="horizontal"
+					data-disabled={field.type === "slider"}
+					className="w-auto shrink-0 gap-1.5"
 					title={
 						field.type === "slider"
 							? "A slider always holds a value"
-							: "Required fields must be filled in"
+							: "Required fields must be filled in before Continue"
 					}
-					pressed={field.type === "slider" || field.required}
-					onPressedChange={(required) => patch({ required })}
-					className="text-xs"
 				>
-					Required
-				</Toggle>
+					<Switch
+						id={requiredId}
+						size="sm"
+						disabled={field.type === "slider"}
+						checked={field.type === "slider" || field.required}
+						onCheckedChange={(required) => patch({ required })}
+					/>
+					<FieldLabel
+						htmlFor={requiredId}
+						className="text-xs font-normal text-muted-foreground"
+					>
+						Required
+					</FieldLabel>
+				</Field>
 			</div>
 			{CHOICE_TYPES.has(field.type) ? (
 				<OptionsInput
