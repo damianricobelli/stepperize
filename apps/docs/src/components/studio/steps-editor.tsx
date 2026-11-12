@@ -11,6 +11,13 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
+import {
+	Combobox,
+	ComboboxChip,
+	ComboboxChips,
+	ComboboxChipsInput,
+	ComboboxValue,
+} from "@/components/ui/combobox";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import {
@@ -64,42 +71,94 @@ function updateField(
 	};
 }
 
-/** Options are typed as text and committed on blur, so a trailing comma survives typing. */
+/** Adds each comma-separated part as an option: trimmed, capped, unique, within the limit. */
+function addOptions(options: string[], text: string): string[] {
+	const next = [...options];
+	for (const part of text.split(",")) {
+		const option = part.trim().slice(0, LIMITS.option);
+		if (option && !next.includes(option) && next.length < LIMITS.options)
+			next.push(option);
+	}
+	return next;
+}
+
+/**
+ * Choices as chips. Enter or a comma adds the typed text, pasting a
+ * comma-separated list adds each part, Backspace on an empty input removes
+ * the last chip. A choice field keeps at least one option, so the last chip
+ * cannot be removed. Built on shadcn's Combobox chips, without a popup: the
+ * options are made up, so there is nothing to pick from.
+ */
 function OptionsInput({
 	options,
-	onCommit,
+	onChange,
 	label,
 }: {
 	options: string[];
-	onCommit: (options: string[]) => void;
+	onChange: (options: string[]) => void;
 	label: string;
 }) {
-	const [draft, setDraft] = useState(options.join(", "));
-	const commit = () => {
-		const next = [
-			...new Set(
-				draft
-					.split(",")
-					.map((o) => o.trim().slice(0, LIMITS.option))
-					.filter(Boolean),
-			),
-		].slice(0, LIMITS.options);
-		const safe = next.length ? next : ["Option A"];
-		onCommit(safe);
-		setDraft(safe.join(", "));
+	const [draft, setDraft] = useState("");
+	const full = options.length >= LIMITS.options;
+	const commit = (text: string, rest = "") => {
+		const next = addOptions(options, text);
+		if (next.length !== options.length) onChange(next);
+		setDraft(rest);
 	};
+
 	return (
-		<Input
-			aria-label={`${label} options`}
-			value={draft}
-			onChange={(event) => setDraft(event.target.value)}
-			onBlur={commit}
-			onKeyDown={(event) => {
-				if (event.key === "Enter") commit();
+		<Combobox
+			multiple
+			items={options}
+			value={options}
+			onValueChange={(next: string[]) => {
+				if (next.length) onChange(next);
 			}}
-			placeholder="Comma-separated options"
-			className="h-7 text-xs"
-		/>
+			inputValue={draft}
+			// A comma commits what precedes it however it was entered: typed, pasted,
+			// autocorrected or from a virtual keyboard that sends no key events.
+			onInputValueChange={(value) => {
+				const cut = value.lastIndexOf(",");
+				if (cut === -1) setDraft(value);
+				else commit(value.slice(0, cut), value.slice(cut + 1).trimStart());
+			}}
+		>
+			<ComboboxChips className="min-h-7 py-0.5 text-xs">
+				<ComboboxValue>
+					{(values: string[]) => (
+						<>
+							{values.map((option) => (
+								<ComboboxChip key={option} showRemove={values.length > 1}>
+									{option}
+								</ComboboxChip>
+							))}
+							<ComboboxChipsInput
+								aria-label={`${label} options`}
+								placeholder={full ? "" : "Add option…"}
+								disabled={full}
+								onKeyDown={(event) => {
+									if (event.key === "Enter") {
+										event.preventDefault();
+										commit(draft);
+									}
+								}}
+								onPaste={(event) => {
+									const text = event.clipboardData.getData("text");
+									if (!text.includes(",")) return;
+									event.preventDefault();
+									commit(text);
+								}}
+								onBlur={() => commit(draft)}
+								className="min-w-20"
+							/>
+							<span className="ml-auto pr-1 text-[11px] text-muted-foreground tabular-nums">
+								{values.length}/{LIMITS.options}
+							</span>
+						</>
+					)}
+				</ComboboxValue>
+			</ComboboxChips>
+		</Combobox>
 	);
 }
 
@@ -244,10 +303,9 @@ function FieldRow({
 			</div>
 			{CHOICE_TYPES.has(field.type) ? (
 				<OptionsInput
-					key={(field.options ?? []).join("|")}
 					label={field.label}
 					options={field.options ?? []}
-					onCommit={(options) => patch({ options })}
+					onChange={(options) => patch({ options })}
 				/>
 			) : null}
 			{field.type === "slider" ? (
