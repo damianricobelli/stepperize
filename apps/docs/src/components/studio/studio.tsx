@@ -1,9 +1,20 @@
 "use client";
 
-import { Code2, Eye, Monitor, RotateCcw, Smartphone } from "lucide-react";
+import {
+	Code2,
+	Eye,
+	Monitor,
+	Pencil,
+	RotateCcw,
+	Smartphone,
+} from "lucide-react";
 import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import {
+	InputGroup,
+	InputGroupAddon,
+	InputGroupInput,
+} from "@/components/ui/input-group";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LIMITS, type StudioConfig } from "@/lib/studio/config";
@@ -66,22 +77,35 @@ const DEVICES: { value: StudioDevice; label: string; icon: ReactNode }[] = [
 ];
 
 /** The flow's name, edited in place at the center of the toolbar. It names the folder, the definition and the components. */
+/**
+ * The flow's name, edited in place at the center of the toolbar. A labelled
+ * field with a pencil, so it reads as "this flow is called…", not a title.
+ * The name becomes the folder, the definition and the component prefix.
+ */
 function FlowName() {
 	const { state, actions, meta } = useStudio();
 	return (
-		<div className="flex min-w-0 items-center gap-2">
-			<Input
+		<InputGroup
+			title={`components/stepperize/${meta.project.names.slug}/`}
+			className="h-8 w-auto max-w-80 min-w-0 bg-muted/50 dark:bg-input/30"
+		>
+			<InputGroupAddon className="border-r pr-2 text-xs font-normal">
+				Flow name
+			</InputGroupAddon>
+			<InputGroupInput
 				aria-label="Flow name"
-				title={`components/stepperize/${meta.project.names.slug}/`}
 				value={state.config.name}
 				maxLength={LIMITS.name}
-				size={Math.max(8, state.config.name.length + 1)}
+				size={Math.max(6, state.config.name.length)}
 				onChange={(event) =>
 					actions.update((c) => ({ ...c, name: event.target.value }))
 				}
-				className="h-7 w-auto max-w-56 border-transparent bg-transparent text-center font-medium shadow-none dark:bg-transparent pointer-fine:hover:border-input"
+				className="w-auto font-medium"
 			/>
-		</div>
+			<InputGroupAddon align="inline-end">
+				<Pencil aria-hidden className="size-3.5" />
+			</InputGroupAddon>
+		</InputGroup>
 	);
 }
 

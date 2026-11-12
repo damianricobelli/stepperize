@@ -44,10 +44,11 @@ export function PreviewStage() {
 	const [inspect, setInspect] = useState(false);
 
 	return (
-		<div className="min-h-full bg-[radial-gradient(color-mix(in_oklch,var(--foreground)_9%,transparent)_1px,transparent_1px)] [background-size:16px_16px] p-4 sm:p-8">
+		// A centered column: the flow sits in the middle of the canvas, not at its top.
+		<div className="flex min-h-full flex-col justify-center bg-[radial-gradient(color-mix(in_oklch,var(--foreground)_9%,transparent)_1px,transparent_1px)] [background-size:16px_16px] p-4 sm:p-8">
 			<div
 				className={cn(
-					"mx-auto overflow-hidden rounded-xl border bg-card shadow-lg transition-opacity duration-150",
+					"mx-auto w-full overflow-hidden rounded-xl border bg-card shadow-lg transition-opacity duration-150",
 					mobile ? "max-w-[390px]" : "max-w-3xl",
 					meta.pending && "opacity-80",
 				)}
