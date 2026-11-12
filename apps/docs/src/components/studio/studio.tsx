@@ -96,11 +96,12 @@ function FlowName() {
 				aria-label="Flow name"
 				value={state.config.name}
 				maxLength={LIMITS.name}
-				size={Math.max(6, state.config.name.length)}
+				// Sized to its text, so the pencil sits right after the name.
+				size={Math.max(4, state.config.name.length)}
 				onChange={(event) =>
 					actions.update((c) => ({ ...c, name: event.target.value }))
 				}
-				className="w-auto min-w-24 font-medium"
+				className="w-auto min-w-12 pr-1 font-medium [field-sizing:content]"
 			/>
 			<InputGroupAddon align="inline-end">
 				<Pencil aria-hidden className="size-3.5" />
