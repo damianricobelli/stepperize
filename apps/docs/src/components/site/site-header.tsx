@@ -9,7 +9,7 @@ import { HeaderStars } from "@/components/landing/social-proof";
 import { cn } from "@/lib/utils";
 import { Wordmark } from "./brand";
 
-type NavTarget = "docs" | "blocks" | "changelog";
+type NavTarget = "docs" | "blocks" | "studio" | "changelog";
 
 /**
  * Shared top navigation for the marketing surfaces (landing + Blocks gallery).
@@ -37,6 +37,9 @@ export function SiteHeader({ active }: { active?: NavTarget }) {
 					</NavLink>
 					<NavLink active={active === "blocks"} href={{ to: "/blocks" }}>
 						Blocks
+					</NavLink>
+					<NavLink active={active === "studio"} href={{ to: "/studio" }}>
+						Studio
 					</NavLink>
 					<NavLink
 						active={active === "changelog"}
@@ -66,6 +69,7 @@ function NavLink({
 	href:
 		| { to: "/docs/$"; params: { _splat: string } }
 		| { to: "/blocks" }
+		| { to: "/studio" }
 		| { to: "/changelog" };
 	active: boolean;
 	className?: string;

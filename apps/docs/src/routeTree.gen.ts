@@ -15,6 +15,7 @@ import { Route as ChangelogRouteImport } from './routes/changelog'
 import { Route as DocsRouteImport } from './routes/docs'
 import { Route as LegacyRouteImport } from './routes/legacy'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
+import { Route as StudioRouteImport } from './routes/studio'
 import { Route as ApiOgRouteImport } from './routes/api/og'
 import { Route as ApiSearchRouteImport } from './routes/api/search'
 import { Route as BlocksIndexRouteImport } from './routes/blocks/index'
@@ -26,6 +27,7 @@ import { Route as DocsSplatRouteImport } from './routes/docs/$'
 import { Route as DocsReactRouteImport } from './routes/docs/react'
 import { Route as DocsReactIndexRouteImport } from './routes/docs/react/index'
 import { Route as DocsReactSplatRouteImport } from './routes/docs/react/$'
+import { Route as RStudioConfigRouteImport } from './routes/r/studio.$config'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -55,6 +57,11 @@ const LegacyRoute = LegacyRouteImport.update({
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   id: '/sitemap.xml',
   path: '/sitemap.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StudioRoute = StudioRouteImport.update({
+  id: '/studio',
+  path: '/studio',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiOgRoute = ApiOgRouteImport.update({
@@ -112,6 +119,11 @@ const DocsReactSplatRoute = DocsReactSplatRouteImport.update({
   path: '/$',
   getParentRoute: () => DocsReactRoute,
 } as any)
+const RStudioConfigRoute = RStudioConfigRouteImport.update({
+  id: '/r/studio/$config',
+  path: '/r/studio/$config',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -120,6 +132,7 @@ export interface FileRoutesByFullPath {
   '/docs': typeof DocsRouteWithChildren
   '/legacy': typeof LegacyRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/studio': typeof StudioRoute
   '/api/og': typeof ApiOgRoute
   '/api/search': typeof ApiSearchRoute
   '/blocks/$blockId': typeof BlocksBlockIdRoute
@@ -130,12 +143,14 @@ export interface FileRoutesByFullPath {
   '/changelog/': typeof ChangelogIndexRoute
   '/docs/': typeof DocsIndexRoute
   '/docs/react/$': typeof DocsReactSplatRoute
+  '/r/studio/$config': typeof RStudioConfigRoute
   '/docs/react/': typeof DocsReactIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/legacy': typeof LegacyRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/studio': typeof StudioRoute
   '/api/og': typeof ApiOgRoute
   '/api/search': typeof ApiSearchRoute
   '/blocks/$blockId': typeof BlocksBlockIdRoute
@@ -145,6 +160,7 @@ export interface FileRoutesByTo {
   '/changelog': typeof ChangelogIndexRoute
   '/docs': typeof DocsIndexRoute
   '/docs/react/$': typeof DocsReactSplatRoute
+  '/r/studio/$config': typeof RStudioConfigRoute
   '/docs/react': typeof DocsReactIndexRoute
 }
 export interface FileRoutesById {
@@ -155,6 +171,7 @@ export interface FileRoutesById {
   '/docs': typeof DocsRouteWithChildren
   '/legacy': typeof LegacyRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/studio': typeof StudioRoute
   '/api/og': typeof ApiOgRoute
   '/api/search': typeof ApiSearchRoute
   '/blocks/$blockId': typeof BlocksBlockIdRoute
@@ -165,6 +182,7 @@ export interface FileRoutesById {
   '/changelog/': typeof ChangelogIndexRoute
   '/docs/': typeof DocsIndexRoute
   '/docs/react/$': typeof DocsReactSplatRoute
+  '/r/studio/$config': typeof RStudioConfigRoute
   '/docs/react/': typeof DocsReactIndexRoute
 }
 export interface FileRouteTypes {
@@ -176,6 +194,7 @@ export interface FileRouteTypes {
     | '/docs'
     | '/legacy'
     | '/sitemap.xml'
+    | '/studio'
     | '/api/og'
     | '/api/search'
     | '/blocks/$blockId'
@@ -186,12 +205,14 @@ export interface FileRouteTypes {
     | '/changelog/'
     | '/docs/'
     | '/docs/react/$'
+    | '/r/studio/$config'
     | '/docs/react/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/legacy'
     | '/sitemap.xml'
+    | '/studio'
     | '/api/og'
     | '/api/search'
     | '/blocks/$blockId'
@@ -201,6 +222,7 @@ export interface FileRouteTypes {
     | '/changelog'
     | '/docs'
     | '/docs/react/$'
+    | '/r/studio/$config'
     | '/docs/react'
   id:
     | '__root__'
@@ -210,6 +232,7 @@ export interface FileRouteTypes {
     | '/docs'
     | '/legacy'
     | '/sitemap.xml'
+    | '/studio'
     | '/api/og'
     | '/api/search'
     | '/blocks/$blockId'
@@ -220,6 +243,7 @@ export interface FileRouteTypes {
     | '/changelog/'
     | '/docs/'
     | '/docs/react/$'
+    | '/r/studio/$config'
     | '/docs/react/'
   fileRoutesById: FileRoutesById
 }
@@ -230,8 +254,10 @@ export interface RootRouteChildren {
   DocsRoute: typeof DocsRouteWithChildren
   LegacyRoute: typeof LegacyRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  StudioRoute: typeof StudioRoute
   ApiOgRoute: typeof ApiOgRoute
   ApiSearchRoute: typeof ApiSearchRoute
+  RStudioConfigRoute: typeof RStudioConfigRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -276,6 +302,13 @@ declare module '@tanstack/react-router' {
       path: '/sitemap.xml'
       fullPath: '/sitemap.xml'
       preLoaderRoute: typeof SitemapDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/studio': {
+      id: '/studio'
+      path: '/studio'
+      fullPath: '/studio'
+      preLoaderRoute: typeof StudioRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/og': {
@@ -355,6 +388,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DocsReactSplatRouteImport
       parentRoute: typeof DocsReactRoute
     }
+    '/r/studio/$config': {
+      id: '/r/studio/$config'
+      path: '/r/studio/$config'
+      fullPath: '/r/studio/$config'
+      preLoaderRoute: typeof RStudioConfigRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -420,8 +460,10 @@ const rootRouteChildren: RootRouteChildren = {
   DocsRoute: DocsRouteWithChildren,
   LegacyRoute: LegacyRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
+  StudioRoute: StudioRoute,
   ApiOgRoute: ApiOgRoute,
   ApiSearchRoute: ApiSearchRoute,
+  RStudioConfigRoute: RStudioConfigRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
