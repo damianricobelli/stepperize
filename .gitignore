@@ -40,3 +40,6 @@ yarn-error.log*
 
 # PNPM
 .pnpm-store
+
+# Local editor and agent config
+.claude/launch.json
