@@ -87,6 +87,13 @@ export type StudioBehavior = {
 	keepMounted: boolean;
 };
 
+export const BEHAVIOR_KEYS = [
+	"linear",
+	"guard",
+	"persist",
+	"keepMounted",
+] as const satisfies readonly (keyof StudioBehavior)[];
+
 export type StudioConfig = {
 	name: string;
 	framework: Framework;

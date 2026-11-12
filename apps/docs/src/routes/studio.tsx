@@ -19,23 +19,31 @@ export const Route = createFileRoute("/studio")({
 		c: typeof search.c === "string" ? search.c : undefined,
 		preset: PRESET_IDS.find((id) => id === search.preset),
 	}),
-	head: () => ({
-		...seo({
+	head: () => {
+		const head = seo({
 			title: "Stepper Studio",
 			description:
 				"Configure a multi-step flow, pick your framework, form and validation libraries, and install the generated code with the shadcn CLI.",
 			canonical: "/studio",
 			type: "website",
-		}),
-		scripts: [
-			jsonLdScript(
-				breadcrumbLd([
-					{ name: "Stepperize", url: "/" },
-					{ name: "Studio", url: "/studio" },
-				]),
-			),
-		],
-	}),
+		});
+		return {
+			...head,
+			links: [
+				...head.links,
+				// How agents build and install a flow without the visual editor.
+				{ rel: "alternate", type: "text/markdown", href: "/studio.md" },
+			],
+			scripts: [
+				jsonLdScript(
+					breadcrumbLd([
+						{ name: "Stepperize", url: "/" },
+						{ name: "Studio", url: "/studio" },
+					]),
+				),
+			],
+		};
+	},
 	component: StudioPage,
 });
 

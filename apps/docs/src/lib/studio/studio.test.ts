@@ -1,5 +1,10 @@
 import { transformWithOxc } from "vite";
 import { describe, expect, it } from "vitest";
+import {
+	EXAMPLE_CONFIG,
+	studioAgentGuide,
+	studioJsonSchema,
+} from "./agent-guide";
 import { generateProject, toRegistryItem } from "./codegen/generate";
 import { jsxText } from "./codegen/shared";
 import {
@@ -416,5 +421,47 @@ describe("every combination parses", () => {
 				await parse(file.path, file.content);
 			}
 		}
+	});
+});
+
+describe("agent guide", () => {
+	const guide = studioAgentGuide();
+
+	it("documents every field type, framework and preset", () => {
+		for (const type of FIELD_TYPES) expect(guide).toContain(`| \`${type}\` |`);
+		for (const framework of FRAMEWORKS)
+			expect(guide).toContain(`\`${framework}\``);
+		for (const id of PRESET_IDS)
+			expect(guide).toContain(`/studio?preset=${id}`);
+	});
+
+	it("states each compatibility rule with the reason the code gives", () => {
+		const rules = guide
+			.split("## Compatibility")[1]
+			.split("## Generated files")[0]
+			.split("\n")
+			.filter((line) => line.startsWith("- "));
+		expect(rules.length).toBeGreaterThanOrEqual(5);
+		for (const rule of rules) expect(rule).not.toMatch(/: allowed$/);
+	});
+
+	it("links configs that decode back to themselves", () => {
+		const links = [...guide.matchAll(/\/r\/studio\/([\w-]+)\.json/g)]
+			.map((match) => match[1])
+			.filter((encoded) => encoded !== "schema");
+		expect(links.length).toBeGreaterThan(PRESET_IDS.length);
+		expect(decodeConfig(links[0])).toEqual(EXAMPLE_CONFIG);
+		for (const encoded of links) expect(decodeConfig(encoded)).toBeDefined();
+	});
+
+	it("publishes a JSON Schema for the whole config", () => {
+		const schema = studioJsonSchema() as {
+			type: string;
+			properties: Record<string, unknown>;
+		};
+		expect(schema.type).toBe("object");
+		expect(Object.keys(schema.properties)).toEqual(
+			expect.arrayContaining(Object.keys(EXAMPLE_CONFIG)),
+		);
 	});
 });

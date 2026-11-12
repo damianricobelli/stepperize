@@ -18,6 +18,7 @@ import { Route as LlmsFullDottxtRouteImport } from './routes/llms-full[.]txt'
 import { Route as LlmsDottxtRouteImport } from './routes/llms[.]txt'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as StudioRouteImport } from './routes/studio'
+import { Route as StudioDotmdRouteImport } from './routes/studio[.]md'
 import { Route as ApiOgRouteImport } from './routes/api/og'
 import { Route as ApiSearchRouteImport } from './routes/api/search'
 import { Route as BlocksIndexRouteImport } from './routes/blocks/index'
@@ -31,6 +32,7 @@ import { Route as LlmsDotmdxSplatRouteImport } from './routes/llms[.]mdx.$'
 import { Route as DocsReactIndexRouteImport } from './routes/docs/react/index'
 import { Route as DocsReactSplatRouteImport } from './routes/docs/react/$'
 import { Route as RStudioConfigRouteImport } from './routes/r/studio.$config'
+import { Route as RStudioSchemaDotjsonRouteImport } from './routes/r/studio.schema[.]json'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -75,6 +77,11 @@ const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
 const StudioRoute = StudioRouteImport.update({
   id: '/studio',
   path: '/studio',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StudioDotmdRoute = StudioDotmdRouteImport.update({
+  id: '/studio.md',
+  path: '/studio.md',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiOgRoute = ApiOgRouteImport.update({
@@ -142,6 +149,11 @@ const RStudioConfigRoute = RStudioConfigRouteImport.update({
   path: '/r/studio/$config',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RStudioSchemaDotjsonRoute = RStudioSchemaDotjsonRouteImport.update({
+  id: '/r/studio/schema.json',
+  path: '/r/studio/schema.json',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -153,6 +165,7 @@ export interface FileRoutesByFullPath {
   '/llms.txt': typeof LlmsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/studio': typeof StudioRoute
+  '/studio.md': typeof StudioDotmdRoute
   '/api/og': typeof ApiOgRoute
   '/api/search': typeof ApiSearchRoute
   '/blocks/$blockId': typeof BlocksBlockIdRoute
@@ -165,6 +178,7 @@ export interface FileRoutesByFullPath {
   '/docs/': typeof DocsIndexRoute
   '/docs/react/$': typeof DocsReactSplatRoute
   '/r/studio/$config': typeof RStudioConfigRoute
+  '/r/studio/schema.json': typeof RStudioSchemaDotjsonRoute
   '/docs/react/': typeof DocsReactIndexRoute
 }
 export interface FileRoutesByTo {
@@ -174,6 +188,7 @@ export interface FileRoutesByTo {
   '/llms.txt': typeof LlmsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/studio': typeof StudioRoute
+  '/studio.md': typeof StudioDotmdRoute
   '/api/og': typeof ApiOgRoute
   '/api/search': typeof ApiSearchRoute
   '/blocks/$blockId': typeof BlocksBlockIdRoute
@@ -185,6 +200,7 @@ export interface FileRoutesByTo {
   '/docs': typeof DocsIndexRoute
   '/docs/react/$': typeof DocsReactSplatRoute
   '/r/studio/$config': typeof RStudioConfigRoute
+  '/r/studio/schema.json': typeof RStudioSchemaDotjsonRoute
   '/docs/react': typeof DocsReactIndexRoute
 }
 export interface FileRoutesById {
@@ -198,6 +214,7 @@ export interface FileRoutesById {
   '/llms.txt': typeof LlmsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/studio': typeof StudioRoute
+  '/studio.md': typeof StudioDotmdRoute
   '/api/og': typeof ApiOgRoute
   '/api/search': typeof ApiSearchRoute
   '/blocks/$blockId': typeof BlocksBlockIdRoute
@@ -210,6 +227,7 @@ export interface FileRoutesById {
   '/docs/': typeof DocsIndexRoute
   '/docs/react/$': typeof DocsReactSplatRoute
   '/r/studio/$config': typeof RStudioConfigRoute
+  '/r/studio/schema.json': typeof RStudioSchemaDotjsonRoute
   '/docs/react/': typeof DocsReactIndexRoute
 }
 export interface FileRouteTypes {
@@ -224,6 +242,7 @@ export interface FileRouteTypes {
     | '/llms.txt'
     | '/sitemap.xml'
     | '/studio'
+    | '/studio.md'
     | '/api/og'
     | '/api/search'
     | '/blocks/$blockId'
@@ -236,6 +255,7 @@ export interface FileRouteTypes {
     | '/docs/'
     | '/docs/react/$'
     | '/r/studio/$config'
+    | '/r/studio/schema.json'
     | '/docs/react/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -245,6 +265,7 @@ export interface FileRouteTypes {
     | '/llms.txt'
     | '/sitemap.xml'
     | '/studio'
+    | '/studio.md'
     | '/api/og'
     | '/api/search'
     | '/blocks/$blockId'
@@ -256,6 +277,7 @@ export interface FileRouteTypes {
     | '/docs'
     | '/docs/react/$'
     | '/r/studio/$config'
+    | '/r/studio/schema.json'
     | '/docs/react'
   id:
     | '__root__'
@@ -268,6 +290,7 @@ export interface FileRouteTypes {
     | '/llms.txt'
     | '/sitemap.xml'
     | '/studio'
+    | '/studio.md'
     | '/api/og'
     | '/api/search'
     | '/blocks/$blockId'
@@ -280,6 +303,7 @@ export interface FileRouteTypes {
     | '/docs/'
     | '/docs/react/$'
     | '/r/studio/$config'
+    | '/r/studio/schema.json'
     | '/docs/react/'
   fileRoutesById: FileRoutesById
 }
@@ -293,10 +317,12 @@ export interface RootRouteChildren {
   LlmsDottxtRoute: typeof LlmsDottxtRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   StudioRoute: typeof StudioRoute
+  StudioDotmdRoute: typeof StudioDotmdRoute
   ApiOgRoute: typeof ApiOgRoute
   ApiSearchRoute: typeof ApiSearchRoute
   LlmsDotmdxSplatRoute: typeof LlmsDotmdxSplatRoute
   RStudioConfigRoute: typeof RStudioConfigRoute
+  RStudioSchemaDotjsonRoute: typeof RStudioSchemaDotjsonRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -362,6 +388,13 @@ declare module '@tanstack/react-router' {
       path: '/studio'
       fullPath: '/studio'
       preLoaderRoute: typeof StudioRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/studio.md': {
+      id: '/studio.md'
+      path: '/studio.md'
+      fullPath: '/studio.md'
+      preLoaderRoute: typeof StudioDotmdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/og': {
@@ -455,6 +488,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RStudioConfigRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/r/studio/schema.json': {
+      id: '/r/studio/schema.json'
+      path: '/r/studio/schema.json'
+      fullPath: '/r/studio/schema.json'
+      preLoaderRoute: typeof RStudioSchemaDotjsonRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -523,10 +563,12 @@ const rootRouteChildren: RootRouteChildren = {
   LlmsDottxtRoute: LlmsDottxtRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   StudioRoute: StudioRoute,
+  StudioDotmdRoute: StudioDotmdRoute,
   ApiOgRoute: ApiOgRoute,
   ApiSearchRoute: ApiSearchRoute,
   LlmsDotmdxSplatRoute: LlmsDotmdxSplatRoute,
   RStudioConfigRoute: RStudioConfigRoute,
+  RStudioSchemaDotjsonRoute: RStudioSchemaDotjsonRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

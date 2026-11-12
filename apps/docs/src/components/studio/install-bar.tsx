@@ -11,6 +11,7 @@ import {
 	PopoverTitle,
 	PopoverTrigger,
 } from "@/components/ui/popover";
+import { agentPrompt } from "@/lib/studio/agent-guide";
 import { registryUrl } from "@/lib/studio/share";
 import { cn } from "@/lib/utils";
 import { CopyButton, Segmented } from "./controls";
@@ -91,17 +92,26 @@ function InstallDetails() {
 				</div>
 			) : null}
 
-			<a
-				href={registryUrl(meta.deferredConfig, "")}
-				target="_blank"
-				rel="noreferrer"
-				className={cn(
-					buttonVariants({ variant: "link", size: "xs" }),
-					"justify-self-start px-0 text-muted-foreground",
-				)}
-			>
-				View registry JSON <ExternalLink aria-hidden data-icon="inline-end" />
-			</a>
+			<div className="flex items-center justify-between gap-2">
+				<a
+					href={registryUrl(meta.deferredConfig, "")}
+					target="_blank"
+					rel="noreferrer"
+					className={cn(
+						buttonVariants({ variant: "link", size: "xs" }),
+						"px-0 text-muted-foreground",
+					)}
+				>
+					View registry JSON <ExternalLink aria-hidden data-icon="inline-end" />
+				</a>
+				<CopyButton
+					value={agentPrompt(meta.deferredConfig, command)}
+					label="Copy a prompt for your coding agent"
+					size="xs"
+				>
+					Copy prompt
+				</CopyButton>
+			</div>
 		</div>
 	);
 }

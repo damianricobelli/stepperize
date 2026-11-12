@@ -2,7 +2,9 @@
 User-agent: *
 Allow: /
 
-# AI crawlers — allowed; see /llms.txt for a concise, machine-readable summary.
+# AI crawlers — allowed. Machine-readable docs: /llms.txt (index), /llms-full.txt
+# (every current page), /llms.mdx/<docs path> (one page) and /studio.md (Stepper
+# Studio guide for agents).
 User-agent: GPTBot
 Allow: /
 
