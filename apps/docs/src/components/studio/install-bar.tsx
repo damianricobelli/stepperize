@@ -1,9 +1,29 @@
 "use client";
 
-import { ExternalLink, Terminal } from "lucide-react";
-import { CopyButton } from "@/components/blocks-gallery/copy-button";
+import { Download, ExternalLink } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button, buttonVariants } from "@/components/ui/button";
+import {
+	Popover,
+	PopoverContent,
+	PopoverDescription,
+	PopoverHeader,
+	PopoverTitle,
+	PopoverTrigger,
+} from "@/components/ui/popover";
 import { registryUrl } from "@/lib/studio/share";
-import { PACKAGE_MANAGERS, useStudio } from "./studio-provider";
+import { cn } from "@/lib/utils";
+import { CopyButton, Segmented } from "./controls";
+import {
+	PACKAGE_MANAGERS,
+	type PackageManager,
+	useStudio,
+} from "./studio-provider";
+
+const PM_CHOICES = PACKAGE_MANAGERS.map((pm) => ({
+	value: pm.id,
+	label: pm.id,
+}));
 
 export function useInstallCommand(): string {
 	const { state, meta } = useStudio();
@@ -13,78 +33,99 @@ export function useInstallCommand(): string {
 	return `${exec} shadcn@latest add ${registryUrl(meta.deferredConfig)}`;
 }
 
-export function InstallBar() {
+function InstallDetails() {
 	const { state, actions, meta } = useStudio();
 	const command = useInstallCommand();
 	const { dependencies, registryDependencies, usage } = meta.project;
-	const localRegistry = registryUrl(meta.deferredConfig, "");
 
 	return (
-		<div className="grid gap-2.5 border-t bg-background px-4 py-3">
-			<div className="flex min-w-0 items-center gap-2 rounded-lg border bg-muted/40 py-1 pr-1 pl-2">
-				<Terminal
-					aria-hidden
-					className="size-3.5 shrink-0 text-muted-foreground"
-				/>
-				<select
-					aria-label="Package manager"
+		<div className="grid min-w-0 grid-cols-1 gap-4">
+			<div className="grid min-w-0 grid-cols-1 gap-2">
+				<Segmented
+					label="Package manager"
 					value={state.packageManager}
-					onChange={(event) =>
-						actions.setPackageManager(
-							event.target.value as (typeof PACKAGE_MANAGERS)[number]["id"],
-						)
-					}
-					className="h-6 shrink-0 rounded-md bg-background px-1 font-mono text-[11.5px] outline-none ring-1 ring-border focus-visible:ring-2 focus-visible:ring-ring"
-				>
-					{PACKAGE_MANAGERS.map((pm) => (
-						<option key={pm.id} value={pm.id}>
-							{pm.id}
-						</option>
-					))}
-				</select>
-				<code
-					className="min-w-0 flex-1 truncate font-mono text-[12px]"
-					title={command}
-				>
-					{command}
-				</code>
-				<CopyButton
-					value={command}
-					label="Copy install command"
-					className="h-7 shrink-0 rounded-md bg-primary px-2.5 text-xs font-medium text-primary-foreground hover:text-primary-foreground pointer-fine:hover:bg-primary/90"
-				>
-					Copy
-				</CopyButton>
+					onChange={(pm: PackageManager) => actions.setPackageManager(pm)}
+					choices={PM_CHOICES}
+					itemClassName="font-mono text-xs"
+				/>
+				<div className="flex items-center gap-2 rounded-lg border bg-muted/40 py-1.5 pr-1.5 pl-3">
+					{/* One scrollable line: the encoded config is long, the command shape is what matters. */}
+					<code
+						title={command}
+						className="min-w-0 flex-1 overflow-x-auto font-mono text-xs whitespace-nowrap [scrollbar-width:none]"
+					>
+						{command}
+					</code>
+					<CopyButton
+						value={command}
+						label="Copy install command"
+						variant="default"
+						size="icon-xs"
+						className="shrink-0"
+					/>
+				</div>
+				<p className="text-xs text-pretty text-muted-foreground">{usage}</p>
 			</div>
-			<div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
-				<p className="min-w-0">{usage}</p>
-				<div className="flex flex-wrap items-center gap-1">
+
+			<div className="grid gap-1.5">
+				<p className="text-xs font-medium">Packages</p>
+				<div className="flex flex-wrap gap-1">
 					{dependencies.map((dep) => (
-						<span
-							key={dep}
-							className="rounded bg-muted px-1.5 py-0.5 font-mono text-[11px] text-foreground"
-						>
+						<Badge key={dep} variant="secondary" className="font-mono">
 							{dep}
-						</span>
-					))}
-					{registryDependencies.map((dep) => (
-						<span
-							key={dep}
-							className="rounded bg-accent px-1.5 py-0.5 font-mono text-[11px] text-accent-foreground"
-						>
-							ui/{dep}
-						</span>
+						</Badge>
 					))}
 				</div>
-				<a
-					href={localRegistry}
-					target="_blank"
-					rel="noreferrer"
-					className="ml-auto inline-flex items-center gap-1 font-medium hover:text-foreground"
-				>
-					Registry JSON <ExternalLink aria-hidden className="size-3" />
-				</a>
 			</div>
+
+			{registryDependencies.length ? (
+				<div className="grid gap-1.5">
+					<p className="text-xs font-medium">shadcn/ui components</p>
+					<div className="flex flex-wrap gap-1">
+						{registryDependencies.map((dep) => (
+							<Badge key={dep} variant="outline" className="font-mono">
+								{dep}
+							</Badge>
+						))}
+					</div>
+				</div>
+			) : null}
+
+			<a
+				href={registryUrl(meta.deferredConfig, "")}
+				target="_blank"
+				rel="noreferrer"
+				className={cn(
+					buttonVariants({ variant: "link", size: "xs" }),
+					"justify-self-start px-0 text-muted-foreground",
+				)}
+			>
+				View registry JSON <ExternalLink aria-hidden data-icon="inline-end" />
+			</a>
 		</div>
+	);
+}
+
+/** The install command and what it brings, behind the toolbar's primary action. */
+export function InstallButton() {
+	return (
+		<Popover>
+			<PopoverTrigger render={<Button type="button" size="sm" />}>
+				<Download aria-hidden data-icon="inline-start" />
+				Install
+			</PopoverTrigger>
+			<PopoverContent
+				align="end"
+				className="w-[min(28rem,calc(100vw-2rem))] gap-4 p-4"
+			>
+				<PopoverHeader>
+					<PopoverTitle>Install with the shadcn CLI</PopoverTitle>
+					<PopoverDescription>
+						Adds the generated files to your project.
+					</PopoverDescription>
+				</PopoverHeader>
+				<InstallDetails />
+			</PopoverContent>
+		</Popover>
 	);
 }

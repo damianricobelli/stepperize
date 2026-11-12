@@ -7,11 +7,15 @@ import type {
 	Validation,
 } from "../config";
 import {
+	FIELD_KINDS,
+	fieldSpec,
+	OTP_LENGTH,
+	sliderRange,
+	valueType,
+} from "../fields";
+import {
 	cls,
-	emptyValue,
-	INPUT_TYPES,
 	indent,
-	jsxAttr,
 	jsxText,
 	type Names,
 	source,
@@ -24,123 +28,666 @@ import { RHF_RESOLVERS, schemaName, valuesType } from "./validation";
  * Form adapters. Every step component follows the same contract regardless of
  * the library: seed from `stepper.data.get(id)`, validate on submit, then save
  * and complete the step in one transition with `next({ data, complete: true })`.
+ *
+ * Two independent axes meet here:
+ * - a **wiring** says how a form library binds a control (register, a
+ *   controlled value, or a named uncontrolled input), and
+ * - a **kit** says how the control looks (shadcn/ui, Tailwind, unstyled).
+ * Field renderers ask the wiring for attributes, so adding a field type means
+ * one renderer, not one per library.
  */
 
-// ─── UI kit: how a control, label, error and button are spelled ──────────────
+// ─── Wiring ──────────────────────────────────────────────────────────────────
 
-type Control = { field: StudioField; id: string; attrs: string };
+/** Native elements bound with DOM attributes. */
+type DomKind =
+	| "text"
+	| "number"
+	| "range"
+	| "checkbox"
+	| "radio"
+	| "multi"
+	| "select"
+	| "textarea";
+
+/** Components bound with a value and a change callback (or a name + default). */
+type ValueKind = "checked" | "multi" | "choice" | "slider" | "otp" | "date";
+
+type Wiring = {
+	/** `id` attribute value of the field's main control. */
+	id: string;
+	/** `id` attribute value for one option; `index` is in scope. */
+	optionId: string;
+	/** `aria-invalid` attribute, or "" when the library sets it itself. */
+	invalid: (on: "dom" | "value") => string;
+	/** Error message expression, or null without validation. */
+	message: string | null;
+	/** Attributes for a native element, including `id` and `type`. `option` is in scope for radio/multi. */
+	dom: (kind: DomKind, type?: string) => string;
+	/** Attributes for a value component (no `id`). `option` is in scope for multi. */
+	value: (kind: ValueKind) => string;
+	/** Wraps value components, e.g. in React Hook Form's `<Controller>`. */
+	wrap: (jsx: string) => string;
+};
+
+type FieldContext = {
+	field: StudioField;
+	key: string;
+	/** Module-level constant holding the field's choices. */
+	options: string;
+	/** `XValues["key"]`, for casts at the edge of untyped events. */
+	valueOf: string;
+	min: number;
+	/** ArkType infers template-literal types from patterns; plain strings need a cast. */
+	castText: boolean;
+};
+
+const attr = (name: string, expr: string) => ` ${name}={${expr}}`;
+
+function reactHookFormWiring(c: FieldContext, validated: boolean): Wiring {
+	const { key } = c;
+	const optionId = `{\`${key}-\${index}\`}`;
+	const register = (options = "") =>
+		`{...form.register(${str(key)}${options})}`;
+	return {
+		id: str(key),
+		optionId,
+		invalid: () => (validated ? attr("aria-invalid", `!!errors.${key}`) : ""),
+		message: validated ? `errors.${key}?.message` : null,
+		dom: (kind, type) => {
+			switch (kind) {
+				case "number":
+					return `id=${str(key)} type="number" ${register(', { setValueAs: (value) => (value === "" ? undefined : Number(value)) }')}`;
+				case "range":
+					return `id=${str(key)} type="range" ${register(", { valueAsNumber: true }")}`;
+				case "checkbox":
+					return `id=${str(key)} type="checkbox" ${register()}`;
+				case "radio":
+				case "multi":
+					return `id=${optionId} type="${kind === "radio" ? "radio" : "checkbox"}" value={option} ${register()}`;
+				case "select":
+				case "textarea":
+					return `id=${str(key)} ${register()}`;
+				case "text":
+					return `id=${str(key)} type="${type ?? "text"}" ${register()}`;
+			}
+		},
+		value: (kind) => {
+			switch (kind) {
+				case "checked":
+					return "checked={field.value ?? false} onCheckedChange={(checked) => field.onChange(checked)}";
+				case "multi":
+					return "checked={field.value?.includes(option) ?? false} onCheckedChange={(checked) => field.onChange(checked ? [...(field.value ?? []), option] : (field.value ?? []).filter((value) => value !== option))}";
+				case "choice":
+					return "value={field.value ?? null} onValueChange={(value) => field.onChange(value)}";
+				case "slider":
+					return `value={[field.value ?? ${c.min}]} onValueChange={(value) => field.onChange(Array.isArray(value) ? value[0] : value)}`;
+				case "otp":
+					return 'value={field.value ?? ""} onChange={(value) => field.onChange(value)}';
+				case "date":
+					return 'value={field.value ?? ""} onValueChange={(value) => field.onChange(value)}';
+			}
+		},
+		wrap: (jsx) =>
+			[
+				"<Controller",
+				"\tcontrol={form.control}",
+				`\tname=${str(key)}`,
+				"\trender={({ field }) => (",
+				indent(jsx, 2),
+				"\t)}",
+				"/>",
+			].join("\n"),
+	};
+}
+
+function tanstackWiring(c: FieldContext, validated: boolean): Wiring {
+	const change = (expr: string) => `field.handleChange(${expr})`;
+	const blur = "onBlur={field.handleBlur}";
+	const required = fieldSpec(c.field).required;
+	// biome-ignore lint/suspicious/noTemplateCurlyInString: generated source, not a template
+	const optionId = "{`${field.name}-${index}`}";
+	const text = (expr: string) =>
+		c.castText ? `${expr} as ${c.valueOf}` : expr;
+	return {
+		id: "{field.name}",
+		optionId,
+		invalid: () =>
+			validated ? attr("aria-invalid", "!field.state.meta.isValid") : "",
+		message: validated ? "field.state.meta.errors[0]?.message" : null,
+		dom: (kind, type) => {
+			const base = `id={field.name} name={field.name} ${blur}`;
+			switch (kind) {
+				case "number":
+					// valueAsNumber is NaN for an empty input: required fields report it, optional ones clear.
+					return required
+						? `${base} type="number" value={Number.isNaN(field.state.value) ? "" : (field.state.value ?? "")} onChange={(event) => ${change("event.target.valueAsNumber")}}`
+						: `${base} type="number" value={field.state.value ?? ""} onChange={(event) => ${change("Number.isNaN(event.target.valueAsNumber) ? undefined : event.target.valueAsNumber")}}`;
+				case "range":
+					return `${base} type="range" value={field.state.value ?? ${c.min}} onChange={(event) => ${change("event.target.valueAsNumber")}}`;
+				case "checkbox":
+					return `${base} type="checkbox" checked={field.state.value ?? false} onChange={(event) => ${change(`event.target.checked as ${c.valueOf}`)}}`;
+				case "radio":
+					return `id=${optionId} name={field.name} ${blur} type="radio" value={option} checked={field.state.value === option} onChange={() => ${change("option")}}`;
+				case "multi":
+					return `id=${optionId} name={field.name} ${blur} type="checkbox" value={option} checked={field.state.value?.includes(option) ?? false} onChange={(event) => ${change("event.target.checked ? [...(field.state.value ?? []), option] : (field.state.value ?? []).filter((value) => value !== option)")}}`;
+				case "select":
+					return `${base} value={field.state.value ?? ""} onChange={(event) => ${change(`event.target.value as ${c.valueOf}`)}}`;
+				case "textarea":
+					return `${base} value={field.state.value ?? ""} onChange={(event) => ${change("event.target.value")}}`;
+				case "text":
+					return `${base} type="${type ?? "text"}" value={field.state.value ?? ""} onChange={(event) => ${change(text("event.target.value"))}}`;
+			}
+		},
+		value: (kind) => {
+			switch (kind) {
+				case "checked":
+					return `checked={field.state.value ?? false} onCheckedChange={(checked) => ${change(`checked as ${c.valueOf}`)}}`;
+				case "multi":
+					return `checked={field.state.value?.includes(option) ?? false} onCheckedChange={(checked) => ${change("checked ? [...(field.state.value ?? []), option] : (field.state.value ?? []).filter((value) => value !== option)")}}`;
+				case "choice":
+					return `value={field.state.value ?? null} onValueChange={(value) => ${change(`value as ${c.valueOf}`)}}`;
+				case "slider":
+					return `value={[field.state.value ?? ${c.min}]} onValueChange={(value) => ${change("Array.isArray(value) ? value[0] : value")}}`;
+				case "otp":
+					return `value={field.state.value ?? ""} onChange={(value) => ${change(text("value"))}}`;
+				case "date":
+					return `value={field.state.value ?? ""} onValueChange={(value) => ${change("value")}}`;
+			}
+		},
+		wrap: (jsx) => jsx,
+	};
+}
+
+function conformWiring(c: FieldContext, helpers: Set<string>): Wiring {
+	const meta = `fields.${c.key}`;
+	const optionId = `{\`\${${meta}.id}-\${index}\`}`;
+	const input = (options: string) => {
+		helpers.add("getInputProps");
+		return `{...getInputProps(${meta}, ${options})}`;
+	};
+	return {
+		id: `{${meta}.id}`,
+		optionId,
+		// getInputProps and friends already set aria-invalid on native elements.
+		invalid: (on) =>
+			on === "value" ? attr("aria-invalid", `!${meta}.valid`) : "",
+		message: `${meta}.errors?.[0]`,
+		dom: (kind, type) => {
+			switch (kind) {
+				case "number":
+					return input('{ type: "number" }');
+				case "range":
+					return input('{ type: "range" }');
+				case "checkbox":
+					return input('{ type: "checkbox" }');
+				case "radio":
+					return `${input('{ type: "radio", value: option }')} id=${optionId}`;
+				case "multi":
+					return `${input('{ type: "checkbox", value: option }')} id=${optionId}`;
+				case "select":
+					helpers.add("getSelectProps");
+					return `{...getSelectProps(${meta})}`;
+				case "textarea":
+					helpers.add("getTextareaProps");
+					return `{...getTextareaProps(${meta})}`;
+				case "text":
+					return input(`{ type: "${type ?? "text"}" }`);
+			}
+		},
+		// Base UI controls submit through hidden inputs, so Conform reads them from FormData.
+		value: (kind) => {
+			const name = `name={${meta}.name}`;
+			switch (kind) {
+				case "checked":
+					return `${name} defaultChecked={${meta}.initialValue === "on"}`;
+				case "multi":
+					return `${name} value={option} defaultChecked={${meta}.initialValue?.includes(option)}`;
+				case "choice":
+					return `${name} defaultValue={${meta}.initialValue ?? null}`;
+				case "slider":
+					return `${name} defaultValue={[Number(${meta}.initialValue ?? ${c.min})]}`;
+				case "otp":
+				case "date":
+					return `${name} defaultValue={${meta}.initialValue ?? ""}`;
+			}
+		},
+		wrap: (jsx) => jsx,
+	};
+}
+
+function nativeWiring(c: FieldContext, validated: boolean): Wiring {
+	const { key } = c;
+	const saved = `saved?.${key}`;
+	const name = `name=${str(key)}`;
+	const optionId = `{\`${key}-\${index}\`}`;
+	return {
+		id: str(key),
+		optionId,
+		invalid: () => (validated ? attr("aria-invalid", `!!issues.${key}`) : ""),
+		message: validated ? `issues.${key}` : null,
+		dom: (kind, type) => {
+			const base = `id=${str(key)} ${name}`;
+			switch (kind) {
+				case "number":
+					return `${base} type="number" defaultValue={${saved}}`;
+				case "range":
+					return `${base} type="range" defaultValue={${saved} ?? ${c.min}}`;
+				case "checkbox":
+					return `${base} type="checkbox" defaultChecked={${saved} === true}`;
+				case "radio":
+					return `id=${optionId} ${name} type="radio" value={option} defaultChecked={${saved} === option}`;
+				case "multi":
+					return `id=${optionId} ${name} type="checkbox" value={option} defaultChecked={${saved}?.includes(option)}`;
+				case "select":
+				case "textarea":
+					return `${base} defaultValue={${saved} ?? ""}`;
+				case "text":
+					return `${base} type="${type ?? "text"}" defaultValue={${saved}}`;
+			}
+		},
+		value: (kind) => {
+			switch (kind) {
+				case "checked":
+					return `${name} defaultChecked={${saved} === true}`;
+				case "multi":
+					return `${name} value={option} defaultChecked={${saved}?.includes(option)}`;
+				case "choice":
+					return `${name} defaultValue={${saved} ?? null}`;
+				case "slider":
+					return `${name} defaultValue={[${saved} ?? ${c.min}]}`;
+				case "otp":
+				case "date":
+					return `${name} defaultValue={${saved} ?? ""}`;
+			}
+		},
+		wrap: (jsx) => jsx,
+	};
+}
+
+// ─── Kits: what each field looks like ────────────────────────────────────────
 
 const TW_INPUT =
 	"h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring aria-invalid:border-destructive";
+const TW_SWITCH =
+	"relative h-5 w-9 shrink-0 cursor-pointer appearance-none rounded-full bg-input transition-colors duration-200 before:absolute before:top-0.5 before:left-0.5 before:size-4 before:rounded-full before:bg-background before:shadow-sm before:transition-transform before:duration-200 checked:bg-primary checked:before:translate-x-4 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none";
 
-function kitImports(
-	ui: UiKit,
-	types: Set<FieldType>,
-	{ nativeCheckbox, errors }: { nativeCheckbox: boolean; errors: boolean },
-): string[] {
-	if (ui !== "shadcn") return [];
-	const out = [
-		'import { Button } from "@/components/ui/button";',
-		`import { Field, ${errors ? "FieldError, " : ""}FieldLabel } from "@/components/ui/field";`,
-	];
-	if (types.has("checkbox") && !nativeCheckbox)
-		out.push('import { Checkbox } from "@/components/ui/checkbox";');
-	if (
-		[...types].some(
-			(t) => t === "text" || t === "email" || t === "number" || t === "date",
-		)
-	) {
-		out.push('import { Input } from "@/components/ui/input";');
+/** shadcn/ui types rendered by a component with its own value, not a DOM input. */
+export const SHADCN_VALUE_CONTROLS: ReadonlySet<FieldType> = new Set([
+	"date",
+	"otp",
+	"slider",
+	"select",
+	"radio",
+	"checkboxes",
+	"checkbox",
+	"switch",
+]);
+
+/** Components a step imports from `@/components/ui`, by field type. */
+const SHADCN_IMPORTS: Record<FieldType, Record<string, string[]>> = {
+	text: { input: ["Input"] },
+	email: { input: ["Input"] },
+	password: { input: ["Input"] },
+	tel: { input: ["Input"] },
+	url: { input: ["Input"] },
+	number: { input: ["Input"] },
+	time: { input: ["Input"] },
+	textarea: { textarea: ["Textarea"] },
+	otp: { "input-otp": ["InputOTP", "InputOTPGroup", "InputOTPSlot"] },
+	slider: { slider: ["Slider"] },
+	select: {
+		select: [
+			"Select",
+			"SelectContent",
+			"SelectItem",
+			"SelectTrigger",
+			"SelectValue",
+		],
+	},
+	radio: {
+		"radio-group": ["RadioGroup", "RadioGroupItem"],
+		field: ["FieldLegend", "FieldSet"],
+	},
+	checkboxes: {
+		checkbox: ["Checkbox"],
+		field: ["FieldGroup", "FieldLegend", "FieldSet"],
+	},
+	checkbox: { checkbox: ["Checkbox"] },
+	switch: { switch: ["Switch"] },
+	date: {},
+};
+
+const AUTOCOMPLETE: Partial<Record<FieldType, string>> = {
+	email: "email",
+	tel: "tel",
+	password: "new-password",
+	url: "url",
+};
+
+const autocomplete = (type: FieldType) =>
+	AUTOCOMPLETE[type] ? ` autoComplete="${AUTOCOMPLETE[type]}"` : "";
+
+/** The control alone: no label, no error. */
+function renderControl(ui: UiKit, c: FieldContext, w: Wiring): string {
+	const { field } = c;
+	const type = field.type;
+	const kind = FIELD_KINDS[type];
+	const { min, max } = sliderRange(field);
+	const shadcn = ui === "shadcn";
+	const each = (body: string) =>
+		[
+			`{${c.options}.map((option${body.includes("index") ? ", index" : ""}) => (`,
+			indent(body, 1),
+			"))}",
+		].join("\n");
+	const optionLabel = (control: string) =>
+		[
+			`<label key={option}${cls(ui, "flex items-center gap-2 text-sm")}>`,
+			`\t${control}`,
+			"\t{option}",
+			"</label>",
+		].join("\n");
+	const shadcnOption = (control: string) =>
+		[
+			'<Field key={option} orientation="horizontal">',
+			`\t${control}`,
+			`\t<FieldLabel htmlFor=${w.optionId} className="font-normal">`,
+			"\t\t{option}",
+			"\t</FieldLabel>",
+			"</Field>",
+		].join("\n");
+
+	switch (type) {
+		case "text":
+		case "email":
+		case "password":
+		case "tel":
+		case "url":
+		case "time":
+			return shadcn
+				? `<Input ${w.dom("text", kind.input)}${autocomplete(type)}${w.invalid("dom")} />`
+				: `<input ${w.dom("text", kind.input)}${autocomplete(type)}${w.invalid("dom")}${cls(ui, TW_INPUT)} />`;
+		case "number":
+			return shadcn
+				? `<Input ${w.dom("number")}${w.invalid("dom")} />`
+				: `<input ${w.dom("number")}${w.invalid("dom")}${cls(ui, TW_INPUT)} />`;
+		case "textarea":
+			return shadcn
+				? `<Textarea ${w.dom("textarea")}${w.invalid("dom")} />`
+				: `<textarea ${w.dom("textarea")}${w.invalid("dom")}${cls(ui, TW_INPUT.replace("h-9", "min-h-20 py-2"))} />`;
+		case "date":
+			return shadcn
+				? w.wrap(
+						`<DatePicker id=${w.id} ${w.value("date")}${w.invalid("value")} />`,
+					)
+				: `<input ${w.dom("text", "date")}${w.invalid("dom")}${cls(ui, TW_INPUT)} />`;
+		case "otp":
+			return shadcn
+				? w.wrap(
+						[
+							`<InputOTP id=${w.id} maxLength={${OTP_LENGTH}} ${w.value("otp")}${w.invalid("value")}>`,
+							"\t<InputOTPGroup>",
+							`\t\t{Array.from({ length: ${OTP_LENGTH} }, (_, index) => (`,
+							"\t\t\t<InputOTPSlot key={index} index={index} />",
+							"\t\t))}",
+							"\t</InputOTPGroup>",
+							"</InputOTP>",
+						].join("\n"),
+					)
+				: `<input ${w.dom("text", "text")} inputMode="numeric" autoComplete="one-time-code" maxLength={${OTP_LENGTH}}${w.invalid("dom")}${cls(ui, `${TW_INPUT} font-mono tracking-[0.4em]`)} />`;
+		case "slider":
+			return shadcn
+				? w.wrap(
+						`<Slider id=${w.id} min={${min}} max={${max}} ${w.value("slider")}${w.invalid("value")} />`,
+					)
+				: `<input ${w.dom("range")} min={${min}} max={${max}}${cls(ui, "w-full accent-primary")} />`;
+		case "select":
+			return shadcn
+				? w.wrap(
+						[
+							`<Select ${w.value("choice")}>`,
+							`\t<SelectTrigger id=${w.id}${w.invalid("value")} className="w-full">`,
+							'\t\t<SelectValue placeholder="Select…" />',
+							"\t</SelectTrigger>",
+							"\t<SelectContent>",
+							indent(
+								each(
+									"<SelectItem key={option} value={option}>\n\t{option}\n</SelectItem>",
+								),
+								2,
+							),
+							"\t</SelectContent>",
+							"</Select>",
+						].join("\n"),
+					)
+				: [
+						`<select ${w.dom("select")}${w.invalid("dom")}${cls(ui, TW_INPUT)}>`,
+						'\t<option value="">Select…</option>',
+						indent(
+							each(
+								"<option key={option} value={option}>\n\t{option}\n</option>",
+							),
+							1,
+						),
+						"</select>",
+					].join("\n");
+		case "radio":
+			return shadcn
+				? w.wrap(
+						[
+							`<RadioGroup ${w.value("choice")}${w.invalid("value")}>`,
+							indent(
+								each(
+									shadcnOption(
+										`<RadioGroupItem id=${w.optionId} value={option} />`,
+									),
+								),
+								1,
+							),
+							"</RadioGroup>",
+						].join("\n"),
+					)
+				: [
+						`<div${cls(ui, "grid gap-2")}>`,
+						indent(
+							each(
+								optionLabel(
+									`<input ${w.dom("radio")}${cls(ui, "size-4 accent-primary")} />`,
+								),
+							),
+							1,
+						),
+						"</div>",
+					].join("\n");
+		case "checkboxes":
+			return shadcn
+				? w.wrap(
+						[
+							'<FieldGroup data-slot="checkbox-group" className="gap-3">',
+							indent(
+								each(
+									shadcnOption(
+										`<Checkbox id=${w.optionId} ${w.value("multi")} />`,
+									),
+								),
+								1,
+							),
+							"</FieldGroup>",
+						].join("\n"),
+					)
+				: [
+						`<div${cls(ui, "grid gap-2")}>`,
+						indent(
+							each(
+								optionLabel(
+									`<input ${w.dom("multi")}${cls(ui, "size-4 accent-primary")} />`,
+								),
+							),
+							1,
+						),
+						"</div>",
+					].join("\n");
+		case "checkbox":
+			return shadcn
+				? w.wrap(
+						`<Checkbox id=${w.id} ${w.value("checked")}${w.invalid("value")} />`,
+					)
+				: `<input ${w.dom("checkbox")}${w.invalid("dom")}${cls(ui, "size-4 accent-primary")} />`;
+		case "switch":
+			return shadcn
+				? w.wrap(
+						`<Switch id=${w.id} ${w.value("checked")}${w.invalid("value")} />`,
+					)
+				: `<input ${w.dom("checkbox")} role="switch"${w.invalid("dom")}${cls(ui, TW_SWITCH)} />`;
 	}
-	if (types.has("select")) {
-		out.push(
-			'import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";',
+}
+
+function labelText(ui: UiKit, field: StudioField): string {
+	const spec = fieldSpec(field);
+	const optional =
+		!spec.required && spec.kind !== "boolean"
+			? ` <span${cls(ui, "font-normal text-muted-foreground")}>(optional)</span>`
+			: "";
+	return `${jsxText(field.label)}${optional}`;
+}
+
+const lines = (open: string, children: (string | null)[], close: string) =>
+	[
+		open,
+		...children
+			.filter((child): child is string => child !== null)
+			.map((child) => indent(child, 1)),
+		close,
+	].join("\n");
+
+/** Label, control and error, laid out for the field's shape. */
+function fieldBlock(ui: UiKit, c: FieldContext, w: Wiring): string {
+	const { field } = c;
+	const kind = FIELD_KINDS[field.type];
+	const shadcn = ui === "shadcn";
+	const controlJsx = renderControl(ui, c, w);
+	const wide = kind.wide ? "sm:col-span-2" : "";
+	const errorClass =
+		field.type === "checkbox" || field.type === "switch"
+			? "basis-full text-sm text-destructive"
+			: "text-sm text-destructive";
+	const error =
+		w.message === null
+			? null
+			: shadcn
+				? `<FieldError>{${w.message}}</FieldError>`
+				: `{${w.message} ? <p role="alert"${cls(ui, errorClass)}>{${w.message}}</p> : null}`;
+
+	if (kind.fieldset) {
+		return shadcn
+			? lines(
+					`<FieldSet${wide ? ` className="${wide}"` : ""}>`,
+					[
+						`<FieldLegend variant="label">${labelText(ui, field)}</FieldLegend>`,
+						controlJsx,
+						error,
+					],
+					"</FieldSet>",
+				)
+			: lines(
+					`<fieldset${cls(ui, `grid gap-2 ${wide}`.trim())}>`,
+					[
+						`<legend${cls(ui, "mb-1 text-sm font-medium")}>${labelText(ui, field)}</legend>`,
+						controlJsx,
+						error,
+					],
+					"</fieldset>",
+				);
+	}
+
+	const label = shadcn
+		? `<FieldLabel htmlFor=${w.id}>${labelText(ui, field)}</FieldLabel>`
+		: `<label htmlFor=${w.id}${cls(ui, "text-sm font-medium")}>${labelText(ui, field)}</label>`;
+
+	if (field.type === "checkbox" || field.type === "switch") {
+		if (shadcn) {
+			return lines(
+				`<Field orientation="horizontal" className="${wide}">`,
+				error
+					? [
+							controlJsx,
+							lines("<FieldContent>", [label, error], "</FieldContent>"),
+						]
+					: [controlJsx, label],
+				"</Field>",
+			);
+		}
+		return lines(
+			`<div${cls(ui, `flex flex-wrap items-center gap-2 ${wide}`)}>`,
+			[controlJsx, label, error],
+			"</div>",
 		);
 	}
-	if (types.has("textarea"))
-		out.push('import { Textarea } from "@/components/ui/textarea";');
+
+	const { min, max } = sliderRange(field);
+	const range =
+		field.type === "slider" && ui !== "unstyled"
+			? `<div className="flex justify-between text-xs text-muted-foreground">\n\t<span>${min}</span>\n\t<span>${max}</span>\n</div>`
+			: null;
+	return shadcn
+		? lines(
+				`<Field${wide ? ` className="${wide}"` : ""}>`,
+				[label, controlJsx, range, error],
+				"</Field>",
+			)
+		: lines(
+				`<div${cls(ui, `grid gap-2 ${wide}`.trim())}>`,
+				[label, controlJsx, range, error],
+				"</div>",
+			);
+}
+
+/** Imports for a shadcn step: field primitives plus each control's component. */
+function kitImports(
+	ui: UiKit,
+	fields: StudioField[],
+	errors: boolean,
+): string[] {
+	if (ui !== "shadcn") return [];
+	const byFile = new Map<string, Set<string>>([
+		["button", new Set(["Button"])],
+		["field", new Set(["Field", "FieldLabel"])],
+	]);
+	const add = (file: string, names: string[]) => {
+		const set = byFile.get(file) ?? new Set<string>();
+		for (const name of names) set.add(name);
+		byFile.set(file, set);
+	};
+	for (const field of fields) {
+		for (const [file, names] of Object.entries(SHADCN_IMPORTS[field.type]))
+			add(file, names);
+		if (errors) add("field", ["FieldError"]);
+		if (errors && (field.type === "checkbox" || field.type === "switch"))
+			add("field", ["FieldContent"]);
+	}
+	const out = [...byFile]
+		.sort(([a], [b]) => a.localeCompare(b))
+		.map(
+			([file, names]) =>
+				`import { ${[...names].sort().join(", ")} } from "@/components/ui/${file}";`,
+		);
+	if (fields.some((f) => f.type === "date"))
+		out.push('import { DatePicker } from "../date-picker";');
 	return out;
 }
 
-function optionList(ui: UiKit, field: StudioField): string {
-	const Option = ui === "shadcn" ? "NativeSelectOption" : "option";
-	return [
-		`<${Option} value="">Select…</${Option}>`,
-		...(field.options ?? []).map(
-			(option) =>
-				`<${Option} value=${jsxAttr(option)}>${jsxText(option)}</${Option}>`,
-		),
-	].join("\n");
-}
+const optionsName = (key: string) => `${key}Options`;
 
-/** A control. `nativeCheckbox` forces `<input type="checkbox">` (Conform spreads input props). */
-function control(
-	ui: UiKit,
-	{ field, id, attrs }: Control,
-	nativeCheckbox = false,
-): string {
-	const type = INPUT_TYPES[field.type]
-		? ` type="${INPUT_TYPES[field.type]}"`
-		: "";
-	if (field.type === "checkbox") {
-		if (ui === "shadcn" && !nativeCheckbox)
-			return `<Checkbox id=${id} ${attrs} />`;
-		return `<input id=${id} type="checkbox" ${attrs}${cls(ui, "size-4 accent-primary")} />`;
-	}
-	if (field.type === "select") {
-		const Select = ui === "shadcn" ? "NativeSelect" : "select";
-		const selectClass =
-			ui === "tailwind"
-				? ` className="${TW_INPUT}"`
-				: ui === "shadcn"
-					? ' className="w-full"'
-					: "";
-		return [
-			`<${Select} id=${id} ${attrs}${selectClass}>`,
-			indent(optionList(ui, field), 1),
-			`</${Select}>`,
-		].join("\n");
-	}
-	if (field.type === "textarea") {
-		const Textarea = ui === "shadcn" ? "Textarea" : "textarea";
-		return `<${Textarea} id=${id} ${attrs}${ui === "tailwind" ? ` className="${TW_INPUT.replace("h-9", "min-h-20 py-2")}"` : ""} />`;
-	}
-	const Input = ui === "shadcn" ? "Input" : "input";
-	return `<${Input} id=${id}${type} ${attrs}${ui === "tailwind" ? ` className="${TW_INPUT}"` : ""} />`;
-}
-
-/** Wraps label + control + error. `message` is an expression of `string | undefined`. */
-function fieldBlock(
-	ui: UiKit,
-	c: Control,
-	controlJsx: string,
-	message: string | null,
-): string {
-	const checkbox = c.field.type === "checkbox";
-	const label =
-		ui === "shadcn"
-			? `<FieldLabel htmlFor=${c.id}>${jsxText(c.field.label)}</FieldLabel>`
-			: `<label htmlFor=${c.id}${cls(ui, "text-sm font-medium")}>${jsxText(c.field.label)}</label>`;
-	const error =
-		message === null
-			? null
-			: ui === "shadcn"
-				? `<FieldError>{${message}}</FieldError>`
-				: `{${message} ? <p role="alert"${cls(ui, "text-sm text-destructive")}>{${message}}</p> : null}`;
-	const wide = checkbox || c.field.type === "textarea" ? " sm:col-span-2" : "";
-	const open =
-		ui === "shadcn"
-			? `<Field${checkbox ? ' orientation="horizontal"' : ""}${wide ? ` className="${wide.trim()}"` : ""}>`
-			: `<div${cls(ui, `${checkbox ? "flex items-center gap-2" : "grid gap-2"}${wide}`)}>`;
-	const close = ui === "shadcn" ? "</Field>" : "</div>";
-	const children = checkbox
-		? [controlJsx, label, error]
-		: [label, controlJsx, error];
-	return [
-		open,
-		...children.filter((c): c is string => c !== null).map((c) => indent(c, 1)),
-		close,
-	].join("\n");
+/** Module-level `as const` lists for fields with choices. */
+function optionConstants(ctx: StepContext): string[] {
+	return ctx.step.fields.flatMap((field, j) =>
+		field.options
+			? [
+					`const ${optionsName(ctx.keys[j])} = [${field.options.map(str).join(", ")}] as const;`,
+				]
+			: [],
+	);
 }
 
 function button(
@@ -199,19 +746,32 @@ type StepContext = {
 	Component: string;
 	last: boolean;
 	validation: Validation;
-	types: Set<FieldType>;
 	/** `XValues` — imported from schemas or declared locally. */
 	Values: string;
 };
 
+function fieldContext(ctx: StepContext, j: number): FieldContext {
+	const field = ctx.step.fields[j];
+	const key = ctx.keys[j];
+	return {
+		field,
+		key,
+		options: optionsName(key),
+		valueOf: `${ctx.Values}[${str(key)}]`,
+		min: sliderRange(field).min,
+		castText:
+			ctx.validation === "arktype" &&
+			(field.type === "tel" || field.type === "time" || field.type === "otp"),
+	};
+}
+
 function localValuesType(ctx: StepContext): string {
-	const tsType = (field: StudioField) =>
-		field.type === "checkbox"
-			? "boolean"
-			: field.type === "number"
-				? "number"
-				: "string";
-	return `type ${ctx.Values} = {\n${ctx.step.fields.map((f, j) => `\t${ctx.keys[j]}${f.required ? "" : "?"}: ${tsType(f)};`).join("\n")}\n};`;
+	return `type ${ctx.Values} = {\n${ctx.step.fields
+		.map(
+			(f, j) =>
+				`\t${ctx.keys[j]}${fieldSpec(f).required ? "" : "?"}: ${valueType(f)};`,
+		)
+		.join("\n")}\n};`;
 }
 
 function valuesImport(ctx: StepContext, withSchema: boolean): string | null {
@@ -222,15 +782,27 @@ function valuesImport(ctx: StepContext, withSchema: boolean): string | null {
 }
 
 /**
- * Empty values for text-like fields only. Selects, checkboxes and numbers start
- * unset, so `as Values` stays a sound narrowing instead of a lie about "".
+ * Starting values for controlled libraries: "" for text, [] for checkbox
+ * groups, the minimum for sliders. Choices and toggles start unset. Hoisted
+ * to module scope and widened (`as string`), so `EMPTY as Values` is a sound
+ * narrowing even when a schema infers literal or template-literal types.
  */
-function emptyDefaults(ctx: StepContext): string {
-	const entries = ctx.step.fields.flatMap((f, j) =>
-		emptyValue(f) === '""' ? [`${ctx.keys[j]}: ""`] : [],
-	);
-	return entries.length ? `{ ${entries.join(", ")} }` : "{}";
+function emptyValues(ctx: StepContext): string | null {
+	const entries = ctx.step.fields.flatMap((f, j) => {
+		const spec = fieldSpec(f);
+		if (spec.kind === "text") return [`\t${ctx.keys[j]}: "" as string,`];
+		if (spec.kind === "multi") return [`\t${ctx.keys[j]}: [] as string[],`];
+		if (f.type === "slider")
+			return [`\t${ctx.keys[j]}: ${sliderRange(f).min},`];
+		return [];
+	});
+	return entries.length
+		? ["const EMPTY = {", ...entries, "};"].join("\n")
+		: null;
 }
+
+const defaultValues = (ctx: StepContext, validated: boolean) =>
+	`\t\tdefaultValues: ${validated ? `stepper.data.get(${str(ctx.id)})` : `(stepper.data.get(${str(ctx.id)}) as ${ctx.Values} | undefined)`} ?? (${emptyValues(ctx) ? "EMPTY" : "{}"} as ${ctx.Values}),`;
 
 const header = (ctx: StepContext) => [
 	`export function ${ctx.Component}() {`,
@@ -240,55 +812,37 @@ const header = (ctx: StepContext) => [
 // ─── React Hook Form ─────────────────────────────────────────────────────────
 
 function reactHookForm(ctx: StepContext): string {
-	const { config, names, id, keys, validation } = ctx;
+	const { config, names, id, validation } = ctx;
 	const ui = config.ui;
 	const validated = validation !== "none";
-	const controlled = ui === "shadcn" && ctx.types.has("checkbox");
-	const blocks = ctx.step.fields.map((field, j) => {
-		const key = keys[j];
-		const c: Control = { field, id: str(key), attrs: "" };
-		const invalid = validated ? ` aria-invalid={!!errors.${key}}` : "";
-		let jsx: string;
-		if (field.type === "checkbox" && ui === "shadcn") {
-			jsx = [
-				`<Controller`,
-				"\tcontrol={form.control}",
-				`\tname=${str(key)}`,
-				"\trender={({ field }) => (",
-				`\t\t<Checkbox id=${str(key)} checked={field.value} onCheckedChange={field.onChange}${invalid} />`,
-				"\t)}",
-				"/>",
-			].join("\n");
-		} else {
-			const options =
-				field.type === "number" ? ", { valueAsNumber: true }" : "";
-			jsx = control(ui, {
-				...c,
-				attrs: `{...form.register(${str(key)}${options})}${invalid}`,
-			});
-		}
-		return fieldBlock(ui, c, jsx, validated ? `errors.${key}?.message` : null);
+	const controller =
+		ui === "shadcn" &&
+		ctx.step.fields.some((f) => SHADCN_VALUE_CONTROLS.has(f.type));
+	const blocks = ctx.step.fields.map((_, j) => {
+		const c = fieldContext(ctx, j);
+		return fieldBlock(ui, c, reactHookFormWiring(c, validated));
 	});
+	const resolver = RHF_RESOLVERS[validation as Exclude<Validation, "none">];
 	return source([
 		USE_CLIENT,
 		"",
 		validated
-			? `import { ${RHF_RESOLVERS[validation as Exclude<Validation, "none">]} } from "@hookform/resolvers/${validation}";`
+			? `import { ${resolver} } from "@hookform/resolvers/${validation}";`
 			: null,
-		`import { ${controlled ? "Controller, " : ""}useForm } from "react-hook-form";`,
-		...kitImports(ui, ctx.types, { nativeCheckbox: false, errors: validated }),
+		`import { ${controller ? "Controller, " : ""}useForm } from "react-hook-form";`,
+		...kitImports(ui, ctx.step.fields, validated),
 		`import { ${names.flow} } from "../definition";`,
 		valuesImport(ctx, true),
 		"",
 		validated ? null : localValuesType(ctx),
+		...optionConstants(ctx),
+		emptyValues(ctx),
 		"",
 		...header(ctx),
 		// With a resolver, React Hook Form infers input and output types from it.
 		`\tconst form = useForm${validated ? "" : `<${ctx.Values}>`}({`,
-		validated
-			? `\t\tresolver: ${RHF_RESOLVERS[validation as Exclude<Validation, "none">]}(${schemaName(id)}),`
-			: null,
-		`\t\tdefaultValues: ${validated ? `stepper.data.get(${str(id)})` : `(stepper.data.get(${str(id)}) as ${ctx.Values} | undefined)`} ?? (${emptyDefaults(ctx)} as ${ctx.Values}),`,
+		validated ? `\t\tresolver: ${resolver}(${schemaName(id)}),` : null,
+		defaultValues(ctx, validated),
 		"\t});",
 		`\tconst { ${validated ? "errors, " : ""}isSubmitting } = form.formState;`,
 		"",
@@ -312,35 +866,12 @@ function tanstackForm(ctx: StepContext): string {
 	const { config, names, id, keys, validation } = ctx;
 	const ui = config.ui;
 	const validated = validation !== "none";
-	const blocks = ctx.step.fields.map((field, j) => {
-		const key = keys[j];
-		const c: Control = { field, id: "{field.name}", attrs: "" };
-		const base = `name={field.name} onBlur={field.handleBlur}${validated ? " aria-invalid={!field.state.meta.isValid}" : ""}`;
-		let attrs: string;
-		if (field.type === "checkbox") {
-			attrs =
-				ui === "shadcn"
-					? `${base} checked={field.state.value} onCheckedChange={(checked) => field.handleChange(checked)}`
-					: `${base} checked={field.state.value} onChange={(event) => field.handleChange(event.target.checked)}`;
-		} else {
-			const value =
-				field.type === "number"
-					? "event.target.valueAsNumber"
-					: field.type === "select"
-						? `event.target.value as ${ctx.Values}[${str(key)}]`
-						: "event.target.value";
-			attrs = `${base} value={field.state.value ?? ""} onChange={(event) => field.handleChange(${value})}`;
-		}
-		const inner = fieldBlock(
-			ui,
-			c,
-			control(ui, { ...c, attrs }),
-			validated ? "field.state.meta.errors[0]?.message" : null,
-		);
+	const blocks = ctx.step.fields.map((_, j) => {
+		const c = fieldContext(ctx, j);
 		return [
-			`<form.Field name=${str(key)}>`,
+			`<form.Field name=${str(keys[j])}>`,
 			"\t{(field) => (",
-			indent(inner, 2),
+			indent(fieldBlock(ui, c, tanstackWiring(c, validated)), 2),
 			"\t)}",
 			"</form.Field>",
 		].join("\n");
@@ -349,15 +880,17 @@ function tanstackForm(ctx: StepContext): string {
 		USE_CLIENT,
 		"",
 		'import { useForm } from "@tanstack/react-form";',
-		...kitImports(ui, ctx.types, { nativeCheckbox: false, errors: validated }),
+		...kitImports(ui, ctx.step.fields, validated),
 		`import { ${names.flow} } from "../definition";`,
 		valuesImport(ctx, true),
 		"",
 		validated ? null : localValuesType(ctx),
+		...optionConstants(ctx),
+		emptyValues(ctx),
 		"",
 		...header(ctx),
 		"\tconst form = useForm({",
-		`\t\tdefaultValues: ${validated ? `stepper.data.get(${str(id)})` : `(stepper.data.get(${str(id)}) as ${ctx.Values} | undefined)`} ?? (${emptyDefaults(ctx)} as ${ctx.Values}),`,
+		defaultValues(ctx, validated),
 		validated ? `\t\tvalidators: { onSubmit: ${schemaName(id)} },` : null,
 		"\t\tonSubmit: ({ value }) => stepper.next({ data: value, complete: true }),",
 		"\t});",
@@ -386,44 +919,27 @@ function tanstackForm(ctx: StepContext): string {
 // ─── Conform ─────────────────────────────────────────────────────────────────
 
 function conform(ctx: StepContext): string {
-	const { config, names, id, keys, validation } = ctx;
+	const { config, names, id, validation } = ctx;
 	const ui = config.ui;
 	const parser =
 		validation === "valibot"
 			? ["parseWithValibot", "@conform-to/valibot"]
 			: ["parseWithZod", "@conform-to/zod/v4"];
-	const helpers = new Set(["getFormProps", "getInputProps", "useForm"]);
-	const blocks = ctx.step.fields.map((field, j) => {
-		const key = keys[j];
-		const c: Control = { field, id: `{fields.${key}.id}`, attrs: "" };
-		let attrs: string;
-		if (field.type === "select") {
-			helpers.add("getSelectProps");
-			attrs = `{...getSelectProps(fields.${key})}`;
-		} else if (field.type === "textarea") {
-			helpers.add("getTextareaProps");
-			attrs = `{...getTextareaProps(fields.${key})}`;
-		} else {
-			const kind =
-				field.type === "checkbox"
-					? "checkbox"
-					: (INPUT_TYPES[field.type] ?? "text");
-			attrs = `{...getInputProps(fields.${key}, { type: ${str(kind)} })}`;
-		}
-		// getInputProps already sets id and type.
-		const jsx = control(ui, { ...c, attrs }, true)
-			.replace(` id={fields.${key}.id}`, "")
-			.replace(/ type="[a-z]+"/, "");
-		return fieldBlock(ui, c, jsx, `fields.${key}.errors?.[0]`);
+	const helpers = new Set(["getFormProps", "useForm"]);
+	const blocks = ctx.step.fields.map((_, j) => {
+		const c = fieldContext(ctx, j);
+		return fieldBlock(ui, c, conformWiring(c, helpers));
 	});
 	return source([
 		USE_CLIENT,
 		"",
 		`import { ${[...helpers].sort().join(", ")} } from "@conform-to/react";`,
 		`import { ${parser[0]} } from "${parser[1]}";`,
-		...kitImports(ui, ctx.types, { nativeCheckbox: true, errors: true }),
+		...kitImports(ui, ctx.step.fields, true),
 		`import { ${names.flow} } from "../definition";`,
 		`import { ${schemaName(id)} } from "../schemas";`,
+		"",
+		...optionConstants(ctx),
 		"",
 		...header(ctx),
 		"\tconst [form, fields] = useForm({",
@@ -450,29 +966,33 @@ function conform(ctx: StepContext): string {
 
 // ─── Native form ─────────────────────────────────────────────────────────────
 
+/** How a native form reads a field back from FormData. */
+export function formDataReader(field: StudioField, key: string): string {
+	const get = `formData.get(${str(key)})`;
+	const spec = fieldSpec(field);
+	switch (spec.kind) {
+		case "boolean":
+			return `formData.has(${str(key)})`;
+		case "multi":
+			return `formData.getAll(${str(key)}).map(String)`;
+		case "number":
+			// Empty is NaN for required numbers (reported) and undefined for optional ones.
+			if (field.type === "slider") return `Number(${get})`;
+			return spec.required
+				? `Number(${get} || Number.NaN)`
+				: `${get} ? Number(${get}) : undefined`;
+		default:
+			return `String(${get} ?? "")`;
+	}
+}
+
 function nativeForm(ctx: StepContext): string {
 	const { config, names, id, keys, validation } = ctx;
 	const ui = config.ui;
 	const validated = validation !== "none";
-	const read = (field: StudioField, key: string) => {
-		if (field.type === "checkbox") return `formData.has(${str(key)})`;
-		if (field.type === "number") return `Number(formData.get(${str(key)}))`;
-		return `String(formData.get(${str(key)}) ?? "")`;
-	};
-	const blocks = ctx.step.fields.map((field, j) => {
-		const key = keys[j];
-		const c: Control = { field, id: str(key), attrs: "" };
-		const initial =
-			field.type === "checkbox"
-				? `defaultChecked={saved?.${key} === true}`
-				: `defaultValue={saved?.${key} ?? undefined}`;
-		const attrs = `name=${str(key)} ${initial}${validated ? ` aria-invalid={!!issues.${key}}` : ""}`;
-		return fieldBlock(
-			ui,
-			c,
-			control(ui, { ...c, attrs }),
-			validated ? `issues.${key}` : null,
-		);
+	const blocks = ctx.step.fields.map((_, j) => {
+		const c = fieldContext(ctx, j);
+		return fieldBlock(ui, c, nativeWiring(c, validated));
 	});
 	return source([
 		USE_CLIENT,
@@ -480,11 +1000,12 @@ function nativeForm(ctx: StepContext): string {
 		validated
 			? 'import { type FormEvent, useState } from "react";'
 			: 'import type { FormEvent } from "react";',
-		...kitImports(ui, ctx.types, { nativeCheckbox: false, errors: validated }),
+		...kitImports(ui, ctx.step.fields, validated),
 		`import { ${names.flow} } from "../definition";`,
 		valuesImport(ctx, false),
 		"",
 		validated ? null : localValuesType(ctx),
+		...optionConstants(ctx),
 		"",
 		...header(ctx),
 		`\tconst saved = stepper.data.get(${str(id)}) as Partial<${ctx.Values}> | undefined;`,
@@ -496,7 +1017,9 @@ function nativeForm(ctx: StepContext): string {
 		"\t\tevent.preventDefault();",
 		"\t\tconst formData = new FormData(event.currentTarget);",
 		"\t\tconst value = {",
-		...ctx.step.fields.map((f, j) => `\t\t\t${keys[j]}: ${read(f, keys[j])},`),
+		...ctx.step.fields.map(
+			(f, j) => `\t\t\t${keys[j]}: ${formDataReader(f, keys[j])},`,
+		),
 		"\t\t};",
 		...(validated
 			? [
@@ -544,18 +1067,21 @@ function summaryStep(ctx: StepContext): string {
 				.join(", ");
 			return `\t{ step: ${str(names.stepIds[i])}, title: ${str(step.title)}, fields: [${fields}] },`;
 		});
+	const has = sections.length > 0;
 	return source([
 		USE_CLIENT,
 		"",
+		has ? 'import { Fragment } from "react";' : null,
 		ui === "shadcn" ? 'import { Button } from "@/components/ui/button";' : null,
 		`import { ${names.flow} } from "../definition";`,
 		"",
-		sections.length ? "const SUMMARY = [" : null,
+		has ? "const SUMMARY = [" : null,
 		...sections,
-		sections.length ? "] as const;" : null,
+		has ? "] as const;" : null,
 		"",
 		"function display(value: unknown): string {",
 		'\tif (typeof value === "boolean") return value ? "Yes" : "No";',
+		'\tif (Array.isArray(value)) return value.length ? value.join(", ") : "—";',
 		'\treturn value === undefined || value === "" ? "—" : String(value);',
 		"}",
 		"",
@@ -564,43 +1090,31 @@ function summaryStep(ctx: StepContext): string {
 		"",
 		"\treturn (",
 		`\t\t<section${cls(ui, "grid gap-4")}>`,
-		sections.length ? "\t\t\t{SUMMARY.map((section) => {" : null,
-		sections.length
-			? "\t\t\t\tconst data = stepper.data.get(section.step) as Record<string, unknown> | undefined;"
-			: null,
-		sections.length ? "\t\t\t\treturn (" : null,
-		sections.length
-			? `\t\t\t\t\t<div key={section.step}${cls(ui, "rounded-lg border p-4")}>`
-			: null,
-		sections.length
-			? `\t\t\t\t\t\t<div${cls(ui, "flex items-center justify-between")}>`
-			: null,
-		sections.length
-			? `\t\t\t\t\t\t\t<h3${cls(ui, "text-sm font-medium")}>{section.title}</h3>`
-			: null,
-		sections.length
-			? `\t\t\t\t\t\t\t<button type="button" onClick={() => stepper.goTo(section.step)}${cls(ui, "text-sm font-medium text-primary")}>Edit</button>`
-			: null,
-		sections.length ? "\t\t\t\t\t\t</div>" : null,
-		sections.length
-			? `\t\t\t\t\t\t<dl${cls(ui, "mt-2 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm")}>`
-			: null,
-		sections.length
-			? "\t\t\t\t\t\t\t{section.fields.map(([key, label]) => ("
-			: null,
-		sections.length ? "\t\t\t\t\t\t\t\t<Fragment key={key}>" : null,
-		sections.length
-			? `\t\t\t\t\t\t\t\t\t<dt${cls(ui, "text-muted-foreground")}>{label}</dt>`
-			: null,
-		sections.length
-			? "\t\t\t\t\t\t\t\t\t<dd>{display(data?.[key])}</dd>"
-			: null,
-		sections.length ? "\t\t\t\t\t\t\t\t</Fragment>" : null,
-		sections.length ? "\t\t\t\t\t\t\t))}" : null,
-		sections.length ? "\t\t\t\t\t\t</dl>" : null,
-		sections.length ? "\t\t\t\t\t</div>" : null,
-		sections.length ? "\t\t\t\t);" : null,
-		sections.length ? "\t\t\t})}" : null,
+		...(has
+			? [
+					"\t\t\t{SUMMARY.map((section) => {",
+					"\t\t\t\tconst data = stepper.data.get(section.step) as Record<string, unknown> | undefined;",
+					"\t\t\t\treturn (",
+					`\t\t\t\t\t<div key={section.step}${cls(ui, "rounded-lg border p-4")}>`,
+					`\t\t\t\t\t\t<div${cls(ui, "flex items-center justify-between")}>`,
+					`\t\t\t\t\t\t\t<h3${cls(ui, "text-sm font-medium")}>{section.title}</h3>`,
+					ui === "shadcn"
+						? '\t\t\t\t\t\t\t<Button type="button" variant="link" size="sm" onClick={() => stepper.goTo(section.step)}>Edit</Button>'
+						: `\t\t\t\t\t\t\t<button type="button" onClick={() => stepper.goTo(section.step)}${cls(ui, "text-sm font-medium text-primary")}>Edit</button>`,
+					"\t\t\t\t\t\t</div>",
+					`\t\t\t\t\t\t<dl${cls(ui, "mt-2 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm")}>`,
+					"\t\t\t\t\t\t\t{section.fields.map(([key, label]) => (",
+					"\t\t\t\t\t\t\t\t<Fragment key={key}>",
+					`\t\t\t\t\t\t\t\t\t<dt${cls(ui, "text-muted-foreground")}>{label}</dt>`,
+					"\t\t\t\t\t\t\t\t\t<dd>{display(data?.[key])}</dd>",
+					"\t\t\t\t\t\t\t\t</Fragment>",
+					"\t\t\t\t\t\t\t))}",
+					"\t\t\t\t\t\t</dl>",
+					"\t\t\t\t\t</div>",
+					"\t\t\t\t);",
+					"\t\t\t})}",
+				]
+			: []),
 		"\t\t\t{finished ? (",
 		`\t\t\t\t<p role="status"${cls(ui, "text-sm font-medium")}>All done. Send the data to your API here.</p>`,
 		"\t\t\t) : (",
@@ -628,9 +1142,7 @@ function summaryStep(ctx: StepContext): string {
 		"\t\t</section>",
 		"\t);",
 		"}",
-	]).replace(`import { ${names.flow} } from "../definition";`, (line) =>
-		sections.length ? `import { Fragment } from "react";\n${line}` : line,
-	);
+	]);
 }
 
 function contentStep(ctx: StepContext): string {
@@ -693,7 +1205,6 @@ export function generateStep(
 		Component: stepComponent(id),
 		last: index === config.steps.length - 1,
 		validation: config.validation,
-		types: new Set(step.fields.map((f) => f.type)),
 		Values: valuesType(id),
 	};
 	if (!step.fields.length)

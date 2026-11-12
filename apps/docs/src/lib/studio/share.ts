@@ -23,6 +23,8 @@ import {
 
 const text = (max: number) => z.string().trim().max(max);
 
+const bound = z.int().min(LIMITS.range.min).max(LIMITS.range.max);
+
 const fieldSchema = z.object({
 	label: text(LIMITS.label).min(1),
 	type: z.enum(FIELD_TYPES),
@@ -32,6 +34,8 @@ const fieldSchema = z.object({
 		.min(1)
 		.max(LIMITS.options)
 		.optional(),
+	min: bound.optional(),
+	max: bound.optional(),
 });
 
 const stepSchema = z.object({

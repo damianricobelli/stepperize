@@ -1,21 +1,17 @@
 "use client";
 
-import {
-	Code2,
-	Eye,
-	Link2,
-	Monitor,
-	RotateCcw,
-	Smartphone,
-} from "lucide-react";
+import { Code2, Eye, Monitor, RotateCcw, Smartphone } from "lucide-react";
 import type { ReactNode } from "react";
-import { CopyButton } from "@/components/blocks-gallery/copy-button";
-import type { StudioConfig } from "@/lib/studio/config";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { LIMITS, type StudioConfig } from "@/lib/studio/config";
 import { shareUrl } from "@/lib/studio/share";
-import { cn } from "@/lib/utils";
 import { CodeView } from "./code-view";
 import { ConfigPanel } from "./config-panel";
-import { InstallBar } from "./install-bar";
+import { CopyButton, Segmented } from "./controls";
+import { InstallButton } from "./install-bar";
 import { PreviewStage } from "./preview/preview";
 import {
 	type StudioDevice,
@@ -27,12 +23,12 @@ import {
 /**
  * Stepper Studio as compound components. `<StudioApp>` is the default
  * arrangement; the parts can be recomposed (a docs embed could render only
- * `Studio.Preview` + `Studio.Install`) without new props on a monolith.
+ * `Studio.Body` + `Studio.Install`) without new props on a monolith.
  */
 
 function Shell({ children }: { children: ReactNode }) {
 	return (
-		<div className="grid min-h-0 flex-1 lg:grid-cols-[22rem_minmax(0,1fr)] lg:overflow-hidden">
+		<div className="grid min-h-0 flex-1 lg:grid-cols-[24rem_minmax(0,1fr)] lg:overflow-hidden">
 			{children}
 		</div>
 	);
@@ -42,132 +38,122 @@ function Panel() {
 	return (
 		<aside
 			aria-label="Flow configuration"
-			className="border-b bg-sidebar/60 lg:min-h-0 lg:overflow-y-auto lg:border-r lg:border-b-0 lg:[scrollbar-gutter:stable]"
+			className="flex flex-col border-b bg-sidebar/60 lg:min-h-0 lg:border-r lg:border-b-0"
 		>
 			<ConfigPanel />
 		</aside>
 	);
 }
 
+/** The workspace is one Tabs root: the toolbar holds the list, the body the panels. */
 function Workspace({ children }: { children: ReactNode }) {
+	const { state, actions } = useStudio();
 	return (
-		<section
-			aria-label="Workspace"
-			className="grid min-h-[44rem] min-w-0 grid-rows-[auto_minmax(0,1fr)_auto] lg:min-h-0"
+		<Tabs
+			value={state.view}
+			onValueChange={(view) => actions.setView(view as StudioView)}
+			render={<section aria-label="Workspace" />}
+			className="grid min-h-[44rem] min-w-0 grid-rows-[auto_minmax(0,1fr)] gap-0 lg:min-h-0"
 		>
 			{children}
-		</section>
+		</Tabs>
 	);
 }
 
-const VIEWS: { value: StudioView; label: string; icon: ReactNode }[] = [
-	{
-		value: "preview",
-		label: "Preview",
-		icon: <Eye aria-hidden className="size-3.5" />,
-	},
-	{
-		value: "code",
-		label: "Code",
-		icon: <Code2 aria-hidden className="size-3.5" />,
-	},
-];
 const DEVICES: { value: StudioDevice; label: string; icon: ReactNode }[] = [
-	{
-		value: "desktop",
-		label: "Desktop",
-		icon: <Monitor aria-hidden className="size-3.5" />,
-	},
-	{
-		value: "mobile",
-		label: "Mobile",
-		icon: <Smartphone aria-hidden className="size-3.5" />,
-	},
+	{ value: "desktop", label: "Desktop", icon: <Monitor aria-hidden /> },
+	{ value: "mobile", label: "Mobile", icon: <Smartphone aria-hidden /> },
 ];
 
-const TAB =
-	"pressable inline-flex h-7 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring aria-selected:bg-background aria-selected:text-foreground aria-selected:shadow-sm aria-pressed:bg-background aria-pressed:text-foreground aria-pressed:shadow-sm pointer-fine:hover:text-foreground";
-
-function Toolbar() {
+/** The flow's name, edited in place at the center of the toolbar. It names the folder, the definition and the components. */
+function FlowName() {
 	const { state, actions, meta } = useStudio();
 	return (
-		<div className="flex flex-wrap items-center gap-2 border-b px-4 py-2">
-			<div
-				role="tablist"
-				aria-label="View"
-				className="flex gap-0.5 rounded-lg bg-muted p-0.5"
-			>
-				{VIEWS.map((view) => (
-					<button
-						key={view.value}
-						type="button"
-						role="tab"
-						aria-selected={state.view === view.value}
-						onClick={() => actions.setView(view.value)}
-						className={TAB}
-					>
-						{view.icon}
-						{view.label}
-						{view.value === "code" ? (
-							<span className="font-mono text-[10.5px] text-muted-foreground tabular-nums">
-								{meta.project.files.length}
-							</span>
-						) : null}
-					</button>
-				))}
-			</div>
-			<div className="ml-auto flex items-center gap-2">
-				<fieldset
-					aria-label="Device"
-					className="flex gap-0.5 rounded-lg bg-muted p-0.5"
-				>
-					{DEVICES.map((device) => (
-						<button
-							key={device.value}
-							type="button"
-							aria-pressed={state.device === device.value}
-							aria-label={device.label}
-							title={device.label}
-							onClick={() => {
-								actions.setDevice(device.value);
-								actions.setView("preview");
-							}}
-							className={TAB}
-						>
-							{device.icon}
-						</button>
-					))}
-				</fieldset>
-				<button
+		<div className="flex min-w-0 items-center gap-2">
+			<Input
+				aria-label="Flow name"
+				title={`components/stepperize/${meta.project.names.slug}/`}
+				value={state.config.name}
+				maxLength={LIMITS.name}
+				size={Math.max(8, state.config.name.length + 1)}
+				onChange={(event) =>
+					actions.update((c) => ({ ...c, name: event.target.value }))
+				}
+				className="h-7 w-auto max-w-56 border-transparent bg-transparent text-center font-medium shadow-none dark:bg-transparent pointer-fine:hover:border-input"
+			/>
+		</div>
+	);
+}
+
+function Toolbar() {
+	const { state, actions } = useStudio();
+	return (
+		<div className="grid h-12 grid-cols-[1fr_auto_1fr] items-center gap-2 border-b px-3">
+			<TabsList className="justify-self-start">
+				<TabsTrigger value="preview">
+					<Eye aria-hidden data-icon="inline-start" />
+					Preview
+				</TabsTrigger>
+				<TabsTrigger value="code">
+					<Code2 aria-hidden data-icon="inline-start" />
+					Code
+				</TabsTrigger>
+			</TabsList>
+			<FlowName />
+			<div className="flex items-center justify-end gap-1.5">
+				<Segmented
+					label="Preview size"
+					value={state.device}
+					onChange={(device) => {
+						actions.setDevice(device);
+						actions.setView("preview");
+					}}
+					choices={DEVICES}
+					className="w-auto"
+					itemClassName="w-8 flex-none"
+				/>
+				<Separator orientation="vertical" className="mx-0.5 h-5" />
+				<Button
 					type="button"
-					onClick={actions.restartPreview}
+					variant="ghost"
+					size="sm"
 					title="Reset the preview state"
-					className={cn(TAB, "border bg-background")}
+					onClick={actions.restartPreview}
 				>
-					<RotateCcw aria-hidden className="size-3.5" />
+					<RotateCcw aria-hidden data-icon="inline-start" />
 					<span className="max-sm:sr-only">Reset</span>
-				</button>
-				<CopyButton
-					value={shareUrl(
-						state.config,
-						typeof window === "undefined" ? undefined : window.location.origin,
-					)}
-					label="Copy share link"
-					className={cn(TAB, "border bg-background text-foreground")}
-				>
-					<Link2 aria-hidden className="size-3.5" />
-					<span className="max-sm:sr-only">Share</span>
-				</CopyButton>
+				</Button>
+				<ShareButton />
+				<InstallButton />
 			</div>
 		</div>
 	);
 }
 
-function Body() {
+function ShareButton() {
 	const { state } = useStudio();
 	return (
-		<div className="min-h-0 overflow-auto">
-			{state.view === "preview" ? <PreviewStage /> : <CodeView />}
+		<CopyButton
+			value={shareUrl(
+				state.config,
+				typeof window === "undefined" ? undefined : window.location.origin,
+			)}
+			label="Copy share link"
+		>
+			<span className="max-sm:sr-only">Share</span>
+		</CopyButton>
+	);
+}
+
+function Body() {
+	return (
+		<div className="grid min-h-0">
+			<TabsContent value="preview" className="min-h-0 overflow-auto">
+				<PreviewStage />
+			</TabsContent>
+			<TabsContent value="code" className="min-h-0 overflow-hidden">
+				<CodeView />
+			</TabsContent>
 		</div>
 	);
 }
@@ -179,7 +165,7 @@ export const Studio = {
 	Workspace,
 	Toolbar,
 	Body,
-	Install: InstallBar,
+	Install: InstallButton,
 };
 
 export function StudioApp({
@@ -199,7 +185,6 @@ export function StudioApp({
 				<Studio.Workspace>
 					<Studio.Toolbar />
 					<Studio.Body />
-					<Studio.Install />
 				</Studio.Workspace>
 			</Studio.Shell>
 		</Studio.Provider>

@@ -33,11 +33,20 @@ export const INDICATORS = ["number", "check", "dot"] as const;
 export const FIELD_TYPES = [
 	"text",
 	"email",
-	"number",
-	"select",
-	"checkbox",
+	"password",
+	"tel",
+	"url",
 	"textarea",
+	"number",
+	"slider",
+	"select",
+	"radio",
+	"checkboxes",
+	"checkbox",
+	"switch",
 	"date",
+	"time",
+	"otp",
 ] as const;
 
 export type Framework = (typeof FRAMEWORKS)[number];
@@ -53,8 +62,11 @@ export type StudioField = {
 	label: string;
 	type: FieldType;
 	required: boolean;
-	/** Only read for `select` fields. */
+	/** Choices for `select`, `radio` and `checkboxes`. */
 	options?: string[];
+	/** Bounds for `slider`. */
+	min?: number;
+	max?: number;
 };
 
 export type StudioStep = {
@@ -96,6 +108,8 @@ export const LIMITS = {
 	steps: { min: 2, max: 8 },
 	fields: 8,
 	options: 8,
+	/** Slider bounds stay small integers so generated code reads naturally. */
+	range: { min: -100_000, max: 100_000 },
 } as const;
 
 // ─── Option catalogs (labels live next to the values they describe) ───────────
@@ -230,8 +244,53 @@ export function unavailableReason(
 	return undefined;
 }
 
+/** Field types that need a list of choices. */
+export const CHOICE_TYPES: ReadonlySet<FieldType> = new Set([
+	"select",
+	"radio",
+	"checkboxes",
+]);
+
+export const DEFAULT_OPTIONS = ["Option A", "Option B", "Option C"];
+export const DEFAULT_RANGE = { min: 0, max: 100 } as const;
+
+/**
+ * Keeps only the extras a field type reads, with sane values: choices for
+ * choice fields, an increasing range for sliders. Called on every edit and on
+ * every decoded link, so the generator never sees a half-configured field.
+ */
+export function normalizeField(field: StudioField): StudioField {
+	const base = {
+		label: field.label,
+		type: field.type,
+		required: field.required,
+	};
+	if (CHOICE_TYPES.has(field.type)) {
+		return {
+			...base,
+			options: field.options?.length ? field.options : DEFAULT_OPTIONS,
+		};
+	}
+	if (field.type === "slider") {
+		const min = Number.isFinite(field.min)
+			? Math.trunc(field.min as number)
+			: DEFAULT_RANGE.min;
+		const max = Number.isFinite(field.max)
+			? Math.trunc(field.max as number)
+			: DEFAULT_RANGE.max;
+		return max > min ? { ...base, min, max } : { ...base, min, max: min + 1 };
+	}
+	return base;
+}
+
 export function normalizeConfig(config: StudioConfig): StudioConfig {
-	let next = config;
+	let next: StudioConfig = {
+		...config,
+		steps: config.steps.map((step) => ({
+			...step,
+			fields: step.fields.map(normalizeField),
+		})),
+	};
 	if (unavailableReason(next, { kind: "navigation", value: next.navigation })) {
 		next = { ...next, navigation: "search-params" };
 	}
@@ -255,9 +314,8 @@ const field = (
 	label: string,
 	type: FieldType = "text",
 	required = true,
-	options?: string[],
-): StudioField =>
-	options ? { label, type, required, options } : { label, type, required };
+	extra: Pick<StudioField, "options" | "min" | "max"> = {},
+): StudioField => normalizeField({ label, type, required, ...extra });
 
 const BASE: Omit<StudioConfig, "name" | "steps"> = {
 	framework: "nextjs",
@@ -285,12 +343,12 @@ export const PRESETS = {
 						field("Full name"),
 						field("Email", "email"),
 						field("Address"),
-						field("Country", "select", true, [
-							"Argentina",
-							"Spain",
-							"Mexico",
-							"United States",
-						]),
+						field("Country", "select", true, {
+							options: ["Argentina", "Spain", "Mexico", "United States"],
+						}),
+						field("Delivery", "radio", true, {
+							options: ["Standard", "Express"],
+						}),
 					],
 				},
 				{
@@ -299,7 +357,7 @@ export const PRESETS = {
 					fields: [
 						field("Cardholder"),
 						field("Card number"),
-						field("Save card for next time", "checkbox", false),
+						field("Save card for next time", "switch", false),
 					],
 				},
 				{
@@ -323,18 +381,21 @@ export const PRESETS = {
 					description: "Tell your teammates who you are.",
 					fields: [
 						field("Name"),
-						field("Role", "select", true, [
-							"Engineering",
-							"Design",
-							"Product",
-							"Other",
-						]),
+						field("Role", "select", true, {
+							options: ["Engineering", "Design", "Product", "Other"],
+						}),
 					],
 				},
 				{
 					title: "Workspace",
 					description: "This is where your team will work.",
-					fields: [field("Workspace name"), field("Team size", "number")],
+					fields: [
+						field("Workspace name"),
+						field("Team size", "slider", true, { min: 1, max: 50 }),
+						field("Use cases", "checkboxes", true, {
+							options: ["Planning", "Design", "Engineering", "Support"],
+						}),
+					],
 				},
 				{
 					title: "Invite",
@@ -364,24 +425,29 @@ export const PRESETS = {
 				{
 					title: "Personal",
 					description: "As it appears on your ID.",
-					fields: [field("Legal name"), field("Date of birth", "date")],
+					fields: [
+						field("Legal name"),
+						field("Date of birth", "date"),
+						field("Phone", "tel"),
+					],
 				},
 				{
 					title: "Document",
 					description: "We accept passports and national IDs.",
 					fields: [
-						field("Document type", "select", true, [
-							"Passport",
-							"National ID",
-							"Driver license",
-						]),
+						field("Document type", "radio", true, {
+							options: ["Passport", "National ID", "Driver license"],
+						}),
 						field("Document number"),
 					],
 				},
 				{
-					title: "Consent",
-					description: "Required by financial regulations.",
-					fields: [field("I confirm the data above is correct", "checkbox")],
+					title: "Verify",
+					description: "Enter the code we sent to your phone.",
+					fields: [
+						field("Verification code", "otp"),
+						field("I confirm the data above is correct", "checkbox"),
+					],
 				},
 				{
 					title: "Submit",

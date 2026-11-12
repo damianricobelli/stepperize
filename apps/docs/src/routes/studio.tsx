@@ -51,7 +51,7 @@ function StudioPage() {
 
 	return (
 		<div className="flex min-h-screen flex-col bg-background text-foreground lg:h-dvh lg:min-h-0">
-			<SiteHeader active="studio" />
+			<SiteHeader active="studio" width="full" />
 			<h1 className="sr-only">Stepper Studio</h1>
 			<StudioApp
 				initialConfig={initialConfig}

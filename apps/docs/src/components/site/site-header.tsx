@@ -12,14 +12,26 @@ import { Wordmark } from "./brand";
 type NavTarget = "docs" | "blocks" | "studio" | "changelog";
 
 /**
- * Shared top navigation for the marketing surfaces (landing + Blocks gallery).
+ * Shared top navigation for the marketing surfaces (landing, Blocks, Studio).
  * Every primary destination stays visible on phones: the bar is short enough
  * that a hamburger would only hide the two links people came for.
  */
-export function SiteHeader({ active }: { active?: NavTarget }) {
+export function SiteHeader({
+	active,
+	width = "contained",
+}: {
+	active?: NavTarget;
+	/** `full` lines the bar up with full-bleed app surfaces such as the Studio. */
+	width?: "contained" | "full";
+}) {
 	return (
 		<header className="sticky top-[var(--fd-banner-height,0px)] z-40 border-b border-border/70 bg-background/80 backdrop-blur-xl supports-backdrop-filter:bg-background/65">
-			<div className="mx-auto flex h-14 w-full max-w-7xl items-center gap-1 pr-[max(0.75rem,env(safe-area-inset-right))] pl-[max(1rem,env(safe-area-inset-left))] sm:px-6">
+			<div
+				className={cn(
+					"mx-auto flex h-14 w-full items-center gap-1 pr-[max(0.75rem,env(safe-area-inset-right))] pl-[max(1rem,env(safe-area-inset-left))]",
+					width === "contained" ? "max-w-7xl sm:px-6" : "sm:px-4",
+				)}
+			>
 				<Link
 					to="/"
 					aria-label="Stepperize home"

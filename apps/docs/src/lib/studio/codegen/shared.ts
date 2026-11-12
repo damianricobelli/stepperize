@@ -1,10 +1,4 @@
-import type {
-	FieldType,
-	StudioConfig,
-	StudioField,
-	StudioStep,
-	UiKit,
-} from "../config";
+import type { StudioConfig, StudioStep, UiKit } from "../config";
 
 // ─── Identifiers ──────────────────────────────────────────────────────────────
 
@@ -126,19 +120,5 @@ export function hasFields(step: StudioStep): boolean {
 export function usesValidation(config: StudioConfig): boolean {
 	return config.validation !== "none" && config.steps.some(hasFields);
 }
-
-/** Initial value for a field when no draft exists yet. */
-export function emptyValue(field: StudioField): string {
-	if (field.type === "checkbox") return "false";
-	if (field.type === "number") return "0";
-	if (field.type === "select") return "undefined";
-	return '""';
-}
-
-export const INPUT_TYPES: Partial<Record<FieldType, string>> = {
-	email: "email",
-	number: "number",
-	date: "date",
-};
 
 export const USE_CLIENT = '"use client";';

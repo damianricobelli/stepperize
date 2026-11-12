@@ -2,10 +2,10 @@
 
 import { FileCode2, FolderOpen } from "lucide-react";
 import { useMemo } from "react";
-import { CopyButton } from "@/components/blocks-gallery/copy-button";
+import { Button } from "@/components/ui/button";
 import type { GeneratedFile } from "@/lib/studio/codegen/generate";
 import { type TokenKind, tokenize } from "@/lib/studio/highlight";
-import { cn } from "@/lib/utils";
+import { CopyButton } from "./controls";
 import { useStudio } from "./studio-provider";
 
 const TOKEN_CLASS: Record<TokenKind, string | undefined> = {
@@ -74,19 +74,21 @@ export function CodeView() {
 							{group.dir}/
 						</p>
 						{group.files.map((file) => (
-							<button
+							<Button
 								key={file.path}
 								type="button"
+								variant={file === active ? "secondary" : "ghost"}
+								size="sm"
 								aria-current={file === active ? "true" : undefined}
 								title={file.path}
 								onClick={() => actions.selectFile(file.path)}
-								className="flex shrink-0 items-center gap-1.5 rounded-md px-2 py-1 text-left font-mono text-xs whitespace-nowrap text-muted-foreground outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-ring aria-[current]:bg-accent aria-[current]:text-accent-foreground pointer-fine:hover:not-aria-[current]:bg-muted pointer-fine:hover:not-aria-[current]:text-foreground"
+								className="shrink-0 justify-start font-mono text-xs font-normal text-muted-foreground aria-[current]:text-foreground md:w-full"
 							>
-								<FileCode2 aria-hidden className="size-3.5 shrink-0" />
+								<FileCode2 aria-hidden data-icon="inline-start" />
 								<span className="truncate">
 									{file.path.slice(group.dir.length + 1)}
 								</span>
-							</button>
+							</Button>
 						))}
 					</div>
 				))}
@@ -96,12 +98,13 @@ export function CodeView() {
 					<span className="truncate font-mono text-xs text-muted-foreground">
 						{active.path}
 					</span>
+					<span className="ml-auto shrink-0 text-xs text-muted-foreground tabular-nums">
+						{files.length} files
+					</span>
 					<CopyButton
 						value={active.content}
 						label={`Copy ${active.path}`}
-						className={cn(
-							"shrink-0 rounded-md border px-2 py-1 text-xs font-medium",
-						)}
+						size="xs"
 					>
 						Copy
 					</CopyButton>

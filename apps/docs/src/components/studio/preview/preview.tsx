@@ -1,7 +1,7 @@
 "use client";
 
 import { ClientOnly } from "@tanstack/react-router";
-import { Suspense } from "react";
+import { Suspense, useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { StudioConfig } from "@/lib/studio/config";
 import { cn } from "@/lib/utils";
@@ -40,6 +40,8 @@ export function PreviewStage() {
 	const { state, meta } = useStudio();
 	const config = meta.deferredConfig;
 	const mobile = state.device === "mobile";
+	// Lives above the keyed flow, so editing the config keeps the inspector open.
+	const [inspect, setInspect] = useState(false);
 
 	return (
 		<div className="min-h-full bg-[radial-gradient(color-mix(in_oklch,var(--foreground)_9%,transparent)_1px,transparent_1px)] [background-size:16px_16px] p-4 sm:p-8">
@@ -57,6 +59,8 @@ export function PreviewStage() {
 							config={config}
 							names={meta.project.names}
 							mobile={mobile}
+							inspect={inspect}
+							onInspectChange={setInspect}
 						/>
 					</Suspense>
 				</ClientOnly>

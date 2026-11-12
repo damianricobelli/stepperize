@@ -8,6 +8,7 @@ import {
 import {
 	ArrowLeft,
 	ArrowRight,
+	Braces,
 	Check,
 	ChevronRight,
 	Lock,
@@ -22,24 +23,12 @@ import {
 	useState,
 } from "react";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Field, FieldError, FieldLabel } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
-import {
-	NativeSelect,
-	NativeSelectOption,
-} from "@/components/ui/native-select";
 import { Progress } from "@/components/ui/progress";
-import { Textarea } from "@/components/ui/textarea";
 import type { Names } from "@/lib/studio/codegen/shared";
-import type {
-	Framework,
-	StudioConfig,
-	StudioField,
-	UiKit,
-} from "@/lib/studio/config";
+import type { Framework, StudioConfig, UiKit } from "@/lib/studio/config";
 import { loadSchemaFactory } from "@/lib/studio/runtime-schemas";
 import { cn } from "@/lib/utils";
+import { PreviewField, readField } from "./preview-field";
 
 /**
  * The live preview runs the real `@stepperize/react` with a real schema from
@@ -107,10 +96,15 @@ export function PreviewFlow({
 	config,
 	names,
 	mobile,
+	inspect,
+	onInspectChange,
 }: {
 	config: StudioConfig;
 	names: Names;
 	mobile: boolean;
+	/** Shows the stepper's live state (id, index, progress, data) under the flow. */
+	inspect: boolean;
+	onInspectChange: (inspect: boolean) => void;
 }) {
 	// Suspends until the selected validation library has loaded.
 	const factory = use(loadSchemaFactory(config.validation));
@@ -199,6 +193,18 @@ export function PreviewFlow({
 						) : null}
 					</span>
 				</div>
+				<Button
+					type="button"
+					variant="ghost"
+					size="xs"
+					aria-pressed={inspect}
+					title="Show the stepper state"
+					onClick={() => onInspectChange(!inspect)}
+					className="text-muted-foreground aria-pressed:bg-background aria-pressed:text-foreground aria-pressed:shadow-xs"
+				>
+					<Braces aria-hidden data-icon="inline-start" />
+					<span className="max-sm:sr-only">State</span>
+				</Button>
 			</div>
 
 			<Stepper.Root
@@ -265,7 +271,7 @@ export function PreviewFlow({
 						</div>
 					</div>
 				</div>
-				<PreviewInspector />
+				{inspect ? <PreviewInspector /> : null}
 			</Stepper.Root>
 		</PreviewContext>
 	);
@@ -283,18 +289,19 @@ function ChromeButton({
 	children: ReactNode;
 }) {
 	return (
-		<button
+		<Button
 			type="button"
+			variant="ghost"
+			size="icon-sm"
 			aria-label={label}
 			title={
 				disabled ? "Navigation only enters browser history in URL modes" : label
 			}
 			disabled={disabled}
 			onClick={onClick}
-			className="pressable grid size-7 place-items-center rounded-md text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-35 pointer-fine:hover:not-disabled:bg-background pointer-fine:hover:not-disabled:text-foreground"
 		>
 			{children}
-		</button>
+		</Button>
 	);
 }
 
@@ -628,16 +635,6 @@ function StepBody({ index }: { index: number }) {
 	return <ContentStep />;
 }
 
-function readValue(
-	field: StudioField,
-	key: string,
-	formData: FormData,
-): unknown {
-	if (field.type === "checkbox") return formData.has(key);
-	if (field.type === "number") return Number(formData.get(key));
-	return String(formData.get(key) ?? "");
-}
-
 function StepForm({ index }: { index: number }) {
 	const { config, names, definition, issues, setIssues } = usePreview();
 	const stepper = definition.useStepperContext();
@@ -657,7 +654,7 @@ function StepForm({ index }: { index: number }) {
 		const value = Object.fromEntries(
 			step.fields.map((field, j) => [
 				keys[j],
-				readValue(field, keys[j], formData),
+				readField(field, keys[j], formData),
 			]),
 		);
 		setPending(true);
@@ -726,176 +723,6 @@ function StepForm({ index }: { index: number }) {
 				</KitButton>
 			</Actions>
 		</form>
-	);
-}
-
-const TW_INPUT =
-	"h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none transition-[border-color,box-shadow] duration-150 focus-visible:ring-2 focus-visible:ring-ring aria-invalid:border-destructive";
-
-function PreviewField({
-	field,
-	name,
-	defaultValue,
-	error,
-	ui,
-}: {
-	field: StudioField;
-	name: string;
-	defaultValue: unknown;
-	error: string | undefined;
-	ui: UiKit;
-}) {
-	const id = `preview-${name}`;
-	const invalid = error ? true : undefined;
-	const wide = field.type === "checkbox" || field.type === "textarea";
-	const text = defaultValue === undefined ? undefined : String(defaultValue);
-	const type =
-		field.type === "email" || field.type === "number" || field.type === "date"
-			? field.type
-			: "text";
-	const label = (
-		<>
-			{field.label}
-			{field.required ? null : (
-				<span className="font-normal text-muted-foreground"> (optional)</span>
-			)}
-		</>
-	);
-
-	if (ui === "shadcn") {
-		let control: ReactNode;
-		if (field.type === "checkbox") {
-			control = (
-				<Checkbox
-					id={id}
-					name={name}
-					defaultChecked={defaultValue === true}
-					aria-invalid={invalid}
-				/>
-			);
-		} else if (field.type === "select") {
-			control = (
-				<NativeSelect
-					id={id}
-					name={name}
-					defaultValue={text ?? ""}
-					aria-invalid={invalid}
-					className="w-full"
-				>
-					<NativeSelectOption value="">Select…</NativeSelectOption>
-					{field.options?.map((option) => (
-						<NativeSelectOption key={option} value={option}>
-							{option}
-						</NativeSelectOption>
-					))}
-				</NativeSelect>
-			);
-		} else if (field.type === "textarea") {
-			control = (
-				<Textarea
-					id={id}
-					name={name}
-					defaultValue={text}
-					aria-invalid={invalid}
-				/>
-			);
-		} else {
-			control = (
-				<Input
-					id={id}
-					name={name}
-					type={type}
-					defaultValue={text}
-					aria-invalid={invalid}
-				/>
-			);
-		}
-		return (
-			<Field
-				orientation={field.type === "checkbox" ? "horizontal" : "vertical"}
-				className={cn(wide && "@md:col-span-2")}
-			>
-				{field.type === "checkbox" ? control : null}
-				<FieldLabel htmlFor={id}>{label}</FieldLabel>
-				{field.type === "checkbox" ? null : control}
-				<FieldError>{error}</FieldError>
-			</Field>
-		);
-	}
-
-	const raw = ui === "unstyled";
-	const common = { id, name, "aria-invalid": invalid } as const;
-	let control: ReactNode;
-	if (field.type === "checkbox") {
-		control = (
-			<input
-				{...common}
-				type="checkbox"
-				defaultChecked={defaultValue === true}
-				className={cn(!raw && "size-4 accent-primary")}
-			/>
-		);
-	} else if (field.type === "select") {
-		control = (
-			<select
-				{...common}
-				defaultValue={text ?? ""}
-				className={cn(!raw && TW_INPUT)}
-			>
-				<option value="">Select…</option>
-				{field.options?.map((option) => (
-					<option key={option} value={option}>
-						{option}
-					</option>
-				))}
-			</select>
-		);
-	} else if (field.type === "textarea") {
-		control = (
-			<textarea
-				{...common}
-				defaultValue={text}
-				className={cn(!raw && cn(TW_INPUT, "min-h-20 py-2"))}
-			/>
-		);
-	} else {
-		control = (
-			<input
-				{...common}
-				type={type}
-				defaultValue={text}
-				className={cn(!raw && TW_INPUT)}
-			/>
-		);
-	}
-	return (
-		<div
-			className={cn(
-				!raw &&
-					(field.type === "checkbox"
-						? "flex flex-wrap items-center gap-2"
-						: "grid gap-2"),
-				!raw && wide && "@md:col-span-2",
-				raw && "my-2 block",
-			)}
-		>
-			{field.type === "checkbox" ? control : null}
-			<label
-				htmlFor={id}
-				className={cn(!raw && "text-sm font-medium", raw && "mr-2")}
-			>
-				{label}
-			</label>
-			{field.type === "checkbox" ? null : control}
-			{error ? (
-				<p
-					role="alert"
-					className={cn(!raw && "basis-full text-sm text-destructive")}
-				>
-					{error}
-				</p>
-			) : null}
-		</div>
 	);
 }
 
@@ -990,6 +817,7 @@ function ContentStep() {
 
 function display(value: unknown): string {
 	if (typeof value === "boolean") return value ? "Yes" : "No";
+	if (Array.isArray(value)) return value.length ? value.join(", ") : "—";
 	return value === undefined || value === "" ? "—" : String(value);
 }
 
@@ -1012,16 +840,27 @@ function Summary() {
 							<h3 className={cn(!raw && "text-sm font-medium")}>
 								{step.title}
 							</h3>
-							<button
-								type="button"
-								onClick={() => stepper.goTo(id)}
-								className={cn(
-									!raw &&
-										"pressable rounded px-1 text-sm font-medium text-primary outline-none focus-visible:ring-2 focus-visible:ring-ring",
-								)}
-							>
-								Edit
-							</button>
+							{config.ui === "shadcn" ? (
+								<Button
+									type="button"
+									variant="link"
+									size="sm"
+									onClick={() => stepper.goTo(id)}
+								>
+									Edit
+								</Button>
+							) : (
+								<button
+									type="button"
+									onClick={() => stepper.goTo(id)}
+									className={cn(
+										!raw &&
+											"pressable rounded px-1 text-sm font-medium text-primary outline-none focus-visible:ring-2 focus-visible:ring-ring",
+									)}
+								>
+									Edit
+								</button>
+							)}
 						</div>
 						<dl
 							className={cn(
@@ -1072,13 +911,15 @@ function Finished() {
 				Every step is marked complete. In your app, this is where the final
 				request runs.
 			</p>
-			<button
+			<Button
 				type="button"
+				variant="outline"
+				size="sm"
+				className="mt-2"
 				onClick={() => stepper.reset()}
-				className="pressable mt-2 inline-flex h-8 items-center gap-1.5 rounded-md border px-3 text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring pointer-fine:hover:bg-muted"
 			>
-				<RotateCcw aria-hidden className="size-3.5" /> Start over
-			</button>
+				<RotateCcw aria-hidden data-icon="inline-start" /> Start over
+			</Button>
 		</div>
 	);
 }

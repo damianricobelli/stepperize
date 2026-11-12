@@ -1,23 +1,44 @@
 "use client";
 
-import { ChevronDown, ChevronUp, Plus, Trash2, X } from "lucide-react";
+import { ArrowDown, ArrowUp, Plus, Trash2, X } from "lucide-react";
 import { useState } from "react";
+import {
+	Accordion,
+	AccordionContent,
+	AccordionItem,
+	AccordionTrigger,
+} from "@/components/ui/accordion";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { ButtonGroup } from "@/components/ui/button-group";
+import { Field, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import {
+	Select,
+	SelectContent,
+	SelectGroup,
+	SelectItem,
+	SelectLabel,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
+import { Toggle } from "@/components/ui/toggle";
 import { deriveNames } from "@/lib/studio/codegen/shared";
 import {
-	FIELD_TYPES,
+	CHOICE_TYPES,
 	type FieldType,
 	LIMITS,
 	type StudioConfig,
 	type StudioField,
 	type StudioStep,
 } from "@/lib/studio/config";
-import { cn } from "@/lib/utils";
+import { FIELD_GROUPS, FIELD_KINDS, sliderRange } from "@/lib/studio/fields";
 import { useStudio } from "./studio-provider";
 
-const ICON_BUTTON =
-	"pressable grid size-7 shrink-0 place-items-center rounded-md text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-30 pointer-fine:hover:bg-muted pointer-fine:hover:text-foreground";
-const INPUT =
-	"h-8 min-w-0 rounded-md border border-input bg-background px-2 text-[13px] outline-none transition-[border-color,box-shadow] duration-150 focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/40";
+/** Labels for `<Select.Value>`, so the trigger shows "Radio group", not "radio". */
+const FIELD_TYPE_LABELS = Object.fromEntries(
+	Object.entries(FIELD_KINDS).map(([type, kind]) => [type, kind.label]),
+) as Record<FieldType, string>;
 
 function updateStep(
 	config: StudioConfig,
@@ -68,7 +89,7 @@ function OptionsInput({
 		setDraft(safe.join(", "));
 	};
 	return (
-		<input
+		<Input
 			aria-label={`${label} options`}
 			value={draft}
 			onChange={(event) => setDraft(event.target.value)}
@@ -77,15 +98,171 @@ function OptionsInput({
 				if (event.key === "Enter") commit();
 			}}
 			placeholder="Comma-separated options"
-			className={cn(INPUT, "col-span-full")}
+			className="h-7 text-xs"
 		/>
+	);
+}
+
+/** A bound typed freely and committed on blur, so "-" or an empty box can be typed through. */
+function BoundInput({
+	label,
+	value,
+	onCommit,
+}: {
+	label: string;
+	value: number;
+	onCommit: (value: number) => void;
+}) {
+	const [draft, setDraft] = useState(String(value));
+	const commit = () => {
+		const next = Number.parseInt(draft, 10);
+		const safe = Number.isFinite(next)
+			? Math.min(Math.max(next, LIMITS.range.min), LIMITS.range.max)
+			: value;
+		onCommit(safe);
+		setDraft(String(safe));
+	};
+	return (
+		<Field orientation="horizontal" className="gap-1.5">
+			<FieldLabel className="text-xs font-normal text-muted-foreground">
+				{label}
+			</FieldLabel>
+			<Input
+				aria-label={label}
+				inputMode="numeric"
+				value={draft}
+				onChange={(event) => setDraft(event.target.value)}
+				onBlur={commit}
+				onKeyDown={(event) => {
+					if (event.key === "Enter") commit();
+				}}
+				className="h-7 text-xs tabular-nums"
+			/>
+		</Field>
+	);
+}
+
+function FieldRow({
+	stepIndex,
+	fieldIndex,
+	field,
+	name,
+}: {
+	stepIndex: number;
+	fieldIndex: number;
+	field: StudioField;
+	name: string;
+}) {
+	const { actions } = useStudio();
+	const patch = (next: Partial<StudioField>) =>
+		actions.update((c) =>
+			updateStep(c, stepIndex, (s) => updateField(s, fieldIndex, next)),
+		);
+	const { min, max } = sliderRange(field);
+
+	return (
+		<div className="grid gap-1.5 rounded-lg border bg-background p-2">
+			<div className="flex items-center gap-1.5">
+				<Input
+					aria-label="Field label"
+					title={`name: ${name}`}
+					value={field.label}
+					maxLength={LIMITS.label}
+					onChange={(event) => patch({ label: event.target.value })}
+					className="h-7 text-xs"
+				/>
+				<Button
+					type="button"
+					variant="ghost"
+					size="icon-xs"
+					aria-label={`Remove ${field.label}`}
+					onClick={() =>
+						actions.update((c) =>
+							updateStep(c, stepIndex, (s) => ({
+								...s,
+								fields: s.fields.filter((_, k) => k !== fieldIndex),
+							})),
+						)
+					}
+				>
+					<X aria-hidden />
+				</Button>
+			</div>
+			<div className="flex items-center gap-1.5">
+				<Select
+					items={FIELD_TYPE_LABELS}
+					value={field.type}
+					onValueChange={(type) => {
+						if (type) patch({ type: type as FieldType });
+					}}
+				>
+					<SelectTrigger
+						size="sm"
+						aria-label="Field type"
+						className="min-w-0 flex-1 text-xs"
+					>
+						<SelectValue />
+					</SelectTrigger>
+					<SelectContent>
+						{FIELD_GROUPS.map(({ group, types }) => (
+							<SelectGroup key={group}>
+								<SelectLabel>{group}</SelectLabel>
+								{types.map((type) => (
+									<SelectItem key={type} value={type}>
+										{FIELD_KINDS[type].label}
+									</SelectItem>
+								))}
+							</SelectGroup>
+						))}
+					</SelectContent>
+				</Select>
+				<Toggle
+					variant="outline"
+					size="sm"
+					aria-label="Required"
+					disabled={field.type === "slider"}
+					title={
+						field.type === "slider"
+							? "A slider always holds a value"
+							: "Required fields must be filled in"
+					}
+					pressed={field.type === "slider" || field.required}
+					onPressedChange={(required) => patch({ required })}
+					className="text-xs"
+				>
+					Required
+				</Toggle>
+			</div>
+			{CHOICE_TYPES.has(field.type) ? (
+				<OptionsInput
+					key={(field.options ?? []).join("|")}
+					label={field.label}
+					options={field.options ?? []}
+					onCommit={(options) => patch({ options })}
+				/>
+			) : null}
+			{field.type === "slider" ? (
+				<div key={`${min}:${max}`} className="grid grid-cols-2 gap-2">
+					<BoundInput
+						label="Min"
+						value={min}
+						onCommit={(next) => patch({ min: next })}
+					/>
+					<BoundInput
+						label="Max"
+						value={max}
+						onCommit={(next) => patch({ max: next })}
+					/>
+				</div>
+			) : null}
+		</div>
 	);
 }
 
 export function StepsEditor() {
 	const { state, actions } = useStudio();
 	const { config } = state;
-	const [open, setOpen] = useState<number | null>(0);
+	const [open, setOpen] = useState<number[]>([0]);
 	const names = deriveNames(config);
 	const last = config.steps.length - 1;
 
@@ -95,29 +272,48 @@ export function StepsEditor() {
 			[steps[from], steps[to]] = [steps[to], steps[from]];
 			return { ...c, steps };
 		});
-		setOpen(to);
+		setOpen([to]);
 		actions.restartPreview();
 	};
 
 	return (
-		<div className="grid gap-1.5">
-			<ol className="grid gap-1.5">
-				{config.steps.map((step, index) => {
-					const expanded = open === index;
-					return (
-						<li
-							key={index}
-							className={cn(
-								"rounded-lg border bg-card",
-								expanded && "shadow-xs",
-							)}
-						>
-							<div className="flex items-center gap-1.5 py-1 pr-1 pl-2">
-								<span className="grid size-5 shrink-0 place-items-center rounded-full bg-muted text-[11px] font-semibold text-muted-foreground tabular-nums">
-									{index + 1}
-								</span>
-								<input
-									aria-label={`Step ${index + 1} title`}
+		<div className="grid gap-2">
+			<Accordion
+				value={open}
+				onValueChange={(next) => setOpen(next as number[])}
+				className="gap-2"
+			>
+				{config.steps.map((step, index) => (
+					<AccordionItem
+						key={index}
+						value={index}
+						className="rounded-lg border bg-card not-last:border-b"
+					>
+						<AccordionTrigger className="items-center gap-2 px-2.5 py-2 hover:no-underline">
+							<Badge
+								variant="secondary"
+								className="size-5 shrink-0 rounded-full p-0 tabular-nums"
+							>
+								{index + 1}
+							</Badge>
+							<span className="min-w-0 flex-1 truncate text-[13px]">
+								{step.title || "Untitled step"}
+							</span>
+							<span className="shrink-0 font-mono text-[11px] font-normal text-muted-foreground">
+								{step.fields.length
+									? `${step.fields.length} field${step.fields.length > 1 ? "s" : ""}`
+									: index === last
+										? "summary"
+										: "content"}
+							</span>
+						</AccordionTrigger>
+						<AccordionContent className="grid gap-3 border-t px-2.5 pt-3 pb-2.5">
+							<Field className="gap-1.5">
+								<FieldLabel htmlFor={`step-${index}-title`} className="text-xs">
+									Title
+								</FieldLabel>
+								<Input
+									id={`step-${index}-title`}
 									value={step.title}
 									maxLength={LIMITS.label}
 									onChange={(event) =>
@@ -128,217 +324,129 @@ export function StepsEditor() {
 											})),
 										)
 									}
-									className="h-7 min-w-0 flex-1 rounded-md bg-transparent px-1.5 text-[13px] font-medium outline-none focus-visible:bg-muted pointer-fine:hover:bg-muted"
+									className="h-7 text-xs"
 								/>
-								<span className="shrink-0 font-mono text-[11px] text-muted-foreground">
-									{step.fields.length
-										? `${step.fields.length} field${step.fields.length > 1 ? "s" : ""}`
-										: index === last
-											? "summary"
-											: "content"}
-								</span>
-								<button
-									type="button"
-									aria-expanded={expanded}
-									aria-label={`${expanded ? "Collapse" : "Edit"} ${step.title}`}
-									onClick={() => setOpen(expanded ? null : index)}
-									className={ICON_BUTTON}
+							</Field>
+							<Field className="gap-1.5">
+								<FieldLabel
+									htmlFor={`step-${index}-description`}
+									className="text-xs"
 								>
-									<ChevronDown
-										aria-hidden
-										className={cn(
-											"size-4 transition-transform duration-200 ease-out-strong",
-											expanded && "rotate-180",
-										)}
+									Description
+								</FieldLabel>
+								<Input
+									id={`step-${index}-description`}
+									value={step.description}
+									maxLength={LIMITS.description}
+									placeholder="Optional"
+									onChange={(event) =>
+										actions.update((c) =>
+											updateStep(c, index, (s) => ({
+												...s,
+												description: event.target.value,
+											})),
+										)
+									}
+									className="h-7 text-xs"
+								/>
+							</Field>
+
+							<div className="grid gap-1.5">
+								<p className="text-xs font-medium">Fields</p>
+								{step.fields.length === 0 ? (
+									<p className="rounded-lg border border-dashed px-2.5 py-2 text-xs text-muted-foreground">
+										{index === last
+											? "No fields: this step summarizes the flow."
+											: "No fields: this step renders your own content."}
+									</p>
+								) : null}
+								{step.fields.map((field, j) => (
+									<FieldRow
+										key={j}
+										stepIndex={index}
+										fieldIndex={j}
+										field={field}
+										name={names.fields[index][j]}
 									/>
-								</button>
+								))}
+								<Button
+									type="button"
+									variant="outline"
+									size="sm"
+									disabled={step.fields.length >= LIMITS.fields}
+									onClick={() =>
+										actions.update((c) =>
+											updateStep(c, index, (s) => ({
+												...s,
+												fields: [
+													...s.fields,
+													{
+														label: `Field ${s.fields.length + 1}`,
+														type: "text",
+														required: true,
+													},
+												],
+											})),
+										)
+									}
+									className="justify-self-start"
+								>
+									<Plus aria-hidden data-icon="inline-start" /> Add field
+								</Button>
 							</div>
 
-							{expanded ? (
-								<div className="grid gap-2 border-t border-dashed p-2">
-									<p className="px-0.5 text-[11.5px] text-muted-foreground">
-										id{" "}
-										<code className="font-mono text-foreground">
-											"{names.stepIds[index]}"
-										</code>
-									</p>
-									<input
-										aria-label="Step description"
-										value={step.description}
-										maxLength={LIMITS.description}
-										placeholder="Description (optional)"
-										onChange={(event) =>
-											actions.update((c) =>
-												updateStep(c, index, (s) => ({
-													...s,
-													description: event.target.value,
-												})),
-											)
-										}
-										className={INPUT}
-									/>
-
-									{step.fields.map((field, j) => (
-										<div
-											key={j}
-											className="grid grid-cols-[minmax(0,1fr)_6.5rem_auto_auto] items-center gap-1"
-										>
-											<input
-												aria-label="Field label"
-												title={`name: ${names.fields[index][j]}`}
-												value={field.label}
-												maxLength={LIMITS.label}
-												onChange={(event) =>
-													actions.update((c) =>
-														updateStep(c, index, (s) =>
-															updateField(s, j, { label: event.target.value }),
-														),
-													)
-												}
-												className={INPUT}
-											/>
-											<select
-												aria-label="Field type"
-												value={field.type}
-												onChange={(event) => {
-													const type = event.target.value as FieldType;
-													actions.update((c) =>
-														updateStep(c, index, (s) =>
-															updateField(s, j, {
-																type,
-																options:
-																	type === "select"
-																		? (field.options ?? [
-																				"Option A",
-																				"Option B",
-																			])
-																		: undefined,
-															}),
-														),
-													);
-												}}
-												className={cn(INPUT, "pr-1")}
-											>
-												{FIELD_TYPES.map((type) => (
-													<option key={type}>{type}</option>
-												))}
-											</select>
-											<button
-												type="button"
-												aria-pressed={field.required}
-												title={field.required ? "Required" : "Optional"}
-												onClick={() =>
-													actions.update((c) =>
-														updateStep(c, index, (s) =>
-															updateField(s, j, { required: !field.required }),
-														),
-													)
-												}
-												className="pressable h-8 rounded-md border px-1.5 text-[11px] font-semibold text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring aria-pressed:border-transparent aria-pressed:bg-accent aria-pressed:text-accent-foreground"
-											>
-												req
-											</button>
-											<button
-												type="button"
-												aria-label={`Remove ${field.label}`}
-												onClick={() =>
-													actions.update((c) =>
-														updateStep(c, index, (s) => ({
-															...s,
-															fields: s.fields.filter((_, k) => k !== j),
-														})),
-													)
-												}
-												className={ICON_BUTTON}
-											>
-												<X aria-hidden className="size-3.5" />
-											</button>
-											{field.type === "select" ? (
-												<OptionsInput
-													key={(field.options ?? []).join("|")}
-													label={field.label}
-													options={field.options ?? []}
-													onCommit={(options) =>
-														actions.update((c) =>
-															updateStep(c, index, (s) =>
-																updateField(s, j, { options }),
-															),
-														)
-													}
-												/>
-											) : null}
-										</div>
-									))}
-
-									<div className="flex items-center gap-1">
-										<button
-											type="button"
-											disabled={step.fields.length >= LIMITS.fields}
-											onClick={() =>
-												actions.update((c) =>
-													updateStep(c, index, (s) => ({
-														...s,
-														fields: [
-															...s.fields,
-															{
-																label: `Field ${s.fields.length + 1}`,
-																type: "text",
-																required: true,
-															},
-														],
-													})),
-												)
-											}
-											className="pressable mr-auto inline-flex h-7 items-center gap-1 rounded-md px-2 text-xs font-medium text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-40 pointer-fine:hover:bg-muted pointer-fine:hover:text-foreground"
-										>
-											<Plus aria-hidden className="size-3.5" /> Add field
-										</button>
-										<button
-											type="button"
-											aria-label="Move step up"
-											disabled={index === 0}
-											onClick={() => move(index, index - 1)}
-											className={ICON_BUTTON}
-										>
-											<ChevronUp aria-hidden className="size-4" />
-										</button>
-										<button
-											type="button"
-											aria-label="Move step down"
-											disabled={index === last}
-											onClick={() => move(index, index + 1)}
-											className={ICON_BUTTON}
-										>
-											<ChevronDown aria-hidden className="size-4" />
-										</button>
-										<button
-											type="button"
-											aria-label={`Delete ${step.title}`}
-											disabled={config.steps.length <= LIMITS.steps.min}
-											onClick={() => {
-												actions.update((c) => ({
-													...c,
-													steps: c.steps.filter((_, k) => k !== index),
-												}));
-												setOpen(null);
-												actions.restartPreview();
-											}}
-											className={cn(
-												ICON_BUTTON,
-												"pointer-fine:hover:text-destructive",
-											)}
-										>
-											<Trash2 aria-hidden className="size-3.5" />
-										</button>
-									</div>
-								</div>
-							) : null}
-						</li>
-					);
-				})}
-			</ol>
-			<button
+							<div className="flex items-center gap-2 border-t pt-2.5">
+								<code className="min-w-0 flex-1 truncate font-mono text-[11px] text-muted-foreground">
+									id "{names.stepIds[index]}"
+								</code>
+								<ButtonGroup aria-label="Step actions">
+									<Button
+										type="button"
+										variant="outline"
+										size="icon-xs"
+										aria-label="Move step up"
+										disabled={index === 0}
+										onClick={() => move(index, index - 1)}
+									>
+										<ArrowUp aria-hidden />
+									</Button>
+									<Button
+										type="button"
+										variant="outline"
+										size="icon-xs"
+										aria-label="Move step down"
+										disabled={index === last}
+										onClick={() => move(index, index + 1)}
+									>
+										<ArrowDown aria-hidden />
+									</Button>
+									<Button
+										type="button"
+										variant="outline"
+										size="icon-xs"
+										aria-label={`Delete ${step.title}`}
+										disabled={config.steps.length <= LIMITS.steps.min}
+										onClick={() => {
+											actions.update((c) => ({
+												...c,
+												steps: c.steps.filter((_, k) => k !== index),
+											}));
+											setOpen([]);
+											actions.restartPreview();
+										}}
+										className="pointer-fine:hover:text-destructive"
+									>
+										<Trash2 aria-hidden />
+									</Button>
+								</ButtonGroup>
+							</div>
+						</AccordionContent>
+					</AccordionItem>
+				))}
+			</Accordion>
+			<Button
 				type="button"
+				variant="outline"
 				disabled={config.steps.length >= LIMITS.steps.max}
 				onClick={() => {
 					// New steps go before the summary step, where content usually belongs.
@@ -351,13 +459,13 @@ export function StepsEditor() {
 						});
 						return { ...c, steps };
 					});
-					setOpen(config.steps.length - 1);
+					setOpen([config.steps.length - 1]);
 					actions.restartPreview();
 				}}
-				className="pressable inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border border-dashed text-xs font-medium text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-40 pointer-fine:hover:border-foreground/25 pointer-fine:hover:text-foreground"
+				className="border-dashed"
 			>
-				<Plus aria-hidden className="size-3.5" /> Add step
-			</button>
+				<Plus aria-hidden data-icon="inline-start" /> Add step
+			</Button>
 		</div>
 	);
 }

@@ -1,3 +1,4 @@
+import DATE_PICKER from "@/components/studio/kit/date-picker.tsx?raw";
 import type { StudioConfig } from "../config";
 import { generateStep, stepComponent } from "./forms";
 import { generateNav, PROGRESS_RING } from "./layouts";
@@ -63,7 +64,8 @@ function stepsFile(config: StudioConfig, names: Names): string {
 				`id: ${str(names.stepIds[i])}`,
 				`title: ${str(step.title)}`,
 			];
-			if (step.description) parts.push(`description: ${str(step.description)}`);
+			// Always present, so `step.description` reads the same on every step.
+			parts.push(`description: ${str(step.description)}`);
 			if (withSchema && hasFields(step))
 				parts.push(`schema: ${schemaName(names.stepIds[i])}`);
 			return `\t{ ${parts.join(", ")} },`;
@@ -94,7 +96,7 @@ function stepContentFile(config: StudioConfig, names: Names): string {
 		"\treturn (",
 		`\t\t<header${cls(ui, "grid gap-1")}>`,
 		`\t\t\t<h2${cls(ui, "text-lg font-semibold tracking-tight")}>{step.title}</h2>`,
-		`\t\t\t{"description" in step ? <p${cls(ui, "text-sm text-muted-foreground")}>{step.description}</p> : null}`,
+		`\t\t\t{step.description ? <p${cls(ui, "text-sm text-muted-foreground")}>{step.description}</p> : null}`,
 		"\t\t</header>",
 		"\t);",
 		"}",
@@ -325,6 +327,12 @@ export function generateProject(config: StudioConfig): GeneratedProject {
 	});
 	if (config.layout === "circular")
 		files.push(component("progress-ring.tsx", PROGRESS_RING));
+	// The same component the Studio preview renders, shipped verbatim.
+	if (
+		config.ui === "shadcn" &&
+		config.steps.some((step) => step.fields.some((f) => f.type === "date"))
+	)
+		files.push(component("date-picker.tsx", DATE_PICKER));
 	if (config.behavior.persist) {
 		files.push({
 			path: `${base}/use-saved-draft.ts`,

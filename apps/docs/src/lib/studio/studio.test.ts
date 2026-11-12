@@ -4,11 +4,14 @@ import { generateProject, toRegistryItem } from "./codegen/generate";
 import { jsxText } from "./codegen/shared";
 import {
 	DEFAULT_CONFIG,
+	FIELD_TYPES,
+	type FieldType,
 	FORMS,
 	FRAMEWORKS,
 	LAYOUTS,
 	NAVIGATIONS,
 	normalizeConfig,
+	normalizeField,
 	PRESET_IDS,
 	PRESETS,
 	type StudioConfig,
@@ -16,7 +19,43 @@ import {
 	unavailableReason,
 	VALIDATIONS,
 } from "./config";
+import { loadSchemaFactory } from "./runtime-schemas";
 import { decodeConfig, encodeConfig } from "./share";
+
+/** One field of every type, labelled by its type. */
+const everyField = (required: boolean) =>
+	FIELD_TYPES.map((type) =>
+		normalizeField({
+			label: type,
+			type,
+			required,
+			...(type === "slider" ? { min: 1, max: 9 } : {}),
+		}),
+	);
+
+/** A flow that exercises every field type, required and optional. */
+const EVERY_FIELD: StudioConfig = {
+	...DEFAULT_CONFIG,
+	steps: [
+		{
+			title: "Required A",
+			description: "",
+			fields: everyField(true).slice(0, 8),
+		},
+		{ title: "Required B", description: "", fields: everyField(true).slice(8) },
+		{
+			title: "Optional A",
+			description: "",
+			fields: everyField(false).slice(0, 8),
+		},
+		{
+			title: "Optional B",
+			description: "",
+			fields: everyField(false).slice(8),
+		},
+		{ title: "Review", description: "", fields: [] },
+	],
+};
 
 const paths = (config: StudioConfig) =>
 	generateProject(config).files.map((f) => f.path);
@@ -71,6 +110,15 @@ function matrix(): StudioConfig[] {
 		}),
 	);
 	for (const id of PRESET_IDS) out.push(PRESETS[id].config);
+	for (const form of FORMS)
+		for (const validation of VALIDATIONS)
+			for (const ui of UI_KITS) {
+				const config = { ...EVERY_FIELD, form, validation, ui };
+				if (
+					!unavailableReason(config, { kind: "validation", value: validation })
+				)
+					out.push(normalizeConfig(config));
+			}
 	return out;
 }
 
@@ -105,6 +153,118 @@ describe("share links", () => {
 		);
 		expect(config?.navigation).toBe("search-params");
 	});
+});
+
+describe("fields", () => {
+	it("keeps only the extras a type reads", () => {
+		expect(
+			normalizeField({
+				label: "A",
+				type: "text",
+				required: true,
+				options: ["x"],
+				min: 1,
+			}),
+		).toEqual({ label: "A", type: "text", required: true });
+		expect(
+			normalizeField({ label: "A", type: "radio", required: true }).options,
+		).toHaveLength(3);
+		expect(
+			normalizeField({
+				label: "A",
+				type: "slider",
+				required: true,
+				min: 5,
+				max: 2,
+			}),
+		).toMatchObject({ min: 5, max: 6 });
+	});
+
+	it("round-trips every field type through a share link", () => {
+		expect(decodeConfig(encodeConfig(EVERY_FIELD))).toEqual(EVERY_FIELD);
+	});
+
+	it("ships the date picker only to shadcn flows that use a date", () => {
+		const has = (config: StudioConfig) =>
+			paths(config).some((p) => p.endsWith("/date-picker.tsx"));
+		expect(has(EVERY_FIELD)).toBe(true);
+		expect(has({ ...EVERY_FIELD, ui: "tailwind" })).toBe(false);
+		expect(has(DEFAULT_CONFIG)).toBe(false);
+	});
+});
+
+const VALID: Record<FieldType, unknown> = {
+	text: "Ada",
+	email: "ada@example.com",
+	password: "secret",
+	tel: "+1 555 0100",
+	url: "https://example.com",
+	textarea: "Hello",
+	otp: "123456",
+	number: 3,
+	slider: 4,
+	select: "Option A",
+	radio: "Option B",
+	checkboxes: ["Option A", "Option C"],
+	checkbox: true,
+	switch: true,
+	date: "2024-02-29",
+	time: "09:30",
+};
+
+/** What each control submits when the user leaves it alone. */
+const UNTOUCHED: Record<FieldType, unknown> = {
+	text: "",
+	email: "",
+	password: "",
+	tel: "",
+	url: "",
+	textarea: "",
+	otp: "",
+	number: undefined,
+	slider: 1,
+	select: "",
+	radio: "",
+	checkboxes: [],
+	checkbox: false,
+	switch: false,
+	date: "",
+	time: "",
+};
+
+describe("preview schemas", () => {
+	const issueKeys = (issues: readonly { path?: readonly unknown[] }[] = []) =>
+		new Set(
+			issues.map((issue) => {
+				const key = issue.path?.[0];
+				return String(
+					typeof key === "object" && key ? (key as { key: unknown }).key : key,
+				);
+			}),
+		);
+
+	for (const validation of ["zod", "valibot", "arktype"] as const) {
+		it(`${validation}: accepts valid values, flags untouched required fields, lets optional ones pass`, async () => {
+			const factory = await loadSchemaFactory(validation);
+			if (!factory) throw new Error("no factory");
+			const schema = (required: boolean) =>
+				factory(
+					everyField(required).map((field) => ({ key: field.type, field })),
+				);
+
+			const valid = await schema(true)["~standard"].validate(VALID);
+			expect(valid.issues).toBeUndefined();
+
+			const untouched = await schema(true)["~standard"].validate(UNTOUCHED);
+			// A slider always holds an in-range value, so it is the only field that passes.
+			expect(issueKeys(untouched.issues)).toEqual(
+				new Set(FIELD_TYPES.filter((type) => type !== "slider")),
+			);
+
+			const optional = await schema(false)["~standard"].validate(UNTOUCHED);
+			expect(optional.issues).toBeUndefined();
+		});
+	}
 });
 
 describe("compatibility", () => {
@@ -183,15 +343,14 @@ describe("generated files", () => {
 				"zod@^4",
 			]),
 		);
-		expect(project.registryDependencies).toEqual(
-			expect.arrayContaining([
-				"button",
-				"checkbox",
-				"field",
-				"input",
-				"native-select",
-			]),
-		);
+		expect(project.registryDependencies).toEqual([
+			"button",
+			"field",
+			"input",
+			"radio-group",
+			"select",
+			"switch",
+		]);
 		expect(
 			generateProject({ ...DEFAULT_CONFIG, ui: "tailwind" })
 				.registryDependencies,
