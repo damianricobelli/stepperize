@@ -361,13 +361,14 @@ export function StepsEditor() {
 							</Field>
 
 							<div className="grid gap-1.5">
-								<p className="text-xs font-medium">Fields</p>
+								{/* Not a <p>: AccordionContent adds a bottom margin to paragraphs. */}
+								<h4 className="text-xs font-medium">Fields</h4>
 								{step.fields.length === 0 ? (
-									<p className="rounded-lg border border-dashed px-2.5 py-2 text-xs text-muted-foreground">
+									<div className="rounded-lg border border-dashed px-2.5 py-2 text-xs text-muted-foreground">
 										{index === last
 											? "No fields: this step summarizes the flow."
 											: "No fields: this step renders your own content."}
-									</p>
+									</div>
 								) : null}
 								{step.fields.map((field, j) => (
 									<FieldRow
