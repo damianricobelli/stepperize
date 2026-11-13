@@ -48,10 +48,6 @@ export type StepperPrimitives<Steps extends readonly Step[]> = {
 	useItem: () => StepItemValue<Steps[number]>;
 };
 
-// Inside a Trigger (a <button>), headings and paragraphs are invalid: use phrasing content.
-const titleTag = (inTrigger: boolean) => (inTrigger ? "span" : "h4") as "h4";
-const descriptionTag = (inTrigger: boolean) => (inTrigger ? "span" : "p") as "p";
-
 export function createStepperPrimitives<Steps extends readonly Step[]>(
 	map: StepMap<Steps>,
 	Provider: (props: React.PropsWithChildren<any>) => React.ReactElement,
@@ -63,12 +59,12 @@ export function createStepperPrimitives<Steps extends readonly Step[]>(
 		Items: createItems(map.steps, scope),
 		Item: createItem(map, scope),
 		Trigger: createTrigger<Steps>(scope),
-		Title: createSimple("title", titleTag, fromStep("title"), false, scope),
-		Description: createSimple("description", descriptionTag, fromStep("description"), false, scope),
-		Indicator: createSimple("indicator", "span", withStatus, true, scope),
+		Title: createSimple("title", "h4", fromStep("title"), false, scope.ItemContext),
+		Description: createSimple("description", "p", fromStep("description"), false, scope.ItemContext),
+		Indicator: createSimple("indicator", "span", withStatus, true, scope.ItemContext),
 		Separator: createSeparator(scope.UiContext),
 		Content: createContent<Steps>(map, scope),
-		Actions: createSimple("actions", "div", undefined, false, scope),
+		Actions: createSimple("actions", "div", undefined, false, scope.ItemContext),
 		Prev: createNav<Steps>("prev", scope),
 		Next: createNav<Steps>("next", scope),
 		useItem: scope.useStepItem as () => StepItemValue<Steps[number]>,

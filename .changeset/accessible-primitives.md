@@ -4,7 +4,7 @@
 
 Accessible primitives without new options.
 
-- **Valid markup**: items are `role="presentation"` inside the tablist, and `Title`/`Description` render a `span` inside a `Trigger`.
+- **Valid ARIA structure**: items are `role="presentation"` inside the tablist, so the list owns its tabs. axe reported three violations on the standard layout before.
 - **Focus**: focus that would be lost after a step change (a disabled or replaced `Next`, an unmounted panel) moves to the new panel. Focus outside the stepper is never touched.
 - **Announcements**: when the step changes while focus stays put (for example on `Next`), a polite live region announces the new step's `title`. Nothing to translate.
 - **Pending guards**: triggers, `Prev` and `Next` keep focus while a guard runs (`aria-disabled` instead of `disabled`, plus `data-pending`); the Root sets `aria-busy`.
@@ -17,7 +17,8 @@ Accessible primitives without new options.
 
 **Upgrading from 8.0**
 
-- `Stepper.Title` and `Stepper.Description` render a `span` inside a `Stepper.Trigger` (a `button` cannot contain headings or paragraphs). Add `className="block"`, or make the trigger a flex column, if you relied on them stacking. Target `[data-component="stepper-title"]` instead of `h4` in CSS.
+Nothing to change in your code. You might notice:
+
 - Error messages start with a code (`[stepperize] SZ101: …`). Tests matching the exact text need the prefix.
 - `render` functions receive `children`, which were dropped before.
 - While an async guard runs, triggers, `Prev` and `Next` are `aria-disabled` rather than `disabled`; style that moment with `data-disabled:` or `data-pending:`.
