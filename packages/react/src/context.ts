@@ -1,5 +1,6 @@
 import type { Step, Stepper } from "@stepperize/core";
 import React from "react";
+import { fail } from "./dev";
 import type { StepperStore } from "./store";
 import { type StoreView, useStoreSelector } from "./utils";
 
@@ -12,7 +13,7 @@ export function createStepperContext<Steps extends readonly Step[]>() {
 	} | null>(null);
 	function useValue() {
 		const value = React.useContext(Context);
-		if (!value) throw new Error("Missing Stepper.Provider for this definition. Use its Provider or Stepper.Root.");
+		if (!value) fail("SZ100", "Missing Stepper.Provider for this definition. Use its Provider or Stepper.Root.");
 		return value;
 	}
 

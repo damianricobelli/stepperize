@@ -5,8 +5,9 @@ import type { UseStepperOptions } from "../types";
 export type { ControlledStep } from "../types";
 export type { StepStatus };
 
+/** Props a render function receives: spread them all, including `ref` and `children`. */
 export type RenderProp<E extends React.ElementType = "div"> = (
-	props: React.ComponentPropsWithoutRef<E>,
+	props: React.ComponentPropsWithRef<E>,
 ) => React.ReactNode;
 
 export type PrimitiveComponent<Props> = (props: Props) => React.ReactNode;
@@ -21,6 +22,7 @@ export type PrimitiveProps<E extends React.ElementType = "div"> = Omit<
 	 */
 	render?: RenderProp<E>;
 	children?: React.ReactNode;
+	ref?: React.Ref<React.ComponentRef<E>>;
 };
 
 /**
@@ -30,6 +32,7 @@ export type PrimitiveProps<E extends React.ElementType = "div"> = Omit<
 export type RootProps<Steps extends readonly Step[]> = Omit<React.ComponentPropsWithoutRef<"div">, "children"> &
 	UseStepperOptions<Steps> & {
 		orientation?: "horizontal" | "vertical";
+		ref?: React.Ref<HTMLDivElement>;
 		/** Content or render function receiving the current stepper. */
 		children: React.ReactNode | ((props: { stepper: Stepper<Steps> }) => React.ReactNode);
 	};

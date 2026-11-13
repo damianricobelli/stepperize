@@ -17,6 +17,8 @@
 	},
 	"include": [
 		"src/index.ts",
+		"src/env.d.ts",
+		"src/dev.ts",
 		"src/headless.ts",
 		"src/define-stepper.ts",
 		"src/types.ts",
