@@ -15,6 +15,7 @@ import {
 	type StepperData,
 	validateStep,
 } from "@stepperize/core";
+import { fail, warn } from "./dev";
 import type { DefineStepperOptions, UseStepperOptions } from "./types";
 
 type StoreState<Steps extends readonly Step[]> = {
@@ -137,7 +138,7 @@ export function createStepperStore<Steps extends readonly Step[]>(
 		requestedData = next;
 		if (config.data === undefined) {
 			internal.data = next;
-			publish({ id: state.id, data: next, completed: state.completed, pending: false, linear: state.linear });
+			publish({ ...state, data: next, pending: false });
 		}
 		config.onDataChange?.(requestedData);
 	}
@@ -147,7 +148,7 @@ export function createStepperStore<Steps extends readonly Step[]>(
 		requestedCompleted = next;
 		if (config.completed === undefined) {
 			internal.completed = next;
-			publish({ id: state.id, data: state.data, completed: next, pending: false, linear: state.linear });
+			publish({ ...state, completed: next, pending: false });
 		}
 		config.onCompletedChange?.(requestedCompleted);
 	}
@@ -223,6 +224,17 @@ export function createStepperStore<Steps extends readonly Step[]>(
 			if (allowed === false) return reject("guard");
 			pending = undefined;
 			commit({ id: toId, data, completed });
+			if (
+				process.env.NODE_ENV !== "production" &&
+				config.step !== undefined &&
+				!config.onStepChange &&
+				toId !== fromId
+			) {
+				warn(
+					"SZ004",
+					`${direction === "goto" ? "goTo" : direction}() was accepted, but \`step\` is controlled without \`onStepChange\`, so the flow stays on "${fromId}". Pass \`onStepChange\`, or use \`defaultStep\` for an uncontrolled flow.`,
+				);
+			}
 			config.onStepChange?.(toId, createContext(to));
 			return { accepted: true, from: fromId, to: toId };
 		} finally {
@@ -257,7 +269,7 @@ export function createStepperStore<Steps extends readonly Step[]>(
 		setComplete: (target?: Id, value = true) => {
 			syncOptions();
 			const id = target ?? state.id;
-			if (!map.has(id)) throw new Error(`Step "${id}" not found.`);
+			if (!map.has(id)) fail("SZ102", `Step "${id}" not found.`);
 			const has = requestedCompleted.includes(id);
 			if (value && !has) writeCompleted([...requestedCompleted, id]);
 			else if (!value && has) writeCompleted(requestedCompleted.filter((entry) => entry !== id));
@@ -267,14 +279,14 @@ export function createStepperStore<Steps extends readonly Step[]>(
 		set: (...args: [unknown] | [Id, unknown]) => {
 			syncOptions();
 			const id = args.length === 1 ? state.id : args[0];
-			if (!map.has(id)) throw new Error(`Step "${id}" not found.`);
+			if (!map.has(id)) fail("SZ102", `Step "${id}" not found.`);
 			const data = { ...requestedData };
 			data[id] = args[args.length - 1];
 			writeData(data);
 		},
 		update: ((id, update) => {
 			syncOptions();
-			if (!map.has(id)) throw new Error(`Step "${id}" not found.`);
+			if (!map.has(id)) fail("SZ102", `Step "${id}" not found.`);
 			writeData({ ...requestedData, [id]: update(requestedData[id]) });
 		}) as StepperData<Steps>["update"],
 		clear: (id?: Id) => {
@@ -295,7 +307,11 @@ export function createStepperStore<Steps extends readonly Step[]>(
 		const { id, data, completed, pending: isPending, linear } = view;
 		const index = map.indexOf(id);
 		const previous = snapshot;
+		const before = previous && (snapshotStates.get(previous) as State | undefined);
 		const sameStep = previous?.id === id;
+		// Closures only depend on their inputs: when those are unchanged, keep the old
+		// function. Fewer allocations per write, and stable references for user deps.
+		const sameData = sameStep && before?.data === data;
 		let complete: Set<Id> | undefined;
 		const value: Stepper<Steps> = {
 			steps,
@@ -315,14 +331,16 @@ export function createStepperStore<Steps extends readonly Step[]>(
 			goTo: actions.goTo,
 			reset: actions.reset,
 			setComplete: actions.setComplete,
-			data: {
-				set: dataActions.set,
-				update: dataActions.update,
-				clear: dataActions.clear,
-				reset: dataActions.reset,
-				get: ((target: Id = id) => data[target]) as StepperData<Steps>["get"],
-				all: () => data,
-			},
+			data: sameData
+				? previous.data
+				: {
+						set: dataActions.set,
+						update: dataActions.update,
+						clear: dataActions.clear,
+						reset: dataActions.reset,
+						get: ((target: Id = id) => data[target]) as StepperData<Steps>["get"],
+						all: () => data,
+					},
 			status: sameStep
 				? previous.status
 				: (target) => {
@@ -337,12 +355,17 @@ export function createStepperStore<Steps extends readonly Step[]>(
 							return complete.has(target);
 						},
 			is: sameStep ? previous.is : (target) => target === id,
-			canGoTo: (target) => {
-				const position = map.indexOf(target);
-				return position >= 0 && !isPending && (!linear || position <= index + 1);
-			},
-			match: (handlers) => matchStep(steps, id, handlers, data),
-			validate: ((target: Id = id) => validateStep(steps, target, data[target])) as Stepper<Steps>["validate"],
+			canGoTo:
+				sameStep && before?.pending === isPending && before.linear === linear
+					? previous.canGoTo
+					: (target) => {
+							const position = map.indexOf(target);
+							return position >= 0 && !isPending && (!linear || position <= index + 1);
+						},
+			match: sameData ? previous.match : (handlers) => matchStep(steps, id, handlers, data),
+			validate: sameData
+				? previous.validate
+				: (((target: Id = id) => validateStep(steps, target, data[target])) as Stepper<Steps>["validate"]),
 		};
 		snapshotStates.set(value, view);
 		return value;
@@ -350,6 +373,7 @@ export function createStepperStore<Steps extends readonly Step[]>(
 	function configure(next: UseStepperOptions<Steps>) {
 		if (configured && config === next) return;
 		configured = true;
+
 		const changed =
 			next.step !== config.step ||
 			next.data !== config.data ||
@@ -414,14 +438,8 @@ export function createStepperStore<Steps extends readonly Step[]>(
 				return source;
 			const next = { id, data, completed, linear, pending: previous.pending };
 			// The reader retains a snapshot for these same render options.
-			if (
-				cached &&
-				cached.id === id &&
-				cached.data.all() === data &&
-				cached.completed === completed &&
-				cached.isPending === previous.pending
-			)
-				return cached;
+			const retained = cached && (snapshotStates.get(cached) as State | undefined);
+			if (retained && sameState(retained, next)) return cached;
 			if (projectedSource === source && sameState(next, projectedState)) return projectedSnapshot;
 			projectedSource = source;
 			projectedState = next;

@@ -1,0 +1,70 @@
+---
+title: Errors and warnings
+description: What each Stepperize error and development warning means, and how to fix it.
+---
+
+Every message starts with `[stepperize]` and a code, and links to its section
+on this page. Warnings (`SZ0xx`) only run in development and are removed from
+production builds. Errors (`SZ1xx`) throw in every environment.
+
+## Warnings
+
+### SZ001
+
+**A `render` function did not spread its props.** The element is missing its
+`role`, `aria-*`, `id`, handlers and `ref`. Spread everything you receive:
+
+```tsx
+<Stepper.Trigger render={(props) => <MyButton {...props} />} />
+```
+
+If `MyButton` is a function component on React 18, wrap it in `forwardRef` so
+the `ref` reaches the DOM.
+
+### SZ002
+
+**A trigger has no accessible name.** Screen readers announce it as an
+unlabeled button. Render visible text, or pass `aria-label` when the trigger
+only shows an icon or a number.
+
+### SZ003
+
+**A trigger is outside `Stepper.List`.** A `tab` must live inside its
+`tablist`. Wrap the items in `Stepper.List`.
+
+### SZ004
+
+**Navigation was accepted but a controlled `step` has no `onStepChange`.**
+`next()`, `prev()` and `goTo()` request a new step through `onStepChange`;
+without it the flow cannot move. Pass `onStepChange`, or use `defaultStep`
+for an uncontrolled flow.
+
+## Errors
+
+### SZ100
+
+**Missing Provider.** A hook or primitive ran outside its definition's
+`Provider` or `Stepper.Root`. Each definition has its own context, so a
+Provider from another flow does not count.
+
+### SZ101
+
+**Missing `Stepper.Item`.** `Indicator`, `Trigger` and
+`Stepper.useItem()` read the enclosing item. Render them inside a
+`Stepper.Item`.
+
+### SZ102
+
+**Unknown step id.** A `step` prop or an action named an id that is not in the
+definition. Ids are typed; this usually comes from untyped external input,
+which you can narrow with `parseStep`.
+
+### SZ103
+
+**`Stepper.Item` without a step.** Pass `step`, or render the item inside
+`Stepper.Items`, which provides it.
+
+### SZ104
+
+**Invalid step list.** `defineStepper` needs at least one step, and every `id`
+must be unique.

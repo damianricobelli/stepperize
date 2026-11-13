@@ -30,10 +30,15 @@ What the primitives emit, for reference:
 
 | Element | Role / ARIA |
 | --- | --- |
-| `Stepper.Root` | `role="group"`, `aria-label="Stepper"` |
+| `Stepper.Root` | `role="group"`, `aria-label="Stepper"`, `aria-busy` while a guard runs, a live region for step changes |
 | `Stepper.List` | `role="tablist"`, `aria-orientation` |
+| `Stepper.Item` | `role="presentation"` inside the list |
 | `Stepper.Trigger` | `role="tab"`, `aria-selected`, `aria-current`, `aria-controls` |
 | `Stepper.Content` | `role="tabpanel"`, `aria-labelledby` |
+
+A flow without triggers has no tabs: its list is a plain list and each panel a
+`group` named after the step's `title`. See
+[Accessibility](/docs/v8/guides/accessibility).
 
 Rolling your own markup instead of primitives? You own all of the above. The
 primitives exist precisely so you don't have to.

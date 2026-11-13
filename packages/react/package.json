@@ -56,17 +56,18 @@
 	},
 	"devDependencies": {
 		"@types/react": "catalog:",
-		"react": "catalog:",
-		"tsup": "catalog:",
-		"typescript": "catalog:legacy-tooling",
-		"vitest": "catalog:",
-		"react-dom": "catalog:",
 		"@types/react-dom": "catalog:",
 		"@typescript/native": "catalog:",
-		"vite": "catalog:",
-		"vitest-browser-react": "catalog:",
+		"@vitejs/plugin-react": "catalog:",
 		"@vitest/browser-playwright": "catalog:",
+		"axe-core": "4.14.0",
 		"playwright": "catalog:",
-		"@vitejs/plugin-react": "catalog:"
+		"react": "catalog:",
+		"react-dom": "catalog:",
+		"tsup": "catalog:",
+		"typescript": "catalog:legacy-tooling",
+		"vite": "catalog:",
+		"vitest": "catalog:",
+		"vitest-browser-react": "catalog:"
 	}
 }

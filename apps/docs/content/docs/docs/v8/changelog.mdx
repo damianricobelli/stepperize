@@ -5,6 +5,64 @@ description: Review recent documentation and package changes.
 
 Release notes for the current Stepperize documentation line.
 
+## v8.1.0
+
+No new options: the primitives fix these on their own. One change can affect
+your layout; see [Upgrading from 8.0](#upgrading-from-80).
+
+### Accessibility
+
+- Valid markup: items are `role="presentation"` inside the tablist, and `Title` / `Description` render a `span` inside a `Trigger`.
+- Focus that would be lost after a step change (a disabled or replaced `Next`, an unmounted panel) moves to the new panel.
+- Step changes are announced to screen readers with the step's own `title`, so there is nothing to translate.
+- While an async guard runs, triggers, `Prev` and `Next` keep focus (`aria-disabled` instead of `disabled`, plus `data-pending`) and the Root sets `aria-busy`. Before, a rejected guard left focus on the page body.
+- Arrow keys swap in right-to-left layouts.
+- A flow without triggers renders a plain list and labelled groups instead of tab roles without tabs.
+- The test suite runs axe-core.
+
+### Developer experience
+
+- `ref` on every element primitive, on React 18 and 19. Render functions receive `ref` and `children`.
+- `Stepper.useItem()` reads the enclosing item.
+- Development warnings and errors carry codes linked to [Errors and warnings](/docs/v8/api/react/errors).
+
+### Stable references
+
+- Snapshots reuse unchanged closures, so `stepper.data`, `canGoTo`, `match` and `validate` keep their identity when their inputs do not change. They are safe to use as effect and memo dependencies.
+
+### Upgrading from 8.0
+
+Nothing to change in your code for most flows. Check these after updating.
+
+**`Stepper.Title` and `Stepper.Description` inside a `Stepper.Trigger`.** A
+trigger is a `button`, and a button cannot contain headings or paragraphs. They
+now render a `span` there (an `h4` and a `p` everywhere else), so they sit on
+one line unless you stack them:
+
+```tsx
+<Stepper.Trigger>
+  <Stepper.Title className="block" />
+  <Stepper.Description className="block" />
+</Stepper.Trigger>
+```
+
+A flex column on the trigger works too. If you styled them with `h4` or `p`
+selectors, target `[data-component="stepper-title"]` and
+`[data-component="stepper-description"]` instead.
+
+**Smaller changes you might notice:**
+
+- Error messages now start with a code, for example
+  `[stepperize] SZ101: Missing Stepper.Item.` Tests that match the exact text
+  need the new prefix; matching part of the message keeps working.
+- `render` functions receive `children`. `<Stepper.Next render={(props) => <button {...props} />}>Next</Stepper.Next>`
+  used to render an empty button and now renders "Next".
+- While an async guard runs, triggers, `Prev` and `Next` are `aria-disabled`
+  rather than `disabled`, so `disabled:` styles do not apply during that
+  moment. Use `data-disabled:` or `data-pending:` to style it.
+- The Root renders one extra, visually hidden element for announcements. A
+  selector such as `[data-component="stepper"] > :last-child` now matches it.
+
 ## v8.0.0 — upcoming
 
 - Test React and interactive examples in Chromium with Vitest Browser Mode; keep core and server tests in Node. Remove jsdom and Testing Library dependencies and recalculate the performance comparison with production React in a real browser.

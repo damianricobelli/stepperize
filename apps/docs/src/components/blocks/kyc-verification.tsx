@@ -108,7 +108,10 @@ export function KycVerificationBlock() {
 												step={step.id}
 												className="flex flex-col items-center"
 											>
-												<Stepper.Trigger className="disabled:cursor-not-allowed">
+												<Stepper.Trigger
+													aria-label={step.title}
+													className="disabled:cursor-not-allowed"
+												>
 													<Stepper.Indicator className="grid size-11 place-items-center rounded-xl border transition-colors data-[status=active]:border-primary data-[status=active]:bg-primary data-[status=active]:text-primary-foreground data-[status=previous]:border-primary data-[status=previous]:bg-primary/10 data-[status=previous]:text-primary data-[status=upcoming]:border-border data-[status=upcoming]:text-muted-foreground">
 														<Icon className="size-5" />
 													</Stepper.Indicator>

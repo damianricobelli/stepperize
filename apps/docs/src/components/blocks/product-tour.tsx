@@ -58,7 +58,7 @@ export function ProductTourBlock() {
 									<Stepper.Items>
 										{(step) => (
 											<Stepper.Item key={step.id} step={step.id}>
-												<Stepper.Trigger>
+												<Stepper.Trigger aria-label={step.title}>
 													<Stepper.Indicator className="block h-1.5 rounded-full transition-all data-[status=active]:w-6 data-[status=active]:bg-primary data-[status=previous]:w-1.5 data-[status=previous]:bg-primary data-[status=upcoming]:w-1.5 data-[status=upcoming]:bg-border" />
 												</Stepper.Trigger>
 											</Stepper.Item>

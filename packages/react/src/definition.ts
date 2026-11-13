@@ -1,6 +1,7 @@
 import { createStepMap, parseStep, type Step, type Stepper, validateStep } from "@stepperize/core";
 import React from "react";
 import { createStepperContext } from "./context";
+import { fail } from "./dev";
 import { createStepperStore } from "./store";
 import type { DefineStepperOptions, HeadlessStepperDefinition, ProviderProps, UseStepperOptions } from "./types";
 import { identity, useCommitEffect, useStoreView } from "./utils";
@@ -29,9 +30,7 @@ export type UniqueStepIds<Steps extends readonly Step[]> = [DuplicateStepId<Step
 	: `Duplicate step id: ${DuplicateStepId<Steps>}`;
 
 function assertValidSteps(steps: readonly Step[]) {
-	if (steps.length === 0) {
-		throw new Error("defineStepper requires at least one step.");
-	}
+	if (steps.length === 0) fail("SZ104", "defineStepper requires at least one step.");
 
 	const seen = new Set<string>();
 	const duplicates = new Set<string>();
@@ -44,7 +43,7 @@ function assertValidSteps(steps: readonly Step[]) {
 	}
 
 	if (duplicates.size > 0) {
-		throw new Error(`defineStepper requires unique step ids. Duplicate id(s): ${Array.from(duplicates).join(", ")}.`);
+		fail("SZ104", `defineStepper requires unique step ids. Duplicate id(s): ${Array.from(duplicates).join(", ")}.`);
 	}
 }
 

@@ -1,32 +1,44 @@
 import type React from "react";
 import { useContext } from "react";
-import type { StepItemValue } from "./context";
-import { renderPrimitive } from "./render";
-import type { PrimitiveComponent, PrimitiveProps } from "./types";
+import { fail } from "../dev";
+import type { StepItemValue, UiValue } from "./context";
+import { primitive, renderPrimitive, useDevRef } from "./render";
+import type { PrimitiveComponent, PrimitiveProps, SeparatorProps } from "./types";
+
+type Contexts = {
+	ItemContext: React.Context<StepItemValue | null>;
+	TriggerContext: React.Context<boolean>;
+};
 
 type Extra = (item: StepItemValue | null, children: React.ReactNode) => Record<string, unknown>;
 
-/** Factory for leaf primitives: a tag, a `data-component`, and optional item-derived props. */
+/**
+ * Factory for leaf primitives: a tag, a `data-component`, and optional item-derived props.
+ * `tag` can depend on placement: inside a Trigger (a button), text must be phrasing content.
+ */
 export function createSimple<E extends keyof React.JSX.IntrinsicElements>(
 	name: string,
-	Tag: E,
+	tag: E | ((inTrigger: boolean) => E),
 	extra: Extra | undefined,
 	requireItem: boolean,
-	ItemContext: React.Context<StepItemValue | null>,
+	contexts: Contexts,
 ): PrimitiveComponent<PrimitiveProps<E>> {
-	return function Simple(props: PrimitiveProps<E>) {
+	const label = name[0].toUpperCase() + name.slice(1);
+	return primitive<PrimitiveProps<E>>(label, (props, forwardedRef) => {
 		const { render, children, ...rest } = props as PrimitiveProps<"div">;
-		const item = useContext(ItemContext);
-		if (requireItem && !item) throw new Error("Missing Stepper.Item.");
-		const domProps = { "data-component": `stepper-${name}`, ...extra?.(item, children), ...rest } as Record<
-			string,
-			unknown
-		>;
-		if (render) return (render as (p: unknown) => React.ReactNode)(domProps);
-		const content = "children" in domProps ? (domProps.children as React.ReactNode) : children;
-		delete domProps.children;
-		return renderPrimitive(Tag, domProps as React.ComponentPropsWithoutRef<E>, undefined, content);
-	};
+		const item = useContext(contexts.ItemContext);
+		const inTrigger = useContext(contexts.TriggerContext);
+		const ref = useDevRef(label, render, forwardedRef);
+		if (requireItem && !item) fail("SZ101", `Missing Stepper.Item. Render Stepper.${label} inside a Stepper.Item.`);
+		const domProps: Record<string, unknown> = {
+			"data-component": `stepper-${name}`,
+			children,
+			...extra?.(item, children),
+			...rest,
+			ref,
+		};
+		return renderPrimitive(typeof tag === "function" ? tag(inTrigger) : tag, domProps, render as never);
+	});
 }
 
 /** Text primitives fall back to the same-named field on the step. */
@@ -36,24 +48,26 @@ export const fromStep =
 		children: children ?? (item?.data as Record<string, unknown> | undefined)?.[field],
 	});
 
+export const withStatus: Extra = (item) => ({
+	"data-status": item?.status,
+	"data-complete": item?.complete ? "" : undefined,
+	"aria-hidden": true,
+});
+
 /** `hr` with orientation/status passthrough as data attributes. */
-export function createSeparator(OrientationContext: React.Context<"horizontal" | "vertical">) {
-	return function Separator(props: PrimitiveProps<"hr"> & { orientation?: string; "data-status"?: string }) {
-		const inheritedOrientation = useContext(OrientationContext);
-		const { orientation = inheritedOrientation, render, children: _c, ...rest } = props;
+export function createSeparator(UiContext: React.Context<UiValue>) {
+	return primitive<SeparatorProps, HTMLHRElement>("Separator", (props, forwardedRef) => {
+		const ui = useContext(UiContext);
+		const { orientation = ui.orientation, render, children: _c, ...rest } = props;
+		const ref = useDevRef("Separator", render, forwardedRef);
 		const domProps = {
 			"data-component": "stepper-separator",
 			"data-orientation": orientation,
 			"aria-hidden": true,
 			tabIndex: -1,
 			...rest,
+			ref,
 		};
 		return renderPrimitive("hr", domProps, render);
-	};
+	});
 }
-
-export const withStatus: Extra = (item) => ({
-	"data-status": item?.status,
-	"data-complete": item?.complete ? "" : undefined,
-	"aria-hidden": true,
-});
