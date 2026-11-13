@@ -15,4 +15,9 @@ Accessible primitives without new options.
 - **Diagnostics**: development warnings and errors carry codes (`SZ001`…) linked to the docs.
 - **Stable references**: snapshots reuse unchanged closures, so `stepper.data`, `canGoTo`, `match` and `validate` keep their identity when their inputs do not change.
 
-Behavior change: `Title`/`Description` render a `span` inside a `Trigger`. Add `block` if you relied on block layout.
+**Upgrading from 8.0**
+
+- `Stepper.Title` and `Stepper.Description` render a `span` inside a `Stepper.Trigger` (a `button` cannot contain headings or paragraphs). Add `className="block"`, or make the trigger a flex column, if you relied on them stacking. Target `[data-component="stepper-title"]` instead of `h4` in CSS.
+- Error messages start with a code (`[stepperize] SZ101: …`). Tests matching the exact text need the prefix.
+- `render` functions receive `children`, which were dropped before.
+- While an async guard runs, triggers, `Prev` and `Next` are `aria-disabled` rather than `disabled`; style that moment with `data-disabled:` or `data-pending:`.

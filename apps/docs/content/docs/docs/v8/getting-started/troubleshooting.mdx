@@ -200,6 +200,21 @@ That is what you want for a marker that travels between steps. For an
 const percent = Math.round(((stepper.index + 1) / stepper.count) * 100);
 ```
 
+### Title and description sit on one line inside a trigger
+
+Since v8.1, `Stepper.Title` and `Stepper.Description` render a `span` inside a
+`Stepper.Trigger`, because a `button` cannot contain headings or paragraphs.
+Stack them with `block`, or make the trigger a flex column:
+
+```tsx
+<Stepper.Trigger>
+  <Stepper.Title className="block" />
+  <Stepper.Description className="block" />
+</Stepper.Trigger>
+```
+
+Outside a trigger they still render `h4` and `p`.
+
 ### `Stepper.Next` is disabled on the last step
 
 `canNext` is `false` once you reach the last step, so the built-in
