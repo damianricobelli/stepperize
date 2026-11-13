@@ -95,7 +95,7 @@ When `linear` is enabled, `Trigger` and `List` keyboard navigation use
 | `Items` | Typed iterator over steps. |
 | `Item` | Per-step wrapper. |
 | `Trigger` | Button that selects a step. |
-| `Title` / `Description` | Step labels. |
+| `Title` / `Description` | Step labels. `span` inside a `Trigger`; `h4` / `p` elsewhere. |
 | `Indicator` | Number, icon, or status mark. |
 | `Separator` | Decorative separator. |
 | `Content` | Active-step panel. |
@@ -103,10 +103,24 @@ When `linear` is enabled, `Trigger` and `List` keyboard navigation use
 | `Prev` | Previous button. |
 | `Next` | Next button. |
 
+`Stepper.useItem()` reads the enclosing item (`data`, `index`, `count`,
+`status`, `complete`, `isActive`, `canGoTo`) to build custom indicators
+without parsing data attributes.
+
+## Refs
+
+Every element primitive forwards `ref` to its DOM element, on React 18 and 19:
+
+```tsx
+const panel = useRef<HTMLDivElement>(null);
+
+<Stepper.Content step="payment" ref={panel} />;
+```
+
 ## Custom render
 
 Most primitives accept `render`. It replaces the primitive's root element, so
-always spread the props:
+always spread the props, which include `ref` and `children`:
 
 ```tsx
 <Stepper.Trigger
@@ -119,6 +133,7 @@ always spread the props:
 ```
 
 The props include accessibility attributes, event handlers, and data attributes.
+In development, a function that drops them logs [SZ001](/docs/v8/api/react/errors#sz001).
 
 ## Data attributes
 
@@ -128,6 +143,8 @@ you style them:
 | Attribute | Values | Set on |
 | --- | --- | --- |
 | `data-complete` | Present (empty string) when explicitly completed; absent otherwise | `Item`, `Trigger`, `Indicator` |
+| `data-disabled` | Present when the step cannot be reached or a guard is running | `Item`, `Trigger`, `Prev`, `Next` |
+| `data-pending` | Present while an async `beforeStepChange` runs | `Root`, `Prev`, `Next` |
 | `data-state` | `active` · `inactive` | `Content` |
 | `data-status` | `active` · `previous` · `upcoming` | `Item`, `Trigger`, `Indicator` |
 | `data-orientation` | `horizontal` · `vertical` | `Root`, `List`, `Separator` |
@@ -158,4 +175,4 @@ Use the root render prop when item UI needs instance state:
 
 ## v8 instance behavior
 
-`List` and `Separator` inherit Root orientation unless overridden. `Content forceMount` retains inactive panels with `hidden` and `data-state="inactive"`. Trigger defaults to `type="button"`. `data-complete` reflects explicit completion. Each instance has independent context and DOM ids, including nested flows. `createStepperPrimitives` is internal; use the generated `definition.Stepper`.
+While an async guard runs, triggers, `Prev` and `Next` use `aria-disabled` instead of `disabled` so the focused one keeps focus. See [Accessibility](/docs/v8/guides/accessibility). `List` and `Separator` inherit Root orientation unless overridden. `Content forceMount` retains inactive panels with `hidden` and `data-state="inactive"`. Trigger defaults to `type="button"`. `data-complete` reflects explicit completion. Each instance has independent context and DOM ids, including nested flows. `createStepperPrimitives` is internal; use the generated `definition.Stepper`.

@@ -16,24 +16,28 @@ export function DevicePairingBlock() {
 		<Stepper.Root className="w-full max-w-sm overflow-hidden rounded-xl border bg-background shadow-sm">
 			{({ stepper }) => (
 				<>
-					<div className="relative grid h-32 place-items-center bg-muted/40">
-						<Stepper.Content step="discover">
-							<span className="relative grid size-16 place-items-center">
-								<span className="absolute inset-0 animate-ping rounded-full bg-primary/20" />
-								<Wifi className="relative size-9 text-primary" />
-							</span>
-						</Stepper.Content>
-						<Stepper.Content step="pair">
-							<Loader2 className="size-9 animate-spin text-primary" />
-						</Stepper.Content>
-						<Stepper.Content step="configure">
-							<Speaker className="size-9 text-primary" />
-						</Stepper.Content>
-						<Stepper.Content step="ready">
-							<span className="grid size-12 place-items-center rounded-full bg-chart-2/15 text-chart-2">
-								<Check className="size-6" />
-							</span>
-						</Stepper.Content>
+					{/* Decorative art: one Stepper.Content per step lives below, with the text. */}
+					<div
+						className="relative grid h-32 place-items-center bg-muted/40"
+						aria-hidden
+					>
+						{stepper.match({
+							discover: () => (
+								<span className="relative grid size-16 place-items-center">
+									<span className="absolute inset-0 animate-ping rounded-full bg-primary/20" />
+									<Wifi className="relative size-9 text-primary" />
+								</span>
+							),
+							pair: () => (
+								<Loader2 className="size-9 animate-spin text-primary" />
+							),
+							configure: () => <Speaker className="size-9 text-primary" />,
+							ready: () => (
+								<span className="grid size-12 place-items-center rounded-full bg-chart-2/15 text-chart-2">
+									<Check className="size-6" />
+								</span>
+							),
+						})}
 					</div>
 
 					<div className="p-5">

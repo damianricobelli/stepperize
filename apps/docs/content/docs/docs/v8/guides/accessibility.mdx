@@ -1,0 +1,74 @@
+---
+title: Accessibility
+description: What the primitives handle for you, and the few things only you can provide.
+---
+
+The primitives are accessible without configuration. This page lists what they
+do, so you know what is covered, and what is left to you.
+
+## What the primitives do
+
+| Behavior | Detail |
+| --- | --- |
+| Roles and relationships | `Stepper.List` is a `tablist`, each `Trigger` a `tab` linked to its `Content` (`tabpanel`) through `aria-controls` and `aria-labelledby`. Items are presentational inside the list. |
+| Keyboard | Arrow keys, `Home` and `End` move between steps. Left and right swap in right-to-left layouts. The selected step is the list's single tab stop. |
+| Unreachable steps | Steps the navigation policy blocks (for example with `linear`) are `disabled`. Screen readers still list them as unavailable. |
+| Focus | If focus would be lost after a step change (a field in the panel that unmounted, `Next` disabled or replaced on the last step), it moves to the new panel. Focus outside the stepper is never touched. |
+| Async guards | While `beforeStepChange` runs, triggers, `Prev` and `Next` keep focus: they get `aria-disabled` instead of `disabled`, and the Root sets `aria-busy`. A rejected change leaves focus where it was. |
+| Valid markup | Inside a `Trigger` (a `button`), `Title` and `Description` render a `span`. Elsewhere they render `h4` and `p`. |
+| Flows without triggers | With only `Content` and `Next`, or a list of indicators, there are no tabs: the list is a plain list and each panel a `group` named after the step's `title`. |
+
+## Styling disabled and pending states
+
+`disabled:` variants keep working for blocked steps and for `Prev` / `Next` at
+the edges. `data-disabled` is also set, and additionally covers the moment a
+guard is running, when buttons are `aria-disabled` rather than `disabled`:
+
+```tsx
+<Stepper.Next className="data-disabled:opacity-50 data-pending:cursor-progress" />
+```
+
+## What only you can provide
+
+- **A name for every trigger.** `Stepper.Indicator` is hidden from screen
+  readers. If a trigger only shows a number or an icon, pass `aria-label`:
+
+  ```tsx
+  <Stepper.Trigger aria-label={step.title}>
+    <Stepper.Indicator />
+  </Stepper.Trigger>
+  ```
+
+- **A name for the stepper.** The Root is labelled "Stepper". Pass `aria-label`
+  or `aria-labelledby` to describe the flow, and to translate it.
+
+- **Completion beyond color.** `data-complete` is for styling. Add text for
+  screen readers, in your language, with `Stepper.useItem()`:
+
+  ```tsx
+  function Label() {
+    const item = Stepper.useItem();
+    return (
+      <>
+        <Stepper.Title />
+        {item.complete && <span className="sr-only">Completed</span>}
+      </>
+    );
+  }
+  ```
+
+- **Announcements, if your flow needs them.** To tell screen-reader users the
+  step changed while focus stays on `Next`, render a live region:
+
+  ```tsx
+  <p aria-live="polite" className="sr-only">
+    Step {stepper.index + 1} of {stepper.count}: {stepper.current.title}
+  </p>
+  ```
+
+## Development checks
+
+In development, Stepperize warns about mistakes it can detect, with a code and
+a link: a `render` function that drops its props, a trigger without an
+accessible name, or a trigger outside its list. See
+[Errors and warnings](/docs/v8/api/react/errors).

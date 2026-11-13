@@ -5,6 +5,33 @@ description: Review recent documentation and package changes.
 
 Release notes for the current Stepperize documentation line.
 
+## v8.1.0
+
+No new options: the primitives fix these on their own.
+
+### Accessibility
+
+- Valid markup: items are `role="presentation"` inside the tablist, and `Title` / `Description` render a `span` inside a `Trigger`.
+- Focus that would be lost after a step change (a disabled or replaced `Next`, an unmounted panel) moves to the new panel.
+- While an async guard runs, triggers, `Prev` and `Next` keep focus (`aria-disabled` instead of `disabled`, plus `data-pending`) and the Root sets `aria-busy`. Before, a rejected guard left focus on the page body.
+- Arrow keys swap in right-to-left layouts.
+- A flow without triggers renders a plain list and labelled groups instead of tab roles without tabs.
+- The test suite runs axe-core.
+
+### Developer experience
+
+- `ref` on every element primitive, on React 18 and 19. Render functions receive `ref` and `children`.
+- `Stepper.useItem()` reads the enclosing item.
+- Development warnings and errors carry codes linked to [Errors and warnings](/docs/v8/api/react/errors).
+
+### Stable references
+
+- Snapshots reuse unchanged closures, so `stepper.data`, `canGoTo`, `match` and `validate` keep their identity when their inputs do not change. They are safe to use as effect and memo dependencies.
+
+### Behavior changes
+
+- `Stepper.Title` and `Stepper.Description` render a `span` inside a `Trigger`. Add `block` if you relied on block layout.
+
 ## v8.0.0 — upcoming
 
 - Test React and interactive examples in Chromium with Vitest Browser Mode; keep core and server tests in Node. Remove jsdom and Testing Library dependencies and recalculate the performance comparison with production React in a real browser.
