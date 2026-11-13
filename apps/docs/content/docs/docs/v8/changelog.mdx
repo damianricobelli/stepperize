@@ -13,6 +13,7 @@ No new options: the primitives fix these on their own.
 
 - Valid markup: items are `role="presentation"` inside the tablist, and `Title` / `Description` render a `span` inside a `Trigger`.
 - Focus that would be lost after a step change (a disabled or replaced `Next`, an unmounted panel) moves to the new panel.
+- Step changes are announced to screen readers with the step's own `title`, so there is nothing to translate.
 - While an async guard runs, triggers, `Prev` and `Next` keep focus (`aria-disabled` instead of `disabled`, plus `data-pending`) and the Root sets `aria-busy`. Before, a rejected guard left focus on the page body.
 - Arrow keys swap in right-to-left layouts.
 - A flow without triggers renders a plain list and labelled groups instead of tab roles without tabs.

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 
 /**
- * Live social-proof numbers (GitHub stars, npm downloads, gzip bundle size).
+ * Live social-proof numbers (GitHub stars, npm downloads).
  *
  * These are fetched on the client from public, unauthenticated endpoints and
  * cached in localStorage so repeat visits don't re-hit the APIs. Every value
@@ -15,7 +15,7 @@ import { useEffect, useState } from "react";
 const REPO = "damianricobelli/stepperize";
 const PKG = "@stepperize/react";
 const ENCODED_PKG = encodeURIComponent(PKG);
-const CACHE_KEY = "stepperize:stats:v1";
+const CACHE_KEY = "stepperize:stats:v2";
 const CACHE_TTL = 1000 * 60 * 60 * 6; // 6 hours
 
 export type Stats = {
@@ -23,11 +23,9 @@ export type Stats = {
 	stars: number | null;
 	/** npm downloads in the last 30 days. */
 	downloads: number | null;
-	/** Minified + gzipped size in bytes. */
-	gzip: number | null;
 };
 
-const EMPTY: Stats = { stars: null, downloads: null, gzip: null };
+const EMPTY: Stats = { stars: null, downloads: null };
 
 type Cached = { at: number; data: Stats };
 
@@ -67,13 +65,10 @@ async function fetchJson(url: string): Promise<unknown | null> {
 }
 
 async function fetchStats(): Promise<Stats> {
-	const [repo, npm, size] = await Promise.all([
+	const [repo, npm] = await Promise.all([
 		fetchJson(`https://api.github.com/repos/${REPO}`),
 		fetchJson(
 			`https://api.npmjs.org/downloads/point/last-month/${ENCODED_PKG}`,
-		),
-		fetchJson(
-			`https://bundlephobia.com/api/size?package=${ENCODED_PKG}@latest`,
 		),
 	]);
 
@@ -87,12 +82,7 @@ async function fetchStats(): Promise<Stats> {
 		npm && typeof (npm as { downloads?: unknown }).downloads === "number"
 			? (npm as { downloads: number }).downloads
 			: null;
-	const gzip =
-		size && typeof (size as { gzip?: unknown }).gzip === "number"
-			? (size as { gzip: number }).gzip
-			: null;
-
-	return { stars, downloads, gzip };
+	return { stars, downloads };
 }
 
 /**
@@ -135,9 +125,4 @@ export function formatCompact(n: number): string {
 	}
 	const m = n / 1_000_000;
 	return `${m.toFixed(1).replace(/\.0$/, "")}M`;
-}
-
-/** Bytes → `1.6 kB`. */
-export function formatKb(bytes: number): string {
-	return `${(bytes / 1024).toFixed(1).replace(/\.0$/, "")} kB`;
 }

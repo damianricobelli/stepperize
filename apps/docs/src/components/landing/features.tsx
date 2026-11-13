@@ -55,11 +55,12 @@ export function Features() {
 
 				<Cell
 					title="Accessible primitives"
-					doc="v8/guides/primitives"
+					doc="v8/guides/accessibility"
 					visual={<PrimitivesVisual />}
 				>
 					Unstyled <InlineCode>Stepper.*</InlineCode> components ship roles,
-					ARIA and keyboard navigation. Style them through data attributes.
+					keyboard navigation and focus handling, checked with axe. Style them
+					through data attributes.
 				</Cell>
 
 				<Cell

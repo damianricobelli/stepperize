@@ -4,7 +4,7 @@ import { Star } from "lucide-react";
 import { GITHUB_URL, NPM_URL } from "@/components/site/brand";
 import { cn } from "@/lib/utils";
 import { GitHubMark } from "./shared";
-import { formatCompact, formatKb, useStepperizeStats } from "./stats";
+import { formatCompact, useStepperizeStats } from "./stats";
 
 /**
  * Compact star count for the header. Links to the repo and shows the live
@@ -37,13 +37,13 @@ export function HeaderStars({ className }: { className?: string }) {
 }
 
 /**
- * Trust strip. Live numbers (stars, downloads, bundle size) sit next to static
- * facts (zero deps) so a first-time visitor can answer "can I trust this?"
+ * Trust strip. Live numbers (stars, downloads) sit next to static facts so a
+ * first-time visitor can answer "can I trust this?"
  * without leaving for GitHub or npm. Live values degrade to static copy when a
  * fetch fails, so the strip is never empty or misleading.
  */
 export function StatBar({ className }: { className?: string }) {
-	const { stars, downloads, gzip } = useStepperizeStats();
+	const { stars, downloads } = useStepperizeStats();
 
 	const stats = [
 		{
@@ -56,11 +56,10 @@ export function StatBar({ className }: { className?: string }) {
 			label: "monthly downloads",
 			href: NPM_URL,
 		},
-		{
-			value: gzip != null ? formatKb(gzip) : "Tiny",
-			label: "min + gzip",
-		},
-		{ value: "0", label: "dependencies" },
+		// Measured by `pnpm benchmark:size` for `@stepperize/react/headless`: the
+		// hooks and Provider, without the UI primitives. Update it with that script.
+		{ value: "3.7 kB", label: "hooks only, min + gzip" },
+		{ value: "0", label: "third-party dependencies" },
 	];
 
 	return (
