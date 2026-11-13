@@ -265,6 +265,45 @@ describe("focus", () => {
 	});
 });
 
+describe("announcements", () => {
+	const region = (container: Element) => container.querySelector('[data-component="stepper"] > [aria-live="polite"]');
+
+	it("announces the new step by its title when Next keeps focus", async () => {
+		const flow = defineStepper(steps);
+		const { container } = await render(<Full flow={flow} />);
+		expect(region(container)?.textContent).toBe("");
+		const next = screen.getByRole("button", { name: "Continue" }).element() as HTMLButtonElement;
+		next.focus();
+		await userEvent.click(next);
+		expect(document.activeElement).toBe(next);
+		expect(region(container)?.textContent).toBe("Second");
+	});
+
+	it("stays quiet when the rescued panel or a focused tab already reads the step", async () => {
+		const flow = defineStepper(steps);
+		const { container } = await render(<Full flow={flow} defaultStep="second" />);
+		const next = screen.getByRole("button", { name: "Continue" }).element() as HTMLButtonElement;
+		next.focus();
+		await userEvent.click(next);
+		expect(document.activeElement?.getAttribute("role")).toBe("tabpanel");
+		expect(region(container)?.textContent).toBe("");
+
+		await userEvent.click(screen.getByRole("tab", { name: /First/ }).element());
+		expect(region(container)?.textContent).toBe("");
+	});
+
+	it("does not announce steps without a string title", async () => {
+		const flow = defineStepper([{ id: "one" }, { id: "two" }]);
+		const { container } = await render(
+			<flow.Stepper.Root>
+				<flow.Stepper.Next>Continue</flow.Stepper.Next>
+			</flow.Stepper.Root>,
+		);
+		await userEvent.click(screen.getByRole("button", { name: "Continue" }).element());
+		expect(region(container)?.textContent).toBe("");
+	});
+});
+
 describe("triggers", () => {
 	it("blocked steps are natively disabled; a pending guard keeps the clicked trigger focused", async () => {
 		let release!: (value: boolean) => void;

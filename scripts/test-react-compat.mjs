@@ -47,7 +47,6 @@ try {
 				playwright: installed("playwright").version,
 				"@vitejs/plugin-react": installed("@vitejs/plugin-react").version,
 				"axe-core": installed("axe-core").version,
-				"@guidepup/virtual-screen-reader": installed("@guidepup/virtual-screen-reader").version,
 				"@stepperize/core": "file:./core",
 				vitest: installed("vitest").version,
 				vite: installed("vite").version,

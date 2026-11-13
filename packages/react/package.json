@@ -58,7 +58,6 @@
 		"@types/react": "catalog:",
 		"@types/react-dom": "catalog:",
 		"@typescript/native": "catalog:",
-		"@guidepup/virtual-screen-reader": "^0.33.0",
 		"@vitejs/plugin-react": "catalog:",
 		"@vitest/browser-playwright": "catalog:",
 		"axe-core": "4.14.0",
