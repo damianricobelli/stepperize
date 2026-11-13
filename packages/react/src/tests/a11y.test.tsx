@@ -111,6 +111,31 @@ describe("axe", () => {
 });
 
 describe("valid structure", () => {
+	it("renders phrasing content inside triggers and keeps headings outside", async () => {
+		const { Stepper } = defineStepper(steps);
+		const { container } = await render(
+			<Stepper.Root>
+				<Stepper.List>
+					<Stepper.Item step="first">
+						<Stepper.Trigger>
+							<Stepper.Title />
+							<Stepper.Description />
+						</Stepper.Trigger>
+					</Stepper.Item>
+				</Stepper.List>
+				<Stepper.Item step="second" render={(props) => <div {...(props as React.ComponentProps<"div">)} />}>
+					<Stepper.Title />
+					<Stepper.Description />
+				</Stepper.Item>
+			</Stepper.Root>,
+		);
+		const trigger = container.querySelector("button");
+		expect(trigger?.querySelector("h4, p")).toBeNull();
+		expect(trigger?.querySelector('[data-component="stepper-title"]')?.tagName).toBe("SPAN");
+		expect(container.querySelector("h4")?.textContent).toBe("Second");
+		expect(container.querySelector("p")?.textContent).toBe("Then this");
+	});
+
 	it("tab items are presentational and triggers keep their ARIA", async () => {
 		const flow = defineStepper(steps);
 		const { container } = await render(<Full flow={flow} />);
@@ -358,7 +383,7 @@ describe("refs and render", () => {
 		expect(refs.list.current?.tagName).toBe("OL");
 		expect(refs.item.current?.tagName).toBe("LI");
 		expect(refs.trigger.current?.getAttribute("role")).toBe("tab");
-		expect(refs.title.current?.tagName).toBe("H4");
+		expect(refs.title.current?.tagName).toBe("SPAN");
 		expect(refs.content.current?.getAttribute("role")).toBe("tabpanel");
 		expect(refs.next.current?.textContent).toBe("Next");
 	});

@@ -69,6 +69,8 @@ export function createTrigger<Steps extends readonly Step[]>(
 					if (!pending) void store.getSnapshot().goTo(id);
 				}),
 		};
-		return renderPrimitive("button", domProps, render);
+		return (
+			<scope.TriggerContext.Provider value>{renderPrimitive("button", domProps, render)}</scope.TriggerContext.Provider>
+		);
 	});
 }

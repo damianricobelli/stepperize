@@ -16,6 +16,7 @@ do, so you know what is covered, and what is left to you.
 | Focus | If focus would be lost after a step change (a field in the panel that unmounted, `Next` disabled or replaced on the last step), it moves to the new panel. Focus outside the stepper is never touched. |
 | Announcements | When the step changes while focus stays put (for example on `Next`), a polite live region announces the new step's `title`. It stays quiet when a focused tab or panel already reads the step. |
 | Async guards | While `beforeStepChange` runs, triggers, `Prev` and `Next` keep focus: they get `aria-disabled` instead of `disabled`, and the Root sets `aria-busy`. A rejected change leaves focus where it was. |
+| Valid markup | Inside a `Trigger` (a `button`), `Title` and `Description` render a `span`. Elsewhere they render `h4` and `p`. |
 | Flows without triggers | With only `Content` and `Next`, or a list of indicators, there are no tabs: the list is a plain list and each panel a `group` named after the step's `title`. |
 
 ## Styling disabled and pending states

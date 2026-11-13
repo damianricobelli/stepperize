@@ -30,8 +30,9 @@ export function createStepperScope<Steps extends readonly Step[]>(context: Stepp
 	const ItemContext = React.createContext<StepItemValue | null>(null);
 	const AutoContext = React.createContext<{ step: Step; index: number } | null>(null);
 	const UiContext = React.createContext<UiValue>(DEFAULT_UI);
-	/** `true` inside a tablist: its items are presentational. */
+	/** `true` inside a tablist (its items are presentational) and inside a Trigger (phrasing content only). */
 	const ListContext = React.createContext(false);
+	const TriggerContext = React.createContext(false);
 
 	function useStepItem<S extends Step = Step>(): StepItemValue<S> {
 		const item = React.useContext(ItemContext);
@@ -39,7 +40,7 @@ export function createStepperScope<Steps extends readonly Step[]>(context: Stepp
 		return item as StepItemValue<S>;
 	}
 
-	return { ...context, useStepItem, ItemContext, AutoContext, UiContext, ListContext };
+	return { ...context, useStepItem, ItemContext, AutoContext, UiContext, ListContext, TriggerContext };
 }
 
 export type StepperScope<Steps extends readonly Step[]> = ReturnType<typeof createStepperScope<Steps>>;

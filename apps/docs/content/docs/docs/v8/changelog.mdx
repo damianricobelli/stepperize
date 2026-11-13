@@ -7,12 +7,12 @@ Release notes for the current Stepperize documentation line.
 
 ## v8.1.0
 
-No new options and nothing to change in your code: the primitives fix these on
-their own. See [Upgrading from 8.0](#upgrading-from-80) for what you might notice.
+No new options: the primitives fix these on their own. One change can affect
+your layout; see [Upgrading from 8.0](#upgrading-from-80).
 
 ### Accessibility
 
-- Items are `role="presentation"` inside the tablist, so the list owns its tabs. Before, axe reported three violations on the standard layout.
+- Valid markup: items are `role="presentation"` inside the tablist, and `Title` / `Description` render a `span` inside a `Trigger`.
 - Focus that would be lost after a step change (a disabled or replaced `Next`, an unmounted panel) moves to the new panel.
 - Step changes are announced to screen readers with the step's own `title`, so there is nothing to translate.
 - While an async guard runs, triggers, `Prev` and `Next` keep focus (`aria-disabled` instead of `disabled`, plus `data-pending`) and the Root sets `aria-busy`. Before, a rejected guard left focus on the page body.
@@ -32,7 +32,25 @@ their own. See [Upgrading from 8.0](#upgrading-from-80) for what you might notic
 
 ### Upgrading from 8.0
 
-Nothing to change in your code. A few things you might notice:
+Nothing to change in your code for most flows. Check these after updating.
+
+**`Stepper.Title` and `Stepper.Description` inside a `Stepper.Trigger`.** A
+trigger is a `button`, and a button cannot contain headings or paragraphs. They
+now render a `span` there (an `h4` and a `p` everywhere else), so they sit on
+one line unless you stack them:
+
+```tsx
+<Stepper.Trigger>
+  <Stepper.Title className="block" />
+  <Stepper.Description className="block" />
+</Stepper.Trigger>
+```
+
+A flex column on the trigger works too. If you styled them with `h4` or `p`
+selectors, target `[data-component="stepper-title"]` and
+`[data-component="stepper-description"]` instead.
+
+**Smaller changes you might notice:**
 
 - Error messages now start with a code, for example
   `[stepperize] SZ101: Missing Stepper.Item.` Tests that match the exact text

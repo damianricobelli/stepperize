@@ -5,20 +5,29 @@ import type { StepItemValue, UiValue } from "./context";
 import { primitive, renderPrimitive, useDevRef } from "./render";
 import type { PrimitiveComponent, PrimitiveProps, SeparatorProps } from "./types";
 
+type Contexts = {
+	ItemContext: React.Context<StepItemValue | null>;
+	TriggerContext: React.Context<boolean>;
+};
+
 type Extra = (item: StepItemValue | null, children: React.ReactNode) => Record<string, unknown>;
 
-/** Factory for leaf primitives: a tag, a `data-component`, and optional item-derived props. */
+/**
+ * Factory for leaf primitives: a tag, a `data-component`, and optional item-derived props.
+ * `tag` can depend on placement: inside a Trigger (a button), text must be phrasing content.
+ */
 export function createSimple<E extends keyof React.JSX.IntrinsicElements>(
 	name: string,
-	tag: E,
+	tag: E | ((inTrigger: boolean) => E),
 	extra: Extra | undefined,
 	requireItem: boolean,
-	ItemContext: React.Context<StepItemValue | null>,
+	contexts: Contexts,
 ): PrimitiveComponent<PrimitiveProps<E>> {
 	const label = name[0].toUpperCase() + name.slice(1);
 	return primitive<PrimitiveProps<E>>(label, (props, forwardedRef) => {
 		const { render, children, ...rest } = props as PrimitiveProps<"div">;
-		const item = useContext(ItemContext);
+		const item = useContext(contexts.ItemContext);
+		const inTrigger = useContext(contexts.TriggerContext);
 		const ref = useDevRef(label, render, forwardedRef);
 		if (requireItem && !item) fail("SZ101", `Missing Stepper.Item. Render Stepper.${label} inside a Stepper.Item.`);
 		const domProps: Record<string, unknown> = {
@@ -28,7 +37,7 @@ export function createSimple<E extends keyof React.JSX.IntrinsicElements>(
 			...rest,
 			ref,
 		};
-		return renderPrimitive(tag, domProps, render as never);
+		return renderPrimitive(typeof tag === "function" ? tag(inTrigger) : tag, domProps, render as never);
 	});
 }
 
