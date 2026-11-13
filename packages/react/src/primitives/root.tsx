@@ -2,7 +2,7 @@ import type { Get, Step, Stepper } from "@stepperize/core";
 import React from "react";
 import type { UseStepperOptions } from "../types";
 import { useCommitEffect } from "../utils";
-import { panelDomId, type StepperScope, type UiValue } from "./context";
+import { panelDomId, type StepperScope, type UiValue, VISUALLY_HIDDEN } from "./context";
 import { composeRefs, primitive } from "./render";
 import type { PrimitiveComponent, RootProps } from "./types";
 
@@ -38,16 +38,20 @@ export function createRoot<Steps extends readonly Step[]>(
 	scope: StepperScope<Steps>,
 ): PrimitiveComponent<RootProps<Steps>> {
 	/**
-	 * Focus falls back to <body> when its element unmounts (a field in the old
-	 * panel, a Next button replaced on the last step) or becomes disabled. After
-	 * a step change, hand it to the new panel instead of stranding keyboard users.
+	 * What a step change needs beyond rendering, for people who cannot see it:
 	 *
-	 * Subscribes to the step id only and renders nothing, so neither the Root
-	 * nor its children re-render for it.
+	 * - Focus falls back to <body> when its element unmounts (a field in the old
+	 *   panel, a Next button replaced on the last step) or becomes disabled. Hand
+	 *   it to the new panel instead of stranding keyboard users.
+	 * - Pressing Next changes the page silently for screen readers. Announce the
+	 *   new step by its own `title`: your words, so there is nothing to translate.
+	 *
+	 * Subscribes to the step id only, so neither the Root nor its children re-render for it.
 	 */
-	function FocusRescue({ root }: { root: React.RefObject<HTMLDivElement | null> }) {
-		const { id: instance } = scope.useValue();
+	function StepChange({ root }: { root: React.RefObject<HTMLDivElement | null> }) {
+		const { store, id: instance } = scope.useValue();
 		const id = scope.useSelector<Get.Id<Steps>>((s) => s.id);
+		const region = React.useRef<HTMLSpanElement>(null);
 		// Read while rendering the change, before React touches the DOM: was focus in this
 		// stepper? Focus that is elsewhere is never moved. No focus events needed.
 		const inside = !!root.current?.contains(root.current.ownerDocument.activeElement);
@@ -56,12 +60,20 @@ export function createRoot<Steps extends readonly Step[]>(
 			if (previous.current === id) return;
 			previous.current = id;
 			const doc = root.current?.ownerDocument;
-			const active = doc?.activeElement as HTMLButtonElement | null | undefined;
-			if (doc && inside && (!active || active === doc.body || active.disabled)) {
-				doc.getElementById(panelDomId(instance, id))?.focus();
+			if (!doc) return;
+			let active = doc.activeElement as HTMLButtonElement | null;
+			if (inside && (!active || active === doc.body || active.disabled)) {
+				active = doc.getElementById(panelDomId(instance, id)) as HTMLButtonElement | null;
+				active?.focus();
 			}
+			// A focused tab or panel already reads the step. Written straight to the DOM:
+			// announcing must not re-render anything.
+			const title = (store.getSnapshot().current as { title?: unknown }).title;
+			const reads =
+				active?.id.startsWith(instance) && active.matches('[role="tab"], [data-component="stepper-content"]');
+			if (region.current) region.current.textContent = !reads && typeof title === "string" ? title : "";
 		});
-		return null;
+		return <span ref={region} aria-live="polite" style={VISUALLY_HIDDEN} />;
 	}
 
 	const Inner = React.forwardRef<HTMLDivElement, InnerProps<Steps>>(function Inner(
@@ -98,7 +110,7 @@ export function createRoot<Steps extends readonly Step[]>(
 					ref={composed}
 				>
 					{typeof children === "function" ? children({ stepper: stepper as never }) : children}
-					<FocusRescue root={root} />
+					<StepChange root={root} />
 				</div>
 			</scope.UiContext.Provider>
 		);

@@ -47,3 +47,13 @@ export type StepperScope<Steps extends readonly Step[]> = ReturnType<typeof crea
 
 export const triggerDomId = (instance: string, step: string) => `${instance}step-${step}`;
 export const panelDomId = (instance: string, step: string) => `${instance}step-panel-${step}`;
+
+/** Text for screen readers only. Hoisted: one object for every instance. */
+export const VISUALLY_HIDDEN: React.CSSProperties = {
+	position: "absolute",
+	width: 1,
+	height: 1,
+	overflow: "hidden",
+	clipPath: "inset(50%)",
+	whiteSpace: "nowrap",
+};
