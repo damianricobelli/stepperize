@@ -1,84 +1,54 @@
-import type { Get, Step, Stepper, StepStatus } from "@stepperize/core";
-import type * as React from "react";
-import type { UseStepperOptions } from "../types";
-
-export type { ControlledStep } from "../types";
-export type { StepStatus };
+import type { Id, Options, Step, Stepper, StepState } from "@stepperize/core";
+import type React from "react";
 
 /** Props a render function receives: spread them all, including `ref` and `children`. */
-export type RenderProp<E extends React.ElementType = "div"> = (
-	props: React.ComponentPropsWithRef<E>,
-) => React.ReactNode;
+export type RenderProp<E extends React.ElementType> = (props: React.ComponentPropsWithRef<E>) => React.ReactNode;
 
-export type PrimitiveComponent<Props> = (props: Props) => React.ReactNode;
-
-export type PrimitiveProps<E extends React.ElementType = "div"> = Omit<
-	React.ComponentPropsWithoutRef<E>,
-	"children"
-> & {
-	/**
-	 * Spread the received props onto your element so ARIA, data attributes, and
-	 * event handlers keep working.
-	 */
+export type PrimitiveProps<E extends React.ElementType> = Omit<React.ComponentPropsWithoutRef<E>, "children"> & {
+	/** Render your own element. Spread the props you receive: they carry ARIA, ids, handlers and `ref`. */
 	render?: RenderProp<E>;
 	children?: React.ReactNode;
 	ref?: React.Ref<React.ComponentRef<E>>;
 };
 
-/**
- * `Stepper.Root` accepts every `useStepper` option plus `div` props. The state
- * options are derived from `UseStepperOptions` so the two can never drift.
- */
-export type RootProps<Steps extends readonly Step[]> = Omit<React.ComponentPropsWithoutRef<"div">, "children"> &
-	UseStepperOptions<Steps> & {
-		orientation?: "horizontal" | "vertical";
+export type Orientation = "horizontal" | "vertical";
+
+/** `Stepper.Root` creates the flow: it accepts every flow option plus `div` props. */
+export type RootProps<S extends readonly Step[]> = Omit<
+	React.ComponentPropsWithoutRef<"div">,
+	"children" | "onChange"
+> &
+	Options<S> & {
+		orientation?: Orientation;
 		ref?: React.Ref<HTMLDivElement>;
-		/** Content or render function receiving the current stepper. */
-		children: React.ReactNode | ((props: { stepper: Stepper<Steps> }) => React.ReactNode);
+		/** Content, or a function receiving the current stepper. */
+		children?: React.ReactNode | ((stepper: Stepper<S>) => React.ReactNode);
 	};
 
-export type ListProps = PrimitiveProps<"ol"> & {
-	orientation?: "horizontal" | "vertical";
+export type ListProps<S extends readonly Step[]> = Omit<PrimitiveProps<"ol">, "children"> & {
+	orientation?: Orientation;
+	/** Content, or a function called once per step. Items inside it know their step. */
+	children?: React.ReactNode | ((step: S[number], index: number) => React.ReactNode);
 };
 
-export type ItemsProps<Steps extends readonly Step[]> = {
-	children: (step: Steps[number], index: number) => React.ReactNode;
-};
+/** `step` is optional inside a `Stepper.List` function; otherwise pass a step id. */
+export type ItemProps<S extends readonly Step[]> = PrimitiveProps<"li"> & { step?: Id<S> };
 
-/**
- * Props for `Stepper.Item`.
- *
- * `step` is optional inside `Stepper.Items`; otherwise pass a step id explicitly.
- */
-export type ItemProps<Steps extends readonly Step[]> = PrimitiveProps<"li"> & {
-	step?: Get.Id<Steps>;
-};
-
-export type TriggerProps = PrimitiveProps<"button">;
-
-export type TitleProps = PrimitiveProps<"h4">;
-
-export type DescriptionProps = PrimitiveProps<"p">;
-
-export type IndicatorProps = PrimitiveProps<"span">;
-
-export type SeparatorProps = PrimitiveProps<"hr"> & {
-	orientation?: "horizontal" | "vertical";
-	"data-status"?: StepStatus;
-};
-
-export type ContentProps<Steps extends readonly Step[]> = PrimitiveProps<"div"> & {
-	step: Get.Id<Steps>;
-	/**
-	 * Keep the panel mounted when its step is not active. It is rendered with
-	 * `hidden` and `data-state="inactive"`, so form state inside survives
-	 * navigating away and back.
-	 */
+export type ContentProps<S extends readonly Step[]> = PrimitiveProps<"div"> & {
+	step: Id<S>;
+	/** Keep the panel mounted (and `hidden`) while its step is not current, so form state survives. */
 	forceMount?: boolean;
 };
 
-export type ActionsProps = PrimitiveProps<"div">;
+/** What `Stepper.useItem()` returns for the enclosing `Stepper.Item`. */
+export type ItemValue<S extends readonly Step[] = readonly Step[]> = {
+	step: S[number];
+	index: number;
+	state: StepState;
+	/** Its last validation failed and its data has not changed since. */
+	invalid: boolean;
+	/** `goTo` would be refused right now. */
+	disabled: boolean;
+};
 
-export type PrevProps = PrimitiveProps<"button">;
-
-export type NextProps = PrimitiveProps<"button">;
+export type Component<Props> = (props: Props) => React.ReactNode;

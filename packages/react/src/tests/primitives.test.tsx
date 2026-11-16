@@ -1,280 +1,450 @@
-import { describe, expect, it } from "vitest";
+import axe from "axe-core";
+import React from "react";
+import { hydrateRoot } from "react-dom/client";
+import { renderToString } from "react-dom/server";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { page as screen, userEvent } from "vitest/browser";
-import { render } from "vitest-browser-react";
-import { defineStepper } from "../define-stepper";
+import { cleanup, render } from "vitest-browser-react";
+import { defineStepper } from "../index";
+import { act } from "./act";
+
+afterEach(cleanup);
 
 const steps = [
-	{ id: "first", title: "First", description: "First description" },
-	{ id: "second", title: "Second", description: "Second description" },
-];
+	{ id: "first", title: "First", description: "Start here" },
+	{ id: "second", title: "Second", description: "Then this" },
+	{ id: "third", title: "Third", description: "Finish" },
+] as const;
+const flow = defineStepper(steps);
+const { Stepper } = flow;
+type Api = ReturnType<typeof flow.useStepper>;
 
-const threeSteps = [
-	{ id: "first", title: "First", description: "First description" },
-	{ id: "second", title: "Second", description: "Second description" },
-	{ id: "third", title: "Third", description: "Third description" },
-];
+async function violations(node: Element) {
+	// `region` is about page landmarks, not a component rendered in isolation.
+	const result = await axe.run(node, { rules: { region: { enabled: false } } });
+	return result.violations.map(
+		(violation) => `${violation.id}: ${violation.nodes.map((entry) => entry.html).join(" | ")}`,
+	);
+}
 
-describe("primitives", () => {
-	it("Stepper.Items can render items without passing step to Item", async () => {
-		const { Stepper } = defineStepper(steps);
-
-		await render(
-			<Stepper.Root>
-				{({ stepper }) => (
-					<Stepper.List>
-						<Stepper.Items>
-							{(step) => (
-								<Stepper.Item
-									render={(props) => (
-										<li {...props}>
-											<span data-testid={`status-${step.id}`}>{stepper.status(step.id)}</span>
-										</li>
-									)}
-								/>
-							)}
-						</Stepper.Items>
-					</Stepper.List>
+function Full(props: Partial<React.ComponentProps<typeof Stepper.Root>>) {
+	return (
+		<Stepper.Root {...props}>
+			<Stepper.List>
+				{() => (
+					<Stepper.Item>
+						<Stepper.Trigger>
+							<Stepper.Indicator />
+							<Stepper.Title />
+							<Stepper.Description />
+						</Stepper.Trigger>
+					</Stepper.Item>
 				)}
-			</Stepper.Root>,
-		);
+			</Stepper.List>
+			{steps.map((step) => (
+				<Stepper.Content key={step.id} step={step.id}>
+					<label>
+						{step.title} name
+						<input />
+					</label>
+				</Stepper.Content>
+			))}
+			<Stepper.Prev>Back</Stepper.Prev>
+			<Stepper.Next>Continue</Stepper.Next>
+		</Stepper.Root>
+	);
+}
 
-		expect(screen.getByTestId("status-first").element().textContent).toBe("active");
-		expect(screen.getByTestId("status-second").element().textContent).toBe("upcoming");
+const next = () => screen.getByRole("button", { name: "Continue" }).element() as HTMLButtonElement;
+const region = (container: Element) => container.querySelector('[data-component="stepper"] > [aria-live="polite"]');
+
+describe("patterns", () => {
+	it("a free flow is a tablist: tabs own their panels and axe finds nothing", async () => {
+		const { container } = await render(<Full />);
+		expect(container.querySelector("ol")?.getAttribute("role")).toBe("tablist");
+		expect(container.querySelector("li")?.getAttribute("role")).toBe("presentation");
+		const tab = screen.getByRole("tab", { name: /First/ }).element();
+		expect(tab.getAttribute("aria-selected")).toBe("true");
+		expect([tab.getAttribute("aria-posinset"), tab.getAttribute("aria-setsize")]).toEqual(["1", "3"]);
+		expect(document.getElementById(tab.getAttribute("aria-controls") ?? "")?.getAttribute("aria-labelledby")).toBe(
+			tab.id,
+		);
+		expect(tab.querySelector("h4, p")).toBeNull();
+		expect(await violations(container)).toEqual([]);
+		await userEvent.click(next());
+		expect(await violations(container)).toEqual([]);
 	});
 
-	it("Title and Description read defaults from the item step", async () => {
-		const { Stepper } = defineStepper(steps);
+	it("a linear flow is an ordered list of steps with aria-current, not tabs", async () => {
+		const { container } = await render(<Full linear />);
+		expect(container.querySelector("ol")?.hasAttribute("role")).toBe(false);
+		expect(container.querySelector("li")?.hasAttribute("role")).toBe(false);
+		const buttons = container.querySelectorAll<HTMLButtonElement>('[data-component="stepper-trigger"]');
+		expect(Array.from(buttons, (button) => button.getAttribute("role"))).toEqual([null, null, null]);
+		expect(buttons[0].getAttribute("aria-current")).toBe("step");
+		// Only next() moves forward, so later steps are unavailable until then.
+		expect(Array.from(buttons, (button) => button.disabled)).toEqual([false, true, true]);
+		const panel = container.querySelector('[data-component="stepper-content"]');
+		expect([panel?.getAttribute("role"), panel?.getAttribute("aria-label")]).toEqual(["group", "First"]);
+		expect(await violations(container)).toEqual([]);
+		await userEvent.click(next());
+		expect(buttons[1].getAttribute("aria-current")).toBe("step");
+		expect(buttons[0].dataset.state).toBe("complete");
+		expect(buttons[0].disabled).toBe(false);
+		expect(await violations(container)).toEqual([]);
+	});
 
+	it("a flow without triggers has no tabs: panels are groups named by the step title", async () => {
+		const outer = defineStepper(steps);
+		const { container } = await render(
+			<outer.Stepper.Root data-testid="outer">
+				<outer.Stepper.List>
+					{() => (
+						<outer.Stepper.Item>
+							<outer.Stepper.Indicator />
+						</outer.Stepper.Item>
+					)}
+				</outer.Stepper.List>
+				<outer.Stepper.Content step="first">
+					{/* A nested stepper's triggers are not this one's. */}
+					<Full />
+				</outer.Stepper.Content>
+			</outer.Stepper.Root>,
+		);
+		const panel = container.querySelector('[data-testid="outer"] > [data-component="stepper-content"]');
+		expect([panel?.getAttribute("role"), panel?.getAttribute("aria-label")]).toEqual(["group", "First"]);
+		expect(container.querySelector('[data-testid="outer"] > ol')?.hasAttribute("role")).toBe(false);
+		expect(container.querySelectorAll('[role="tabpanel"]').length).toBe(1);
+		expect(await violations(container)).toEqual([]);
+	});
+});
+
+describe("state and data attributes", () => {
+	it("exposes step, state, validity and reachability for styling and automation", async () => {
+		const schema = {
+			"~standard": {
+				version: 1 as const,
+				vendor: "test",
+				validate: (value: unknown) => (value === "ok" ? { value } : { issues: [{ message: "Required" }] }),
+			},
+		};
+		const checked = defineStepper([
+			{ id: "a", title: "A", schema },
+			{ id: "b", title: "B" },
+		]);
+		let api!: ReturnType<typeof checked.useStepper>;
+		function Grab() {
+			api = checked.useStepperContext();
+			return null;
+		}
+		const { container } = await render(
+			<checked.Stepper.Root>
+				<Grab />
+				<checked.Stepper.List>
+					{() => (
+						<checked.Stepper.Item>
+							<checked.Stepper.Trigger>
+								<checked.Stepper.Indicator />
+								<checked.Stepper.Title />
+							</checked.Stepper.Trigger>
+						</checked.Stepper.Item>
+					)}
+				</checked.Stepper.List>
+			</checked.Stepper.Root>,
+		);
+		const item = container.querySelector<HTMLElement>('li[data-step="a"]');
+		expect([item?.dataset.state, item?.hasAttribute("data-invalid")]).toEqual(["current", false]);
+		await act(async () => {
+			expect(await api.next("nope")).toMatchObject({ accepted: false, reason: "invalid" });
+		});
+		expect(item?.hasAttribute("data-invalid")).toBe(true);
+		expect(container.querySelector('[data-component="stepper-indicator"]')?.hasAttribute("data-invalid")).toBe(true);
+		await act(async () => {
+			await api.next("ok");
+		});
+		expect([item?.dataset.state, item?.hasAttribute("data-invalid")]).toEqual(["complete", false]);
+		expect(container.querySelector<HTMLElement>('li[data-step="b"]')?.dataset.state).toBe("current");
+	});
+
+	it("useItem reads the enclosing item", async () => {
+		function Badge() {
+			const item = Stepper.useItem();
+			return (
+				<span data-testid={`badge-${item.step.id}`}>
+					{item.index + 1} {item.state} {String(item.disabled)}
+				</span>
+			);
+		}
 		await render(
-			<Stepper.Root>
+			<Stepper.Root linear>
 				<Stepper.List>
-					<Stepper.Item step="first">
-						<Stepper.Title />
-						<Stepper.Description />
-					</Stepper.Item>
+					{() => (
+						<Stepper.Item>
+							<Badge />
+						</Stepper.Item>
+					)}
 				</Stepper.List>
 			</Stepper.Root>,
 		);
+		expect(screen.getByTestId("badge-first").element().textContent).toBe("1 current false");
+		expect(screen.getByTestId("badge-third").element().textContent).toBe("3 pending true");
+	});
+});
 
-		expect(screen.getByText("First").element()).toBeTruthy();
-		expect(screen.getByText("First description").element()).toBeTruthy();
+describe("navigation", () => {
+	it("Next finishes the flow on the last step", async () => {
+		const onFinish = vi.fn();
+		await render(<Full snapshot={{ step: "third", data: { first: 1 } }} onFinish={onFinish} />);
+		expect(next().disabled).toBe(false);
+		await userEvent.click(next());
+		expect(onFinish).toHaveBeenCalledWith({ first: 1 });
 	});
 
-	it("Stepper.Trigger respects preventDefault in onClick", async () => {
-		const { Stepper } = defineStepper(steps);
+	it("Prev is disabled at the start and returns along the path", async () => {
+		await render(<Full />);
+		const back = screen.getByRole("button", { name: "Back" }).element() as HTMLButtonElement;
+		expect(back.disabled).toBe(true);
+		await userEvent.click(next());
+		expect(back.disabled).toBe(false);
+		await userEvent.click(back);
+		expect(screen.getByRole("tab", { name: /First/ }).element().getAttribute("aria-selected")).toBe("true");
+	});
 
-		await render(
+	it("respects preventDefault on the buttons and the list", async () => {
+		const { container } = await render(
 			<Stepper.Root>
-				{({ stepper }) => (
+				{(stepper) => (
 					<>
-						<span data-testid="current">{stepper.id}</span>
-						<Stepper.List>
-							<Stepper.Items>
-								{(step) => (
-									<Stepper.Item>
-										<Stepper.Trigger
-											onClick={(event) => {
-												if (step.id === "second") event.preventDefault();
-											}}
-										>
-											<Stepper.Title />
-										</Stepper.Trigger>
-									</Stepper.Item>
-								)}
-							</Stepper.Items>
-						</Stepper.List>
-					</>
-				)}
-			</Stepper.Root>,
-		);
-
-		await userEvent.click(screen.getByRole("tab", { name: "Second" }).element());
-		expect(screen.getByTestId("current").element().textContent).toBe("first");
-	});
-
-	it("Stepper.Trigger respects linear navigation policy", async () => {
-		const { Stepper } = defineStepper(threeSteps);
-
-		await render(
-			<Stepper.Root linear>
-				{({ stepper }) => (
-					<>
-						<span data-testid="current">{stepper.id}</span>
-						<Stepper.List>
-							<Stepper.Items>
-								{() => (
-									<Stepper.Item>
-										<Stepper.Trigger>
-											<Stepper.Title />
-										</Stepper.Trigger>
-									</Stepper.Item>
-								)}
-							</Stepper.Items>
-						</Stepper.List>
-					</>
-				)}
-			</Stepper.Root>,
-		);
-
-		const thirdTrigger = screen.getByRole("tab", { name: "Third" }).element();
-		expect(thirdTrigger).toHaveProperty("disabled", true);
-
-		await userEvent.click(thirdTrigger, { force: true });
-		expect(screen.getByTestId("current").element().textContent).toBe("first");
-	});
-
-	it("Stepper.Next and Stepper.Prev respect preventDefault in onClick", async () => {
-		const { Stepper } = defineStepper(threeSteps);
-
-		await render(
-			<Stepper.Root defaultStep="second">
-				{({ stepper }) => (
-					<>
-						<span data-testid="current">{stepper.id}</span>
-						<Stepper.Prev onClick={(event) => event.preventDefault()}>Prev</Stepper.Prev>
-						<Stepper.Next onClick={(event) => event.preventDefault()}>Next</Stepper.Next>
-					</>
-				)}
-			</Stepper.Root>,
-		);
-
-		await userEvent.click(screen.getByRole("button", { name: "Prev" }).element());
-		expect(screen.getByTestId("current").element().textContent).toBe("second");
-
-		await userEvent.click(screen.getByRole("button", { name: "Next" }).element());
-		expect(screen.getByTestId("current").element().textContent).toBe("second");
-	});
-
-	it("Stepper.List respects preventDefault in onKeyDown", async () => {
-		const { Stepper } = defineStepper(steps);
-
-		await render(
-			<Stepper.Root>
-				{({ stepper }) => (
-					<>
-						<span data-testid="current">{stepper.id}</span>
+						<output>{stepper.current.id}</output>
 						<Stepper.List onKeyDown={(event) => event.preventDefault()}>
-							<Stepper.Items>
-								{() => (
-									<Stepper.Item>
-										<Stepper.Trigger>
-											<Stepper.Title />
-										</Stepper.Trigger>
-									</Stepper.Item>
-								)}
-							</Stepper.Items>
+							{() => (
+								<Stepper.Item>
+									<Stepper.Trigger>
+										<Stepper.Title />
+									</Stepper.Trigger>
+								</Stepper.Item>
+							)}
 						</Stepper.List>
+						<Stepper.Next onClick={(event) => event.preventDefault()}>Continue</Stepper.Next>
 					</>
 				)}
 			</Stepper.Root>,
 		);
-
-		const firstTrigger = screen.getByRole("tab", { name: "First" }).element();
-		firstTrigger.focus();
+		await userEvent.click(next());
+		screen.getByRole("tab", { name: "First" }).element().focus();
 		await userEvent.keyboard("{ArrowRight}");
-
-		expect(screen.getByTestId("current").element().textContent).toBe("first");
+		expect(container.querySelector("output")?.textContent).toBe("first");
 	});
 
-	it("Stepper.List keeps focus in place when keyboard navigation is canceled", async () => {
-		const { Stepper } = defineStepper(steps);
-
+	it("arrow keys move between tabs, swapped in right-to-left layouts", async () => {
 		await render(
-			<Stepper.Root beforeStepChange={() => false}>
-				<Stepper.List>
-					<Stepper.Items>
-						{() => (
-							<Stepper.Item>
-								<Stepper.Trigger>
-									<Stepper.Title />
-								</Stepper.Trigger>
-							</Stepper.Item>
-						)}
-					</Stepper.Items>
-				</Stepper.List>
+			<div dir="rtl">
+				<Full />
+			</div>,
+		);
+		screen.getByRole("tab", { name: /First/ }).element().focus();
+		await act(async () => {
+			await userEvent.keyboard("{ArrowLeft}");
+		});
+		const second = screen.getByRole("tab", { name: /Second/ }).element();
+		expect(second.getAttribute("aria-selected")).toBe("true");
+		expect(document.activeElement).toBe(second);
+		await act(async () => {
+			await userEvent.keyboard("{End}");
+		});
+		expect(document.activeElement).toBe(screen.getByRole("tab", { name: /Third/ }).element());
+	});
+});
+
+describe("focus and announcements", () => {
+	it("announces the new step by its title while Next keeps focus", async () => {
+		const { container } = await render(<Full />);
+		expect(region(container)?.textContent).toBe("");
+		next().focus();
+		await userEvent.click(next());
+		expect(document.activeElement).toBe(next());
+		expect(region(container)?.textContent).toBe("Second");
+	});
+
+	it("moves focus to the new panel when the focused element unmounts, without announcing twice", async () => {
+		let api!: Api;
+		function Grab() {
+			api = flow.useStepperContext();
+			return null;
+		}
+		const { container } = await render(
+			<Stepper.Root>
+				<Grab />
+				<Stepper.Content step="first">
+					<input aria-label="Name" />
+				</Stepper.Content>
+				<Stepper.Content step="second">Two</Stepper.Content>
 			</Stepper.Root>,
 		);
-
-		const firstTrigger = screen.getByRole("tab", { name: "First" }).element();
-		firstTrigger.focus();
-		await userEvent.keyboard("{ArrowRight}");
-		await Promise.resolve();
-
-		expect(document.activeElement).toBe(firstTrigger);
+		container.querySelector("input")?.focus();
+		await act(async () => {
+			await api.next();
+		});
+		expect(document.activeElement?.textContent).toBe("Two");
+		expect(region(container)?.textContent).toBe("");
 	});
 
-	it("Stepper.List keyboard navigation respects linear policy", async () => {
-		const { Stepper } = defineStepper(threeSteps);
-
-		await render(
-			<Stepper.Root linear>
-				{({ stepper }) => (
-					<>
-						<span data-testid="current">{stepper.id}</span>
-						<Stepper.List>
-							<Stepper.Items>
-								{() => (
-									<Stepper.Item>
-										<Stepper.Trigger>
-											<Stepper.Title />
-										</Stepper.Trigger>
-									</Stepper.Item>
-								)}
-							</Stepper.Items>
-						</Stepper.List>
-					</>
-				)}
-			</Stepper.Root>,
-		);
-
-		const firstTrigger = screen.getByRole("tab", { name: "First" }).element();
-		firstTrigger.focus();
-
-		await userEvent.keyboard("{End}");
-		await Promise.resolve();
-		expect(screen.getByTestId("current").element().textContent).toBe("first");
-		expect(document.activeElement).toBe(firstTrigger);
-
-		await userEvent.keyboard("{ArrowRight}");
-		await Promise.resolve();
-		expect(screen.getByTestId("current").element().textContent).toBe("second");
-
-		const secondTrigger = screen.getByRole("tab", { name: "Second" }).element();
-		expect(document.activeElement).toBe(secondTrigger);
-
-		await userEvent.keyboard("{Home}");
-		await Promise.resolve();
-		expect(screen.getByTestId("current").element().textContent).toBe("first");
-	});
-
-	it("Stepper.Indicator render replaces the root element", async () => {
-		const { Stepper } = defineStepper(steps);
-
+	it("never moves focus that is outside the stepper", async () => {
+		const outside = document.createElement("button");
+		document.body.appendChild(outside);
+		let api!: Api;
+		function Grab() {
+			api = flow.useStepperContext();
+			return null;
+		}
 		await render(
 			<Stepper.Root>
-				<Stepper.List>
-					<Stepper.Item step="first">
-						<Stepper.Indicator render={(props) => <span {...props}>Custom</span>} />
+				<Grab />
+				<Stepper.Content step="second">Two</Stepper.Content>
+			</Stepper.Root>,
+		);
+		outside.focus();
+		await act(async () => {
+			await api.next();
+		});
+		expect(document.activeElement).toBe(outside);
+		outside.remove();
+	});
+
+	it("a running guard keeps the clicked control focusable and marks the stepper busy", async () => {
+		let release!: (value: boolean) => void;
+		const guard = () =>
+			new Promise<boolean>((resolve) => {
+				release = resolve;
+			});
+		const { container } = await render(<Full guard={guard} />);
+		const second = screen.getByRole("tab", { name: /Second/ }).element() as HTMLButtonElement;
+		second.focus();
+		await userEvent.click(second);
+		const root = container.querySelector('[data-component="stepper"]');
+		expect([root?.getAttribute("aria-busy"), root?.hasAttribute("data-pending")]).toEqual(["true", true]);
+		expect([second.disabled, second.getAttribute("aria-disabled")]).toEqual([false, "true"]);
+		expect([next().disabled, next().getAttribute("aria-disabled"), next().hasAttribute("data-pending")]).toEqual([
+			false,
+			"true",
+			true,
+		]);
+		await act(async () => release(false));
+		expect(document.activeElement).toBe(second);
+		expect(root?.hasAttribute("aria-busy")).toBe(false);
+	});
+});
+
+describe("refs and render", () => {
+	it("forwards refs to every primitive and renders text as spans", async () => {
+		const refs = {
+			root: React.createRef<HTMLDivElement>(),
+			list: React.createRef<HTMLOListElement>(),
+			item: React.createRef<HTMLLIElement>(),
+			trigger: React.createRef<HTMLButtonElement>(),
+			title: React.createRef<HTMLSpanElement>(),
+			content: React.createRef<HTMLDivElement>(),
+			next: React.createRef<HTMLButtonElement>(),
+		};
+		await render(
+			<Stepper.Root ref={refs.root}>
+				<Stepper.List ref={refs.list}>
+					<Stepper.Item step="first" ref={refs.item}>
+						<Stepper.Trigger ref={refs.trigger}>
+							<Stepper.Title ref={refs.title} />
+						</Stepper.Trigger>
 					</Stepper.Item>
 				</Stepper.List>
+				<Stepper.Content step="first" ref={refs.content}>
+					A
+				</Stepper.Content>
+				<Stepper.Next ref={refs.next} render={(props) => <button className="mine" {...props} />}>
+					Continue
+				</Stepper.Next>
 			</Stepper.Root>,
 		);
+		expect(Object.values(refs).map((ref) => ref.current?.tagName)).toEqual([
+			"DIV",
+			"OL",
+			"LI",
+			"BUTTON",
+			"SPAN",
+			"DIV",
+			"BUTTON",
+		]);
+		expect([refs.next.current?.className, refs.next.current?.textContent]).toEqual(["mine", "Continue"]);
+	});
+});
 
-		expect(screen.getByText("Custom").element().getAttribute("data-component")).toBe("stepper-indicator");
-		expect(screen.getByText("Custom").element().querySelector("[data-component='stepper-indicator']")).toBeNull();
+describe("development diagnostics", () => {
+	async function warnings(ui: React.ReactElement) {
+		const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+		await render(ui);
+		const seen = warn.mock.calls.map((call) => String(call[0]));
+		warn.mockRestore();
+		return seen;
+	}
+
+	it("warns about render functions that drop their props", async () => {
+		const seen = await warnings(
+			<Stepper.Root>
+				<Stepper.List render={() => <ol />} />
+			</Stepper.Root>,
+		);
+		expect(seen.some((message) => message.includes("SZ001"))).toBe(true);
 	});
 
-	it("Prev and Next buttons disable at edges", async () => {
-		const { Stepper } = defineStepper(steps);
-
-		await render(
+	it("warns about a trigger without a name or outside a list, with a link", async () => {
+		const seen = await warnings(
 			<Stepper.Root>
-				<Stepper.Prev>Back</Stepper.Prev>
-				<Stepper.Next>Forward</Stepper.Next>
+				<Stepper.Item step="first" render={(props) => <div {...(props as React.ComponentProps<"div">)} />}>
+					<Stepper.Trigger />
+				</Stepper.Item>
 			</Stepper.Root>,
 		);
+		expect(seen.some((message) => message.includes("SZ002") && message.includes("errors#sz002"))).toBe(true);
+		expect(seen.some((message) => message.includes("SZ003"))).toBe(true);
+	});
 
-		expect(screen.getByRole("button", { name: "Back" }).element()).toHaveProperty("disabled", true);
-		expect(screen.getByRole("button", { name: "Forward" }).element()).toHaveProperty("disabled", false);
+	it("throws coded errors outside a Root or an Item", async () => {
+		const error = vi.spyOn(console, "error").mockImplementation(() => {});
+		await expect(render(<Stepper.Next>Continue</Stepper.Next>)).rejects.toThrow(/SZ100/);
+		await expect(
+			render(
+				<Stepper.Root>
+					<Stepper.Indicator />
+				</Stepper.Root>,
+			),
+		).rejects.toThrow(/SZ101/);
+		error.mockRestore();
+	});
+});
+
+describe("hydration", () => {
+	it("keeps the server HTML: nothing changes until the user acts", async () => {
+		const ui = (
+			<>
+				<Full snapshot={{ step: "second", complete: ["first"] }} />
+				<Full />
+			</>
+		);
+		const container = document.createElement("div");
+		container.innerHTML = renderToString(ui);
+		document.body.appendChild(container);
+		const original = container.innerHTML;
+		const ids = Array.from(container.querySelectorAll("[id]"), (node) => node.id);
+		expect(new Set(ids).size).toBe(ids.length);
+		const recoverable = vi.fn();
+		const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+		let root!: ReturnType<typeof hydrateRoot>;
+		await act(async () => {
+			root = hydrateRoot(container, ui, { onRecoverableError: recoverable });
+		});
+		expect(recoverable).not.toHaveBeenCalled();
+		expect(errors).not.toHaveBeenCalled();
+		expect(container.innerHTML).toBe(original);
+		await act(async () => root.unmount());
+		container.remove();
+		errors.mockRestore();
 	});
 });

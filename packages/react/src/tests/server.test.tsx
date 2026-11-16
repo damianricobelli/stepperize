@@ -1,49 +1,41 @@
 // @vitest-environment node
 import { renderToString } from "react-dom/server";
 import { expect, it, vi } from "vitest";
-import { defineStepper } from "../define-stepper";
+import { defineStepper } from "../index";
 
-it("renders local and shared instances without browser globals or server callbacks", () => {
-	const flow = defineStepper([{ id: "cart" }, { id: "review" }], {
-		defaultStep: "review",
-		defaultCompleted: ["cart"],
-		defaultData: { cart: "draft" },
-	});
-	const invalid = vi.fn();
-	const guard = vi.fn();
+it("renders hooks and primitives on the server without browser globals or callbacks", () => {
+	const onChange = vi.fn();
+	const flow = defineStepper([
+		{ id: "cart", title: "Cart" },
+		{ id: "review", title: "Review" },
+	]);
 	function Local() {
-		const s = flow.useStepper();
-		return (
-			<span>
-				{s.id}:{String(s.data.get("cart"))}:{String(s.isComplete("cart"))}
-			</span>
-		);
-	}
-	function Shared() {
-		const s = flow.useStepperContext();
-		return (
-			<span>
-				{s.id}:{String(s.isComplete("cart"))}
-			</span>
-		);
+		return <span>{flow.useStepper({ snapshot: { step: "review" }, onChange }).current.id}</span>;
 	}
 	const errors = vi.spyOn(console, "error").mockImplementation(() => {});
-	try {
-		const html = renderToString(
-			<>
-				<Local />
-				<flow.Provider step="unknown" onInvalidStep={invalid} beforeStepChange={guard}>
-					<Shared />
-				</flow.Provider>
-			</>,
-		);
-		expect(html).toContain("review");
-		expect(html).toContain("draft");
-		expect(html).toContain("true");
-		expect(invalid).not.toHaveBeenCalled();
-		expect(guard).not.toHaveBeenCalled();
-		expect(errors).not.toHaveBeenCalled();
-	} finally {
-		errors.mockRestore();
-	}
+	const html = renderToString(
+		<>
+			<Local />
+			<flow.Stepper.Root onChange={onChange}>
+				<flow.Stepper.List>
+					{() => (
+						<flow.Stepper.Item>
+							<flow.Stepper.Trigger>
+								<flow.Stepper.Title />
+							</flow.Stepper.Trigger>
+						</flow.Stepper.Item>
+					)}
+				</flow.Stepper.List>
+				<flow.Stepper.Content step="cart">Cart form</flow.Stepper.Content>
+				<flow.Stepper.Next>Continue</flow.Stepper.Next>
+			</flow.Stepper.Root>
+		</>,
+	);
+	expect(html).toContain("<span>review</span>");
+	expect(html).toContain('role="tablist"');
+	expect(html).toContain('role="tabpanel"');
+	expect(html).toContain("Cart form");
+	expect(errors).not.toHaveBeenCalled();
+	expect(onChange).not.toHaveBeenCalled();
+	errors.mockRestore();
 });

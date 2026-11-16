@@ -1,37 +1,34 @@
-import type { Step, StepMap } from "@stepperize/core";
-import React from "react";
-import { panelDomId, type StepperScope, triggerDomId } from "./context";
-import { primitive, renderPrimitive, useDevRef } from "./render";
-import type { ContentProps, PrimitiveComponent } from "./types";
+import type { Step } from "@stepperize/core";
+import type { Scope } from "../definition";
+import { element, panelId, primitive, triggerId, useDevRef, useUi } from "./shared";
+import type { Component, ContentProps } from "./types";
 
-export function createContent<Steps extends readonly Step[]>(
-	map: StepMap<Steps>,
-	scope: StepperScope<Steps>,
-): PrimitiveComponent<ContentProps<Steps>> {
-	return primitive<ContentProps<Steps>, HTMLDivElement>("Content", (props, forwardedRef) => {
+export function createContent<S extends readonly Step[]>(scope: Scope<S>): Component<ContentProps<S>> {
+	return primitive<ContentProps<S>, HTMLDivElement>("Content", (props, forwardedRef) => {
 		const { step, forceMount, render, children, ...rest } = props;
-		const { id: instance } = scope.useValue();
-		const { tabs } = React.useContext(scope.UiContext);
-		const active = scope.useSelector<boolean>((s) => s.id === step);
+		const ui = useUi();
+		const active = scope.useSelect(scope.useShared(), (s) => s.current.id === step);
 		// A hidden panel renders nothing, so there is no element to check.
 		const ref = useDevRef("Content", active || forceMount ? render : undefined, forwardedRef);
 		if (!active && !forceMount) return null;
-		// A tabpanel is named by its tab. Without triggers it is a group named by the step title.
-		const title = (map.get(step) as { title?: unknown } | undefined)?.title;
+		// A tabpanel is named by its tab. A group is named by the step title, which needs no trigger.
+		const title = (scope.steps.find((entry) => entry.id === step) as { title?: unknown } | undefined)?.title;
+		const named = !ui.tabs && typeof title === "string";
 		const domProps = {
-			id: panelDomId(instance, step),
+			id: panelId(ui, step),
 			"data-component": "stepper-content",
-			"data-state": active ? "active" : "inactive",
-			role: tabs ? ("tabpanel" as const) : ("group" as const),
-			"aria-labelledby": tabs ? triggerDomId(instance, step) : undefined,
-			"aria-label": !tabs && typeof title === "string" ? title : undefined,
+			"data-step": step,
+			role: ui.tabs ? ("tabpanel" as const) : ("group" as const),
+			"aria-label": named ? title : undefined,
+			"aria-labelledby": named ? undefined : triggerId(ui, step),
 			// Inactive panels stay mounted (form state survives) but hidden.
 			hidden: !active || undefined,
-			tabIndex: active ? 0 : -1,
+			// Tab panels are a tab stop; groups only receive focus programmatically.
+			tabIndex: active && ui.tabs ? 0 : -1,
 			...rest,
 			ref,
 			children,
 		};
-		return renderPrimitive("div", domProps, render);
+		return element("div", domProps, render);
 	});
 }

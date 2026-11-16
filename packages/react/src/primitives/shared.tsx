@@ -1,8 +1,36 @@
+import { fail, type Step, warn } from "@stepperize/core";
 import React from "react";
-import { warn } from "../dev";
-import type { PrimitiveComponent, RenderProp } from "./types";
+import type { Component, ItemValue, Orientation, RenderProp } from "./types";
 
 type AnyRef = React.Ref<any> | undefined;
+
+/** Set by `Stepper.Root`, read by every primitive below it. */
+export type Ui = {
+	/** Prefix that keeps DOM ids unique per Root. */
+	id: string;
+	orientation: Orientation;
+	/**
+	 * Tabs (a tablist with roving focus) or a list of step buttons. A linear flow
+	 * is not a set of tabs, and neither is a flow without triggers.
+	 */
+	tabs: boolean;
+};
+
+export const UiContext = React.createContext<Ui | null>(null);
+export const ItemContext = React.createContext<ItemValue | null>(null);
+/** The step index a `Stepper.List` function is rendering, so its Item needs no `step` prop. */
+export const IndexContext = React.createContext(-1);
+
+export const useUi = () =>
+	React.useContext(UiContext) ?? fail("SZ100", "Missing Stepper.Root. Render the primitives inside it.");
+
+export function useItem<S extends readonly Step[]>(): ItemValue<S> {
+	const item = React.useContext(ItemContext);
+	return (item ?? fail("SZ101", "Missing Stepper.Item. Render this primitive inside a Stepper.Item.")) as ItemValue<S>;
+}
+
+export const triggerId = (ui: Ui, step: string) => `${ui.id}trigger-${step}`;
+export const panelId = (ui: Ui, step: string) => `${ui.id}panel-${step}`;
 
 /** One callback ref that feeds both refs. Returns the only ref as-is when there is one. */
 export function composeRefs(a: AnyRef, b: AnyRef): AnyRef {
@@ -16,7 +44,7 @@ export function composeRefs(a: AnyRef, b: AnyRef): AnyRef {
 }
 
 /** Render the default tag, or hand every prop (including `ref` and `children`) to the user's function. */
-export function renderPrimitive<E extends keyof React.JSX.IntrinsicElements>(
+export function element<E extends keyof React.JSX.IntrinsicElements>(
 	tag: E,
 	props: Record<string, unknown>,
 	render: RenderProp<E> | undefined,
@@ -28,10 +56,10 @@ export function renderPrimitive<E extends keyof React.JSX.IntrinsicElements>(
 export function primitive<Props, E extends Element = Element>(
 	name: string,
 	render: (props: Props, ref: React.ForwardedRef<E>) => React.ReactNode,
-): PrimitiveComponent<Props> {
-	const Component = React.forwardRef(render as never) as React.NamedExoticComponent;
-	if (process.env.NODE_ENV !== "production") Component.displayName = `Stepper.${name}`;
-	return Component as unknown as PrimitiveComponent<Props>;
+): Component<Props> {
+	const component = React.forwardRef(render as never) as React.NamedExoticComponent;
+	if (process.env.NODE_ENV !== "production") component.displayName = `Stepper.${name}`;
+	return component as unknown as Component<Props>;
 }
 
 type DevRef = <T extends Element>(name: string, render: unknown, ref: AnyRef, check?: (element: T) => void) => AnyRef;

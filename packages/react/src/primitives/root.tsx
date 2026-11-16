@@ -1,103 +1,102 @@
-import type { Get, Step, Stepper } from "@stepperize/core";
+import type { Flow, Options, Step, Stepper } from "@stepperize/core";
 import React from "react";
-import type { UseStepperOptions } from "../types";
-import { useCommitEffect } from "../utils";
-import { panelDomId, type StepperScope, type UiValue, VISUALLY_HIDDEN } from "./context";
-import { composeRefs, primitive } from "./render";
-import type { PrimitiveComponent, RootProps } from "./types";
+import { type Scope, useCommitEffect } from "../definition";
+import { composeRefs, panelId, primitive, type Ui, UiContext } from "./shared";
+import type { Component, RootProps } from "./types";
 
 /**
- * Options forwarded from Root to the Provider. `satisfies` guarantees each
- * entry is a real option, and `_exhaustive` fails to compile if an option is
- * added to `UseStepperOptions` without being listed here.
+ * Options that go to the flow; everything else goes to the `div`. `satisfies`
+ * keeps each entry real, and `_exhaustive` fails to compile when an option is
+ * added to `Options` without being listed here.
  */
-const STATE_KEYS = [
-	"defaultStep",
-	"defaultCompleted",
-	"step",
-	"onStepChange",
-	"onInvalidStep",
-	"defaultData",
-	"data",
-	"onDataChange",
-	"completed",
-	"onCompletedChange",
+const OPTION_KEYS = [
 	"linear",
-	"beforeStepChange",
-] as const satisfies readonly (keyof UseStepperOptions<readonly Step[]>)[];
-type Missing = Exclude<keyof UseStepperOptions<readonly Step[]>, (typeof STATE_KEYS)[number]>;
-const _exhaustive: [Missing] extends [never] ? true : { missingKeys: Missing } = true;
+	"next",
+	"guard",
+	"onChange",
+	"onFinish",
+	"snapshot",
+] as const satisfies readonly (keyof Options<readonly Step[]>)[];
+type Missing = Exclude<keyof Options<readonly Step[]>, (typeof OPTION_KEYS)[number]>;
+const _exhaustive: [Missing] extends [never] ? true : { missing: Missing } = true;
 void _exhaustive;
-// Root splits its props on every render: a Set keeps that lookup O(1).
-const STATE_KEY_SET: ReadonlySet<string> = new Set(STATE_KEYS);
+const OPTIONS: ReadonlySet<string> = new Set(OPTION_KEYS);
 
-type InnerProps<Steps extends readonly Step[]> = Omit<RootProps<Steps>, (typeof STATE_KEYS)[number]>;
+/** Text for screen readers only. */
+const HIDDEN: React.CSSProperties = {
+	position: "absolute",
+	width: 1,
+	height: 1,
+	overflow: "hidden",
+	clipPath: "inset(50%)",
+	whiteSpace: "nowrap",
+};
 
-export function createRoot<Steps extends readonly Step[]>(
-	Provider: (props: React.PropsWithChildren<any>) => React.ReactElement,
-	scope: StepperScope<Steps>,
-): PrimitiveComponent<RootProps<Steps>> {
+type InnerProps<S extends readonly Step[]> = Omit<RootProps<S>, (typeof OPTION_KEYS)[number]> & {
+	flow: Flow<S>;
+	linear: boolean;
+};
+
+export function createRoot<S extends readonly Step[]>(scope: Scope<S>): Component<RootProps<S>> {
 	/**
 	 * What a step change needs beyond rendering, for people who cannot see it:
 	 *
 	 * - Focus falls back to <body> when its element unmounts (a field in the old
-	 *   panel, a Next button replaced on the last step) or becomes disabled. Hand
-	 *   it to the new panel instead of stranding keyboard users.
+	 *   panel, a button that is replaced) or becomes disabled. Hand it to the new
+	 *   panel instead of stranding keyboard users.
 	 * - Pressing Next changes the page silently for screen readers. Announce the
 	 *   new step by its own `title`: your words, so there is nothing to translate.
 	 *
-	 * Subscribes to the step id only, so neither the Root nor its children re-render for it.
+	 * Subscribes to the step index only, so nothing else re-renders for it.
 	 */
-	function StepChange({ root }: { root: React.RefObject<HTMLDivElement | null> }) {
-		const { store, id: instance } = scope.useValue();
-		const id = scope.useSelector<Get.Id<Steps>>((s) => s.id);
+	function StepChange({ flow, ui, root }: { flow: Flow<S>; ui: Ui; root: React.RefObject<HTMLDivElement | null> }) {
+		const index = scope.useSelect(flow, (s) => s.index);
 		const region = React.useRef<HTMLSpanElement>(null);
 		// Read while rendering the change, before React touches the DOM: was focus in this
 		// stepper? Focus that is elsewhere is never moved. No focus events needed.
 		const inside = !!root.current?.contains(root.current.ownerDocument.activeElement);
-		const previous = React.useRef(id);
+		const previous = React.useRef(index);
 		useCommitEffect(() => {
-			if (previous.current === id) return;
-			previous.current = id;
+			if (previous.current === index) return;
+			previous.current = index;
 			const doc = root.current?.ownerDocument;
 			if (!doc) return;
+			const step = flow.current as { id: string; title?: unknown };
 			let active = doc.activeElement as HTMLButtonElement | null;
 			if (inside && (!active || active === doc.body || active.disabled)) {
-				active = doc.getElementById(panelDomId(instance, id)) as HTMLButtonElement | null;
+				active = doc.getElementById(panelId(ui, step.id)) as HTMLButtonElement | null;
 				active?.focus();
 			}
-			// A focused tab or panel already reads the step. Written straight to the DOM:
+			// A focused trigger or panel already reads the step. Written straight to the DOM:
 			// announcing must not re-render anything.
-			const title = (store.getSnapshot().current as { title?: unknown }).title;
-			const reads =
-				active?.id.startsWith(instance) && active.matches('[role="tab"], [data-component="stepper-content"]');
-			if (region.current) region.current.textContent = !reads && typeof title === "string" ? title : "";
+			const reads = active?.id.startsWith(ui.id) && active.dataset.step === step.id;
+			if (region.current) region.current.textContent = !reads && typeof step.title === "string" ? step.title : "";
 		});
-		return <span ref={region} aria-live="polite" style={VISUALLY_HIDDEN} />;
+		return <span ref={region} aria-live="polite" style={HIDDEN} />;
 	}
 
-	const Inner = React.forwardRef<HTMLDivElement, InnerProps<Steps>>(function Inner(
-		{ children, orientation = "horizontal", ...rest },
+	const Inner = React.forwardRef<HTMLDivElement, InnerProps<S>>(function Inner(
+		{ flow, linear, children, orientation = "horizontal", ...rest },
 		ref,
 	) {
-		const { id: instance } = scope.useValue();
-		// Only the render-prop form needs the live stepper; otherwise subscribe to `isPending` only.
-		const renderProp = typeof children === "function";
-		const stepper = scope.useSelector<Stepper<Steps> | null>((s) => (renderProp ? s : null));
-		const pending = scope.useSelector<boolean>((s) => s.isPending);
+		const id = React.useId();
+		// Only the function form needs the live stepper; otherwise subscribe to `isPending` only.
+		const stepper = scope.useSelect<Stepper<S> | null>(flow, (s) => (typeof children === "function" ? s : null));
+		const pending = scope.useSelect(flow, (s) => s.isPending);
 		const root = React.useRef<HTMLDivElement>(null);
 		const composed = React.useMemo(() => composeRefs(ref, root), [ref]);
 
-		// Tab roles need tabs. Assume them (server HTML and the usual layout never change),
-		// then look for this instance's own triggers (not a nested stepper's) whenever the Root commits.
-		const [tabs, setTabs] = React.useState(true);
+		// Tabs need triggers. Assume them (server HTML and the usual layout never change),
+		// then look for this instance's own triggers whenever the Root commits.
+		const [triggers, setTriggers] = React.useState(true);
 		useCommitEffect(() => {
-			setTabs(!!root.current?.querySelector(`[role="tab"][id^="${instance}"]`));
+			setTriggers(!!root.current?.querySelector(`[data-component="stepper-trigger"][id^="${id}"]`));
 		});
-		const ui = React.useMemo<UiValue>(() => ({ orientation, tabs }), [orientation, tabs]);
+		const tabs = !linear && triggers;
+		const ui = React.useMemo<Ui>(() => ({ id, orientation, tabs }), [id, orientation, tabs]);
 
 		return (
-			<scope.UiContext.Provider value={ui}>
+			<UiContext.Provider value={ui}>
 				{/* biome-ignore lint/a11y/useSemanticElements: fieldset would change layout semantics */}
 				<div
 					data-component="stepper"
@@ -109,21 +108,27 @@ export function createRoot<Steps extends readonly Step[]>(
 					{...rest}
 					ref={composed}
 				>
-					{typeof children === "function" ? children({ stepper: stepper as never }) : children}
-					<StepChange root={root} />
+					{typeof children === "function" ? children(stepper as Stepper<S>) : children}
+					<StepChange flow={flow} ui={ui} root={root} />
 				</div>
-			</scope.UiContext.Provider>
+			</UiContext.Provider>
 		);
 	});
 
-	return primitive<RootProps<Steps>, HTMLDivElement>("Root", (props, ref) => {
-		const state: Record<string, unknown> = {};
+	return primitive<RootProps<S>, HTMLDivElement>("Root", (props, ref) => {
+		const options: Record<string, unknown> = {};
 		const dom: Record<string, unknown> = {};
-		for (const key in props) (STATE_KEY_SET.has(key) ? state : dom)[key] = (props as Record<string, unknown>)[key];
+		for (const key in props) (OPTIONS.has(key) ? options : dom)[key] = (props as Record<string, unknown>)[key];
+		const flow = scope.useFlow(options as Options<S>);
 		return (
-			<Provider {...state}>
-				<Inner {...(dom as InnerProps<Steps>)} ref={ref} />
-			</Provider>
+			<scope.FlowContext.Provider value={flow}>
+				<Inner
+					{...(dom as Omit<InnerProps<S>, "flow" | "linear">)}
+					flow={flow}
+					linear={!!(props.linear ?? scope.defaults.linear)}
+					ref={ref}
+				/>
+			</scope.FlowContext.Provider>
 		);
 	});
 }

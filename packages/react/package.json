@@ -28,11 +28,6 @@
 			"import": "./dist/index.js",
 			"default": "./dist/index.js"
 		},
-		"./primitives": {
-			"types": "./dist/primitives/index.d.ts",
-			"import": "./dist/primitives/index.js",
-			"default": "./dist/primitives/index.js"
-		},
 		"./headless": {
 			"types": "./dist/headless.d.ts",
 			"import": "./dist/headless.js",

@@ -1,76 +1,71 @@
-import type { Get, Step } from "@stepperize/core";
+import type { Id, Step } from "@stepperize/core";
+import { warn } from "@stepperize/core";
 import React from "react";
-import { warn } from "../dev";
-import { panelDomId, type StepperScope, triggerDomId } from "./context";
-import { runClick } from "./nav";
-import { primitive, renderPrimitive, useDevRef } from "./render";
-import type { PrimitiveComponent, TriggerProps } from "./types";
+import type { Scope } from "../definition";
+import { element, panelId, primitive, triggerId, useDevRef, useItem, useUi } from "./shared";
+import type { Component, PrimitiveProps } from "./types";
 
-export function createTrigger<Steps extends readonly Step[]>(
-	scope: StepperScope<Steps>,
-): PrimitiveComponent<TriggerProps> {
-	return primitive<TriggerProps, HTMLButtonElement>("Trigger", (props, forwardedRef) => {
-		const { render, children, disabled: disabledProp, ...rest } = props;
-		const { store, id: instance } = scope.useValue();
-		const item = scope.useStepItem();
-		const id = item.data.id as Get.Id<Steps>;
+export function createTrigger<S extends readonly Step[]>(scope: Scope<S>): Component<PrimitiveProps<"button">> {
+	return primitive<PrimitiveProps<"button">, HTMLButtonElement>("Trigger", (props, forwardedRef) => {
+		const { render, children, disabled: disabledProp, onClick, ...rest } = props;
+		const ui = useUi();
+		const flow = scope.useShared();
+		const item = useItem<S>();
+		const id = item.step.id as Id<S>;
+		const current = item.state === "current";
 		const ref = useDevRef<HTMLButtonElement>(
 			"Trigger",
 			render,
 			forwardedRef,
 			process.env.NODE_ENV !== "production"
-				? (element) => {
+				? (node) => {
 						if (
-							!(
-								element.textContent?.trim() ||
-								element.getAttribute("aria-label") ||
-								element.getAttribute("aria-labelledby")
-							)
+							!(node.textContent?.trim() || node.getAttribute("aria-label") || node.getAttribute("aria-labelledby"))
 						) {
 							warn("SZ002", `Stepper.Trigger for step "${id}" has no accessible name. Render text or pass aria-label.`);
 						}
-						if (!element.closest('[role="tablist"]')) {
-							warn(
-								"SZ003",
-								`Stepper.Trigger for step "${id}" is outside Stepper.List, so its tab role has no tablist.`,
-							);
+						if (!node.closest('[data-component="stepper-list"]')) {
+							warn("SZ003", `Stepper.Trigger for step "${id}" is outside Stepper.List.`);
 						}
 					}
 				: undefined,
 		);
-		// While a guard runs every step is unreachable. Disabling natively then would drop
-		// focus from the clicked trigger, so only steps blocked before the guard are `disabled`.
-		const pending = scope.useSelector<boolean>((s) => s.isPending);
-		const reachable = React.useRef(item.canGoTo);
-		if (!pending) reachable.current = item.canGoTo;
-		const disabled = !!disabledProp || !reachable.current;
+		// While a move runs every step is unreachable. Disabling natively then would drop
+		// focus from the clicked trigger, so only steps blocked before the move are `disabled`.
+		const pending = scope.useSelect(flow, (s) => s.isPending);
+		const blocked = React.useRef(item.disabled);
+		if (!pending) blocked.current = item.disabled;
+		const disabled = !!disabledProp || blocked.current;
+
 		const domProps = {
 			type: "button" as const,
 			...rest,
 			ref,
 			children,
-			id: triggerDomId(instance, id),
+			id: triggerId(ui, id),
 			"data-component": "stepper-trigger",
-			"data-status": item.status,
-			"data-complete": item.complete ? "" : undefined,
+			"data-step": id,
+			"data-state": item.state,
+			"data-invalid": item.invalid ? "" : undefined,
 			"data-disabled": disabled || pending ? "" : undefined,
-			role: "tab" as const,
-			// Roving tabindex: the selected tab is the single tab stop of the list.
-			tabIndex: !disabled && item.isActive ? 0 : -1,
 			disabled,
 			"aria-disabled": disabled || pending || undefined,
-			"aria-controls": panelDomId(instance, id),
-			"aria-current": item.isActive ? ("step" as const) : undefined,
-			"aria-posinset": item.index + 1,
-			"aria-setsize": item.count,
-			"aria-selected": item.isActive,
-			onClick: (e: React.MouseEvent<HTMLButtonElement>) =>
-				runClick(e, rest.onClick, () => {
-					if (!pending) void store.getSnapshot().goTo(id);
-				}),
+			...(ui.tabs
+				? {
+						role: "tab" as const,
+						// Roving tabindex: the selected tab is the single tab stop of the list.
+						tabIndex: current && !disabled ? 0 : -1,
+						"aria-selected": current,
+						"aria-controls": panelId(ui, id),
+						"aria-posinset": item.index + 1,
+						"aria-setsize": scope.steps.length,
+					}
+				: { "aria-current": current ? ("step" as const) : undefined }),
+			onClick: (e: React.MouseEvent<HTMLButtonElement>) => {
+				onClick?.(e);
+				if (!e.defaultPrevented && !pending) void flow.goTo(id);
+			},
 		};
-		return (
-			<scope.TriggerContext.Provider value>{renderPrimitive("button", domProps, render)}</scope.TriggerContext.Provider>
-		);
+		return element("button", domProps, render);
 	});
 }

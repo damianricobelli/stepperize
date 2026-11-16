@@ -1,42 +1,10 @@
-export type {
-	BeforeStepChange,
-	FlowData,
-	Get,
-	GoToOptions,
-	InputOf,
-	NavigationFailureReason,
-	NavigationPayload,
-	NavigationResult,
-	OutputOf,
-	ResetOptions,
-	StandardSchemaV1,
-	Step,
-	StepChangeContext,
-	StepChangeValidator,
-	StepDirection,
-	StepMatcher,
-	Stepper,
-	StepperData,
-	StepStatus,
-	ValidationResult,
-} from "@stepperize/core";
-export type { UniqueStepIds } from "./definition";
-export type {
-	ControlledStep,
-	DefineStepperOptions,
-	HeadlessStepperDefinition as StepperDefinition,
-	ProviderProps,
-	UseStepperOptions,
-} from "./types";
+import type { Options, Step } from "@stepperize/core";
+import { createDefinition, type Definition } from "./definition";
 
-import type { Step } from "@stepperize/core";
-import { createDefinition, type UniqueStepIds } from "./definition";
-import type { DefineStepperOptions, HeadlessStepperDefinition } from "./types";
+export type * from "@stepperize/core";
+export type { Definition, ProviderProps } from "./definition";
 
-/** The same state API without UI primitives; use with your own markup or React Native. */
-export function defineStepper<const Steps extends readonly Step[]>(
-	steps: UniqueStepIds<Steps>,
-	options: DefineStepperOptions<Steps> = {},
-): HeadlessStepperDefinition<Steps> {
-	return createDefinition<Steps>(steps, options).definition;
+/** The flow and its hooks, without the UI primitives: for your own markup or React Native. */
+export function defineStepper<const S extends readonly Step[]>(steps: S, options?: Options<S>): Definition<S> {
+	return createDefinition(steps, options).definition;
 }
