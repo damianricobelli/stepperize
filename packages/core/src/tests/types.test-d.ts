@@ -54,3 +54,13 @@ expectTypeOf(flow.isLast).toEqualTypeOf<boolean>();
 // `step` takes any string: it usually comes from a URL.
 createStepper(steps, { step: "team" });
 createStepper(steps, { step: new URLSearchParams("").get("step") });
+// Output is what the schemas produce; `onFinish` gets it first, then the data as typed.
+expectTypeOf(flow.output.account).toEqualTypeOf<{ email: string; type: "personal" | "team" } | undefined>();
+expectTypeOf(flow.isFinished).toEqualTypeOf<boolean>();
+expectTypeOf(flow.validate("team")).resolves.toEqualTypeOf<ReadonlyArray<StandardSchemaV1.Issue> | undefined>();
+createStepper(steps, {
+	onFinish: async (output, data) => {
+		expectTypeOf(output.account?.type).toEqualTypeOf<"personal" | "team" | undefined>();
+		expectTypeOf(data.account).toEqualTypeOf<{ email: string } | undefined>();
+	},
+});

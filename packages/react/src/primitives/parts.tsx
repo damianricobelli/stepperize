@@ -38,7 +38,7 @@ export const Indicator = primitive<SpanProps>("Indicator", ({ render, ...rest },
 
 /**
  * `Next` validates the current step and moves on; on the last step it finishes the
- * flow (`onFinish`). `Prev` goes back to the step you came from.
+ * flow (`onFinish`) once. `Prev` goes back to the step you came from.
  */
 export function createNav<S extends readonly Step[]>(
 	dir: "next" | "prev",
@@ -49,13 +49,17 @@ export function createNav<S extends readonly Step[]>(
 		const { render, children, onClick, ...rest } = props;
 		const flow = scope.useShared();
 		const ref = useDevRef(name, render, forwardedRef);
-		// bit 0: there is somewhere to go; bit 1: a move is running.
+		// bit 0: there is somewhere to go; bit 1: a move is running; bit 2: the flow finished, so `next()` has nothing to do.
 		const bits = scope.useSelect(
 			flow,
-			(s) => (dir === "next" || s.index > 0 || s.snapshot().history.length ? 1 : 0) | (s.isPending ? 2 : 0),
+			(s) =>
+				(dir === "next" || s.index > 0 || s.snapshot().history.length ? 1 : 0) |
+				(s.isPending ? 2 : 0) |
+				(dir === "next" && s.isFinished ? 4 : 0),
 		);
 		const pending = !!(bits & 2);
-		// The edge disables natively. A running move does not: the clicked button keeps focus,
+		const idle = bits > 1;
+		// The edge disables natively. A running move or a finished flow does not: the clicked button keeps focus,
 		// so a rejected move never drops the keyboard user on <body>.
 		const disabled = !!rest.disabled || !(bits & 1);
 		const domProps = {
@@ -65,12 +69,14 @@ export function createNav<S extends readonly Step[]>(
 			children,
 			"data-component": `stepper-${dir}`,
 			"data-pending": pending ? "" : undefined,
-			"data-disabled": disabled || pending ? "" : undefined,
+			"data-disabled": disabled || idle ? "" : undefined,
 			disabled,
-			"aria-disabled": disabled || pending || undefined,
+			"aria-disabled": disabled || idle || undefined,
 			onClick: (e: React.MouseEvent<HTMLButtonElement>) => {
 				onClick?.(e);
-				if (!e.defaultPrevented && !pending) void flow[dir]();
+				// A rejecting `onFinish` rejects `next()`: the flow is not finished and the button works
+				// again. The error belongs to `onFinish`, which reports it; nothing awaits this click.
+				if (!e.defaultPrevented && !idle) flow[dir]().catch(() => {});
 			},
 		};
 		return element("button", domProps, render);

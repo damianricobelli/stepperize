@@ -21,7 +21,8 @@ const PACKAGES = /^@stepperize\/(react|core)(\/|$)/;
 const TODO = {
 	status:
 		'`status(id)` was removed. Use `state(id)`: "pending" | "current" | "complete". The positional "previous" / "upcoming" no longer exist; compare indexes if you need them.',
-	validate: "`validate()` was removed. `next()` validates the current step; read `issues(id)` after a rejected move.",
+	validate:
+		"`validate()` changed. `validate(id?)` checks the stored data of a step and resolves with its issues, or `undefined` when valid. `next()` also validates the current step.",
 	setComplete: "`setComplete()` was removed. A step is complete once `next()` validates it and moves on.",
 	dataClear:
 		"`data.clear()` / `data.reset()` were removed. Use `setData(id, undefined)`, `restore({ data: {} })` or `reset()`.",
@@ -40,7 +41,7 @@ const TODO = {
 	onStepChange:
 		"`onStepChange` was removed. Use `onChange(snapshot)` and read `snapshot.step`; it also runs when data or completion change.",
 	onInvalidStep:
-		"`onInvalidStep` was removed. An unknown `step` is ignored and `onChange(snapshot)` reports where the flow really is.",
+		"`onInvalidStep` now receives the step the flow is on, not the raw value, and also runs when `linear` or the guard refuse `step`.",
 	guardValidate: "`validate()` is not passed to the guard. `next()` validates the step before the guard runs.",
 	guardField: (name: string) =>
 		`\`${name}\` is not passed to the guard. Its context is \`{ from, to, direction, data, signal }\`; \`to\` is \`null\` when the flow finishes.`,
@@ -54,7 +55,7 @@ const TODO = {
 			at: "`definition.at(index)` was removed. Use `definition.steps[index]`.",
 			parseStep:
 				"`definition.parseStep()` was removed. Pass the raw value to the `step` option: unknown ids are ignored.",
-			validate: "`definition.validate()` was removed. Validate with the step's schema, or let `next(data)` do it.",
+			validate: "`definition.validate()` was removed. Use `stepper.validate(id)` on a flow, or let `next(data)` do it.",
 		})[name] as string,
 	primitivesEntry:
 		"`@stepperize/react/primitives` was removed. Use the `Stepper` components returned by `defineStepper` from `@stepperize/react`.",
@@ -73,7 +74,7 @@ const TODO = {
 					status: 'Use `state(id)`: "pending" | "current" | "complete".',
 					isComplete: 'Use `state(id) === "complete"`.',
 					setComplete: "A step is complete once `next()` validates it.",
-					validate: "`next()` validates; read `issues(id)`.",
+					validate: "`validate(id?)` resolves with the issues, or `undefined`; `next()` validates too.",
 				} as Record<string, string>
 			)[name]
 		}`,

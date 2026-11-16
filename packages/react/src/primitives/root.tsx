@@ -17,6 +17,7 @@ const OPTION_KEYS = [
 	"onFinish",
 	"snapshot",
 	"step",
+	"onInvalidStep",
 ] as const satisfies readonly (keyof Options<readonly Step[]>)[];
 type Missing = Exclude<keyof Options<readonly Step[]>, (typeof OPTION_KEYS)[number]>;
 const _exhaustive: [Missing] extends [never] ? true : { missing: Missing } = true;
@@ -39,6 +40,10 @@ type InnerProps<S extends readonly Step[]> = Omit<RootProps<S>, (typeof OPTION_K
 };
 
 export function createRoot<S extends readonly Step[]>(scope: Scope<S>): Component<RootProps<S>> {
+	const whole = (s: Stepper<S>) => s;
+	/** bit 0: a move is running; bit 1: the flow finished. */
+	const status = (s: Stepper<S>) => (s.isPending ? 1 : 0) | (s.isFinished ? 2 : 0);
+	const position = (s: Stepper<S>) => s.index;
 	/**
 	 * What a step change needs beyond rendering, for people who cannot see it:
 	 *
@@ -51,7 +56,7 @@ export function createRoot<S extends readonly Step[]>(scope: Scope<S>): Componen
 	 * Subscribes to the step index only, so nothing else re-renders for it.
 	 */
 	function StepChange({ flow, ui, root }: { flow: Flow<S>; ui: Ui; root: React.RefObject<HTMLDivElement | null> }) {
-		const index = scope.useSelect(flow, (s) => s.index);
+		const index = scope.useSelect(flow, position);
 		const region = React.useRef<HTMLSpanElement>(null);
 		// Read while rendering the change, before React touches the DOM: was focus in this
 		// stepper? Focus that is elsewhere is never moved. No focus events needed.
@@ -82,8 +87,12 @@ export function createRoot<S extends readonly Step[]>(scope: Scope<S>): Componen
 	) {
 		const id = React.useId();
 		// Only the function form needs the live stepper; otherwise subscribe to `isPending` only.
-		const stepper = scope.useSelect<Stepper<S> | null>(flow, (s) => (typeof children === "function" ? s : null));
-		const pending = scope.useSelect(flow, (s) => s.isPending);
+		const live = typeof children === "function";
+		// One subscription: the function form needs the live stepper, anything else only its status.
+		const selected = scope.useSelect<Stepper<S> | number>(flow, live ? whole : status);
+		const flags = typeof selected === "number" ? selected : status(selected);
+		const pending = !!(flags & 1);
+		const finished = !!(flags & 2);
 		const root = React.useRef<HTMLDivElement>(null);
 		const composed = React.useMemo(() => composeRefs(ref, root), [ref]);
 
@@ -103,13 +112,14 @@ export function createRoot<S extends readonly Step[]>(scope: Scope<S>): Componen
 					data-component="stepper"
 					data-orientation={orientation}
 					data-pending={pending ? "" : undefined}
+					data-finished={finished ? "" : undefined}
 					role="group"
 					aria-label="Stepper"
 					aria-busy={pending || undefined}
 					{...rest}
 					ref={composed}
 				>
-					{typeof children === "function" ? children(stepper as Stepper<S>) : children}
+					{typeof children === "function" ? children(selected as Stepper<S>) : children}
 					<StepChange flow={flow} ui={ui} root={root} />
 				</div>
 			</UiContext.Provider>

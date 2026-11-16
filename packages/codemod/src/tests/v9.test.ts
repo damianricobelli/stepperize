@@ -185,7 +185,7 @@ export function Whole(stepper: Alias, other: Other) {
 describe("TODO comments", () => {
 	it.each([
 		['stepper.status("a");', "`status(id)` was removed"],
-		["await stepper.validate();", "`validate()` was removed"],
+		["await stepper.validate();", "`validate()` changed"],
 		['stepper.setComplete("a");', "`setComplete()` was removed"],
 		['stepper.data.clear("a");', "`data.clear()` / `data.reset()` were removed"],
 		["stepper.data.reset();", "`data.clear()` / `data.reset()` were removed"],
@@ -204,7 +204,7 @@ describe("TODO comments", () => {
 		["flow.useStepper({ completed: done });", "`completed` was removed"],
 		["flow.useStepper({ onCompletedChange: save });", "`onCompletedChange` was removed"],
 		["flow.useStepper({ onStepChange: navigate });", "`onStepChange` was removed"],
-		["flow.useStepper({ onInvalidStep: recover });", "`onInvalidStep` was removed"],
+		["flow.useStepper({ onInvalidStep: recover });", "`onInvalidStep` now receives the step the flow is on"],
 		["flow.useStepper({ beforeStepChange: ({ validate }) => validate() });", "`validate()` is not passed to the guard"],
 		["flow.useStepper({ beforeStepChange: (ctx) => ctx.validate() });", "`validate()` is not passed to the guard"],
 		[

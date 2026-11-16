@@ -45,9 +45,12 @@ export type Output<S extends readonly Step[], I extends Id<S>> = Types<S, I>[1];
 /** The data of every step, keyed by step id. */
 export type FlowData<S extends readonly Step[]> = { [I in Id<S>]?: Input<S, I> };
 
+/** What the schema of every complete step produced, keyed by step id. */
+export type FlowOutput<S extends readonly Step[]> = { [I in Id<S>]?: Output<S, I> };
+
 /**
  * - `"current"`: the step being shown.
- * - `"complete"`: `next()` validated it and moved on.
+ * - `"complete"`: `next()` validated it and moved on, and its data has not changed since.
  * - `"pending"`: everything else.
  */
 export type StepState = "pending" | "current" | "complete";
@@ -68,9 +71,10 @@ export type Snapshot<S extends readonly Step[]> = {
  * - `"policy"`: `linear` forbids jumping to that step.
  * - `"pending"`: another move is still running.
  * - `"boundary"`: there is no previous step.
+ * - `"finished"`: the flow already finished. Any move, `setData`, `reset()` or `restore()` reopens it.
  * - `"cancelled"`: `reset()`, `restore()` or `destroy()` interrupted it.
  */
-export type Reason = "invalid" | "guard" | "policy" | "pending" | "boundary" | "cancelled";
+export type Reason = "invalid" | "guard" | "policy" | "pending" | "boundary" | "finished" | "cancelled";
 
 export type Result<S extends readonly Step[]> =
 	/** `to` is `null` when `next()` completed the last step: the flow is finished. */
@@ -94,15 +98,17 @@ export type Options<S extends readonly Step[]> = {
 	/**
 	 * Where each step leads, from its validated data. Steps without an entry go
 	 * to the following one. `null` ends the flow at that step, so a flow can have
-	 * more than one ending; a branch may also return `null`.
+	 * more than one ending; a branch may also return `null`. The second argument
+	 * is the data of every step, for branches that depend on an earlier answer.
 	 *
 	 * @example
 	 * next: {
 	 *   account: (data) => (data.type === "team" ? "team" : "payment"),
+	 *   profile: (_data, flow) => (flow.account?.type === "team" ? "invite" : "done"),
 	 *   rejected: null,
 	 * }
 	 */
-	next?: { [I in Id<S>]?: ((data: Output<S, I>) => Id<S> | null) | null };
+	next?: { [I in Id<S>]?: ((data: Output<S, I>, flow: FlowData<S>) => Id<S> | null) | null };
 	/** Runs after validation and before every move. Return `false` to cancel it. May be async. */
 	// biome-ignore lint/suspicious/noConfusingVoidType: a guard that returns nothing allows the move.
 	guard?: (context: GuardContext<S>) => boolean | void | Promise<boolean | void>;
@@ -111,23 +117,35 @@ export type Options<S extends readonly Step[]> = {
 	 * `setData` calls it too: debounce slow writes when you save drafts on every keystroke.
 	 */
 	onChange?: (snapshot: Snapshot<S>) => void;
-	/** Called when `next()` completes the last step, with the data of every step. Submit here. */
-	onFinish?: (data: FlowData<S>) => void;
+	/**
+	 * Called once when `next()` completes the last step. Submit here. `output` is
+	 * what the schemas produced for every complete step (transforms and defaults
+	 * applied); `data` is everything as it was typed. Return a promise and the
+	 * flow stays pending until it settles; if it rejects, so does `next()` and
+	 * the flow is not finished, so the user can try again.
+	 */
+	onFinish?: (output: FlowOutput<S>, data: FlowData<S>) => unknown;
 	/** Where to start: any part of a saved snapshot, or just `{ step }`. */
 	snapshot?: Partial<Snapshot<S>>;
 	/**
 	 * Follow a step that lives somewhere else, such as the URL. The flow starts
 	 * there and goes there whenever the value changes, like `goTo`: `linear` and
-	 * the guard still apply. When it cannot follow (unknown id, refused move),
-	 * `onChange` is called with where the flow really is, so you can correct the source.
+	 * the guard still apply. When it cannot follow, `onInvalidStep` is called.
 	 *
 	 * @example
 	 * useStepper({
 	 *   step: params.step,
-	 *   onChange: (snapshot) => snapshot.step !== params.step && router.replace(snapshot.step),
+	 *   onChange: (snapshot) => snapshot.step !== params.step && router.push(snapshot.step),
+	 *   onInvalidStep: (current) => router.replace(current),
 	 * });
 	 */
 	step?: Id<S> | (string & {}) | null;
+	/**
+	 * Called when the flow cannot follow `step`: an unknown id, a step `linear`
+	 * does not allow yet, or a move the guard refused. It receives the step the
+	 * flow is on, so you can correct the source without adding a history entry.
+	 */
+	onInvalidStep?: (current: Id<S>) => void;
 };
 
 /** An immutable view of a flow at one moment, plus the actions that change it. */
@@ -142,9 +160,14 @@ export type Stepper<S extends readonly Step[]> = {
 	isLast: boolean;
 	/** Position of `current` in `steps`, from `0` (first) to `1` (last). */
 	progress: number;
+	/** What each step holds as it was typed: drafts included. Fill your fields from here. */
 	data: FlowData<S>;
-	/** `true` while an async schema or guard is running. */
+	/** What the schema of each complete step produced: transforms and defaults applied. */
+	output: FlowOutput<S>;
+	/** `true` while an async schema, guard or `onFinish` is running. */
 	isPending: boolean;
+	/** `next()` completed the last step and `onFinish` settled. `false` again as soon as the flow changes. */
+	isFinished: boolean;
 	state: (id: Id<S>) => StepState;
 	/** Issues from the last failed validation of a step (the current one by default), until its data changes. */
 	issues: (id?: Id<S>) => ReadonlyArray<Issue> | undefined;
@@ -152,6 +175,12 @@ export type Stepper<S extends readonly Step[]> = {
 	canGoTo: (id: Id<S>) => boolean;
 	/** Run the handler of the current step. Exhaustive: a missing step is a type error. */
 	match: <R>(handlers: { [I in Id<S>]: (step: StepOf<S, I>, data: Input<S, I> | undefined) => R }) => R;
+	/**
+	 * Check a step's data (the current step by default) against its schema
+	 * without moving. Resolves with the issues, or `undefined` when it is valid;
+	 * `issues(id)` returns the same until the data changes.
+	 */
+	validate: (id?: Id<S>) => Promise<ReadonlyArray<Issue> | undefined>;
 	/**
 	 * Save `data` for the current step, validate it, and move on. On the last
 	 * step it completes the flow and resolves with `to: null`.
@@ -161,6 +190,10 @@ export type Stepper<S extends readonly Step[]> = {
 	prev: () => Promise<Result<S>>;
 	/** Jump to a step. Does not validate; `linear` and the guard still apply. */
 	goTo: (id: Id<S>) => Promise<Result<S>>;
+	/**
+	 * Save a draft. A complete step whose data changes is no longer complete; in
+	 * a `linear` flow neither are the steps completed after it.
+	 */
 	setData: <I extends Id<S>>(id: I, data: Input<S, I>) => void;
 	/** Back to the initial snapshot. Cancels a running move. */
 	reset: () => void;

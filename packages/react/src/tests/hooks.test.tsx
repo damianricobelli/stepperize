@@ -1,4 +1,4 @@
-import { StrictMode, useState } from "react";
+import { StrictMode, useLayoutEffect, useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, renderHook } from "vitest-browser-react";
 import { defineStepper } from "../headless";
@@ -49,6 +49,47 @@ describe("useStepper", () => {
 			await result.current.next();
 		});
 		expect(result.current.current.id).toBe("b");
+	});
+
+	it("shows a change made before it subscribed", async () => {
+		function Child({ write }: { write: () => void }) {
+			// A child's layout effect runs before its parent's, so before the hook subscribes.
+			useLayoutEffect(write, []);
+			return null;
+		}
+		function Owner() {
+			const stepper = flow.useStepper();
+			return (
+				<output>
+					{String(stepper.data.a)}
+					<Child write={() => stepper.setData("a", "early")} />
+				</output>
+			);
+		}
+		const strict = await render(<Owner />, { wrapper: StrictMode });
+		await expect.element(strict.getByRole("status")).toHaveTextContent("early");
+	});
+
+	it("re-renders when an option that shapes the view changes", async () => {
+		const { result, rerender } = await renderHook((props?: { linear: boolean }) => flow.useStepper(props), {
+			initialProps: { linear: true },
+		});
+		expect(result.current.canGoTo("c")).toBe(false);
+		await rerender({ linear: false });
+		expect(result.current.canGoTo("c")).toBe(true);
+	});
+
+	it("stops updating once unmounted", async () => {
+		const renders = vi.fn();
+		const { result, unmount } = await renderHook(() => {
+			renders();
+			return flow.useStepper();
+		});
+		const stepper = result.current;
+		await unmount();
+		renders.mockClear();
+		await stepper.next();
+		expect(renders).not.toHaveBeenCalled();
 	});
 
 	it("uses the definition's defaults and lets an instance override them", async () => {
@@ -133,6 +174,7 @@ describe("step", () => {
 			api = linear.useStepper({
 				step: param,
 				onChange: (snapshot) => snapshot.step !== param && setParam(snapshot.step),
+				onInvalidStep: setParam,
 			});
 			return null;
 		}

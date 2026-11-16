@@ -44,7 +44,8 @@ describe("moving", () => {
 		const onFinish = vi.fn();
 		const flow = createStepper([{ id: "a" }, { id: "b" }], { snapshot: { step: "b", data: { a: 1 } }, onFinish });
 		expect(await flow.next(2)).toEqual({ accepted: true, to: null, data: { a: 1, b: 2 } });
-		expect(onFinish).toHaveBeenCalledWith({ a: 1, b: 2 });
+		// Output first: only what `next()` validated. Then everything as it was typed.
+		expect(onFinish).toHaveBeenCalledWith({ b: 2 }, { a: 1, b: 2 });
 		expect(flow.current.id).toBe("b");
 		expect(flow.snapshot().complete).toEqual(["b"]);
 	});
@@ -123,6 +124,14 @@ describe("branching", () => {
 		expect(flow.current.id).toBe("account");
 		await flow.next({ type: "team" });
 		expect(flow.current.id).toBe("team");
+	});
+
+	it("gives a branch the data of every step, including the one being saved", async () => {
+		const flow = createStepper(steps, {
+			next: { team: (_data, all) => (all.account?.type === "team" && all.team === "skip" ? "account" : "payment") },
+		});
+		await flow.next({ type: "team" });
+		expect(await flow.next("skip")).toMatchObject({ accepted: true, to: "account" });
 	});
 
 	it("ends at any step whose entry is null, or when a branch returns null", async () => {
@@ -282,20 +291,194 @@ describe("following an outside step", () => {
 		expect(flow.current.id).toBe("team");
 	});
 
-	it("restates the real step through onChange when it cannot follow", async () => {
+	it("reports the real step through onInvalidStep when it cannot follow", async () => {
 		const seen: string[] = [];
-		const onChange = (snapshot: { step: string }) => seen.push(snapshot.step);
+		const changes: string[] = [];
+		const onInvalidStep = (current: string) => seen.push(current);
+		const onChange = (snapshot: { step: string }) => changes.push(snapshot.step);
 		// A deep link cannot skip validation in a linear flow.
-		const flow = createStepper(steps, { linear: true, step: "payment", onChange });
+		const flow = createStepper(steps, { linear: true, step: "payment", onInvalidStep, onChange });
 		expect(flow.current.id).toBe("account");
-		flow.setOptions({ linear: true, step: "payment", onChange });
+		flow.setOptions({ linear: true, step: "payment", onInvalidStep, onChange });
 		await flush();
 		expect(seen).toEqual(["account"]);
 		// Unknown ids, and moves the guard refuses.
-		flow.setOptions({ linear: true, step: "nope", onChange });
-		flow.setOptions({ step: "team", guard: () => false, onChange });
+		flow.setOptions({ linear: true, step: "nope", onInvalidStep, onChange });
+		flow.setOptions({ step: "team", guard: () => false, onInvalidStep, onChange });
 		await flush();
 		expect(flow.current.id).toBe("account");
 		expect(seen).toEqual(["account", "account", "account"]);
+		// Nothing changed, so `onChange` stayed quiet.
+		expect(changes).toEqual([]);
+	});
+});
+
+/** Trims on the way out, so input and output differ. */
+const name: StandardSchemaV1<string, { name: string }> = {
+	"~standard": {
+		version: 1,
+		vendor: "test",
+		validate: (value) =>
+			typeof value === "string" && value.trim()
+				? { value: { name: value.trim() } }
+				: { issues: [{ message: "Required" }] },
+	},
+};
+const form = [{ id: "name", schema: name }, { id: "plan" }, { id: "review" }] as const;
+
+describe("validating without moving", () => {
+	it("reports the issues of the current step and stays put", async () => {
+		const onChange = vi.fn();
+		const flow = createStepper(form, { onChange });
+		expect(await flow.validate()).toEqual([{ message: "Required" }]);
+		expect(flow.issues()).toEqual([{ message: "Required" }]);
+		expect([flow.current.id, flow.state("name")]).toEqual(["name", "current"]);
+		flow.setData("name", " Ada ");
+		expect(await flow.validate()).toBeUndefined();
+		expect(flow.issues()).toBeUndefined();
+		// Checking is not completing: only `next()` does that.
+		expect(flow.snapshot().complete).toEqual([]);
+		// Issues are not worth persisting.
+		expect(onChange).toHaveBeenCalledTimes(1);
+	});
+
+	it("checks any step by id, and steps without a schema are always valid", async () => {
+		const flow = createStepper(form, { snapshot: { step: "review" } });
+		expect(await flow.validate("plan")).toBeUndefined();
+		expect(await flow.validate("name")).toEqual([{ message: "Required" }]);
+		expect(flow.issues("name")).toEqual([{ message: "Required" }]);
+	});
+});
+
+describe("output", () => {
+	it("keeps what each schema produced, apart from the data as it was typed", async () => {
+		const onFinish = vi.fn();
+		const flow = createStepper(form, { onFinish });
+		await flow.next(" Ada ");
+		expect(flow.data.name).toBe(" Ada ");
+		expect(flow.output).toEqual({ name: { name: "Ada" } });
+		await flow.next("pro");
+		await flow.next();
+		expect(onFinish).toHaveBeenCalledWith(
+			{ name: { name: "Ada" }, plan: "pro", review: undefined },
+			{ name: " Ada ", plan: "pro" },
+		);
+	});
+
+	it("validates restored steps again when the flow finishes", async () => {
+		const onFinish = vi.fn();
+		const saved = { step: "review", data: { name: " Ada " }, complete: ["name", "plan"] } as const;
+		const flow = createStepper(form, { snapshot: { ...saved, complete: [...saved.complete] }, onFinish });
+		expect(flow.output).toEqual({});
+		expect(await flow.next()).toMatchObject({ accepted: true, to: null });
+		expect(onFinish.mock.calls[0][0]).toEqual({ name: { name: "Ada" }, plan: undefined, review: undefined });
+
+		// A draft saved under an older schema can fail: the flow does not finish, and says where.
+		const stale = createStepper(form, {
+			snapshot: { step: "review", data: { name: " " }, complete: ["name"] },
+			onFinish,
+		});
+		expect(await stale.next()).toMatchObject({ accepted: false, reason: "invalid" });
+		expect(stale.issues("name")).toEqual([{ message: "Required" }]);
+		expect(stale.state("name")).toBe("pending");
+		expect(onFinish).toHaveBeenCalledTimes(1);
+	});
+
+	it("survives restore() while the data is the same", async () => {
+		const flow = createStepper(form);
+		await flow.next("Ada");
+		flow.restore({ step: "review" });
+		expect(flow.output).toEqual({ name: { name: "Ada" } });
+		flow.restore({ data: { name: "Bob" } });
+		expect(flow.output).toEqual({});
+	});
+});
+
+describe("editing a complete step", () => {
+	it("is no longer complete, and loses its output", async () => {
+		const flow = createStepper(form);
+		await flow.next("Ada");
+		await flow.next("pro");
+		await flow.goTo("name");
+		flow.setData("name", "Ada");
+		expect(flow.snapshot().complete).toEqual(["name", "plan"]);
+		flow.setData("name", "");
+		expect(flow.snapshot().complete).toEqual(["plan"]);
+		expect(flow.output).toEqual({ plan: "pro" });
+		expect(await flow.next()).toMatchObject({ accepted: false, reason: "invalid" });
+		expect(await flow.next("Bob")).toMatchObject({ accepted: true, to: "plan" });
+		expect(flow.snapshot().complete).toEqual(["plan", "name"]);
+	});
+
+	it("also drops the steps completed after it in a linear flow, so none is skipped", async () => {
+		const flow = createStepper(form, { linear: true });
+		await flow.next("Ada");
+		await flow.next("pro");
+		await flow.goTo("name");
+		expect(flow.canGoTo("plan")).toBe(true);
+		flow.setData("name", "Bob");
+		expect(flow.snapshot().complete).toEqual([]);
+		expect(await flow.goTo("plan")).toEqual({ accepted: false, reason: "policy" });
+		// The data is still there: walking forward validates it again.
+		let result = await flow.next();
+		while (result.accepted && result.to !== "review") result = await flow.next();
+		expect(flow.current.id).toBe("review");
+		expect(flow.snapshot().complete).toEqual(["name", "plan"]);
+	});
+
+	it("drops completion when next(data) is rejected", async () => {
+		const flow = createStepper(form);
+		await flow.next("Ada");
+		await flow.goTo("name");
+		expect(await flow.next("")).toMatchObject({ accepted: false, reason: "invalid" });
+		expect(flow.snapshot().complete).toEqual([]);
+	});
+});
+
+describe("finishing", () => {
+	it("finishes once: next() is refused until the flow changes", async () => {
+		const onFinish = vi.fn();
+		const flow = createStepper([{ id: "a" }, { id: "b" }], { snapshot: { step: "b" }, onFinish });
+		expect(flow.isFinished).toBe(false);
+		await flow.next();
+		expect(flow.isFinished).toBe(true);
+		expect(await flow.next()).toEqual({ accepted: false, reason: "finished" });
+		expect(onFinish).toHaveBeenCalledTimes(1);
+		flow.setData("b", 1);
+		expect(flow.isFinished).toBe(false);
+		await flow.next();
+		await flow.prev();
+		expect(flow.isFinished).toBe(false);
+		flow.restore({ step: "b" });
+		await flow.next();
+		flow.reset();
+		expect(flow.isFinished).toBe(false);
+		expect(onFinish).toHaveBeenCalledTimes(3);
+	});
+
+	it("stays pending while onFinish runs, and does not finish when it rejects", async () => {
+		let settle: (error?: Error) => void = () => {};
+		const onFinish = vi.fn(
+			() => new Promise<void>((resolve, reject) => (settle = (error) => (error ? reject(error) : resolve()))),
+		);
+		const flow = createStepper([{ id: "a" }], { onFinish });
+		const failed = flow.next();
+		expect([flow.isPending, flow.isFinished]).toEqual([true, false]);
+		expect(await flow.next()).toEqual({ accepted: false, reason: "pending" });
+		settle(new Error("offline"));
+		await expect(failed).rejects.toThrow("offline");
+		expect([flow.isPending, flow.isFinished]).toEqual([false, false]);
+		const retried = flow.next();
+		settle();
+		expect(await retried).toMatchObject({ accepted: true, to: null });
+		expect([flow.isPending, flow.isFinished]).toEqual([false, true]);
+	});
+
+	it("is cancelled by reset() while onFinish runs", async () => {
+		const flow = createStepper([{ id: "a" }], { onFinish: () => new Promise((resolve) => setTimeout(resolve)) });
+		const finishing = flow.next();
+		flow.reset();
+		expect(await finishing).toEqual({ accepted: false, reason: "cancelled" });
+		expect(flow.isFinished).toBe(false);
 	});
 });

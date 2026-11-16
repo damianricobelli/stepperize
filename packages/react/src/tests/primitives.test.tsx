@@ -171,7 +171,7 @@ describe("state and data attributes", () => {
 			const item = Stepper.useItem();
 			return (
 				<span data-testid={`badge-${item.step.id}`}>
-					{item.index + 1} {item.state} {String(item.disabled)}
+					{item.index + 1} {item.state} {String(item.disabled)} {String(item.pending)}
 				</span>
 			);
 		}
@@ -186,8 +186,8 @@ describe("state and data attributes", () => {
 				</Stepper.List>
 			</Stepper.Root>,
 		);
-		expect(screen.getByTestId("badge-first").element().textContent).toBe("1 current false");
-		expect(screen.getByTestId("badge-third").element().textContent).toBe("3 pending true");
+		expect(screen.getByTestId("badge-first").element().textContent).toBe("1 current false false");
+		expect(screen.getByTestId("badge-third").element().textContent).toBe("3 pending true false");
 	});
 });
 
@@ -197,7 +197,13 @@ describe("navigation", () => {
 		await render(<Full snapshot={{ step: "third", data: { first: 1 } }} onFinish={onFinish} />);
 		expect(next().disabled).toBe(false);
 		await userEvent.click(next());
-		expect(onFinish).toHaveBeenCalledWith({ first: 1 });
+		expect(onFinish).toHaveBeenCalledWith({ third: undefined }, { first: 1 });
+		// Finished: the Root says so, and pressing again does not submit twice.
+		const root = document.querySelector('[data-component="stepper"]');
+		expect(root?.hasAttribute("data-finished")).toBe(true);
+		expect(next().getAttribute("aria-disabled")).toBe("true");
+		await userEvent.click(next(), { force: true });
+		expect(onFinish).toHaveBeenCalledTimes(1);
 	});
 
 	it("Prev is disabled at the start and returns along the path", async () => {
@@ -332,6 +338,7 @@ describe("focus and announcements", () => {
 		await act(async () => release(false));
 		expect(document.activeElement).toBe(second);
 		expect(root?.hasAttribute("aria-busy")).toBe(false);
+		expect(second.hasAttribute("aria-disabled")).toBe(false);
 	});
 });
 

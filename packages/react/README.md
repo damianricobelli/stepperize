@@ -28,7 +28,7 @@ const checkout = defineStepper([
 ]);
 
 function Checkout() {
-  const stepper = checkout.useStepper({ onFinish: (data) => placeOrder(data) });
+  const stepper = checkout.useStepper({ onFinish: (output) => placeOrder(output) });
 
   return (
     <section>
@@ -68,9 +68,12 @@ if (!result.accepted) console.log(result.reason, result.issues);
 | --- | --- |
 | `current`, `index`, `steps` | Where the flow is. |
 | `isFirst`, `isLast`, `progress` | Derived position. `isLast` means `next()` finishes the flow. |
+| `isFinished` | `next()` completed the last step and `onFinish` settled. |
 | `state(id)` | `"pending"`, `"current"` or `"complete"`. |
-| `data`, `setData(id, data)` | The data of every step, keyed by step id and typed by its schema. |
-| `issues(id?)` | Why the last `next()` was rejected, until the data changes. |
+| `data`, `setData(id, data)` | The data of every step as it was typed, keyed by step id. |
+| `output` | What the schema of each complete step produced: transforms and defaults applied. |
+| `validate(id?)` | Check a step without moving. Resolves with its issues, or `undefined`. |
+| `issues(id?)` | Why the last validation failed, until the data changes. |
 | `next(data?)`, `prev()`, `goTo(id)` | Moves. Each resolves with `{ accepted, ... }`. |
 | `canGoTo(id)`, `isPending` | Whether a jump is allowed, and whether an async check is running. |
 | `match(handlers)` | Exhaustive rendering by step. |
@@ -92,8 +95,9 @@ checkout.useStepper({
   // Resume a saved flow, and save it on every change.
   snapshot: JSON.parse(localStorage.getItem("checkout") ?? "{}"),
   onChange: (snapshot) => localStorage.setItem("checkout", JSON.stringify(snapshot)),
-  // The last step was completed.
-  onFinish: (data) => placeOrder(data),
+  // The last step was completed. Runs once, with what the schemas produced.
+  // Return the promise: the flow stays pending, and a failure lets the user retry.
+  onFinish: (output) => placeOrder(output),
 });
 ```
 
@@ -101,13 +105,14 @@ checkout.useStepper({
 
 `step` makes the flow follow a value that lives somewhere else. `linear` and
 the guard still apply, so a deep link cannot skip validation; when the flow
-cannot follow, `onChange` tells you where it really is.
+cannot follow, `onInvalidStep` tells you where it really is.
 
 ```tsx
 const { step } = useParams();
 const stepper = checkout.useStepper({
   step,
-  onChange: (snapshot) => snapshot.step !== step && router.replace(`/checkout/${snapshot.step}`),
+  onChange: (snapshot) => snapshot.step !== step && router.push(`/checkout/${snapshot.step}`),
+  onInvalidStep: (current) => router.replace(`/checkout/${current}`),
 });
 ```
 
@@ -177,7 +182,7 @@ function CheckoutSteps() {
 
 Style them through `data-state`, `data-invalid`, `data-disabled`,
 `data-pending` and `data-orientation`. Inside an item, `Stepper.useItem()`
-returns its `step`, `index`, `state`, `invalid` and `disabled`.
+returns its `step`, `index`, `state`, `invalid`, `disabled` and `pending`.
 
 ## Without React
 

@@ -28,6 +28,8 @@ export type Definition<S extends readonly Step[]> = {
 
 export function createDefinition<const S extends readonly Step[]>(steps: S, defaults: Options<S> = {}) {
 	const FlowContext = React.createContext<Flow<S> | null>(null);
+	/** Step id -> position, for the primitives that are handed an id. */
+	const positions = new Map(steps.map((step, index) => [step.id as string, index]));
 	const create = (options?: Options<S>) => createStepper(steps, { ...defaults, ...options });
 
 	/** One flow per component instance. `snapshot` is read once; everything else stays current. */
@@ -46,20 +48,24 @@ export function createDefinition<const S extends readonly Step[]>(steps: S, defa
 	}
 
 	function useSelect<T>(flow: Flow<S>, selector: (stepper: Stepper<S>) => T): T {
-		// Views are immutable, so one result per view is enough. This also keeps selectors
-		// that build an object or array from looping: the same view returns the same result.
-		const cache = React.useRef<{ view?: Stepper<S>; selector?: typeof selector; result?: T }>({}).current;
-		// `flow` is a proxy: read its method once per render, not once per notification.
-		const read = flow.get;
-		const get = () => {
-			const view = read();
-			if (cache.view !== view || cache.selector !== selector) {
-				cache.view = view;
-				cache.selector = selector;
-				cache.result = selector(view);
-			}
-			return cache.result as T;
-		};
+		const get = React.useMemo(() => {
+			// `flow` is a proxy: read its method once, not once per notification.
+			const read = flow.get;
+			// The whole view needs no selecting: the store already returns the same one until it changes.
+			if (selector === identity) return read as () => T;
+			// Views are immutable, so one result per view is enough. This also keeps selectors
+			// that build an object or array from looping: the same view returns the same result.
+			let seen: Stepper<S> | undefined;
+			let result: T;
+			return () => {
+				const view = read();
+				if (view !== seen) {
+					seen = view;
+					result = selector(view);
+				}
+				return result;
+			};
+		}, [flow, selector]);
 		return React.useSyncExternalStore(flow.subscribe, get, get);
 	}
 
@@ -67,13 +73,24 @@ export function createDefinition<const S extends readonly Step[]>(steps: S, defa
 	const definition: Definition<S> = {
 		steps,
 		create,
-		useStepper: (options) => useSelect(useFlow(options), identity),
+		useStepper: (options) => {
+			// This component owns the flow and is its only reader, so there is nothing to tear:
+			// plain state is cheaper than `useSyncExternalStore` and lets updates join a transition.
+			const flow = useFlow(options);
+			const [view, setView] = React.useState(flow.get);
+			useCommitEffect(() => {
+				// Catch what changed between the first render and this subscription.
+				if (flow.get() !== view) setView(flow.get);
+				return flow.subscribe(() => setView(flow.get));
+			}, [flow]);
+			return view;
+		},
 		useStepperContext: <T>(selector: (stepper: Stepper<S>) => T = identity as never) =>
 			useSelect(useShared(), selector),
 		Provider: ({ children, ...options }) =>
 			React.createElement(FlowContext.Provider, { value: useFlow(options) }, children),
 	};
-	return { definition, scope: { steps, defaults, FlowContext, useFlow, useShared, useSelect } };
+	return { definition, scope: { steps, positions, defaults, FlowContext, useFlow, useShared, useSelect } };
 }
 
 export type Scope<S extends readonly Step[]> = ReturnType<typeof createDefinition<S>>["scope"];

@@ -9,6 +9,7 @@ export function createTrigger<S extends readonly Step[]>(scope: Scope<S>): Compo
 	return primitive<PrimitiveProps<"button">, HTMLButtonElement>("Trigger", (props, forwardedRef) => {
 		const { render, children, disabled: disabledProp, onClick, ...rest } = props;
 		const ui = useUi();
+		// Read lazily in the handler: the item above already subscribes for this step.
 		const flow = scope.useShared();
 		const item = useItem<S>();
 		const id = item.step.id as Id<S>;
@@ -32,7 +33,7 @@ export function createTrigger<S extends readonly Step[]>(scope: Scope<S>): Compo
 		);
 		// While a move runs every step is unreachable. Disabling natively then would drop
 		// focus from the clicked trigger, so only steps blocked before the move are `disabled`.
-		const pending = scope.useSelect(flow, (s) => s.isPending);
+		const pending = item.pending;
 		const blocked = React.useRef(item.disabled);
 		if (!pending) blocked.current = item.disabled;
 		const disabled = !!disabledProp || blocked.current;

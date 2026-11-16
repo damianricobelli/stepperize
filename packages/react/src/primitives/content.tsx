@@ -12,7 +12,7 @@ export function createContent<S extends readonly Step[]>(scope: Scope<S>): Compo
 		const ref = useDevRef("Content", active || forceMount ? render : undefined, forwardedRef);
 		if (!active && !forceMount) return null;
 		// A tabpanel is named by its tab. A group is named by the step title, which needs no trigger.
-		const title = (scope.steps.find((entry) => entry.id === step) as { title?: unknown } | undefined)?.title;
+		const title = (scope.steps[scope.positions.get(step) ?? -1] as { title?: unknown } | undefined)?.title;
 		const named = !ui.tabs && typeof title === "string";
 		const domProps = {
 			id: panelId(ui, step),

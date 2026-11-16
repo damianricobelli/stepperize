@@ -49,6 +49,8 @@ export type ItemValue<S extends readonly Step[] = readonly Step[]> = {
 	invalid: boolean;
 	/** `goTo` would be refused right now. */
 	disabled: boolean;
+	/** A move is running. Every step is `disabled` meanwhile. */
+	pending: boolean;
 };
 
 export type Component<Props> = (props: Props) => React.ReactNode;

@@ -80,7 +80,7 @@ export function createItem<S extends readonly Step[]>(scope: Scope<S>): Componen
 		const auto = React.useContext(IndexContext);
 		const flow = scope.useShared();
 		const ref = useDevRef("Item", render, forwardedRef);
-		const index = id === undefined ? auto : scope.steps.findIndex((entry) => entry.id === id);
+		const index = id === undefined ? auto : (scope.positions.get(id) ?? -1);
 		const step = scope.steps[index] as S[number] | undefined;
 		if (!step) {
 			fail(
@@ -91,14 +91,25 @@ export function createItem<S extends readonly Step[]>(scope: Scope<S>): Componen
 			);
 		}
 
-		// One subscription per item, packed into a number so `Object.is` is the
-		// equality check: bits 0-1 state, 2 reachable, 3 invalid.
+		// One subscription per item, its trigger included, packed into a number so `Object.is`
+		// is the equality check: bits 0-1 state, 2 reachable, 3 invalid, 4 a move is running.
 		const bits = scope.useSelect(
 			flow,
-			(s) => STATES.indexOf(s.state(step.id)) | (s.canGoTo(step.id) ? 4 : 0) | (s.issues(step.id) ? 8 : 0),
+			(s) =>
+				STATES.indexOf(s.state(step.id)) |
+				(s.canGoTo(step.id) ? 4 : 0) |
+				(s.issues(step.id) ? 8 : 0) |
+				(s.isPending ? 16 : 0),
 		);
 		const value = React.useMemo<ItemValue>(
-			() => ({ step, index, state: STATES[bits & 3], invalid: !!(bits & 8), disabled: !(bits & 4) }),
+			() => ({
+				step,
+				index,
+				state: STATES[bits & 3],
+				invalid: !!(bits & 8),
+				disabled: !(bits & 4),
+				pending: !!(bits & 16),
+			}),
 			[step, index, bits],
 		);
 

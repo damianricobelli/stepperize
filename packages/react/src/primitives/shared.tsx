@@ -1,5 +1,6 @@
 import { fail, type Step, warn } from "@stepperize/core";
 import React from "react";
+import { jsx } from "react/jsx-runtime";
 import type { Component, ItemValue, Orientation, RenderProp } from "./types";
 
 type AnyRef = React.Ref<any> | undefined;
@@ -49,7 +50,8 @@ export function element<E extends keyof React.JSX.IntrinsicElements>(
 	props: Record<string, unknown>,
 	render: RenderProp<E> | undefined,
 ): React.ReactNode {
-	return render ? render(props as never) : React.createElement(tag, props);
+	// `jsx` takes the props object as it is; `createElement` would copy it once more.
+	return render ? render(props as never) : jsx(tag, props);
 }
 
 /** What every element primitive needs: a forwarded ref (React 18) and a DevTools name. */
