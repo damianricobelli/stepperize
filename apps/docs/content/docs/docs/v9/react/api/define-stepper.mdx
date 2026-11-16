@@ -1,6 +1,6 @@
 ---
 title: defineStepper
-description: Create the typed definition of a flow.
+description: Create the typed definition of a flow, and everything it returns.
 ---
 
 ```tsx
@@ -14,37 +14,166 @@ const checkout = defineStepper(steps, defaults);
 | Name | Type | Description |
 | --- | --- | --- |
 | `steps` | `Step[]` | At least one step, with unique ids. |
-| `defaults` | [`Options`](/docs/v9/react/api/options) | Optional. Options applied to every flow of this definition; each instance can override them. |
+| `defaults` | [`Options`](/docs/v9/react/api/options) | Optional. Options applied to every flow of this definition; each flow can override them. |
 
 A step is an object with an `id`, an optional `schema`, and any other field you
-want:
+want. See [Steps and ids](/docs/v9/react/concepts/steps).
 
 ```tsx
-defineStepper([
-  { id: "shipping", title: "Shipping", icon: TruckIcon, schema: shippingSchema },
-  { id: "payment", title: "Payment", icon: CardIcon },
-]);
+const checkout = defineStepper(
+  [
+    { id: "shipping", title: "Shipping", schema: shippingSchema },
+    { id: "payment", title: "Payment", schema: paymentSchema },
+    { id: "review", title: "Review" },
+  ],
+  { linear: true },
+);
 ```
 
 An empty list or a duplicate id throws [SZ103](/docs/v9/core/errors#sz103).
+
+Call it once at module scope, in a client module. It creates a React context,
+so it cannot run in a Server Component.
 
 ## Returns
 
 | Property | Description |
 | --- | --- |
-| `steps` | The steps you passed, with their literal types. |
-| `useStepper(options?)` | Creates a flow owned by the component and returns its [stepper](/docs/v9/react/api/stepper). Re-renders on every change. |
-| `Provider` | Creates a flow and shares it with the components below. Takes the options as props. |
-| `useStepperContext(selector?)` | Reads the flow of the nearest `Provider` or `Stepper.Root`. With a selector, re-renders only when its result changes. |
-| `Stepper` | The [primitives](/docs/v9/react/api/primitives). Not present when importing from `/headless`. |
-| `create(options?)` | Creates a flow [without React](/docs/v9/core). |
+| [`steps`](#steps) | The steps you passed, with their literal types. |
+| [`useStepper(options?)`](#usestepper) | Creates a flow owned by the component and returns its stepper. |
+| [`Provider`](#provider) | Creates a flow and shares it with the components below. |
+| [`useStepperContext(selector?)`](#usesteppercontext) | Reads the flow of the nearest `Provider` or `Stepper.Root`. |
+| [`Stepper`](/docs/v9/react/api/primitives) | The primitives. Not present when importing from `/headless`. |
+| [`create(options?)`](#create) | Creates a flow without React. |
+
+## steps
+
+The array you passed. Use it to render lists and to look steps up; it is plain
+data.
+
+```tsx
+checkout.steps.map((step) => step.title);
+checkout.steps.find((step) => step.id === "payment");
+```
+
+## useStepper
+
+```tsx
+const stepper = checkout.useStepper(options);
+```
+
+Creates a flow that belongs to the component, and returns its
+[stepper](/docs/v9/react/api/stepper). The component re-renders on every
+change of the flow.
+
+- Every call creates an **independent** flow, also below a `Provider` of the
+  same definition. To read a shared flow, use `useStepperContext`.
+- `options` are merged over the definition's defaults. Callbacks may be new
+  functions on every render; the flow always calls the latest ones.
+- `snapshot` is read once, when the component mounts.
+- The flow is destroyed when the component unmounts, which cancels a move
+  that is still running.
+
+## Provider
+
+```tsx
+<checkout.Provider linear onFinish={placeOrder}>
+  <Header />
+  <Steps />
+</checkout.Provider>
+```
+
+Creates a flow and provides it to every component below. Its props are the
+[options](/docs/v9/react/api/options) plus `children`. It renders no element.
+
+A `Provider` inside another `Provider` of the same definition starts a
+separate flow for its own subtree.
+
+## useStepperContext
+
+```tsx
+const stepper = checkout.useStepperContext();
+const title = checkout.useStepperContext((stepper) => stepper.current.title);
+```
+
+Reads the flow of the nearest `Provider` or `Stepper.Root` of **this**
+definition. Outside one, it throws [SZ100](/docs/v9/core/errors#sz100).
+
+| Call | Returns | Re-renders |
+| --- | --- | --- |
+| `useStepperContext()` | The stepper | On every change of the flow |
+| `useStepperContext(selector)` | What the selector returns | When that result changes |
+
+The result is compared with `Object.is`. A selector that returns a string, a
+number, a boolean, or an object the stepper already holds (such as
+`stepper.current` or `stepper.data.shipping`) skips the renders it does not
+need. A selector that builds a new object or array is safe, and re-renders on
+every change.
+
+```tsx
+const id = checkout.useStepperContext((s) => s.current.id); // only when the step changes
+const pending = checkout.useStepperContext((s) => s.isPending); // only when it flips
+const shipping = checkout.useStepperContext((s) => s.data.shipping); // only when that step's data changes
+```
+
+## create
+
+```tsx
+const flow = checkout.create(options);
+```
+
+Creates a flow with no React involved: the same state machine, with the same
+options and the definition's defaults. Use it in tests, on a server, or
+anywhere outside a component. See [Core](/docs/v9/core).
+
+## Without the primitives
+
+```tsx
+import { defineStepper } from "@stepperize/react/headless";
+```
+
+The same function, returning the same definition without `Stepper`. It has no
+DOM code, which keeps the primitives out of your bundle and makes it usable in
+React Native.
 
 ## Types
+
+Derive the types of a flow from its definition:
 
 ```tsx
 type CheckoutStepper = ReturnType<typeof checkout.useStepper>;
 type StepId = (typeof checkout.steps)[number]["id"];
+type CheckoutSnapshot = ReturnType<CheckoutStepper["snapshot"]>;
 ```
 
-Helper types are exported from `@stepperize/core`: `Stepper`, `Options`,
-`Snapshot`, `Result`, `Id`, `Input`, `Output` and `FlowData`.
+Generic helpers are exported from `@stepperize/react` (and from
+`@stepperize/core`):
+
+| Type | Description |
+| --- | --- |
+| `Step` | `{ id: string; schema?: StandardSchemaV1 }` plus your own fields. |
+| `Id<S>` | Union of the step ids of a step list. |
+| `Input<S, I>`, `Output<S, I>` | What a step stores, and what its schema produces. |
+| `FlowData<S>` | The data of every step, by id. |
+| `Options<S>` | The [options](/docs/v9/react/api/options). |
+| `Stepper<S>` | What the hooks return. |
+| `Snapshot<S>` | `{ step, history, data, complete }`. |
+| `Result<S>`, `Reason` | What a move resolves with. |
+| `GuardContext<S>` | The argument of `guard`. |
+| `StepState` | `"pending" \| "current" \| "complete"`. |
+| `Issue` | `{ message, path? }`, as Standard Schema defines it. |
+| `Definition<S>`, `ProviderProps<S>` | What `defineStepper` returns, and the props of its `Provider`. |
+| `RootProps<S>`, `ListProps<S>`, `ItemProps<S>`, `ContentProps<S>`, `ItemValue<S>` | Props of the primitives, and what `useItem()` returns. |
+
+`S` is the type of your step list: `typeof checkout.steps`.
+
+```tsx
+import type { Stepper } from "@stepperize/react";
+
+function Actions({ stepper }: { stepper: Stepper<typeof checkout.steps> }) {
+  return <button onClick={() => stepper.next()}>Continue</button>;
+}
+```
+
+In a file that also uses the `Stepper` primitives of a definition, give one of
+the two another name: `import type { Stepper as StepperOf } from "@stepperize/react"`.

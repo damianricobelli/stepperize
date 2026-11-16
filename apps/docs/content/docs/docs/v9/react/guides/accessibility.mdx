@@ -13,18 +13,21 @@ how the flow behaves.
 
 | Flow | Markup |
 | --- | --- |
-| `linear` | An ordered list of steps. The current trigger has `aria-current="step"`; steps that are not reachable yet are disabled. |
+| `linear` | An ordered list of steps. The triggers are plain buttons; the current one has `aria-current="step"`, and steps that are not reachable yet are disabled. Each panel is a `group` named after the step's `title`. |
 | Free navigation, with triggers | Tabs: `tablist`, `tab` and `tabpanel`, linked with `aria-controls` and `aria-labelledby`. |
-| No triggers | Each panel is a `group` named after the step's `title`. |
+| No triggers | No tabs either: each panel is a `group` named after the step's `title`. |
+
+A linear flow is not a set of tabs: its steps cannot be opened in any order,
+and announcing them as tabs would promise that they can.
 
 ## What is handled
 
 | Behavior | Detail |
 | --- | --- |
-| Keyboard | In tabs, arrow keys, `Home` and `End` move between steps, and the selected tab is the list's single tab stop. Left and right swap in right-to-left layouts. |
+| Keyboard | In tabs, arrow keys, `Home` and `End` move between steps, and the selected tab is the list's single tab stop. Left and right swap in right-to-left layouts. In a linear flow the triggers are ordinary buttons in the tab order. |
 | Focus | If focus would be lost after a step change (a field in a panel that unmounted, a button that became disabled), it moves to the new panel. Focus outside the stepper is never moved. |
 | Announcements | When the step changes while focus stays put, for example on `Next`, a polite live region announces the new step's `title`. |
-| Async checks | While a schema or guard runs, the buttons keep focus: they are `aria-disabled` rather than `disabled`, and the root has `aria-busy`. |
+| Async checks | While a schema, guard or `onFinish` runs, the buttons keep focus: they are `aria-disabled` rather than `disabled`, and the root has `aria-busy`. |
 | Valid markup | `Title` and `Description` are `span`s, so they are valid inside the trigger's `button`. |
 
 ## What only you can provide

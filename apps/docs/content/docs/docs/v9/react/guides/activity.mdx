@@ -1,0 +1,85 @@
+---
+title: Keeping steps mounted
+description: Three ways to keep what someone typed when they move between steps.
+---
+
+By default only the current step is rendered. When a step unmounts, anything
+that lived in its components is gone: uncontrolled inputs, scroll position,
+the state of a rich editor. There are three ways to keep it, from the lightest
+to the most complete.
+
+## 1. Save it in the flow
+
+For form values, this is usually all you need. `next(values)` stores them, and
+the step reads them back when it mounts again. A rejected `next()` stores them
+too.
+
+```tsx
+function ShippingStep() {
+  const stepper = checkout.useStepperContext();
+  return <ShippingForm defaultValues={stepper.data.shipping} onSubmit={(values) => stepper.next(values)} />;
+}
+```
+
+To keep a draft that was never submitted, write it as it changes with
+`stepper.setData("shipping", values)`.
+
+This also survives a reload when you [save the snapshot](/docs/v9/react/guides/persistence).
+
+## 2. Keep the panel in the DOM
+
+`Stepper.Content` accepts `forceMount`. The panel stays mounted and gets the
+`hidden` attribute while its step is not current, so everything inside keeps
+its state.
+
+```tsx
+<Stepper.Content step="shipping" forceMount>
+  <ShippingForm />
+</Stepper.Content>
+```
+
+The components inside keep running their effects while hidden. That is fine
+for forms; for a step that polls, plays media or measures layout, prefer the
+next option.
+
+## 3. React Activity
+
+React 19.2 added `<Activity>`. A hidden activity keeps its state and its DOM,
+and React disconnects its effects until it is visible again.
+
+```tsx
+import { Activity } from "react";
+
+function Steps() {
+  const stepper = checkout.useStepperContext();
+  return (
+    <>
+      {stepper.steps.map((step) => (
+        <Activity key={step.id} mode={step.id === stepper.current.id ? "visible" : "hidden"}>
+          {step.id === "shipping" && <ShippingForm />}
+          {step.id === "payment" && <PaymentForm />}
+          {step.id === "review" && <Review />}
+        </Activity>
+      ))}
+    </>
+  );
+}
+```
+
+Stepperize still decides which step is current; `Activity` only decides what
+stays alive. Every step renders once up front, so do not use it for steps that
+are expensive to mount and rarely visited.
+
+With the primitives, use `Activity` in place of `Stepper.Content` when you
+need this, or keep `Stepper.Content forceMount` when hidden effects do not
+matter. `Stepper.Content` is what gives the panel its role and name, so if you
+replace it, label the panel yourself.
+
+## Which one
+
+| You need to keep | Use |
+| --- | --- |
+| Form values | The flow's data |
+| Uncontrolled inputs, local component state | `forceMount` |
+| The above, and hidden steps must not run effects | `Activity` |
+| Anything across a page reload | A saved [snapshot](/docs/v9/react/guides/persistence) |

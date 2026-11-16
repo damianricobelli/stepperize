@@ -1,0 +1,414 @@
+---
+title: Core patterns
+description: The small, reusable moves every multi-step form is made of.
+---
+
+These patterns work with any form library, or none. Each one is a small move;
+a multi-step form is these combined.
+
+All examples use the `checkout` flow from the
+[introduction](/docs/v9/react/forms#the-flow-this-section-builds), and assume
+a `checkout.Provider` above the components. Options such as `onFinish` go on
+that provider.
+
+## Pattern 1: save a step's values
+
+When a step is submitted, hand its values to Stepperize in the same call that
+moves forward. They are stored under the current step's id.
+
+```tsx
+async function onStepSubmit(values: unknown) {
+  await stepper.next(values);
+}
+```
+
+`next(values)` validates the values against the step's schema, runs your
+guard, and then saves the values, completes the step and moves, all in one
+update. Read them back anywhere:
+
+```tsx
+stepper.data.personal; // one step: { name, email } | undefined
+stepper.data; // everything, for the review page
+stepper.output.personal; // what the schema produced, once the step is complete
+```
+
+If validation fails, the flow stays on the step and still keeps the values, so
+the form does not lose what was typed. If your guard cancels the move, the
+values are not saved.
+
+## Pattern 2: fill a step from what it saved
+
+When the person goes back, or reloads, each step should show what it had. Read
+the step's data when it mounts and use it as the form's initial values.
+
+```tsx
+function PersonalStep() {
+  const stepper = checkout.useStepperContext();
+  return <PersonalForm defaultValues={stepper.data.personal} />;
+}
+```
+
+This is what makes Back non-destructive: the values were saved on the way
+forward, so returning to a step shows exactly what was typed.
+
+For state that is not form values (a rich editor, an upload in progress), see
+[Keeping steps mounted](/docs/v9/react/guides/activity).
+
+## Pattern 3: show errors next to their fields
+
+When the step's schema rejects the data, `stepper.issues()` returns why. Each
+issue has a `message` and a `path`; turn them into a map by field name once
+and reuse it.
+
+```tsx title="field-errors.ts"
+import type { Issue } from "@stepperize/react";
+
+/** The first message of each field, keyed by its path: "email", "address.zip". */
+export function fieldErrors(issues: ReadonlyArray<Issue> = []) {
+  const errors: Record<string, string> = {};
+  for (const issue of issues) {
+    const key = (issue.path ?? [])
+      .map((part) => String(typeof part === "object" ? part.key : part))
+      .join(".");
+    errors[key] ??= issue.message;
+  }
+  return errors;
+}
+```
+
+```tsx
+function PersonalStep() {
+  const stepper = checkout.useStepperContext();
+  const errors = fieldErrors(stepper.issues("personal"));
+
+  return (
+    <form
+      noValidate
+      onSubmit={(event) => {
+        event.preventDefault();
+        stepper.next(Object.fromEntries(new FormData(event.currentTarget)));
+      }}
+    >
+      <label htmlFor="email">Email</label>
+      <input
+        id="email"
+        name="email"
+        defaultValue={stepper.data.personal?.email}
+        aria-invalid={!!errors.email}
+        aria-describedby={errors.email ? "email-error" : undefined}
+      />
+      {errors.email && (
+        <p id="email-error" role="alert">
+          {errors.email}
+        </p>
+      )}
+      <button type="submit">Continue</button>
+    </form>
+  );
+}
+```
+
+This is a complete step with no form library. The issues are cleared when the
+step's data changes, so with fields that write to the flow as they change
+(`stepper.setData`), an error disappears as soon as the person edits.
+
+To show errors before Continue is pressed, for example when a field loses
+focus, call `stepper.validate()`. It runs the same schema without moving and
+fills `stepper.issues()` the same way:
+
+```tsx
+<input name="email" onBlur={() => stepper.validate()} />
+```
+
+It checks what the flow has stored, so it fits fields that write with
+`setData` as they change.
+
+With a form library that validates on its own you rarely need this: its errors
+are already next to the fields. The step's issues then only matter for rules
+the form does not know about; see each
+[implementation](/docs/v9/react/forms/react-hook-form#errors-that-come-from-the-step).
+
+## Pattern 4: decide who validates
+
+| Setup | Validation | Notes |
+| --- | --- | --- |
+| No form library | The step's `schema`, inside `next()` | Pattern 3 shows the errors. |
+| A form library | The library validates; `next()` is called from its submit handler | Keep the `schema` on the step as well: it types the data and blocks any other path forward. |
+
+A step with a schema cannot be left through `next()` while it is invalid, no
+matter what called it: your button, `Stepper.Next`, or code. That is the
+difference from validating in the form only.
+
+```tsx
+// With a form library: its submit handler only runs when the form is valid.
+<form onSubmit={form.handleSubmit((values) => stepper.next(values))}>
+```
+
+## Pattern 5: the review step
+
+The review step reads every step's data and renders a summary. It needs no
+form library.
+
+```tsx
+function ReviewStep() {
+  const stepper = checkout.useStepperContext();
+  const { personal, shipping, payment } = stepper.data;
+
+  return (
+    <>
+      <Summary title="Personal" onEdit={() => stepper.goTo("personal")}>
+        {personal?.name} · {personal?.email}
+      </Summary>
+      <Summary title="Shipping" onEdit={() => stepper.goTo("shipping")}>
+        {shipping?.address}, {shipping?.zip}
+      </Summary>
+      <Summary title="Payment" onEdit={() => stepper.goTo("payment")}>
+        •••• {payment?.card.slice(-4)}
+      </Summary>
+
+      <button type="button" disabled={stepper.isPending} onClick={() => stepper.next()}>
+        Place order
+      </button>
+    </>
+  );
+}
+```
+
+Read `stepper.data` during render, as above. Copying it into local state makes
+the summary go stale when a step is edited.
+
+## Pattern 6: edit an earlier step, then return
+
+"Edit" is `goTo(id)`. The step is complete, so a linear flow allows it, and it
+opens filled in (Pattern 2).
+
+By default, Continue from there walks forward through the following steps
+again. They are already filled, so it is one click each, and every step is
+validated again on the way.
+
+To send the person straight back to the review instead, keep calling `next()`
+until it is reached. The steps in between already hold their data, so each
+call validates and passes without being shown, and the walk stops on the first
+step that is no longer valid:
+
+```tsx
+async function saveAndReturn(values: unknown) {
+  let result = await stepper.next(values);
+  while (result.accepted && result.to !== "review") {
+    result = await stepper.next();
+  }
+}
+```
+
+This works in a linear flow too, and it is the reason the flow can afford to
+be strict there: when a complete step is edited with `setData`, the steps
+completed after it stop being complete, and this walk is what validates them
+again.
+
+When the way back depends on more than "the next valid step", say it in the
+`next` map while an edit is in progress:
+
+```tsx
+export function Checkout() {
+  const [editing, setEditing] = useState(false);
+
+  return (
+    <checkout.Provider
+      next={{
+        personal: () => (editing ? "review" : "shipping"),
+        shipping: () => (editing ? "review" : "payment"),
+      }}
+      onChange={(snapshot) => {
+        if (snapshot.step === "review") setEditing(false);
+      }}
+    >
+      <Steps onEdit={() => setEditing(true)} />
+    </checkout.Provider>
+  );
+}
+```
+
+```tsx
+<Summary
+  title="Shipping"
+  onEdit={() => {
+    onEdit();
+    stepper.goTo("shipping");
+  }}
+>
+```
+
+The edited step still goes through `next()`, so it is validated before the
+person is back on the review.
+
+## Pattern 7: submit the whole form
+
+`next()` on the last step finishes the flow and calls `onFinish` once. Its
+first argument is the validated output of every complete step: what your
+schemas produced, with transforms, coercions and defaults applied. The second
+is the data as it was typed.
+
+```tsx
+<checkout.Provider onFinish={(output) => api.createOrder(output)}>
+```
+
+Return the promise of the request. `isPending` is `true` while it runs, and
+the flow only becomes finished when it resolves:
+
+```tsx
+<checkout.Provider
+  onFinish={async (output) => {
+    const response = await fetch("/api/orders", {
+      method: "POST",
+      body: JSON.stringify(output),
+    });
+    if (!response.ok) throw new Error("Could not place the order.");
+  }}
+>
+```
+
+```tsx
+function ReviewStep() {
+  const stepper = checkout.useStepperContext();
+  const [error, setError] = useState("");
+
+  async function placeOrder() {
+    setError("");
+    try {
+      await stepper.next();
+    } catch {
+      setError("Could not place the order. Try again.");
+    }
+  }
+
+  if (stepper.isFinished) return <p role="status">Order placed.</p>;
+  // …the summary, the error and a button that calls placeOrder
+}
+```
+
+If the request fails, `next()` rejects, the flow is not finished and the
+person can press the button again. Once it succeeded, `stepper.isFinished` is
+`true` and another `next()` is refused with `reason: "finished"`, so a double
+click cannot place two orders. You do not need a `placed` state of your own.
+
+## Pattern 8: survive a reload
+
+`onChange` hands you a snapshot after every change. Save it, and pass it back
+as `snapshot` to resume.
+
+```tsx
+<checkout.Provider
+  snapshot={saved}
+  onChange={(snapshot) => localStorage.setItem("checkout", JSON.stringify(snapshot))}
+>
+```
+
+To keep what is being typed and not only what was submitted, write the fields
+to the flow as they change:
+
+```tsx
+<input
+  value={stepper.data.shipping?.address ?? ""}
+  onChange={(event) =>
+    stepper.setData("shipping", { zip: "", ...stepper.data.shipping, address: event.target.value })
+  }
+/>
+```
+
+<Callout type="warn">
+Do not read `localStorage` while rendering on the server: the HTML would not
+match the browser's. Read it in an effect and apply it with
+`stepper.restore(saved)`. See
+[Saving and resuming](/docs/v9/react/guides/persistence#loading-a-draft-later).
+</Callout>
+
+## Pattern 9: let the form drive the move
+
+Bind the move to the form's submit, not to a separate button. Pressing Enter
+then works, and the form library validates before `next()` is called.
+
+```tsx
+<form
+  onSubmit={form.handleSubmit(async (values) => {
+    await stepper.next(values);
+  })}
+>
+  {/* fields */}
+  <button type="submit">{stepper.isLast ? "Place order" : "Continue"}</button>
+</form>
+```
+
+`Stepper.Next` calls `next()` without values, which validates what the step
+already has stored. Use it for steps that write to the flow as fields change;
+for a form that submits its values, use a submit button.
+
+## Pattern 10: skip a step
+
+When a step depends on an earlier answer, describe it in the `next` map. The
+first argument is the validated data of the step being left; the second is the
+data of every step.
+
+```tsx
+const signup = defineStepper([
+  { id: "account", schema: z.object({ type: z.enum(["personal", "team"]) }) },
+  { id: "team" },
+  { id: "payment" },
+]);
+
+function Signup() {
+  return (
+    <signup.Provider next={{ account: (account) => (account.type === "team" ? "team" : "payment") }}>
+      <Steps />
+    </signup.Provider>
+  );
+}
+```
+
+Back then returns along the path that was taken, and the skipped step stays
+`pending`. See [Branching](/docs/v9/react/guides/branching).
+
+## Pattern 11: validate against the server
+
+Give the schema an async rule. `next()` awaits it, and `isPending` is `true`
+meanwhile.
+
+```tsx
+const personalSchema = z.object({
+  name: z.string().min(1),
+  email: z
+    .string()
+    .email()
+    .refine(async (email) => !(await api.emailExists(email)), "That email already has an account"),
+});
+```
+
+```tsx
+<button type="submit" disabled={stepper.isPending}>
+  {stepper.isPending ? "Checking…" : "Continue"}
+</button>
+```
+
+A second submit while the check runs is refused with `reason: "pending"`, so
+the request is not sent twice.
+
+## Putting it together
+
+| Goal | Pattern |
+| --- | --- |
+| Save when continuing | `next(values)` |
+| Fill in on Back or reload | `stepper.data[id]` as default values |
+| Errors next to fields | `stepper.issues(id)` |
+| Block invalid steps | A `schema` on the step |
+| Summary screen | `stepper.data` |
+| Errors before continuing | `stepper.validate()` |
+| Edit an earlier step | `goTo(id)`, then `next()` until the review |
+| Submit | `onFinish`, returning the request's promise |
+| Confirmation | `stepper.isFinished` |
+| Survive a reload | `snapshot` and `onChange` |
+| Enter key and form validation | `next()` from the form's submit |
+| Conditional steps | The `next` map |
+| Server-side checks | An async schema or guard, and `isPending` |
+
+Next, see the [common problems](/docs/v9/react/forms/common-problems) these
+patterns prevent, then pick an
+[implementation](/docs/v9/react/forms/react-hook-form).

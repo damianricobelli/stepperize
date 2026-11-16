@@ -71,9 +71,13 @@ item gets its step from the `Stepper.List` function, or from its `step` prop:
 **Error.** A step id does not exist in the definition. It is thrown by `goTo`,
 `setData`, a `next` branch that returns an unknown id, and `Stepper.Item`.
 
+`goTo`, `setData` and `Stepper.Item` throw it directly. A `next` branch that
+returns an unknown id makes the `next()` promise reject with it.
+
 TypeScript catches this at compile time; it usually means a value was cast, or
 came from outside, such as a URL. For outside values use the
-[`step` option](/docs/v9/react/guides/url), which ignores unknown ids.
+[`step` option](/docs/v9/react/guides/url): it ignores unknown ids and calls
+`onInvalidStep` so you can correct the source.
 
 ## SZ103
 

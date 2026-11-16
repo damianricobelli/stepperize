@@ -1,0 +1,106 @@
+---
+title: Production checklist
+description: What to verify before a flow reaches real users.
+---
+
+## Accessibility
+
+- [ ] **Every trigger has a name.** `Stepper.Indicator` is hidden from screen
+  readers; a trigger that only shows a number or an icon needs `aria-label`.
+- [ ] **The stepper has a name.** Pass `aria-label` or `aria-labelledby` to
+  `Stepper.Root`. The default is "Stepper".
+- [ ] **Every step has a string `title`.** It is what is announced when the
+  step changes.
+- [ ] **Completion is not conveyed by color alone.** Add a check mark or
+  visually hidden text.
+- [ ] **Errors are tied to their fields** with `aria-invalid` and
+  `aria-describedby`.
+
+See [Accessibility](/docs/v9/react/guides/accessibility) for what the
+primitives already do.
+
+## Server rendering and Next.js
+
+- [ ] **The definition lives in a client module.** `defineStepper` creates a
+  React context, which Server Components cannot do. Put it in a file that
+  starts with `"use client"`, together with or next to the components that
+  use it.
+
+```tsx title="checkout.tsx"
+"use client";
+
+import { defineStepper } from "@stepperize/react";
+
+export const checkout = defineStepper([{ id: "shipping" }, { id: "payment" }, { id: "review" }]);
+
+export function Checkout() {
+  const stepper = checkout.useStepper();
+  return <h2>{stepper.current.id}</h2>;
+}
+```
+
+- [ ] **The first render matches the server.** Do not read `window` or
+  `localStorage` to build the `snapshot` option. Pass what the server knows
+  (a route param, data from a loader), and apply browser-only state in an
+  effect with `restore`.
+- [ ] **A step from the URL goes through the `step` option**, so the server
+  and the browser start on the same step.
+
+## State and data
+
+- [ ] **Results are awaited** where the next action depends on them.
+  `if (stepper.next())` is always true.
+- [ ] **Handlers read the result**, not the stepper, after an `await`.
+- [ ] **Buttons reflect `isPending`** when a schema or guard is async.
+  `Stepper.Prev`, `Stepper.Next` and the triggers already do.
+- [ ] **The final request is safe to retry.** A cancelled or failed move does
+  not undo what the server already did.
+- [ ] **Stored data is treated as a draft.** Parse it with the schema before
+  sending it if your schemas transform values.
+
+## Persistence
+
+- [ ] **The snapshot is saved from `onChange`** and slow writes are debounced.
+- [ ] **A saved snapshot is validated before use** if it comes from somewhere
+  you do not control. Unknown step ids are dropped; the data of each step is
+  not checked until `next()` runs.
+- [ ] **Old snapshots still load** after you rename or remove a step.
+- [ ] **Sensitive values are not persisted.** Remove card numbers and
+  passwords from the snapshot before saving it.
+
+```tsx
+onChange: (snapshot) => {
+  const { payment: _payment, ...data } = snapshot.data;
+  localStorage.setItem("checkout", JSON.stringify({ ...snapshot, data }));
+},
+```
+
+## Analytics and side effects
+
+- [ ] **Step views are tracked from `onChange`**, comparing `snapshot.step`,
+  so data edits are not counted as navigation.
+- [ ] **Conversion is tracked from `onFinish`**, which runs once per finished
+  flow. Return the promise of the final request from it, so a failure leaves
+  the flow open for another try.
+- [ ] **The confirmation reads `stepper.isFinished`**, not a state of your
+  own.
+
+## Testing
+
+- [ ] **Flow logic is tested without rendering**: branching, validation and
+  guards run on `definition.create()`.
+- [ ] **Components are tested by role**, which verifies accessibility at the
+  same time.
+- [ ] **A refused move is tested**: the step does not change and the errors
+  show.
+
+See [Testing](/docs/v9/react/guides/testing).
+
+## Final pass
+
+- [ ] Keyboard only: reach the steps, move between them, and get into the
+  panel.
+- [ ] Screen reader: each step change is announced.
+- [ ] Reload mid-flow: the state is restored, or the flow starts over cleanly.
+- [ ] Slow network: buttons show progress and a double click does nothing.
+- [ ] Back and forward buttons, if the step is in the URL.

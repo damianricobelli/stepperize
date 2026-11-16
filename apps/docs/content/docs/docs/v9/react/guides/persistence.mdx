@@ -1,11 +1,83 @@
 ---
 title: Saving and resuming
-description: One snapshot goes in, one callback comes out.
+description: The flow owns its state. One snapshot goes in, one callback comes out.
 ---
 
-A snapshot is everything a flow needs to continue later: the current step, the
-path taken, the data of every step and which steps are complete. It is plain
-JSON when your data is.
+The flow always holds its own state. You do not pass the current step or the
+data on every render and wait for callbacks to apply them; you give the flow a
+starting point, and it tells you about every change.
+
+That exchange uses one object, the **snapshot**: everything a flow needs to
+continue later.
+
+```ts
+type Snapshot = {
+  step: string; // the current step
+  history: string[]; // the path taken, which prev() walks back
+  data: object; // the data of every step, by id
+  complete: string[]; // the steps next() has validated, in that order
+};
+```
+
+It is plain JSON when your data is.
+
+## Save and resume
+
+```tsx
+const stepper = checkout.useStepper({
+  snapshot: saved,
+  onChange: (snapshot) => save(snapshot),
+});
+```
+
+- `snapshot` is where the flow starts. Pass any part of it, for example only
+  `{ step: "payment" }` or only `{ data }`.
+- `onChange` is called with the whole snapshot after the step, the data or
+  the completion changes.
+
+`snapshot` is read **once**, when the flow is created. Passing a different
+object later does nothing; that is what [`restore`](#loading-a-draft-later) is
+for.
+
+Try it: type something, move forward, then reload the page.
+
+<Preview>
+	<SaveResumeBlock />
+</Preview>
+
+## What onChange reports
+
+| Change | `onChange` |
+| --- | --- |
+| An accepted `next`, `prev` or `goTo` | Yes |
+| A `next()` the schema rejected | Yes: the data that was passed is kept |
+| `setData` with a new value | Yes |
+| `setData` with the value the step already has | No: nothing changed |
+| `validate()` | No |
+| `reset`, `restore` | Yes |
+| `isPending` or `isFinished` changing | No |
+| A move the guard refused | No |
+
+## In the browser, without a mismatch
+
+A server cannot read `localStorage`, so a flow that starts from it would
+render differently on the server and in the browser. Start from what both
+know, and apply the saved snapshot after mounting.
+
+```tsx
+function Checkout() {
+  const stepper = checkout.useStepper({
+    onChange: (snapshot) => localStorage.setItem("checkout", JSON.stringify(snapshot)),
+  });
+
+  useEffect(() => {
+    const saved = localStorage.getItem("checkout");
+    if (saved) stepper.restore(JSON.parse(saved));
+  }, []);
+}
+```
+
+In an app that only renders in the browser, reading it directly is fine:
 
 ```tsx
 const stepper = checkout.useStepper({
@@ -14,43 +86,102 @@ const stepper = checkout.useStepper({
 });
 ```
 
-- `snapshot` is where the flow starts. It is read once. You can pass any part
-  of it, for example only `{ step: "payment" }`.
-- `onChange` is called after the step, the data or the completion changes.
-
-Step ids that no longer exist in the definition are dropped, so an old saved
-snapshot never breaks a newer version of your flow.
-
 ## Saving to a server
 
-`onChange` is also called by `setData`. If you write drafts on every keystroke,
-debounce the request:
+`onChange` is also called by `setData`. If you write drafts on every
+keystroke, debounce the request.
 
 ```tsx
-const save = useDebouncedCallback((snapshot) => api.saveDraft(snapshot), 500);
-const stepper = checkout.useStepper({ onChange: save });
+import { useDebouncedCallback } from "use-debounce";
+
+function Checkout({ draft }: { draft: CheckoutSnapshot }) {
+  const save = useDebouncedCallback((snapshot: CheckoutSnapshot) => api.saveDraft(snapshot), 500);
+  const stepper = checkout.useStepper({ snapshot: draft, onChange: save });
+}
 ```
+
+```tsx
+type CheckoutSnapshot = ReturnType<ReturnType<typeof checkout.useStepper>["snapshot"]>;
+```
+
+A draft loaded on the server and passed as a prop is the best starting point:
+the first render already shows the right step.
 
 ## Loading a draft later
 
 When the draft arrives after the first render, apply it with `restore`. It
-replaces the state without validation or guards.
+replaces the state without validation or guards, and cancels a move that is
+running.
 
 ```tsx
 useEffect(() => {
-  api.loadDraft().then((draft) => draft && stepper.restore(draft));
+  api.loadDraft().then((draft) => {
+    if (draft) stepper.restore(draft);
+  });
 }, []);
 ```
 
-`restore` merges with the current state, so `restore({ data })` keeps the
-current step.
+`restore` replaces the parts you pass and keeps the others:
+
+| Call | Effect |
+| --- | --- |
+| `restore(snapshot)` | Replace everything. |
+| `restore({ data })` | Replace the data of every step; stay on the current step. |
+| `restore({ step: "review" })` | Go to a step without validation or guards. |
+| `restore({ complete: [] })` | Clear the completion. |
+
+Each part is replaced as a whole: `restore({ data: { shipping } })` leaves the
+other steps without data. To change one step, use `setData`.
+
+## Old snapshots
+
+Flows change. When a saved snapshot names a step that no longer exists, it is
+dropped from `step`, `history` and `complete`, and the flow starts on the
+first step if `step` was the one that disappeared. A snapshot from an older
+version of your flow never throws.
+
+The data of each step is not checked when it is loaded. It is validated like
+any other data, the next time `next()` runs on that step.
+
+A snapshot holds what was typed, not the schemas' output, so a step loaded as
+complete has no entry in `stepper.output` yet. The `next()` that finishes the
+flow validates those steps once more before calling `onFinish`. If the saved
+data no longer passes, because the schema changed since, the flow does not
+finish: `next()` resolves with `reason: "invalid"`, the step stops being
+complete and `stepper.issues(id)` says why. To find out earlier, call
+`stepper.validate(id)` after loading the draft.
+
+`restore` keeps the output of every complete step whose data it did not
+replace, so `restore({ step: "review" })` loses nothing.
 
 ## Starting over
 
-`reset()` goes back to the snapshot the flow started with and cancels a move
-that is still running.
+`reset()` goes back to the snapshot the flow started with, and cancels a move
+that is still running. Remember to delete your saved copy: `reset()` reports
+the fresh snapshot through `onChange` like any other change.
+
+```tsx
+function startOver() {
+  stepper.reset();
+  localStorage.removeItem("checkout");
+}
+```
 
 ## Reading the snapshot
 
 `stepper.snapshot()` returns the current one at any time, for example to send
-it along with a support request.
+it with a support request, or to read the completed steps.
+
+## What not to save
+
+A snapshot contains everything the steps stored. Remove what should not be
+written to storage before saving it.
+
+```tsx
+onChange: (snapshot) => {
+  const { payment: _payment, ...data } = snapshot.data;
+  localStorage.setItem("checkout", JSON.stringify({ ...snapshot, data }));
+},
+```
+
+Next: [the step in the URL](/docs/v9/react/guides/url).

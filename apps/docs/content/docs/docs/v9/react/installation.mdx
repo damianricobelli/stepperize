@@ -37,7 +37,9 @@ bun add @stepperize/react
 ## Requirements
 
 - React 18 or 19.
-- TypeScript 5 or newer is recommended. Nothing needs to be configured.
+- TypeScript 5.0 or newer for the typed ids. Nothing needs to be configured.
+- In a framework with Server Components, the module that calls `defineStepper`
+  must be a client module (`"use client"`).
 
 `@stepperize/core` is installed with it. You only import from it directly to
 run a flow [without React](/docs/v9/core).
@@ -57,4 +59,5 @@ markup, import from `/headless` to leave them out of your bundle:
 import { defineStepper } from "@stepperize/react/headless";
 ```
 
-The definition is the same, without the `Stepper` property.
+The definition is the same, without the `Stepper` property. This entry has no
+DOM code, so it is also the one to use in React Native.

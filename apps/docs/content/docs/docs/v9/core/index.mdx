@@ -7,6 +7,10 @@ description: The whole flow as a plain object, with no framework.
 dependencies and runs anywhere JavaScript does: tests, servers, workers,
 scripts and AI agents drive the same object your UI does.
 
+A **flow** is one running instance: the current step, the data of every step
+and which steps are complete. You move it with `next`, `prev` and `goTo`, and
+every move resolves with what happened.
+
 ```bash
 npm install @stepperize/core
 ```
@@ -30,6 +34,14 @@ flow.snapshot(); // { step: "payment", history: ["account"], data: {…}, comple
 
 If you already have a definition from a binding, `definition.create(options)`
 returns the same thing.
+
+The concepts are the same as in the React docs, which explain them in depth:
+[steps](/docs/v9/react/concepts/steps),
+[the lifecycle of a move](/docs/v9/react/concepts/moves),
+[step state](/docs/v9/react/concepts/step-state),
+[validation](/docs/v9/react/guides/validation),
+[branching](/docs/v9/react/guides/branching) and
+[snapshots](/docs/v9/react/guides/persistence).
 
 ## Testing a flow
 

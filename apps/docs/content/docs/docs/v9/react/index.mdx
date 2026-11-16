@@ -20,7 +20,7 @@ const checkout = defineStepper([
 ]);
 
 function Checkout() {
-  const stepper = checkout.useStepper({ onFinish: (data) => placeOrder(data) });
+  const stepper = checkout.useStepper({ onFinish: (output) => placeOrder(output) });
 
   return (
     <section>
@@ -43,6 +43,13 @@ function Checkout() {
 }
 ```
 
+## Is it a form library?
+
+No. Stepperize owns the **flow**: which step is current, moving between steps,
+what each step saved and which steps are complete. Your form library, or a few
+lines of your own, owns the fields. See
+[Building multi-step forms](/docs/v9/react/forms).
+
 ## What you get
 
 - **One call moves forward.** `next(data)` saves the step's data, validates it
@@ -56,8 +63,8 @@ function Checkout() {
   step can follow the URL with a single option.
 - **Accessible primitives.** Roles, keyboard navigation, focus and
   announcements are handled for you.
-- **Small.** About 2.1 kB for the hooks and 4.7 kB with the primitives, min + gzip,
-  with no dependencies besides React.
+- **Small.** About 2.6 kB for the hooks and 5.2 kB with the primitives, min + gzip,
+  with no third-party dependencies.
 
 ## Next
 
@@ -71,6 +78,16 @@ function Checkout() {
 		href="/docs/v9/react/first-stepper"
 		title="Your first stepper"
 		description="A working flow, built in three small steps."
+	/>
+	<Card
+		href="/docs/v9/react/concepts/steps"
+		title="Core concepts"
+		description="Steps, the flow, the lifecycle of a move and step state."
+	/>
+	<Card
+		href="/docs/v9/react/forms"
+		title="Multi-step forms"
+		description="Patterns and complete examples for each form library."
 	/>
 	<Card
 		href="/docs/v9/react/migration"

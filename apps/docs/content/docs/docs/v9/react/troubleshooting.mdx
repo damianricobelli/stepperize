@@ -1,0 +1,231 @@
+---
+title: Troubleshooting
+description: Errors and surprises, with the cause and the fix for each.
+---
+
+Most problems come from a few causes. Find your symptom below. Errors thrown
+by the library carry a code; [Errors and warnings](/docs/v9/core/errors)
+explains each one.
+
+## Runtime errors
+
+### SZ100: Missing Provider
+
+`useStepperContext()` and the primitives read a flow that someone above them
+created. Without a `Provider` or `Stepper.Root` of the **same definition**
+above, there is nothing to read.
+
+```tsx
+function Actions() {
+  const stepper = checkout.useStepperContext(); // throws without a provider above
+  return <button onClick={() => stepper.next()}>Continue</button>;
+}
+
+function Page() {
+  return (
+    <checkout.Provider>
+      <Actions />
+    </checkout.Provider>
+  );
+}
+```
+
+A provider of another definition does not count, and neither does a second
+definition created from the same steps. Import the same `checkout` object
+everywhere.
+
+If the component only needs its own flow, call `useStepper()` instead.
+
+### SZ101: Missing Stepper.Item
+
+`Stepper.Trigger`, `Stepper.Indicator` and `Stepper.useItem()` belong to a
+step, which they get from the `Stepper.Item` around them. An item gets its
+step from the `Stepper.List` function, or from its `step` prop.
+
+```tsx
+<Stepper.List>
+  {() => (
+    <Stepper.Item>
+      <Stepper.Trigger>
+        <Stepper.Title />
+      </Stepper.Trigger>
+    </Stepper.Item>
+  )}
+</Stepper.List>
+
+<Stepper.Item step="payment">…</Stepper.Item>
+```
+
+### SZ102: Step "…" not found
+
+An id that is not in the definition reached `goTo`, `setData`, a `next` branch
+or a `Stepper.Item`. TypeScript rejects this at compile time, so it usually
+means a cast, or a value from outside. For URL values use the
+[`step` option](/docs/v9/react/guides/url), which ignores unknown ids.
+
+### A match handler is missing
+
+`stepper.match({...})` needs a handler for every step. TypeScript reports a
+missing one as an error on the object; in plain JavaScript the call throws
+when that step becomes current.
+
+## Common surprises
+
+### `if (stepper.next())` is always true
+
+Moves return a promise, and a promise is truthy. Await it and read `accepted`.
+
+```tsx
+const result = await stepper.next();
+if (result.accepted) track("advanced");
+```
+
+### The stepper still shows the old step after an await
+
+The `stepper` in your handler belongs to the render that created the handler.
+After `await stepper.next()`, read the result, not the stepper. See
+[A stepper is a snapshot in time](/docs/v9/react/concepts/stepper#a-stepper-is-a-snapshot-in-time).
+
+### Form validation runs, but the step still changes
+
+The move did not go through the form: a separate button or a trigger called
+`next()` directly, and the step has no schema. Put the schema on the step. See
+[Common problems](/docs/v9/react/forms/common-problems#validation-shows-errors-but-the-step-still-changes).
+
+### Two components show different steps
+
+Each `useStepper()` call creates its own flow. Two components that should move
+together need one `Provider` above them and `useStepperContext()` inside.
+
+```tsx
+// Wrong: two independent flows.
+function Header() {
+  const stepper = checkout.useStepper();
+  return <h2>{stepper.current.title}</h2>;
+}
+
+function Footer() {
+  const stepper = checkout.useStepper();
+  return <button onClick={() => stepper.next()}>Continue</button>;
+}
+```
+
+### The flow resets on every render
+
+`defineStepper` was called inside a component, so every render gets a new
+definition and a new flow. Call it once at module scope. See
+[Define once](/docs/v9/react/concepts/steps#define-once-at-module-scope).
+
+### The snapshot option is ignored
+
+`snapshot` is where the flow starts and is read once. Changing the prop later
+does nothing; call `stepper.restore(snapshot)`.
+
+### A trigger is disabled
+
+The flow is `linear` and that step is not complete yet. In a linear flow the
+triggers reach the current step and the completed ones; everything else is
+reached through `next()`. `stepper.canGoTo(id)` tells you the same thing.
+
+While an async check runs, every trigger is unavailable until it settles.
+
+### The triggers are buttons, not tabs
+
+A linear flow is rendered as an ordered list of steps with
+`aria-current="step"`. Tabs are used for free navigation only. See
+[Accessibility](/docs/v9/react/guides/accessibility#the-pattern-follows-the-flow).
+
+### Stepper.Next does nothing on a form step
+
+`Stepper.Next` calls `next()` without values, so it validates what the step
+already has stored. If the fields live in a form that has not handed its
+values over, the step's data is empty and validation fails. Submit the form
+and call `stepper.next(values)`, or pass the values from the button:
+
+```tsx
+<Stepper.Next
+  onClick={(event) => {
+    event.preventDefault();
+    stepper.next(form.getValues());
+  }}
+>
+  Continue
+</Stepper.Next>
+```
+
+### progress is 0 on the first step
+
+`progress` is the position of the current step, from `0` on the first to `1`
+on the last. For "step 1 of 4" use `stepper.index + 1` and
+`stepper.steps.length`.
+
+### A step's data is typed unknown
+
+The step has no `schema`. Add one, or cast where you read it.
+
+```tsx
+const draft = stepper.data.notes as string | undefined;
+```
+
+### onChange runs on every keystroke
+
+`setData` changes the flow, so it calls `onChange`. Debounce slow writes, or
+only react when `snapshot.step` changes.
+
+### onFinish does not run again
+
+`onFinish` runs once. After the flow has finished, `next()` resolves with
+`reason: "finished"` until the flow changes: any move, a `setData` with a new
+value, `reset()` or `restore()`. If a request inside it can fail, return its
+promise: when it rejects the flow is not finished and `next()` can be called
+again. See [When submitting can fail](/docs/v9/react/guides/navigation#when-submitting-can-fail).
+
+### onFinish receives transformed values, not what was typed
+
+Its first argument is the output of the schemas. What was typed is the second:
+`onFinish: (output, data) => …`.
+
+### A step stopped being complete
+
+Its data changed after `next()` validated it: `setData` wrote a new value, or
+a `next(data)` from that step was rejected. In a linear flow the steps
+completed after it are dropped too. Call `next()` from the step to validate it
+again. See [What undoes completion](/docs/v9/react/concepts/step-state#what-undoes-completion).
+
+### stepper.output is missing a step
+
+Only complete steps have output. A step that was edited, never left through
+`next()`, or restored from a snapshot has none; restored steps get theirs when
+the flow finishes.
+
+### Hydration mismatch
+
+The first render read something the server did not have, usually
+`localStorage`. Start from a value the server also knows, and apply the saved
+snapshot in an effect with `restore`.
+
+## TypeScript
+
+### Step ids are typed as string
+
+The array was created before it reached `defineStepper`, so its ids widened.
+Write it inline or add `as const`. See
+[Keep ids literal](/docs/v9/react/concepts/steps#keep-ids-literal).
+
+### A field exists on the current step, but TypeScript complains
+
+`stepper.current` is the union of every step. Narrow it with `match` or by
+comparing `stepper.current.id`. See
+[Fields that only some steps have](/docs/v9/react/concepts/steps#fields-that-only-some-steps-have).
+
+### The type of a stepper
+
+```tsx
+type CheckoutStepper = ReturnType<typeof checkout.useStepper>;
+type StepId = (typeof checkout.steps)[number]["id"];
+```
+
+<Callout type="info">
+Still stuck? Check the [FAQ](/docs/v9/react/faq), or open an issue with a
+minimal reproduction.
+</Callout>

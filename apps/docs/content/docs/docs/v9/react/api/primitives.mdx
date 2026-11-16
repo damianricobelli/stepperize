@@ -13,11 +13,16 @@ Renders a `div`. Creates the flow and provides it.
 
 | Prop | Type | Description |
 | --- | --- | --- |
-| Every [option](/docs/v9/react/api/options) | | `linear`, `next`, `guard`, `snapshot`, `step`, `onChange`, `onFinish`. |
+| Every [option](/docs/v9/react/api/options) | | `linear`, `next`, `guard`, `snapshot`, `step`, `onChange`, `onFinish`, `onInvalidStep`. |
 | `orientation` | `"horizontal" \| "vertical"` | Default `"horizontal"`. |
 | `children` | `ReactNode \| (stepper) => ReactNode` | The function form re-renders on every change. |
 
 `onChange` is the flow's callback, not the DOM event.
+
+The element has `role="group"` and the name "Stepper"; pass `aria-label` or
+`aria-labelledby` to describe your flow. While an async check or `onFinish` runs it has
+`aria-busy` and `data-pending`; once the flow has finished it has
+`data-finished`.
 
 ## List
 
@@ -38,8 +43,12 @@ Renders an `li`.
 
 ## Trigger
 
-Renders a `button` that calls `goTo` for its step. Must be inside an `Item`.
-It is disabled when `linear` does not allow reaching the step.
+Renders a `button` that calls `goTo` for its step. Must be inside an `Item`,
+and should be inside a `List`.
+
+It is disabled when `linear` does not allow reaching the step. In a flow that
+is not linear it is a `tab`; in a linear flow it is a plain button, with
+`aria-current="step"` on the current one.
 
 ## Title and Description
 
@@ -53,7 +62,9 @@ children.
 
 ## Content
 
-Renders a `div` while its step is current.
+Renders a `div` while its step is current. It is the `tabpanel` of its trigger
+in a flow rendered as tabs, and otherwise a `group` named after the step's
+`title`.
 
 | Prop | Type | Description |
 | --- | --- | --- |
@@ -62,9 +73,19 @@ Renders a `div` while its step is current.
 
 ## Prev and Next
 
-Render a `button`. `Next` calls `next()`, which validates the data stored for
-the current step; `Prev` calls `prev()` and is disabled when there is nowhere
-to go back to.
+Render a `button`.
+
+- `Next` calls `next()` with no argument, which validates the data stored for
+  the current step. On the last step it finishes the flow; it is never
+  disabled for being at the end.
+- `Prev` calls `prev()`, and is disabled when there is nowhere to go back to.
+
+While an async check or `onFinish` runs, both are `aria-disabled` and ignore
+clicks, and have `data-pending`.
+
+Once the flow has finished, `Next` is `aria-disabled` with `data-disabled` and
+ignores clicks, so the flow is not submitted twice. It becomes available again
+when the flow changes. `Root` has `data-finished` meanwhile.
 
 Call `event.preventDefault()` in `onClick` to handle the move yourself, for
 example to pass form values:
@@ -91,5 +112,6 @@ example to pass form values:
 | `state` | `"pending" \| "current" \| "complete"` | |
 | `invalid` | `boolean` | Its last validation failed and its data has not changed since. |
 | `disabled` | `boolean` | `goTo` would be refused right now. |
+| `pending` | `boolean` | A move is running. Every step is `disabled` meanwhile. |
 
 Outside an `Item` it throws [SZ101](/docs/v9/core/errors#sz101).

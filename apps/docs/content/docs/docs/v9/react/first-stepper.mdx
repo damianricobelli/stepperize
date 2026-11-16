@@ -1,48 +1,54 @@
 ---
 title: Your first stepper
-description: Define the steps, render the current one, and move between them.
+description: Define the steps, render the current one, move between them, and finish.
 ---
+
+This page builds a three-step checkout from nothing. It takes about five
+minutes, and every later page builds on it.
 
 ## 1. Define the steps
 
 A step needs an `id`. Every other field is yours and stays typed.
 
-```tsx
+```tsx title="checkout.tsx"
 import { defineStepper } from "@stepperize/react";
 
-export const onboarding = defineStepper([
-  { id: "profile", title: "Profile" },
-  { id: "team", title: "Team" },
-  { id: "done", title: "All set" },
+export const checkout = defineStepper([
+  { id: "shipping", title: "Shipping" },
+  { id: "payment", title: "Payment" },
+  { id: "review", title: "Review" },
 ]);
 ```
 
 Create the definition once, outside your components. It is not state: it is the
-typed description of the flow.
+typed description of the flow, with a hook and components bound to it.
 
 ## 2. Render the current step
 
 `useStepper()` creates a flow owned by the component and re-renders it on every
-change. `match` runs the handler of the current step and is exhaustive: forget
+change. `match` runs the handler of the current step, and is exhaustive: forget
 a step and TypeScript tells you.
 
 ```tsx
-function Onboarding() {
-  const stepper = onboarding.useStepper();
+export function Checkout() {
+  const stepper = checkout.useStepper();
 
   return (
     <section>
       <h2>{stepper.current.title}</h2>
 
       {stepper.match({
-        profile: () => <ProfileStep />,
-        team: () => <TeamStep />,
-        done: () => <p>You are ready.</p>,
+        shipping: () => <p>Where should we send it?</p>,
+        payment: () => <p>How would you like to pay?</p>,
+        review: () => <p>Check everything before placing the order.</p>,
       })}
     </section>
   );
 }
 ```
+
+`stepper.current` is the step object you defined, so `title` is typed. Inside
+each handler the step is narrowed to that id.
 
 ## 3. Move
 
@@ -51,22 +57,82 @@ function Onboarding() {
   Back
 </button>
 <button type="button" onClick={() => stepper.next()}>
-  {stepper.isLast ? "Finish" : "Continue"}
+  {stepper.isLast ? "Place order" : "Continue"}
 </button>
 ```
 
-`next()` on the last step finishes the flow and calls `onFinish`:
+`next()` moves forward and `prev()` goes back. `isFirst` and `isLast` are
+derived for you, so there is no index arithmetic.
+
+## 4. Finish
+
+`next()` on the last step finishes the flow and calls `onFinish`, once. From
+then on `stepper.isFinished` is `true`.
 
 ```tsx
-const stepper = onboarding.useStepper({
-  onFinish: (data) => saveOnboarding(data),
+const stepper = checkout.useStepper({
+  onFinish: () => alert("Order placed"),
 });
+
+if (stepper.isFinished) return <p>Thanks for your order.</p>;
 ```
+
+## The whole thing
+
+```tsx title="checkout.tsx"
+"use client";
+
+import { defineStepper } from "@stepperize/react";
+
+export const checkout = defineStepper([
+  { id: "shipping", title: "Shipping" },
+  { id: "payment", title: "Payment" },
+  { id: "review", title: "Review" },
+]);
+
+export function Checkout() {
+  const stepper = checkout.useStepper({
+    onFinish: () => alert("Order placed"),
+  });
+
+  return (
+    <section>
+      <p>
+        Step {stepper.index + 1} of {stepper.steps.length}
+      </p>
+      <h2>{stepper.current.title}</h2>
+
+      {stepper.match({
+        shipping: () => <p>Where should we send it?</p>,
+        payment: () => <p>How would you like to pay?</p>,
+        review: () => <p>Check everything before placing the order.</p>,
+      })}
+
+      <button type="button" disabled={stepper.isFirst} onClick={() => stepper.prev()}>
+        Back
+      </button>
+      <button type="button" onClick={() => stepper.next()}>
+        {stepper.isLast ? "Place order" : "Continue"}
+      </button>
+    </section>
+  );
+}
+```
+
+`"use client"` is only needed in frameworks with Server Components, such as
+Next.js.
+
+## What you did not write
+
+- No index state, and no clamping at the edges.
+- No `switch` over strings: a typo in a step id does not compile.
+- No "is this the last step?" logic.
 
 ## Where to go next
 
-- Add a schema to a step and let `next()` validate it:
-  [Validation](/docs/v9/react/guides/validation).
+- Understand the pieces: [Steps and ids](/docs/v9/react/concepts/steps) and
+  [the flow and the stepper](/docs/v9/react/concepts/stepper).
+- Collect data and validate it: [Schemas and validation](/docs/v9/react/guides/validation).
 - Skip steps depending on the answers: [Branching](/docs/v9/react/guides/branching).
 - Read the flow from several components: [Shared state](/docs/v9/react/guides/shared-state).
-- Use the ready-made accessible components: [Primitives](/docs/v9/react/guides/primitives).
+- Use ready-made accessible components: [Primitives](/docs/v9/react/guides/primitives).
