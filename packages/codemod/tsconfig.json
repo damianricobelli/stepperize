@@ -1,0 +1,17 @@
+{
+	"compilerOptions": {
+		"outDir": "dist",
+		"declaration": true,
+		"module": "esnext",
+		"target": "esnext",
+		"moduleResolution": "bundler",
+		"esModuleInterop": true,
+		"skipLibCheck": true,
+		"strict": true,
+		"noUnusedLocals": true,
+		"noUnusedParameters": true,
+		"types": ["node"]
+	},
+	"include": ["src"],
+	"exclude": ["node_modules", "dist", "src/tests", "**/*.test.ts"]
+}

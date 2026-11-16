@@ -1,0 +1,58 @@
+{
+	"name": "@stepperize/codemod",
+	"version": "0.0.0",
+	"private": false,
+	"publishConfig": {
+		"access": "public"
+	},
+	"description": "Codemods that migrate code between major versions of stepperize",
+	"author": "damianricobelli",
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/damianricobelli/stepperize.git",
+		"directory": "packages/codemod"
+	},
+	"homepage": "https://stepperize.com",
+	"files": [
+		"dist"
+	],
+	"type": "module",
+	"bin": {
+		"stepperize-codemod": "./dist/cli.js"
+	},
+	"main": "./dist/index.js",
+	"module": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js",
+			"default": "./dist/index.js"
+		}
+	},
+	"engines": {
+		"node": ">=18"
+	},
+	"scripts": {
+		"build": "tsup",
+		"dev": "tsup --watch",
+		"lint": "biome lint src",
+		"prepublishOnly": "pnpm run build",
+		"clean": "rm -rf .turbo && rm -rf node_modules dist",
+		"test": "tsup && vitest run",
+		"typecheck": "tsc --noEmit && tsc -p tsconfig.test.json"
+	},
+	"dependencies": {
+		"@babel/parser": "^8.1.2",
+		"recast": "^0.24.3"
+	},
+	"devDependencies": {
+		"@types/node": "^26.6.6",
+		"@typescript/native": "catalog:",
+		"tsup": "catalog:",
+		"typescript": "catalog:legacy-tooling",
+		"vite": "catalog:",
+		"vitest": "catalog:"
+	}
+}
