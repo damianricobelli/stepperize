@@ -17,23 +17,21 @@ export function BreadcrumbBlock() {
 			linear
 			className="w-full max-w-md rounded-xl border bg-background p-6 shadow-sm"
 		>
-			{({ stepper }) => (
+			{(stepper) => (
 				<>
 					<Stepper.List className="flex flex-wrap items-center gap-0.5 text-sm">
-						<Stepper.Items>
-							{(step, index) => (
-								<Fragment key={step.id}>
-									{index > 0 && (
-										<ChevronRight className="size-4 shrink-0 text-muted-foreground/50" />
-									)}
-									<Stepper.Item step={step.id}>
-										<Stepper.Trigger className="rounded-md px-2 py-1 font-medium text-muted-foreground transition-colors enabled:hover:bg-muted enabled:hover:text-foreground disabled:opacity-100 data-[status=active]:text-primary data-[status=previous]:text-foreground">
-											<Stepper.Title />
-										</Stepper.Trigger>
-									</Stepper.Item>
-								</Fragment>
-							)}
-						</Stepper.Items>
+						{(step, index) => (
+							<Fragment key={step.id}>
+								{index > 0 && (
+									<ChevronRight className="size-4 shrink-0 text-muted-foreground/50" />
+								)}
+								<Stepper.Item step={step.id}>
+									<Stepper.Trigger className="rounded-md px-2 py-1 font-medium text-muted-foreground transition-colors enabled:hover:bg-muted enabled:hover:text-foreground disabled:opacity-100 data-[state=current]:text-primary data-[state=complete]:text-foreground">
+										<Stepper.Title />
+									</Stepper.Trigger>
+								</Stepper.Item>
+							</Fragment>
+						)}
 					</Stepper.List>
 
 					<div className="mt-6 grid min-h-24 place-items-center rounded-lg border bg-muted/30 p-4 text-center text-sm text-muted-foreground">
@@ -51,7 +49,7 @@ export function BreadcrumbBlock() {
 						)}
 					</div>
 
-					<Stepper.Actions className="mt-6 flex justify-between">
+					<div className="mt-6 flex justify-between">
 						<Stepper.Prev className="inline-flex h-9 items-center rounded-lg border bg-background px-4 text-sm font-medium transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-50">
 							Back
 						</Stepper.Prev>
@@ -79,7 +77,7 @@ export function BreadcrumbBlock() {
 								Continue
 							</Stepper.Next>
 						)}
-					</Stepper.Actions>
+					</div>
 				</>
 			)}
 		</Stepper.Root>

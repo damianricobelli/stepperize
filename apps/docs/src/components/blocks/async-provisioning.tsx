@@ -24,7 +24,7 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
  * Async transition with retry: leaving "deploy" runs an async
- * `beforeStepChange` that simulates provisioning. The first attempt fails, the
+ * `guard` that simulates provisioning. The first attempt fails, the
  * guard returns `false`, and the user stays on the deploy step. `isPending`
  * drives the loading state while the async guard is running.
  */
@@ -36,7 +36,7 @@ export function AsyncProvisioningBlock() {
 		<Stepper.Root
 			linear
 			className="w-full max-w-sm rounded-xl border bg-background p-6 shadow-sm"
-			beforeStepChange={async ({ from, direction }) => {
+			guard={async ({ from, direction }) => {
 				if (from.id !== "deploy" || direction !== "next") return true;
 				setError(null);
 				await sleep(1600); // ← the transition is async; isPending is true here
@@ -48,7 +48,7 @@ export function AsyncProvisioningBlock() {
 				return true;
 			}}
 		>
-			{({ stepper }) => (
+			{(stepper) => (
 				<>
 					<div className="mb-4 flex items-center gap-2.5">
 						<span className="grid size-8 place-items-center rounded-lg bg-primary/10 text-primary">

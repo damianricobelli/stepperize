@@ -1,13 +1,13 @@
 import { defineStepper } from "@stepperize/react";
 import { Check, CreditCard, MapPin, Pencil } from "lucide-react";
-import { useId, useState } from "react";
+import { useId } from "react";
 import { z } from "zod";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-// Per-step schemas. `validate()` runs the stored data through these, and the
-// `beforeStepChange` guard turns a failed result into blocked navigation.
+// Per-step schemas. `next()` runs the step's data through its schema and only
+// moves on when it passes.
 const shippingSchema = z.object({
 	name: z.string().min(1, "Name is required"),
 	address: z.string().min(1, "Address is required"),
@@ -26,21 +26,26 @@ const checkout = defineStepper(
 		{ id: "review", title: "Review" },
 		{ id: "done", title: "Done" },
 	] as const,
-	// Seed empty drafts so validate() reports per-field issues from the start
+	// Seed empty drafts so validation reports per-field issues from the start
 	// (an undefined value would fail at the object root instead of each field).
 	{
-		defaultData: {
-			shipping: { name: "", address: "", zip: "" },
-			payment: { card: "", cvc: "" },
+		snapshot: {
+			data: {
+				shipping: { name: "", address: "", zip: "" },
+				payment: { card: "", cvc: "" },
+			},
 		},
 	},
 );
 
 type Errors = Record<string, string>;
 
-/** Read the first issue per field from a failed `validate()` result. */
+/** Read the first issue per field from `stepper.issues()`. */
 function toErrors(
-	issues: ReadonlyArray<{ message: string; path?: ReadonlyArray<unknown> }>,
+	issues: ReadonlyArray<{
+		message: string;
+		path?: ReadonlyArray<unknown>;
+	}> = [],
 ): Errors {
 	const out: Errors = {};
 	for (const issue of issues) {
@@ -55,35 +60,19 @@ function toErrors(
 }
 
 /**
- * Validation + guard rejection: each step carries a Zod schema. Pressing
- * Continue runs `ctx.validate()` inside `beforeStepChange`; if it fails, the
- * guard returns `false`, the move is cancelled, and the issues are shown inline.
- * The review step reads every step's data back with `data.all()`.
+ * Validation: each step carries a Zod schema. Pressing Continue calls
+ * `next()`, which validates the step's data; if it fails the flow stays put and
+ * `stepper.issues()` returns what to show inline, until the data changes.
+ * The review step reads every step's data back from `stepper.data`.
  */
 export function ValidatedCheckoutBlock() {
-	const [errors, setErrors] = useState<Errors>({});
-
 	return (
 		<checkout.Stepper.Root
 			linear
 			className="w-full max-w-md rounded-xl border bg-background p-6 shadow-sm"
-			beforeStepChange={async ({ direction, validate }) => {
-				// Only gate forward moves (next()); Back/Edit should never be blocked.
-				if (direction !== "next") {
-					setErrors({});
-					return true;
-				}
-				// Validate the step we're leaving against the transition data snapshot.
-				const result = await validate();
-				if (!result.success) {
-					setErrors(toErrors(result.issues));
-					return false; // cancel the transition
-				}
-				setErrors({});
-				return true;
-			}}
 		>
-			{({ stepper }) => {
+			{(stepper) => {
+				const errors = toErrors(stepper.issues());
 				return (
 					<>
 						<Stepperline stepper={stepper} />
@@ -95,8 +84,8 @@ export function ValidatedCheckoutBlock() {
 							<DoneStep />
 						</div>
 
-						{!stepper.is("done") && (
-							<checkout.Stepper.Actions className="mt-6 flex justify-between">
+						{stepper.current.id !== "done" && (
+							<div className="mt-6 flex justify-between">
 								<checkout.Stepper.Prev
 									className={buttonVariants({ variant: "outline" })}
 								>
@@ -104,12 +93,12 @@ export function ValidatedCheckoutBlock() {
 								</checkout.Stepper.Prev>
 								<Button
 									type="button"
-									disabled={!stepper.canNext}
-									onClick={() => stepper.next({ complete: true })}
+									disabled={stepper.isLast || stepper.isPending}
+									onClick={() => stepper.next()}
 								>
-									{stepper.is("review") ? "Place order" : "Continue"}
+									{stepper.current.id === "review" ? "Place order" : "Continue"}
 								</Button>
-							</checkout.Stepper.Actions>
+							</div>
 						)}
 					</>
 				);
@@ -123,25 +112,23 @@ type Stepper = ReturnType<typeof checkout.useStepper>;
 function Stepperline({ stepper }: { stepper: Stepper }) {
 	return (
 		<checkout.Stepper.List className="flex items-center gap-2">
-			<checkout.Stepper.Items>
-				{(step, index) => (
-					<checkout.Stepper.Item
-						key={step.id}
-						step={step.id}
-						className="flex flex-1 items-center gap-2 last:flex-none"
-					>
-						<checkout.Stepper.Indicator className="group grid size-7 shrink-0 place-items-center rounded-full border text-xs font-semibold transition-colors data-[status=active]:border-primary data-[status=active]:bg-primary data-[status=active]:text-primary-foreground data-[status=previous]:border-primary data-[status=previous]:bg-primary/10 data-[status=previous]:text-primary data-[status=upcoming]:border-border data-[status=upcoming]:text-muted-foreground">
-							<Check className="hidden size-3.5 group-data-[status=previous]:block" />
-							<span className="group-data-[status=previous]:hidden">
-								{index + 1}
-							</span>
-						</checkout.Stepper.Indicator>
-						{index < stepper.count - 1 && (
-							<span className="h-px flex-1 bg-border" />
-						)}
-					</checkout.Stepper.Item>
-				)}
-			</checkout.Stepper.Items>
+			{(step, index) => (
+				<checkout.Stepper.Item
+					key={step.id}
+					step={step.id}
+					className="flex flex-1 items-center gap-2 last:flex-none"
+				>
+					<checkout.Stepper.Indicator className="group grid size-7 shrink-0 place-items-center rounded-full border text-xs font-semibold transition-colors data-[state=current]:border-primary data-[state=current]:bg-primary data-[state=current]:text-primary-foreground data-[state=complete]:border-primary data-[state=complete]:bg-primary/10 data-[state=complete]:text-primary data-[state=pending]:border-border data-[state=pending]:text-muted-foreground">
+						<Check className="hidden size-3.5 group-data-[state=complete]:block" />
+						<span className="group-data-[state=complete]:hidden">
+							{index + 1}
+						</span>
+					</checkout.Stepper.Indicator>
+					{index < stepper.steps.length - 1 && (
+						<span className="h-px flex-1 bg-border" />
+					)}
+				</checkout.Stepper.Item>
+			)}
 		</checkout.Stepper.List>
 	);
 }
@@ -193,17 +180,13 @@ function ShippingStep({
 	stepper: Stepper;
 	errors: Errors;
 }) {
-	const value = stepper.data.get("shipping") ?? {
+	const value = stepper.data.shipping ?? {
 		name: "",
 		address: "",
 		zip: "",
 	};
 	const set = (patch: Partial<typeof value>) =>
-		stepper.data.update("shipping", (previous) => ({
-			...value,
-			...previous,
-			...patch,
-		}));
+		stepper.setData("shipping", { ...value, ...patch });
 
 	return (
 		<checkout.Stepper.Content step="shipping" className="space-y-3">
@@ -242,13 +225,9 @@ function PaymentStep({
 	stepper: Stepper;
 	errors: Errors;
 }) {
-	const value = stepper.data.get("payment") ?? { card: "", cvc: "" };
+	const value = stepper.data.payment ?? { card: "", cvc: "" };
 	const set = (patch: Partial<typeof value>) =>
-		stepper.data.update("payment", (previous) => ({
-			...value,
-			...previous,
-			...patch,
-		}));
+		stepper.setData("payment", { ...value, ...patch });
 
 	return (
 		<checkout.Stepper.Content step="payment" className="space-y-3">
@@ -270,14 +249,14 @@ function PaymentStep({
 				placeholder="123"
 			/>
 			<p className="text-xs text-muted-foreground">
-				Try “1234” to see the guard block the step.
+				Try “1234” to see validation block the step.
 			</p>
 		</checkout.Stepper.Content>
 	);
 }
 
 function ReviewStep({ stepper }: { stepper: Stepper }) {
-	const all = stepper.data.all();
+	const all = stepper.data;
 	return (
 		<checkout.Stepper.Content step="review" className="space-y-3">
 			<p className="text-sm font-semibold">Review your order</p>

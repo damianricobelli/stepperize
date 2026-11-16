@@ -52,10 +52,11 @@ export function OrderTrackingBlock() {
 
 	return (
 		<Stepper.Root
-			defaultStep="transit"
+			// A snapshot says where the flow is and which steps are already done.
+			snapshot={{ step: "transit", complete: ["placed", "packed"] }}
 			className="w-full max-w-lg rounded-xl border bg-background p-6 shadow-sm"
 		>
-			{({ stepper }) => (
+			{(stepper) => (
 				<>
 					<div className="mb-6 flex items-center justify-between">
 						<div>
@@ -70,34 +71,32 @@ export function OrderTrackingBlock() {
 					</div>
 
 					<Stepper.List className="flex items-start">
-						<Stepper.Items>
-							{(step, index) => {
-								const Icon = icons[step.id];
-								return (
-									<div
-										key={step.id}
-										className="flex flex-1 items-start last:flex-none"
+						{(step, index) => {
+							const Icon = icons[step.id];
+							return (
+								<div
+									key={step.id}
+									className="flex flex-1 items-start last:flex-none"
+								>
+									<Stepper.Item
+										step={step.id}
+										className="flex flex-col items-center gap-2"
 									>
-										<Stepper.Item
-											step={step.id}
-											className="flex flex-col items-center gap-2"
-										>
-											<Stepper.Indicator className="group grid size-10 place-items-center rounded-full border-2 transition-colors data-[status=active]:border-primary data-[status=active]:bg-primary data-[status=active]:text-primary-foreground data-[status=previous]:border-primary data-[status=previous]:bg-primary data-[status=previous]:text-primary-foreground data-[status=upcoming]:border-border data-[status=upcoming]:bg-background data-[status=upcoming]:text-muted-foreground">
-												<Check className="hidden size-5 group-data-[status=previous]:block" />
-												<Icon className="size-5 group-data-[status=previous]:hidden" />
-											</Stepper.Indicator>
-											<Stepper.Title className="w-20 text-center text-xs font-medium" />
-										</Stepper.Item>
-										{index < stepper.count - 1 && (
-											<div
-												className="mx-1 mt-5 h-0.5 flex-1 rounded bg-border data-[done=true]:bg-primary"
-												data-done={index < stepper.index}
-											/>
-										)}
-									</div>
-								);
-							}}
-						</Stepper.Items>
+										<Stepper.Indicator className="group grid size-10 place-items-center rounded-full border-2 transition-colors data-[state=current]:border-primary data-[state=current]:bg-primary data-[state=current]:text-primary-foreground data-[state=complete]:border-primary data-[state=complete]:bg-primary data-[state=complete]:text-primary-foreground data-[state=pending]:border-border data-[state=pending]:bg-background data-[state=pending]:text-muted-foreground">
+											<Check className="hidden size-5 group-data-[state=complete]:block" />
+											<Icon className="size-5 group-data-[state=complete]:hidden" />
+										</Stepper.Indicator>
+										<Stepper.Title className="w-20 text-center text-xs font-medium" />
+									</Stepper.Item>
+									{index < stepper.steps.length - 1 && (
+										<div
+											className="mx-1 mt-5 h-0.5 flex-1 rounded bg-border data-[done=true]:bg-primary"
+											data-done={index < stepper.index}
+										/>
+									)}
+								</div>
+							);
+						}}
 					</Stepper.List>
 
 					{/* Detail panel driven by the current step's typed metadata. */}
@@ -117,11 +116,11 @@ export function OrderTrackingBlock() {
 						</span>
 					</div>
 
-					<Stepper.Actions className="mt-6 flex justify-center gap-2">
+					<div className="mt-6 flex justify-center gap-2">
 						<button
 							type="button"
 							onClick={() => stepper.prev()}
-							disabled={!stepper.canPrev}
+							disabled={stepper.isFirst || stepper.isPending}
 							className="inline-flex h-8 items-center rounded-lg border bg-background px-3 text-sm font-medium transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-50"
 						>
 							Rewind
@@ -154,7 +153,7 @@ export function OrderTrackingBlock() {
 								Advance status
 							</button>
 						)}
-					</Stepper.Actions>
+					</div>
 				</>
 			)}
 		</Stepper.Root>

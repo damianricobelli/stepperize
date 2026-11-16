@@ -31,7 +31,7 @@ export function ProductTourBlock() {
 
 	return (
 		<Stepper.Root className="w-full max-w-sm overflow-hidden rounded-2xl border bg-background shadow-sm">
-			{({ stepper }) => {
+			{(stepper) => {
 				const { icon: Icon, tint } = art[stepper.current.id];
 				return (
 					<>
@@ -55,18 +55,16 @@ export function ProductTourBlock() {
 
 							<div className="mt-6 flex items-center justify-between">
 								<Stepper.List className="flex gap-1.5">
-									<Stepper.Items>
-										{(step) => (
-											<Stepper.Item key={step.id} step={step.id}>
-												<Stepper.Trigger aria-label={step.title}>
-													<Stepper.Indicator className="block h-1.5 rounded-full transition-all data-[status=active]:w-6 data-[status=active]:bg-primary data-[status=previous]:w-1.5 data-[status=previous]:bg-primary data-[status=upcoming]:w-1.5 data-[status=upcoming]:bg-border" />
-												</Stepper.Trigger>
-											</Stepper.Item>
-										)}
-									</Stepper.Items>
+									{(step) => (
+										<Stepper.Item key={step.id} step={step.id}>
+											<Stepper.Trigger aria-label={step.title}>
+												<Stepper.Indicator className="block h-1.5 rounded-full transition-all data-[state=current]:w-6 data-[state=current]:bg-primary data-[state=complete]:w-1.5 data-[state=complete]:bg-primary data-[state=pending]:w-1.5 data-[state=pending]:bg-border" />
+											</Stepper.Trigger>
+										</Stepper.Item>
+									)}
 								</Stepper.List>
 
-								<Stepper.Actions className="flex gap-2">
+								<div className="flex gap-2">
 									{!stepper.isLast && (
 										<button
 											type="button"
@@ -100,7 +98,7 @@ export function ProductTourBlock() {
 											Next
 										</Stepper.Next>
 									)}
-								</Stepper.Actions>
+								</div>
 							</div>
 						</div>
 					</>

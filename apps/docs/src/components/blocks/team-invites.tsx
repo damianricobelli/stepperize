@@ -47,7 +47,7 @@ export function TeamInvitesBlock() {
 
 function useInvites() {
 	const stepper = team.useStepperContext();
-	const invites = (stepper.data.get("invite") as Invite[] | undefined) ?? [];
+	const invites = (stepper.data.invite as Invite[] | undefined) ?? [];
 	return { stepper, invites };
 }
 
@@ -75,11 +75,11 @@ function InviteStep() {
 
 	const add = () => {
 		if (!email.includes("@")) return;
-		stepper.data.set("invite", [...invites, { email, role }]);
+		stepper.setData("invite", [...invites, { email, role }]);
 		setEmail("");
 	};
 	const remove = (index: number) =>
-		stepper.data.set(
+		stepper.setData(
 			"invite",
 			invites.filter((_, i) => i !== index),
 		);

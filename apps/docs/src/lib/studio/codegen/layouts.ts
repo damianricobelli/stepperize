@@ -8,7 +8,7 @@ import { cls, indent, type Names, source, USE_CLIENT } from "./shared";
  */
 
 const INDICATOR =
-	"grid size-8 shrink-0 place-items-center rounded-full border bg-background text-sm font-medium text-muted-foreground transition-colors data-[status=active]:border-primary data-[status=active]:bg-primary data-[status=active]:text-primary-foreground data-[status=previous]:border-primary/40 data-[status=previous]:bg-primary/10 data-[status=previous]:text-primary";
+	"grid size-8 shrink-0 place-items-center rounded-full border bg-background text-sm font-medium text-muted-foreground transition-colors data-[state=current]:border-primary data-[state=current]:bg-primary data-[state=current]:text-primary-foreground data-[state=complete]:border-primary/40 data-[state=complete]:bg-primary/10 data-[state=complete]:text-primary";
 
 function indicatorBody(config: StudioConfig): string {
 	const { indicator } = config;
@@ -16,8 +16,8 @@ function indicatorBody(config: StudioConfig): string {
 		return `<span${cls("size-2 rounded-full bg-current")} />`;
 	if (indicator === "check") {
 		return [
-			`<span${cls("group-data-[status=previous]/indicator:hidden")}>{index + 1}</span>`,
-			`<Check aria-hidden${cls("hidden size-4 group-data-[status=previous]/indicator:block")} />`,
+			`<span${cls("group-data-[state=complete]/indicator:hidden")}>{index + 1}</span>`,
+			`<Check aria-hidden${cls("hidden size-4 group-data-[state=complete]/indicator:block")} />`,
 		].join("\n");
 	}
 	return "{index + 1}";
@@ -31,8 +31,8 @@ function stepList(config: StudioConfig, vertical: boolean): string {
 		? "group/item relative pb-6 pl-11 last:pb-0"
 		: "group/item flex flex-1 items-center gap-3 last:flex-none";
 	const connector = vertical
-		? `<span aria-hidden${cls("absolute top-9 bottom-1 left-4 w-px bg-border group-last/item:hidden group-data-[status=previous]/item:bg-primary")} />`
-		: `<span aria-hidden${cls("h-px min-w-6 flex-1 bg-border group-last/item:hidden group-data-[status=previous]/item:bg-primary")} />`;
+		? `<span aria-hidden${cls("absolute top-9 bottom-1 left-4 w-px bg-border group-last/item:hidden group-data-[state=complete]/item:bg-primary")} />`
+		: `<span aria-hidden${cls("h-px min-w-6 flex-1 bg-border group-last/item:hidden group-data-[state=complete]/item:bg-primary")} />`;
 	const trigger = vertical
 		? "flex items-start gap-3 text-left"
 		: "flex items-center gap-2 rounded-md text-left";
@@ -41,29 +41,27 @@ function stepList(config: StudioConfig, vertical: boolean): string {
 		: indicatorClass(config);
 	const title = vertical
 		? "block text-sm font-medium"
-		: "text-sm font-medium max-sm:not-group-data-[status=active]/item:hidden";
+		: "text-sm font-medium max-sm:not-group-data-[state=current]/item:hidden";
 	return source([
 		`<Stepper.List${vertical ? ' orientation="vertical"' : ""}${cls(vertical ? "flex flex-col sm:w-52" : "flex items-center gap-3")}>`,
-		"\t<Stepper.Items>",
-		config.indicator === "dot" ? "\t\t{(step) => (" : "\t\t{(step, index) => (",
-		`\t\t\t<Stepper.Item key={step.id}${cls(item)}>`,
-		`\t\t\t\t<Stepper.Trigger${cls(trigger)}>`,
-		`\t\t\t\t\t<Stepper.Indicator${cls(indicator)}>`,
-		indent(indicatorBody(config), 6),
-		"\t\t\t\t\t</Stepper.Indicator>",
+		config.indicator === "dot" ? "\t{() => (" : "\t{(_step, index) => (",
+		`\t\t<Stepper.Item${cls(item)}>`,
+		`\t\t\t<Stepper.Trigger${cls(trigger)}>`,
+		`\t\t\t\t<Stepper.Indicator${cls(indicator)}>`,
+		indent(indicatorBody(config), 5),
+		"\t\t\t\t</Stepper.Indicator>",
 		vertical
 			? [
-					`\t\t\t\t\t<span${cls("pt-1.5")}>`,
-					`\t\t\t\t\t\t<Stepper.Title${cls(title)} />`,
-					`\t\t\t\t\t\t<Stepper.Description${cls("mt-0.5 block text-xs text-muted-foreground")} />`,
-					"\t\t\t\t\t</span>",
+					`\t\t\t\t<span${cls("pt-1.5")}>`,
+					`\t\t\t\t\t<Stepper.Title${cls(title)} />`,
+					`\t\t\t\t\t<Stepper.Description${cls("mt-0.5 block text-xs text-muted-foreground")} />`,
+					"\t\t\t\t</span>",
 				].join("\n")
-			: `\t\t\t\t\t<Stepper.Title${cls(title)} />`,
-		"\t\t\t\t</Stepper.Trigger>",
-		indent(connector, 4),
-		"\t\t\t</Stepper.Item>",
-		"\t\t)}",
-		"\t</Stepper.Items>",
+			: `\t\t\t\t<Stepper.Title${cls(title)} />`,
+		"\t\t\t</Stepper.Trigger>",
+		indent(connector, 3),
+		"\t\t</Stepper.Item>",
+		"\t)}",
 		"</Stepper.List>",
 	]).trimEnd();
 }
@@ -71,15 +69,13 @@ function stepList(config: StudioConfig, vertical: boolean): string {
 function segmented(): string {
 	return [
 		`<Stepper.List${cls("flex gap-1 overflow-x-auto rounded-xl bg-muted p-1")}>`,
-		"\t<Stepper.Items>",
-		"\t\t{(step) => (",
-		`\t\t\t<Stepper.Item key={step.id}${cls("flex-1")}>`,
-		`\t\t\t\t<Stepper.Trigger${cls("h-9 w-full rounded-lg px-3 text-sm font-medium whitespace-nowrap text-muted-foreground transition-colors data-[status=active]:bg-background data-[status=active]:text-foreground data-[status=active]:shadow-sm data-[status=previous]:text-primary")}>`,
-		"\t\t\t\t\t<Stepper.Title />",
-		"\t\t\t\t</Stepper.Trigger>",
-		"\t\t\t</Stepper.Item>",
-		"\t\t)}",
-		"\t</Stepper.Items>",
+		"\t{() => (",
+		`\t\t<Stepper.Item${cls("flex-1")}>`,
+		`\t\t\t<Stepper.Trigger${cls("h-9 w-full rounded-lg px-3 text-sm font-medium whitespace-nowrap text-muted-foreground transition-colors data-[state=current]:bg-background data-[state=current]:text-foreground data-[state=current]:shadow-sm data-[state=complete]:text-primary")}>`,
+		"\t\t\t\t<Stepper.Title />",
+		"\t\t\t</Stepper.Trigger>",
+		"\t\t</Stepper.Item>",
+		"\t)}",
 		"</Stepper.List>",
 	].join("\n");
 }
@@ -87,16 +83,14 @@ function segmented(): string {
 function breadcrumb(): string {
 	return [
 		`<Stepper.List${cls("flex flex-wrap items-center gap-1 text-sm")}>`,
-		"\t<Stepper.Items>",
-		"\t\t{(step, index) => (",
-		`\t\t\t<Stepper.Item key={step.id}${cls("flex items-center gap-1")}>`,
-		`\t\t\t\t{index > 0 ? <ChevronRight aria-hidden${cls("size-4 text-muted-foreground/60")} /> : null}`,
-		`\t\t\t\t<Stepper.Trigger${cls("rounded-md px-2 py-1 font-medium text-muted-foreground transition-colors data-[status=active]:bg-muted data-[status=active]:text-foreground data-[status=previous]:text-primary")}>`,
-		"\t\t\t\t\t<Stepper.Title />",
-		"\t\t\t\t</Stepper.Trigger>",
-		"\t\t\t</Stepper.Item>",
-		"\t\t)}",
-		"\t</Stepper.Items>",
+		"\t{(_step, index) => (",
+		`\t\t<Stepper.Item${cls("flex items-center gap-1")}>`,
+		`\t\t\t{index > 0 ? <ChevronRight aria-hidden${cls("size-4 text-muted-foreground/60")} /> : null}`,
+		`\t\t\t<Stepper.Trigger${cls("rounded-md px-2 py-1 font-medium text-muted-foreground transition-colors data-[state=current]:bg-muted data-[state=current]:text-foreground data-[state=complete]:text-primary")}>`,
+		"\t\t\t\t<Stepper.Title />",
+		"\t\t\t</Stepper.Trigger>",
+		"\t\t</Stepper.Item>",
+		"\t)}",
 		"</Stepper.List>",
 	].join("\n");
 }
@@ -107,7 +101,7 @@ function progress(names: Names): string {
 		`<div${cls("grid gap-2")}>`,
 		`\t<div${cls("flex items-baseline justify-between gap-4 text-sm")}>`,
 		`\t\t<span${cls("font-medium tabular-nums")}>Step {index + 1} of {${names.flow}.steps.length}</span>`,
-		`\t\t<span${cls("text-muted-foreground")}>{${names.flow}.at(index)?.title}</span>`,
+		`\t\t<span${cls("text-muted-foreground")}>{${names.flow}.steps[index].title}</span>`,
 		"\t</div>",
 		indent(bar, 1),
 		"</div>",
@@ -119,7 +113,7 @@ function circular(names: Names): string {
 		`<div${cls("flex items-center gap-4")}>`,
 		`\t<ProgressRing value={(index + 1) / ${names.flow}.steps.length} label={\`\${index + 1}/\${${names.flow}.steps.length}\`} />`,
 		"\t<div>",
-		`\t\t<p${cls("font-semibold")}>{${names.flow}.at(index)?.title}</p>`,
+		`\t\t<p${cls("font-semibold")}>{${names.flow}.steps[index].title}</p>`,
 		`\t\t<p${cls("text-sm text-muted-foreground")}>`,
 		`\t\t\t{next ? \`Next: \${next.title}\` : "Last step"}`,
 		"\t\t</p>",
@@ -158,7 +152,7 @@ export function generateNav(config: StudioConfig, names: Names): string {
 			`\tconst progress = ${names.flow}.useStepperContext((stepper) => stepper.progress);`,
 		);
 	if (layout === "circular")
-		body.push(`\tconst next = ${names.flow}.at(index + 1);`);
+		body.push(`\tconst next = ${names.flow}.steps.at(index + 1);`);
 	if (body.length) body.push("");
 
 	const markup =

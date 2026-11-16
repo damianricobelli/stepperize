@@ -38,7 +38,7 @@ export function DashboardWizardBlock() {
 			linear
 			// Per-step validation guard: block forward navigation until the active
 			// step's required field is filled.
-			beforeStepChange={async ({ from, direction }) => {
+			guard={async ({ from, direction }) => {
 				if (direction !== "next") {
 					setError(null);
 					return true;
@@ -54,30 +54,28 @@ export function DashboardWizardBlock() {
 			}}
 			className="w-full max-w-2xl rounded-xl border bg-background shadow-sm"
 		>
-			{({ stepper }) => (
+			{(stepper) => (
 				<div className="flex flex-col sm:flex-row">
 					{/* Sticky step nav */}
 					<Stepper.List className="flex shrink-0 flex-col gap-1 border-b p-3 sm:w-52 sm:border-r sm:border-b-0">
-						<Stepper.Items>
-							{(step, index) => (
-								<Stepper.Item key={step.id} step={step.id}>
-									<Stepper.Trigger className="group flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-muted data-[status=active]:bg-muted disabled:cursor-not-allowed disabled:opacity-50">
-										<Stepper.Indicator className="grid size-6 shrink-0 place-items-center rounded-full border text-xs font-semibold transition-colors group-data-[status=active]:border-primary group-data-[status=active]:text-primary group-data-[status=previous]:border-primary group-data-[status=previous]:bg-primary group-data-[status=previous]:text-primary-foreground">
-											<span className="group-data-[status=previous]:hidden">
-												{index + 1}
-											</span>
-											<Check className="hidden size-3 group-data-[status=previous]:block" />
-										</Stepper.Indicator>
-										<span className="min-w-0">
-											<Stepper.Title className="block truncate font-medium leading-none" />
-											<span className="mt-0.5 block truncate text-xs text-muted-foreground">
-												{step.hint}
-											</span>
+						{(step, index) => (
+							<Stepper.Item key={step.id} step={step.id}>
+								<Stepper.Trigger className="group flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-muted data-[state=current]:bg-muted disabled:cursor-not-allowed disabled:opacity-50">
+									<Stepper.Indicator className="grid size-6 shrink-0 place-items-center rounded-full border text-xs font-semibold transition-colors group-data-[state=current]:border-primary group-data-[state=current]:text-primary group-data-[state=complete]:border-primary group-data-[state=complete]:bg-primary group-data-[state=complete]:text-primary-foreground">
+										<span className="group-data-[state=complete]:hidden">
+											{index + 1}
 										</span>
-									</Stepper.Trigger>
-								</Stepper.Item>
-							)}
-						</Stepper.Items>
+										<Check className="hidden size-3 group-data-[state=complete]:block" />
+									</Stepper.Indicator>
+									<span className="min-w-0">
+										<Stepper.Title className="block truncate font-medium leading-none" />
+										<span className="mt-0.5 block truncate text-xs text-muted-foreground">
+											{step.hint}
+										</span>
+									</span>
+								</Stepper.Trigger>
+							</Stepper.Item>
+						)}
 					</Stepper.List>
 
 					{/* Content */}
@@ -139,7 +137,7 @@ export function DashboardWizardBlock() {
 							</Alert>
 						)}
 
-						<Stepper.Actions className="mt-6 flex gap-2">
+						<div className="mt-6 flex gap-2">
 							<Stepper.Prev className={buttonVariants({ variant: "outline" })}>
 								Back
 							</Stepper.Prev>
@@ -173,7 +171,7 @@ export function DashboardWizardBlock() {
 									Continue
 								</Stepper.Next>
 							)}
-						</Stepper.Actions>
+						</div>
 					</div>
 				</div>
 			)}

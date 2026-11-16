@@ -25,9 +25,10 @@ const checkout = defineStepper([
 
 type StepId = (typeof checkout.steps)[number]["id"];
 type Result =
-	| { accepted: true; from: StepId; to: StepId }
+	| { accepted: true; to: StepId | null }
 	| { accepted: false; reason: string };
-type LastCall = { method: "next" | "prev" | "reset"; result: Result };
+/** `from` is where the call started: the result itself only says where it led. */
+type LastCall = { method: "next" | "prev"; from: StepId; result: Result };
 
 const SHIPPING = {
 	standard: { label: "Standard", detail: "3–5 business days", price: 0 },
@@ -50,7 +51,7 @@ const SOURCE = `const checkout = defineStepper([
 
 function Checkout() {
   const stepper = checkout.useStepper({
-    async beforeStepChange({ from, direction }) {
+    async guard({ from, direction }) {
       if (direction === "prev") return true;
       if (from.id === "account") return isEmail(email);
       if (from.id === "review") await placeOrder();
@@ -135,33 +136,41 @@ export function HeroPlayground() {
 	const emailRef = useRef(email);
 	emailRef.current = email;
 	const emailInputRef = useRef<HTMLInputElement>(null);
+	const lastIndex = useRef(0);
 
 	return (
 		<Stepper.Root
 			linear
-			beforeStepChange={async ({ from, direction: move, signal }) => {
+			guard={async ({ from, direction: move, signal }) => {
 				if (move === "prev") return true;
 				if (from.id === "account") return EMAIL_RE.test(emailRef.current);
 				if (from.id === "review") await placeOrder(signal);
 			}}
-			onStepChange={(_step, context) =>
-				setDirection(context.toIndex >= context.fromIndex ? 1 : -1)
-			}
+			onChange={(snapshot) => {
+				const index = checkout.steps.findIndex(
+					(step) => step.id === snapshot.step,
+				);
+				if (index !== lastIndex.current) {
+					setDirection(index > lastIndex.current ? 1 : -1);
+					lastIndex.current = index;
+				}
+			}}
 			className="relative overflow-hidden rounded-2xl border bg-card shadow-2xl ring-1 ring-black/[0.02] dark:ring-white/[0.03]"
 		>
-			{({ stepper }) => {
+			{(stepper) => {
 				const run = async (method: "next" | "prev") => {
-					const result = (await stepper[method]()) as Result;
-					setLastCall({ method, result });
+					const from = stepper.current.id;
+					const result: Result = await stepper[method]();
+					setLastCall({ method, from, result });
 					if (!result.accepted && result.reason === "guard") {
 						rejectEmail(emailInputRef.current);
 					}
 				};
-				const restart = async () => {
-					const result = (await stepper.reset()) as Result;
+				const restart = () => {
+					stepper.reset();
 					setEmail("");
 					setShipping("standard");
-					setLastCall({ method: "reset", result });
+					setLastCall(null);
 				};
 				const rejected =
 					lastCall?.result.accepted === false &&
@@ -191,50 +200,48 @@ export function HeroPlayground() {
 										</p>
 									</div>
 									<span className="shrink-0 rounded-full border bg-card px-2 py-0.5 font-mono text-[11px] text-muted-foreground tabular-nums">
-										{stepper.index + 1} / {stepper.count}
+										{stepper.index + 1} / {stepper.steps.length}
 									</span>
 								</div>
 
 								<Stepper.List className="mt-5 flex items-center">
-									<Stepper.Items>
-										{(step, index) => (
-											<Stepper.Item
-												key={step.id}
-												step={step.id}
-												className="group/item flex items-center not-last:flex-1"
+									{(step, index) => (
+										<Stepper.Item
+											key={step.id}
+											step={step.id}
+											className="group/item flex items-center not-last:flex-1"
+										>
+											<Stepper.Trigger
+												aria-label={step.title}
+												className="pressable hit-44 group/trigger flex rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card disabled:active:scale-100"
 											>
-												<Stepper.Trigger
-													aria-label={step.title}
-													className="pressable hit-44 group/trigger flex rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card disabled:active:scale-100"
+												<Stepper.Indicator className="flex size-8 items-center justify-center rounded-full border text-xs font-semibold tabular-nums transition-[background-color,border-color,color,box-shadow] duration-300 ease-out-strong group-data-[state=current]/trigger:border-primary group-data-[state=current]/trigger:bg-primary group-data-[state=current]/trigger:text-primary-foreground group-data-[state=current]/trigger:shadow-[0_0_0_4px] group-data-[state=current]/trigger:shadow-primary/15 group-data-[state=complete]/trigger:border-primary/30 group-data-[state=complete]/trigger:bg-primary/10 group-data-[state=complete]/trigger:text-primary group-data-[state=pending]/trigger:bg-muted group-data-[state=pending]/trigger:text-muted-foreground">
+													{stepper.state(step.id) === "complete" ? (
+														<Check
+															className="size-3.5 animate-in duration-200 zoom-in-75 fade-in-0"
+															strokeWidth={3}
+															aria-hidden
+														/>
+													) : (
+														index + 1
+													)}
+												</Stepper.Indicator>
+											</Stepper.Trigger>
+											{index < stepper.steps.length - 1 && (
+												<span
+													aria-hidden
+													className="relative mx-2 h-0.5 flex-1 overflow-hidden rounded-full bg-border"
 												>
-													<Stepper.Indicator className="flex size-8 items-center justify-center rounded-full border text-xs font-semibold tabular-nums transition-[background-color,border-color,color,box-shadow] duration-300 ease-out-strong group-data-[status=active]/trigger:border-primary group-data-[status=active]/trigger:bg-primary group-data-[status=active]/trigger:text-primary-foreground group-data-[status=active]/trigger:shadow-[0_0_0_4px] group-data-[status=active]/trigger:shadow-primary/15 group-data-[status=previous]/trigger:border-primary/30 group-data-[status=previous]/trigger:bg-primary/10 group-data-[status=previous]/trigger:text-primary group-data-[status=upcoming]/trigger:bg-muted group-data-[status=upcoming]/trigger:text-muted-foreground">
-														{stepper.status(step.id) === "previous" ? (
-															<Check
-																className="size-3.5 animate-in duration-200 zoom-in-75 fade-in-0"
-																strokeWidth={3}
-																aria-hidden
-															/>
-														) : (
-															index + 1
-														)}
-													</Stepper.Indicator>
-												</Stepper.Trigger>
-												{index < stepper.count - 1 && (
-													<span
-														aria-hidden
-														className="relative mx-2 h-0.5 flex-1 overflow-hidden rounded-full bg-border"
-													>
-														<span className="absolute inset-0 origin-left scale-x-0 rounded-full bg-primary transition-transform duration-500 ease-in-out-strong group-data-[status=previous]/item:scale-x-100" />
-													</span>
-												)}
-											</Stepper.Item>
-										)}
-									</Stepper.Items>
+													<span className="absolute inset-0 origin-left scale-x-0 rounded-full bg-primary transition-transform duration-500 ease-in-out-strong group-data-[state=complete]/item:scale-x-100" />
+												</span>
+											)}
+										</Stepper.Item>
+									)}
 								</Stepper.List>
 
 								<div className="relative mt-5 min-h-[196px] flex-1">
 									<div
-										key={stepper.id}
+										key={stepper.current.id}
 										className={cn(
 											"duration-300 ease-out-strong animate-in fade-in-0 motion-safe:blur-in-2",
 											direction === 1
@@ -248,7 +255,7 @@ export function HeroPlayground() {
 													inputRef={emailInputRef}
 													email={email}
 													onEmailChange={setEmail}
-													invalid={rejected && stepper.id === "account"}
+													invalid={rejected && stepper.current.id === "account"}
 													onSubmit={() => run("next")}
 												/>
 											),
@@ -290,7 +297,7 @@ export function HeroPlayground() {
 													/>
 													Placing…
 												</>
-											) : stepper.id === "review" ? (
+											) : stepper.current.id === "review" ? (
 												"Place order"
 											) : (
 												<>
@@ -303,7 +310,7 @@ export function HeroPlayground() {
 								)}
 							</div>
 							<Inspector
-								id={stepper.id}
+								id={stepper.current.id}
 								index={stepper.index}
 								isPending={stepper.isPending}
 								lastCall={lastCall}
@@ -357,16 +364,15 @@ function getGuardLine(
 ): GuardHighlight {
 	if (isPending) return { line: LINES.orderGuard, tone: "pending" };
 	if (!lastCall) return null;
-	const { method, result } = lastCall;
+	const { method, from, result } = lastCall;
 	if (!result.accepted) {
 		return result.reason === "guard"
 			? { line: LINES.emailGuard, tone: "reject" }
 			: null;
 	}
 	if (method === "prev") return { line: LINES.prevGuard, tone: "pass" };
-	if (result.from === "account")
-		return { line: LINES.emailGuard, tone: "pass" };
-	if (result.from === "review") return { line: LINES.orderGuard, tone: "pass" };
+	if (from === "account") return { line: LINES.emailGuard, tone: "pass" };
+	if (from === "review") return { line: LINES.orderGuard, tone: "pass" };
 	return null;
 }
 
@@ -500,7 +506,7 @@ function Inspector({
 	return (
 		<div className="order-2 flex flex-col gap-x-6 gap-y-2 border-y bg-muted/30 px-4 py-3 font-mono text-[11.5px] sm:flex-row sm:items-center sm:px-5 lg:order-none lg:col-span-2 lg:border-b-0">
 			<div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-1 text-muted-foreground">
-				<Field label="stepper.id">
+				<Field label="current.id">
 					<span className="text-emerald-700 dark:text-emerald-300">"{id}"</span>
 				</Field>
 				<Field label="index">{index}</Field>
@@ -549,7 +555,7 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
 
 function formatResult(result: Result) {
 	return result.accepted
-		? `{ accepted: true, from: "${result.from}", to: "${result.to}" }`
+		? `{ accepted: true, to: "${result.to}" }`
 		: `{ accepted: false, reason: "${result.reason}" }`;
 }
 

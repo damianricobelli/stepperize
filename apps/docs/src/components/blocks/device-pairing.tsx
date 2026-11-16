@@ -14,7 +14,7 @@ export function DevicePairingBlock() {
 
 	return (
 		<Stepper.Root className="w-full max-w-sm overflow-hidden rounded-xl border bg-background shadow-sm">
-			{({ stepper }) => (
+			{(stepper) => (
 				<>
 					{/* Decorative art: one Stepper.Content per step lives below, with the text. */}
 					<div
@@ -44,13 +44,11 @@ export function DevicePairingBlock() {
 						<div className="mb-3 flex items-center justify-between">
 							<h3 className="text-sm font-semibold">{stepper.current.title}</h3>
 							<Stepper.List className="flex gap-1.5">
-								<Stepper.Items>
-									{(step) => (
-										<Stepper.Item key={step.id} step={step.id}>
-											<Stepper.Indicator className="block size-1.5 rounded-full transition-colors data-[status=active]:bg-primary data-[status=previous]:bg-primary data-[status=upcoming]:bg-muted" />
-										</Stepper.Item>
-									)}
-								</Stepper.Items>
+								{(step) => (
+									<Stepper.Item key={step.id} step={step.id}>
+										<Stepper.Indicator className="block size-1.5 rounded-full transition-colors data-[state=current]:bg-primary data-[state=complete]:bg-primary data-[state=pending]:bg-muted" />
+									</Stepper.Item>
+								)}
 							</Stepper.List>
 						</div>
 
@@ -75,7 +73,7 @@ export function DevicePairingBlock() {
 							</Stepper.Content>
 						</div>
 
-						<Stepper.Actions className="mt-4 flex justify-between">
+						<div className="mt-4 flex justify-between">
 							<Stepper.Prev className="inline-flex h-9 items-center rounded-lg border bg-background px-4 text-sm font-medium transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-50">
 								Back
 							</Stepper.Prev>
@@ -103,7 +101,7 @@ export function DevicePairingBlock() {
 									{stepper.current.id === "discover" ? "Connect" : "Next"}
 								</Stepper.Next>
 							)}
-						</Stepper.Actions>
+						</div>
 					</div>
 				</>
 			)}

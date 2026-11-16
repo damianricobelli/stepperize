@@ -15,24 +15,22 @@ export function TypedWizardBlock() {
 			linear
 			className="w-full max-w-md rounded-xl border bg-background p-6 shadow-sm"
 		>
-			{({ stepper }) => (
+			{(stepper) => (
 				<>
 					<Stepper.List className="mb-5 flex gap-2">
-						<Stepper.Items>
-							{(step) => (
-								<Stepper.Item key={step.id} step={step.id} className="flex-1">
-									<Stepper.Indicator className="h-1.5 w-full rounded-full bg-muted transition-colors data-[status=active]:bg-primary data-[status=previous]:bg-primary" />
-								</Stepper.Item>
-							)}
-						</Stepper.Items>
+						{(step) => (
+							<Stepper.Item key={step.id} step={step.id} className="flex-1">
+								<Stepper.Indicator className="h-1.5 w-full rounded-full bg-muted transition-colors data-[state=current]:bg-primary data-[state=complete]:bg-primary" />
+							</Stepper.Item>
+						)}
 					</Stepper.List>
 
 					{/*
-            Exhaustive rendering: `stepper.match` requires a handler for EVERY
-            step id. Add a step above and this object is a compile error until
-            you handle it — the type system guarantees no screen is forgotten.
-            Each handler also receives the fully-typed step (note `step.price`).
-          */}
+		Exhaustive rendering: `stepper.match` requires a handler for EVERY
+		step id. Add a step above and this object is a compile error until
+		you handle it — the type system guarantees no screen is forgotten.
+		Each handler also receives the fully-typed step (note `step.price`).
+	  */}
 					<div className="min-h-24 rounded-lg border bg-muted/30 p-4 text-sm">
 						{subscribed ? (
 							<div className="text-center">
@@ -66,7 +64,7 @@ export function TypedWizardBlock() {
 						)}
 					</div>
 
-					<Stepper.Actions className="mt-5 flex gap-2">
+					<div className="mt-5 flex gap-2">
 						<Stepper.Prev className="inline-flex h-9 items-center rounded-lg border bg-background px-4 text-sm font-medium transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-50">
 							Back
 						</Stepper.Prev>
@@ -94,7 +92,7 @@ export function TypedWizardBlock() {
 								Continue
 							</Stepper.Next>
 						)}
-					</Stepper.Actions>
+					</div>
 				</>
 			)}
 		</Stepper.Root>

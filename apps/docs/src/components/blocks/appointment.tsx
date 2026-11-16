@@ -22,24 +22,22 @@ export function AppointmentBlock() {
 			linear
 			className="w-full max-w-xl rounded-xl border bg-background p-6 shadow-sm"
 		>
-			{({ stepper }) => (
+			{(stepper) => (
 				<div className="grid gap-6 sm:grid-cols-[160px_1fr]">
 					<Stepper.List className="flex flex-col gap-1">
-						<Stepper.Items>
-							{(step, index) => (
-								<Stepper.Item key={step.id} step={step.id}>
-									<Stepper.Trigger className="flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-left transition-colors disabled:cursor-not-allowed data-[status=active]:bg-muted">
-										<Stepper.Indicator className="group grid size-6 shrink-0 place-items-center rounded-full border text-xs font-semibold transition-colors data-[status=active]:border-primary data-[status=active]:bg-primary data-[status=active]:text-primary-foreground data-[status=previous]:border-primary data-[status=previous]:bg-primary data-[status=previous]:text-primary-foreground data-[status=upcoming]:border-border data-[status=upcoming]:text-muted-foreground">
-											<span className="group-data-[status=previous]:hidden">
-												{index + 1}
-											</span>
-											<Check className="hidden size-3 group-data-[status=previous]:block" />
-										</Stepper.Indicator>
-										<Stepper.Title className="text-sm font-medium" />
-									</Stepper.Trigger>
-								</Stepper.Item>
-							)}
-						</Stepper.Items>
+						{(step, index) => (
+							<Stepper.Item key={step.id} step={step.id}>
+								<Stepper.Trigger className="flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-left transition-colors disabled:cursor-not-allowed data-[state=current]:bg-muted">
+									<Stepper.Indicator className="group grid size-6 shrink-0 place-items-center rounded-full border text-xs font-semibold transition-colors data-[state=current]:border-primary data-[state=current]:bg-primary data-[state=current]:text-primary-foreground data-[state=complete]:border-primary data-[state=complete]:bg-primary data-[state=complete]:text-primary-foreground data-[state=pending]:border-border data-[state=pending]:text-muted-foreground">
+										<span className="group-data-[state=complete]:hidden">
+											{index + 1}
+										</span>
+										<Check className="hidden size-3 group-data-[state=complete]:block" />
+									</Stepper.Indicator>
+									<Stepper.Title className="text-sm font-medium" />
+								</Stepper.Trigger>
+							</Stepper.Item>
+						)}
 					</Stepper.List>
 
 					<div className="flex min-h-44 flex-col">
@@ -90,7 +88,7 @@ export function AppointmentBlock() {
 							</Stepper.Content>
 						</div>
 
-						<Stepper.Actions className="mt-4 flex justify-end gap-2">
+						<div className="mt-4 flex justify-end gap-2">
 							<Stepper.Prev className={buttonVariants({ variant: "outline" })}>
 								Back
 							</Stepper.Prev>
@@ -118,7 +116,7 @@ export function AppointmentBlock() {
 									Continue
 								</Stepper.Next>
 							)}
-						</Stepper.Actions>
+						</div>
 					</div>
 				</div>
 			)}

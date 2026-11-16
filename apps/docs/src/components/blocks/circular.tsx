@@ -19,8 +19,8 @@ export function CircularBlock() {
 			linear
 			className="w-full max-w-md rounded-xl border bg-background p-6 shadow-sm"
 		>
-			{({ stepper }) => {
-				const progress = (stepper.index + 1) / stepper.count;
+			{(stepper) => {
+				const progress = (stepper.index + 1) / stepper.steps.length;
 				const next = stepper.steps[stepper.index + 1];
 				return (
 					<>
@@ -52,7 +52,7 @@ export function CircularBlock() {
 									/>
 								</svg>
 								<span className="absolute text-sm font-semibold">
-									{stepper.index + 1}/{stepper.count}
+									{stepper.index + 1}/{stepper.steps.length}
 								</span>
 							</div>
 
@@ -73,7 +73,7 @@ export function CircularBlock() {
 							</Stepper.Content>
 						</div>
 
-						<Stepper.Actions className="mt-6 flex justify-between">
+						<div className="mt-6 flex justify-between">
 							<Stepper.Prev className="inline-flex h-9 items-center rounded-lg border bg-background px-4 text-sm font-medium transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-50">
 								Back
 							</Stepper.Prev>
@@ -101,7 +101,7 @@ export function CircularBlock() {
 									Continue
 								</Stepper.Next>
 							)}
-						</Stepper.Actions>
+						</div>
 					</>
 				);
 			}}

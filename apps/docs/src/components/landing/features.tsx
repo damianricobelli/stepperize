@@ -24,7 +24,7 @@ export function Features() {
 				<Cell
 					className="md:col-span-2"
 					title="Your step ids are a type"
-					doc="v8/getting-started/concepts"
+					doc="v9/react/first-stepper"
 					visual={<TypesVisual />}
 				>
 					Ids become a literal union the moment you call{" "}
@@ -33,9 +33,8 @@ export function Features() {
 				</Cell>
 
 				<Cell
-					badge="New in v8"
 					title="Every move has a result"
-					doc="v8/guides/navigation"
+					doc="v9/react/api/stepper"
 					visual={<ResultVisual />}
 				>
 					Navigation resolves to a typed result. Check{" "}
@@ -44,9 +43,8 @@ export function Features() {
 				</Cell>
 
 				<Cell
-					badge="New in v8"
 					title="Local or shared, your call"
-					doc="v8/guides/local-and-shared-state"
+					doc="v9/react/guides/shared-state"
 					visual={<OwnershipVisual />}
 				>
 					Each <InlineCode>useStepper()</InlineCode> is its own flow. A Provider
@@ -55,7 +53,7 @@ export function Features() {
 
 				<Cell
 					title="Accessible primitives"
-					doc="v8/guides/primitives"
+					doc="v9/react/guides/primitives"
 					visual={<PrimitivesVisual />}
 				>
 					Unstyled <InlineCode>Stepper.*</InlineCode> components ship roles,
@@ -63,12 +61,14 @@ export function Features() {
 				</Cell>
 
 				<Cell
-					title="Bring your form library"
-					doc="v8/forms"
+					badge="New in v9"
+					title="next() validates"
+					doc="v9/react/guides/validation"
 					visual={<FormsVisual />}
 				>
-					Attach a Standard Schema per step and keep fields in React Hook Form,
-					TanStack Form, Conform, or plain state.
+					Attach a Standard Schema per step and <InlineCode>next()</InlineCode>{" "}
+					checks it for you. Keep fields in React Hook Form, TanStack Form,
+					Conform, or plain state.
 				</Cell>
 			</div>
 		</Section>
@@ -234,7 +234,7 @@ function ResultVisual() {
 			<div className="pl-4">
 				<C>{"// "}</C>
 				<span className="inline-flex flex-wrap gap-1 align-middle">
-					{["guard", "policy", "boundary", "pending"].map((reason) => (
+					{["invalid", "guard", "policy", "pending"].map((reason) => (
 						<span
 							key={reason}
 							className="rounded bg-emerald-500/10 px-1 text-[11px] text-emerald-700 dark:text-emerald-300"
@@ -272,7 +272,7 @@ function OwnershipVisual() {
 		{
 			code: (
 				<>
-					<F>useStepperContext</F>(s <P>{"=>"}</P> s.id)
+					<F>useStepperContext</F>(s <P>{"=>"}</P> s.current.id)
 				</>
 			),
 			note: "subscribe to a slice",
@@ -298,9 +298,9 @@ function OwnershipVisual() {
 
 function PrimitivesVisual() {
 	const items = [
-		{ status: "previous", label: "Cart" },
-		{ status: "active", label: "Shipping" },
-		{ status: "upcoming", label: "Payment" },
+		{ status: "complete", label: "Cart" },
+		{ status: "current", label: "Shipping" },
+		{ status: "pending", label: "Payment" },
 	] as const;
 
 	return (
@@ -311,14 +311,14 @@ function PrimitivesVisual() {
 						<span
 							className={cn(
 								"flex size-8 items-center justify-center rounded-full border text-xs font-semibold",
-								item.status === "previous" &&
+								item.status === "complete" &&
 									"border-primary/30 bg-primary/10 text-primary",
-								item.status === "active" &&
+								item.status === "current" &&
 									"border-primary bg-primary text-primary-foreground shadow-[0_0_0_4px] shadow-primary/15",
-								item.status === "upcoming" && "bg-muted text-muted-foreground",
+								item.status === "pending" && "bg-muted text-muted-foreground",
 							)}
 						>
-							{item.status === "previous" ? (
+							{item.status === "complete" ? (
 								<Check className="size-3.5" strokeWidth={3} aria-hidden />
 							) : (
 								i + 1
@@ -341,7 +341,7 @@ function PrimitivesVisual() {
 						key={item.label}
 						className="truncate first:text-left last:text-right [&:nth-child(2)]:text-center"
 					>
-						<span className="text-foreground/40">status=</span>
+						<span className="text-foreground/40">state=</span>
 						<span className="text-emerald-700 dark:text-emerald-300">
 							{item.status}
 						</span>

@@ -34,11 +34,17 @@ const PLANS: Record<string, { name: string; blurb: string }> = {
 /**
  * Decision tree: the first answer branches to one of two follow-up questions,
  * then both branches converge on a shared result computed from the answers.
+ * Each answer is saved with `next(value)`, and the `next` map picks the branch.
  */
 export function DecisionTreeBlock() {
 	return (
 		<Stepper.Root
 			linear
+			next={{
+				// The answer to "use" is the id of the follow-up step.
+				use: (answer) => answer as Use,
+				personal: () => "result",
+			}}
 			className="w-full max-w-sm rounded-xl border bg-background p-6 shadow-sm"
 		>
 			{() => <Inner />}
@@ -48,19 +54,10 @@ export function DecisionTreeBlock() {
 
 function Inner() {
 	const stepper = useStepperContext();
-	const use = stepper.data.get("use") as Use | undefined;
-	const answer = stepper.data.get("result") as Answer | undefined;
-
-	// Flow data is keyed by step id: the use case lives on "use", the follow-up
-	// answer on "result" (the step that reads them both back).
-	const pick = (
-		key: "use" | "result",
-		value: string,
-		next: Parameters<typeof stepper.goTo>[0],
-	) => {
-		stepper.data.set(key, value);
-		stepper.goTo(next, { bypassPolicy: true, complete: true });
-	};
+	const use = stepper.data.use as Use | undefined;
+	// Flow data is keyed by step id: the use case lives on "use" and the
+	// follow-up answer on the branch that asked it.
+	const answer = use && (stepper.data[use] as Answer | undefined);
 
 	return (
 		<>
@@ -76,39 +73,33 @@ function Inner() {
 					<Option
 						icon={User}
 						label="A personal project"
-						onClick={() => pick("use", "personal", "personal")}
+						onClick={() => stepper.next("personal")}
 					/>
 					<Option
 						icon={Briefcase}
 						label="Something for work"
-						onClick={() => pick("use", "business", "business")}
+						onClick={() => stepper.next("business")}
 					/>
 				</Stepper.Content>
 
 				<Stepper.Content step="personal" className="space-y-2">
-					<BackButton onClick={() => stepper.goTo("use")} />
+					<BackButton onClick={() => stepper.prev()} />
 					<p className="text-sm text-muted-foreground">What's your budget?</p>
-					<Option
-						label="Free only"
-						onClick={() => pick("result", "free", "result")}
-					/>
+					<Option label="Free only" onClick={() => stepper.next("free")} />
 					<Option
 						label="Happy to pay for more"
-						onClick={() => pick("result", "paid", "result")}
+						onClick={() => stepper.next("paid")}
 					/>
 				</Stepper.Content>
 
 				<Stepper.Content step="business" className="space-y-2">
-					<BackButton onClick={() => stepper.goTo("use")} />
+					<BackButton onClick={() => stepper.prev()} />
 					<p className="text-sm text-muted-foreground">How big is your team?</p>
 					<Option
 						label="Under 10 people"
-						onClick={() => pick("result", "small", "result")}
+						onClick={() => stepper.next("small")}
 					/>
-					<Option
-						label="10 or more"
-						onClick={() => pick("result", "large", "result")}
-					/>
+					<Option label="10 or more" onClick={() => stepper.next("large")} />
 				</Stepper.Content>
 
 				<Stepper.Content step="result">

@@ -42,29 +42,27 @@ export function AiWorkflowBlock() {
 	return (
 		<Stepper.Root
 			className="w-full max-w-sm overflow-hidden rounded-xl border bg-background shadow-sm"
-			beforeStepChange={async ({ from, direction }) => {
+			guard={async ({ from, direction, data }) => {
 				if (from.id !== "prompt" || direction !== "next") return true;
 				await sleep(1400); // async "generation"
 				const stepper = ref.current;
 				if (!stepper) return true;
-				const drafts =
-					(stepper.data.get("result") as Draft[] | undefined) ?? [];
-				const prompt = (stepper.data.get("prompt") as string | undefined) ?? "";
+				const drafts = (data.result as Draft[] | undefined) ?? [];
+				const prompt = (data.prompt as string | undefined) ?? "";
 				const version = drafts.length + 1;
-				stepper.data.set("result", [
+				stepper.setData("result", [
 					...drafts,
 					{ version, prompt, text: generate(prompt, version) },
 				]);
 				return true;
 			}}
 		>
-			{({ stepper }) => {
+			{(stepper) => {
 				ref.current = stepper;
-				const drafts =
-					(stepper.data.get("result") as Draft[] | undefined) ?? [];
+				const drafts = (stepper.data.result as Draft[] | undefined) ?? [];
 				const latest = drafts[drafts.length - 1];
 				const prompt =
-					(stepper.data.get("prompt") as string | undefined) ??
+					(stepper.data.prompt as string | undefined) ??
 					"A friendly welcome email for new users";
 
 				return (
@@ -91,7 +89,7 @@ export function AiWorkflowBlock() {
 								<Textarea
 									rows={3}
 									defaultValue={prompt}
-									onChange={(e) => stepper.data.set("prompt", e.target.value)}
+									onChange={(e) => stepper.setData("prompt", e.target.value)}
 									className="resize-none"
 								/>
 								<Button

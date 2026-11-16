@@ -1,10 +1,6 @@
 "use client";
 
-import {
-	defineStepper,
-	type Step,
-	type StepperDefinition,
-} from "@stepperize/react";
+import { defineStepper, type Step } from "@stepperize/react";
 import {
 	ArrowLeft,
 	ArrowRight,
@@ -20,6 +16,7 @@ import {
 	Fragment,
 	type ReactNode,
 	use,
+	useRef,
 	useState,
 } from "react";
 import { Button } from "@/components/ui/button";
@@ -37,7 +34,7 @@ import { PreviewField, readField } from "./preview-field";
  * navigation policy, guards, URL ownership, completion — is the real thing.
  */
 
-type AnyDefinition = StepperDefinition<readonly Step[]>;
+type AnyDefinition = ReturnType<typeof defineStepper<readonly Step[]>>;
 
 type PreviewContextValue = {
 	config: StudioConfig;
@@ -45,6 +42,7 @@ type PreviewContextValue = {
 	definition: AnyDefinition;
 	issues: Record<string, Record<string, string>>;
 	setIssues: (stepId: string, issues: Record<string, string>) => void;
+	/** `next()` completed the last step. */
 };
 
 const PreviewContext = createContext<PreviewContextValue | null>(null);
@@ -142,6 +140,8 @@ export function PreviewFlow({
 	});
 	const [issues, setAllIssues] = useState<PreviewContextValue["issues"]>({});
 	const [blocked, setBlocked] = useState<string | null>(null);
+	// `onChange` also reports data changes: remember the step to tell moves apart.
+	const lastStep = useRef(names.stepIds[0]);
 
 	const current = history.entries[history.index];
 	const url = previewUrl(config, names, current);
@@ -210,33 +210,45 @@ export function PreviewFlow({
 			<Stepper.Root
 				{...(controlled
 					? {
+							// The flow follows the address bar; a step it cannot be on is corrected in place.
 							step: current,
-							onStepChange: (next: string) => {
-								setBlocked(null);
+							onInvalidStep: (actual: string) =>
 								setHistory((h) => ({
-									entries: [...h.entries.slice(0, h.index + 1), next],
-									index: h.index + 1,
-								}));
-							},
+									entries: h.entries.map((entry, i) =>
+										i === h.index ? actual : entry,
+									),
+									index: h.index,
+								})),
 						}
-					: { onStepChange: () => setBlocked(null) })}
-				{...(defaultData ? { defaultData } : {})}
-				{...(config.behavior.persist
-					? { onDataChange: (data: unknown) => writeDraft(draftKey, data) }
 					: {})}
+				{...(defaultData ? { snapshot: { data: defaultData } } : {})}
+				onChange={(snapshot) => {
+					if (config.behavior.persist) writeDraft(draftKey, snapshot.data);
+					if (snapshot.step === lastStep.current) return;
+					lastStep.current = snapshot.step;
+					setBlocked(null);
+					if (controlled && snapshot.step !== current) {
+						setHistory((h) => ({
+							entries: [...h.entries.slice(0, h.index + 1), snapshot.step],
+							index: h.index + 1,
+						}));
+					}
+				}}
 				{...(guard
 					? {
-							beforeStepChange: async ({
-								fromIndex,
-								toIndex,
-								from,
-								validate,
-							}) => {
-								if (toIndex < fromIndex) return true;
-								const result = await validate();
-								if (!result.success)
+							// `next()` validates each step. The guard covers the step list:
+							// jumping ahead needs the step being left to be valid.
+							guard: async ({ from, to, direction, data }) => {
+								if (direction !== "goTo" || !to) return true;
+								const fromIndex = names.stepIds.indexOf(from.id);
+								if (names.stepIds.indexOf(to.id) < fromIndex) return true;
+								if (!from.schema) return true;
+								const result = await from.schema["~standard"].validate(
+									(data as Record<string, unknown>)[from.id],
+								);
+								if (result.issues)
 									setBlocked(config.steps[fromIndex]?.title ?? from.id);
-								return result.success;
+								return !result.issues;
 							},
 						}
 					: {})}
@@ -302,7 +314,7 @@ function ChromeButton({
 // ─── Navigation (one explicit variant per layout) ────────────────────────────
 
 const INDICATOR =
-	"grid size-8 shrink-0 place-items-center rounded-full border bg-background text-sm font-medium text-muted-foreground transition-[background-color,border-color,color,box-shadow] duration-200 ease-out data-[status=active]:border-primary data-[status=active]:bg-primary data-[status=active]:text-primary-foreground data-[status=active]:shadow-[0_0_0_4px_color-mix(in_oklch,var(--primary)_16%,transparent)] data-[status=previous]:border-primary/40 data-[status=previous]:bg-primary/10 data-[status=previous]:text-primary";
+	"grid size-8 shrink-0 place-items-center rounded-full border bg-background text-sm font-medium text-muted-foreground transition-[background-color,border-color,color,box-shadow] duration-200 ease-out data-[state=current]:border-primary data-[state=current]:bg-primary data-[state=current]:text-primary-foreground data-[state=current]:shadow-[0_0_0_4px_color-mix(in_oklch,var(--primary)_16%,transparent)] data-[state=complete]:border-primary/40 data-[state=complete]:bg-primary/10 data-[state=complete]:text-primary";
 
 function IndicatorBody({ index }: { index: number }) {
 	const { config } = usePreview();
@@ -311,12 +323,12 @@ function IndicatorBody({ index }: { index: number }) {
 	if (config.indicator === "check") {
 		return (
 			<>
-				<span className="group-data-[status=previous]/indicator:hidden">
+				<span className="group-data-[state=complete]/indicator:hidden">
 					{index + 1}
 				</span>
 				<Check
 					aria-hidden
-					className="hidden size-4 group-data-[status=previous]/indicator:block"
+					className="hidden size-4 group-data-[state=complete]/indicator:block"
 				/>
 			</>
 		);
@@ -342,71 +354,68 @@ function PreviewNav({ mobile }: { mobile: boolean }) {
 							: "flex items-center gap-3",
 					)}
 				>
-					<Stepper.Items>
-						{(step, index) => (
-							<Stepper.Item
-								key={step.id}
+					{(_step, index) => (
+						<Stepper.Item
+							className={cn(
+								vertical
+									? "group/item relative pb-6 pl-11 last:pb-0"
+									: "group/item flex flex-1 items-center gap-3 last:flex-none",
+							)}
+						>
+							<Stepper.Trigger
 								className={cn(
-									vertical
-										? "group/item relative pb-6 pl-11 last:pb-0"
-										: "group/item flex flex-1 items-center gap-3 last:flex-none",
+									cn(
+										"flex rounded-md text-left outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed",
+										vertical ? "items-start gap-3" : "items-center gap-2",
+									),
 								)}
 							>
-								<Stepper.Trigger
+								<Stepper.Indicator
 									className={cn(
 										cn(
-											"flex rounded-md text-left outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed",
-											vertical ? "items-start gap-3" : "items-center gap-2",
+											"group/indicator",
+											INDICATOR,
+											vertical && "absolute left-0",
 										),
 									)}
 								>
-									<Stepper.Indicator
-										className={cn(
-											cn(
-												"group/indicator",
-												INDICATOR,
-												vertical && "absolute left-0",
-											),
-										)}
-									>
-										<IndicatorBody index={index} />
-									</Stepper.Indicator>
-									{vertical ? (
-										<span className={cn("pt-1.5")}>
-											<Stepper.Title
-												className={cn("block text-sm font-medium")}
-											/>
-											<Stepper.Description
-												className={cn(
-													"mt-0.5 block text-xs text-muted-foreground",
-												)}
-											/>
-										</span>
-									) : (
+									<IndicatorBody index={index} />
+								</Stepper.Indicator>
+								{vertical ? (
+									<span className={cn("pt-1.5")}>
 										<Stepper.Title
+											className={cn("block text-sm font-medium")}
+										/>
+										<Stepper.Description
 											className={cn(
-												cn(
-													"text-sm font-medium whitespace-nowrap",
-													// Like the generated `max-sm:` rule, but for the preview's own width.
-													mobile
-														? "not-group-data-[status=active]/item:hidden"
-														: "@max-sm:not-group-data-[status=active]/item:hidden",
-												),
+												"mt-0.5 block text-xs text-muted-foreground",
 											)}
 										/>
-									)}
-								</Stepper.Trigger>
-								<span
-									aria-hidden
-									className={cn(
-										vertical
-											? "absolute top-9 bottom-1 left-4 w-px bg-border group-last/item:hidden group-data-[status=previous]/item:bg-primary"
-											: "h-px min-w-6 flex-1 bg-border transition-colors duration-200 group-last/item:hidden group-data-[status=previous]/item:bg-primary",
-									)}
-								/>
-							</Stepper.Item>
-						)}
-					</Stepper.Items>
+									</span>
+								) : (
+									<Stepper.Title
+										className={cn(
+											cn(
+												"text-sm font-medium whitespace-nowrap",
+												// Like the generated `max-sm:` rule, but for the preview's own width.
+												mobile
+													? "not-group-data-[state=current]/item:hidden"
+													: "@max-sm:not-group-data-[state=current]/item:hidden",
+											),
+										)}
+									/>
+								)}
+							</Stepper.Trigger>
+							<span
+								aria-hidden
+								className={cn(
+									vertical
+										? "absolute top-9 bottom-1 left-4 w-px bg-border group-last/item:hidden group-data-[state=complete]/item:bg-primary"
+										: "h-px min-w-6 flex-1 bg-border transition-colors duration-200 group-last/item:hidden group-data-[state=complete]/item:bg-primary",
+								)}
+							/>
+						</Stepper.Item>
+					)}
 				</Stepper.List>
 			);
 		}
@@ -415,19 +424,17 @@ function PreviewNav({ mobile }: { mobile: boolean }) {
 				<Stepper.List
 					className={cn("flex gap-1 overflow-x-auto rounded-xl bg-muted p-1")}
 				>
-					<Stepper.Items>
-						{(step) => (
-							<Stepper.Item key={step.id} className={cn("flex-1")}>
-								<Stepper.Trigger
-									className={cn(
-										"h-9 w-full rounded-lg px-3 text-sm font-medium whitespace-nowrap text-muted-foreground outline-none transition-[background-color,color,box-shadow] duration-200 ease-out focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed data-[status=active]:bg-background data-[status=active]:text-foreground data-[status=active]:shadow-sm data-[status=previous]:text-primary",
-									)}
-								>
-									<Stepper.Title />
-								</Stepper.Trigger>
-							</Stepper.Item>
-						)}
-					</Stepper.Items>
+					{() => (
+						<Stepper.Item className={cn("flex-1")}>
+							<Stepper.Trigger
+								className={cn(
+									"h-9 w-full rounded-lg px-3 text-sm font-medium whitespace-nowrap text-muted-foreground outline-none transition-[background-color,color,box-shadow] duration-200 ease-out focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed data-[state=current]:bg-background data-[state=current]:text-foreground data-[state=current]:shadow-sm data-[state=complete]:text-primary",
+								)}
+							>
+								<Stepper.Title />
+							</Stepper.Trigger>
+						</Stepper.Item>
+					)}
 				</Stepper.List>
 			);
 		case "breadcrumb":
@@ -435,28 +442,23 @@ function PreviewNav({ mobile }: { mobile: boolean }) {
 				<Stepper.List
 					className={cn("flex flex-wrap items-center gap-1 text-sm")}
 				>
-					<Stepper.Items>
-						{(step, index) => (
-							<Stepper.Item
-								key={step.id}
-								className={cn("flex items-center gap-1")}
+					{(_step, index) => (
+						<Stepper.Item className={cn("flex items-center gap-1")}>
+							{index > 0 ? (
+								<ChevronRight
+									aria-hidden
+									className="size-4 text-muted-foreground/60"
+								/>
+							) : null}
+							<Stepper.Trigger
+								className={cn(
+									"rounded-md px-2 py-1 font-medium text-muted-foreground outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed data-[state=current]:bg-muted data-[state=current]:text-foreground data-[state=complete]:text-primary",
+								)}
 							>
-								{index > 0 ? (
-									<ChevronRight
-										aria-hidden
-										className="size-4 text-muted-foreground/60"
-									/>
-								) : null}
-								<Stepper.Trigger
-									className={cn(
-										"rounded-md px-2 py-1 font-medium text-muted-foreground outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed data-[status=active]:bg-muted data-[status=active]:text-foreground data-[status=previous]:text-primary",
-									)}
-								>
-									<Stepper.Title />
-								</Stepper.Trigger>
-							</Stepper.Item>
-						)}
-					</Stepper.Items>
+								<Stepper.Title />
+							</Stepper.Trigger>
+						</Stepper.Item>
+					)}
 				</Stepper.List>
 			);
 		case "progress":
@@ -536,9 +538,8 @@ function CircularNav() {
 
 function PreviewContent() {
 	const { config, names, definition } = usePreview();
-	const id = definition.useStepperContext((s) => s.id);
-	const lastId = names.stepIds[names.stepIds.length - 1];
-	const finished = definition.useStepperContext((s) => s.isComplete(lastId));
+	const finished = definition.useStepperContext((s) => s.isFinished);
+	const id = definition.useStepperContext((s) => s.current.id);
 	const { Stepper } = definition;
 
 	if (finished) return <Finished />;
@@ -603,7 +604,10 @@ function StepForm({ index }: { index: number }) {
 	const id = names.stepIds[index];
 	const keys = names.fields[index];
 	const step = config.steps[index];
-	const saved = stepper.data.get(id) as Record<string, unknown> | undefined;
+	// Read once: `next()` saves a rejected draft too, and uncontrolled inputs keep their own state.
+	const [saved] = useState(
+		() => stepper.data[id] as Record<string, unknown> | undefined,
+	);
 	const stepIssues = issues[id] ?? {};
 	const last = index === config.steps.length - 1;
 	const [pending, setPending] = useState(false);
@@ -621,33 +625,30 @@ function StepForm({ index }: { index: number }) {
 		);
 		setPending(true);
 		try {
-			const result = await definition.validate(id, value);
-			if (!result.success) {
-				setIssues(
-					id,
-					Object.fromEntries(
-						result.issues.map((issue) => {
-							const key = issue.path?.[0];
-							return [
-								String(typeof key === "object" ? key.key : key),
-								issue.message,
-							];
-						}),
-					),
-				);
-				// Focus the first invalid control so keyboard users land on the problem.
-				const first = form.querySelector<HTMLElement>(
-					`[name="${String(result.issues[0]?.path?.[0] ?? "")}"]`,
-				);
-				first?.focus();
-				return;
-			}
-			setIssues(id, {});
-			if (last) {
-				stepper.data.set(id, result.data as never);
-				stepper.setComplete(id);
-			} else {
-				await stepper.next({ data: result.data, complete: true });
+			// `next()` saves the values, validates them against the step's schema and
+			// moves on. On the last step it finishes the flow.
+			const result = await stepper.next(value);
+			const failed = result.accepted ? [] : (result.issues ?? []);
+			setIssues(
+				id,
+				Object.fromEntries(
+					failed.map((issue) => {
+						const key = issue.path?.[0];
+						return [
+							String(typeof key === "object" ? key.key : key),
+							issue.message,
+						];
+					}),
+				),
+			);
+			// Focus the first invalid control so keyboard users land on the problem.
+			const firstKey = failed[0]?.path?.[0];
+			if (firstKey !== undefined) {
+				form
+					.querySelector<HTMLElement>(
+						`[name="${String(typeof firstKey === "object" ? firstKey.key : firstKey)}"]`,
+					)
+					?.focus();
 			}
 		} finally {
 			setPending(false);
@@ -733,10 +734,7 @@ function ContentStep() {
 				>
 					Back
 				</KitButton>
-				<KitButton
-					variant="primary"
-					onClick={() => stepper.next({ complete: true })}
-				>
+				<KitButton variant="primary" onClick={() => stepper.next()}>
 					Continue
 				</KitButton>
 			</Actions>
@@ -753,15 +751,12 @@ function display(value: unknown): string {
 function Summary() {
 	const { config, names, definition } = usePreview();
 	const stepper = definition.useStepperContext();
-	const lastId = names.stepIds[names.stepIds.length - 1];
 	return (
 		<section className={cn("grid gap-3")}>
 			{config.steps.slice(0, -1).map((step, i) => {
 				if (!step.fields.length) return null;
 				const id = names.stepIds[i];
-				const data = stepper.data.get(id) as
-					| Record<string, unknown>
-					| undefined;
+				const data = stepper.data[id] as Record<string, unknown> | undefined;
 				return (
 					<div key={id} className={cn("rounded-lg border p-4")}>
 						<div className={cn("flex items-center justify-between")}>
@@ -796,10 +791,7 @@ function Summary() {
 				<KitButton variant="back" onClick={() => stepper.prev()}>
 					Back
 				</KitButton>
-				<KitButton
-					variant="primary"
-					onClick={() => stepper.setComplete(lastId)}
-				>
+				<KitButton variant="primary" onClick={() => stepper.next()}>
 					Finish
 				</KitButton>
 			</Actions>
@@ -838,20 +830,14 @@ function Finished() {
 function PreviewInspector() {
 	const { definition } = usePreview();
 	const stepper = definition.useStepperContext();
-	const completed = definition.steps
-		.filter((s) => stepper.isComplete(s.id))
-		.map((s) => s.id);
-	const data = Object.fromEntries(
-		definition.steps.flatMap((s) => {
-			const value = stepper.data.get(s.id);
-			return value === undefined ? [] : [[s.id, value]];
-		}),
-	);
+	const completed = stepper.snapshot().complete;
+	const data = stepper.data;
 	return (
 		<div className="grid gap-1 border-t bg-muted/30 px-4 py-2.5 font-mono text-[11px] text-muted-foreground">
 			<div className="flex flex-wrap gap-x-4 gap-y-1">
 				<span>
-					id <span className="text-foreground">"{stepper.id}"</span>
+					current.id{" "}
+					<span className="text-foreground">"{stepper.current.id}"</span>
 				</span>
 				<span>
 					index{" "}

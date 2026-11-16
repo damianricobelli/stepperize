@@ -26,8 +26,8 @@ import { RHF_RESOLVERS, schemaName, valuesType } from "./validation";
 
 /**
  * Form adapters. Every step component follows the same contract regardless of
- * the library: seed from `stepper.data.get(id)`, validate on submit, then save
- * and complete the step in one transition with `next({ data, complete: true })`.
+ * the library: seed from `stepper.data[id]`, validate on submit, then hand the
+ * values to `next(data)`, which saves them, checks the step's schema and moves on.
  *
  * Controls are shadcn/ui components. A **wiring** says how a form library
  * binds each one (register, a controlled value, or a named uncontrolled
@@ -654,7 +654,7 @@ function emptyValues(ctx: StepContext): string | null {
 }
 
 const defaultValues = (ctx: StepContext, validated: boolean) =>
-	`\t\tdefaultValues: ${validated ? `stepper.data.get(${str(ctx.id)})` : `(stepper.data.get(${str(ctx.id)}) as ${ctx.Values} | undefined)`} ?? (${emptyValues(ctx) ? "EMPTY" : "{}"} as ${ctx.Values}),`;
+	`\t\tdefaultValues: ${validated ? `stepper.data.${ctx.id}` : `(stepper.data.${ctx.id} as ${ctx.Values} | undefined)`} ?? (${emptyValues(ctx) ? "EMPTY" : "{}"} as ${ctx.Values}),`;
 
 const header = (ctx: StepContext) => [
 	`export function ${ctx.Component}() {`,
@@ -698,7 +698,7 @@ function reactHookForm(ctx: StepContext): string {
 		"\treturn (",
 		"\t\t<form",
 		"\t\t\tnoValidate",
-		"\t\t\tonSubmit={form.handleSubmit((data) => stepper.next({ data, complete: true }))}",
+		"\t\t\tonSubmit={form.handleSubmit((data) => stepper.next(data))}",
 		`\t\t\tclassName="${FORM_CLASS}"`,
 		"\t\t>",
 		...blocks.map((b) => indent(b, 3)),
@@ -740,7 +740,7 @@ function tanstackForm(ctx: StepContext): string {
 		"\tconst form = useForm({",
 		defaultValues(ctx, validated),
 		validated ? `\t\tvalidators: { onSubmit: ${schemaName(id)} },` : null,
-		"\t\tonSubmit: ({ value }) => stepper.next({ data: value, complete: true }),",
+		"\t\tonSubmit: ({ value }) => stepper.next(value),",
 		"\t});",
 		"",
 		"\treturn (",
@@ -791,13 +791,13 @@ function conform(ctx: StepContext): string {
 		"",
 		...header(ctx),
 		"\tconst [form, fields] = useForm({",
-		`\t\tdefaultValue: stepper.data.get(${str(id)}),`,
+		`\t\tdefaultValue: stepper.data.${id},`,
 		`\t\tonValidate: ({ formData }) => ${parser[0]}(formData, { schema: ${schemaName(id)} }),`,
 		'\t\tshouldValidate: "onSubmit",',
 		"\t\tonSubmit(event, { submission }) {",
 		"\t\t\tevent.preventDefault();",
 		'\t\t\tif (submission?.status === "success") {',
-		"\t\t\t\tvoid stepper.next({ data: submission.value, complete: true });",
+		"\t\t\t\tvoid stepper.next(submission.value);",
 		"\t\t\t}",
 		"\t\t},",
 		"\t});",
@@ -845,9 +845,7 @@ function nativeForm(ctx: StepContext): string {
 	return source([
 		USE_CLIENT,
 		"",
-		validated || ctx.state.length
-			? 'import { type FormEvent, useState } from "react";'
-			: 'import type { FormEvent } from "react";',
+		'import { type FormEvent, useState } from "react";',
 		...uiImports(ctx.step.fields, validated),
 		`import { ${names.flow} } from "../definition";`,
 		valuesImport(ctx, false),
@@ -856,7 +854,8 @@ function nativeForm(ctx: StepContext): string {
 		...optionConstants(ctx),
 		"",
 		...header(ctx),
-		`\tconst saved = stepper.data.get(${str(id)}) as Partial<${ctx.Values}> | undefined;`,
+		"\t// Read once: next() saves a rejected draft too, and uncontrolled inputs keep their own state.",
+		`\tconst [saved] = useState(() => stepper.data.${id} as Partial<${ctx.Values}> | undefined);`,
 		validated
 			? `\tconst [issues, setIssues] = useState<Partial<Record<keyof ${ctx.Values}, string>>>({});`
 			: null,
@@ -872,22 +871,19 @@ function nativeForm(ctx: StepContext): string {
 		"\t\t};",
 		...(validated
 			? [
-					`\t\tconst result = await ${names.flow}.validate(${str(id)}, value);`,
-					"\t\tif (!result.success) {",
-					"\t\t\tsetIssues(",
-					"\t\t\t\tObject.fromEntries(",
-					"\t\t\t\t\tresult.issues.map((issue) => {",
-					"\t\t\t\t\t\tconst key = issue.path?.[0];",
-					'\t\t\t\t\t\treturn [String(typeof key === "object" ? key.key : key), issue.message];',
-					"\t\t\t\t\t}),",
-					"\t\t\t\t),",
-					"\t\t\t);",
-					"\t\t\treturn;",
-					"\t\t}",
-					"\t\tsetIssues({});",
-					"\t\tawait stepper.next({ data: result.data, complete: true });",
+					"\t\t// next() saves the values, validates them against the step's schema and moves on.",
+					"\t\tconst result = await stepper.next(value);",
+					"\t\tif (result.accepted) return;",
+					"\t\tsetIssues(",
+					"\t\t\tObject.fromEntries(",
+					"\t\t\t\t(result.issues ?? []).map((issue) => {",
+					"\t\t\t\t\tconst key = issue.path?.[0];",
+					'\t\t\t\t\treturn [String(typeof key === "object" ? key.key : key), issue.message];',
+					"\t\t\t\t}),",
+					"\t\t\t),",
+					"\t\t);",
 				]
-			: ["\t\tawait stepper.next({ data: value, complete: true });"]),
+			: ["\t\tawait stepper.next(value);"]),
 		"\t}",
 		"",
 		"\treturn (",
@@ -903,7 +899,7 @@ function nativeForm(ctx: StepContext): string {
 // ─── Steps without fields ────────────────────────────────────────────────────
 
 function summaryStep(ctx: StepContext): string {
-	const { config, names, id } = ctx;
+	const { config, names } = ctx;
 	const sections = config.steps
 		.map((step, i) => ({ step, i }))
 		.filter(
@@ -934,14 +930,14 @@ function summaryStep(ctx: StepContext): string {
 		"}",
 		"",
 		...header(ctx),
-		`\tconst finished = stepper.isComplete(${str(id)});`,
-		"",
+		"\t// next() on the last step finishes the flow, once. Send the data from the",
+		"\t// flow's onFinish: return the request and isFinished turns true when it settles.",
 		"\treturn (",
 		'\t\t<section className="grid gap-4">',
 		...(has
 			? [
 					"\t\t\t{SUMMARY.map((section) => {",
-					"\t\t\t\tconst data = stepper.data.get(section.step) as Record<string, unknown> | undefined;",
+					"\t\t\t\tconst data = stepper.data[section.step] as Record<string, unknown> | undefined;",
 					"\t\t\t\treturn (",
 					'\t\t\t\t\t<div key={section.step} className="rounded-lg border p-4">',
 					'\t\t\t\t\t\t<div className="flex items-center justify-between">',
@@ -961,8 +957,8 @@ function summaryStep(ctx: StepContext): string {
 					"\t\t\t})}",
 				]
 			: []),
-		"\t\t\t{finished ? (",
-		'\t\t\t\t<p role="status" className="text-sm font-medium">All done. Send the data to your API here.</p>',
+		"\t\t\t{stepper.isFinished ? (",
+		'\t\t\t\t<p role="status" className="text-sm font-medium">All done.</p>',
 		"\t\t\t) : (",
 		'\t\t\t\t<div className="flex justify-between gap-2">',
 		indent(back(ctx.kit, { onClick: "() => stepper.prev()" }), 5),
@@ -971,7 +967,7 @@ function summaryStep(ctx: StepContext): string {
 				ctx.kit,
 				{
 					type: "button",
-					onClick: `() => stepper.setComplete(${str(id)})`,
+					onClick: "() => stepper.next()",
 				},
 				"Finish",
 			),
@@ -1008,7 +1004,7 @@ function contentStep(ctx: StepContext): string {
 		indent(
 			button(
 				ctx.kit,
-				{ type: "button", onClick: "() => stepper.next({ complete: true })" },
+				{ type: "button", onClick: "() => stepper.next()" },
 				"Continue",
 			),
 			4,

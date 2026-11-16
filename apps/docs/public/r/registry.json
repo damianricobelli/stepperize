@@ -205,7 +205,7 @@
     {
       "name": "validated-checkout",
       "title": "Validated Checkout",
-      "description": "A checkout where each step has a Zod schema; validate() inside a beforeStepChange guard blocks invalid input before the review step.",
+      "description": "A checkout where each step has a Zod schema; next() validates it and blocks invalid input before the review step.",
       "categories": [
         "commerce"
       ],
@@ -433,7 +433,7 @@
     {
       "name": "save-resume",
       "title": "Save & Resume",
-      "description": "A controlled wizard whose active step is synced to localStorage and the URL hash.",
+      "description": "A resumable wizard whose snapshot is synced to localStorage and the URL hash.",
       "categories": [
         "flow-control"
       ],
@@ -443,7 +443,7 @@
       "level": "advanced",
       "tags": [
         "persistence",
-        "controlled",
+        "snapshot",
         "localstorage",
         "url",
         "resume"
@@ -490,7 +490,7 @@
     {
       "name": "dashboard-wizard",
       "title": "Dashboard Wizard",
-      "description": "A SaaS settings wizard with sticky step nav, per-step validation, and an unsaved-changes guard wired through beforeStepChange and beforeunload.",
+      "description": "A SaaS settings wizard with sticky step nav, per-step validation, and an unsaved-changes guard wired through guard and beforeunload.",
       "categories": [
         "flow-control"
       ],

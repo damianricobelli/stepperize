@@ -16,16 +16,16 @@ export function ProgressBarBlock() {
 			linear
 			className="w-full max-w-md rounded-xl border bg-background p-6 shadow-sm"
 		>
-			{({ stepper }) => {
+			{(stepper) => {
 				const progress = Math.round(
-					((stepper.index + 1) / stepper.count) * 100,
+					((stepper.index + 1) / stepper.steps.length) * 100,
 				);
 				return (
 					<>
 						<div className="mb-2 flex items-center justify-between text-sm">
 							<span className="font-medium">{stepper.current.title}</span>
 							<span className="text-muted-foreground">
-								Step {stepper.index + 1} of {stepper.count}
+								Step {stepper.index + 1} of {stepper.steps.length}
 							</span>
 						</div>
 						<div className="h-2 w-full overflow-hidden rounded-full bg-muted">
@@ -50,7 +50,7 @@ export function ProgressBarBlock() {
 							)}
 						</div>
 
-						<Stepper.Actions className="mt-6 flex justify-between">
+						<div className="mt-6 flex justify-between">
 							<Stepper.Prev className="inline-flex h-9 items-center rounded-lg border bg-background px-4 text-sm font-medium transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-50">
 								Back
 							</Stepper.Prev>
@@ -78,7 +78,7 @@ export function ProgressBarBlock() {
 									Continue
 								</Stepper.Next>
 							)}
-						</Stepper.Actions>
+						</div>
 					</>
 				);
 			}}

@@ -54,7 +54,7 @@ it("blocks invalid checkout data, then completes only the accepted source", asyn
 	expect(ui.getByLabelText("Card number").element()).toBeTruthy();
 	expect(
 		ui.container.querySelectorAll(
-			'[data-component="stepper-item"][data-complete]',
+			'[data-component="stepper-item"][data-state="complete"]',
 		).length,
 	).toBe(1);
 });
@@ -64,9 +64,12 @@ it("resumes validated persisted data and preserves detail fields", async () => {
 		"stepperize:save-resume",
 		JSON.stringify({
 			step: "details",
-			name: "Acme",
-			industry: "Software",
-			teamSize: "5",
+			history: ["workspace"],
+			data: {
+				workspace: { name: "Acme" },
+				details: { industry: "Software", teamSize: "5" },
+			},
+			complete: ["workspace"],
 		}),
 	);
 	const ui = await render(<SaveResumeBlock />);

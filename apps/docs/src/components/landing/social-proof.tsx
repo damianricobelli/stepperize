@@ -58,7 +58,7 @@ export function StatBar({ className }: { className?: string }) {
 		},
 		// Measured by `pnpm benchmark:size` for `@stepperize/react/headless`: the
 		// hooks and Provider, without the UI primitives. Update it with that script.
-		{ value: "3.6 kB", label: "hooks only, min + gzip" },
+		{ value: "2.6 kB", label: "hooks only, min + gzip" },
 		{ value: "0", label: "third-party dependencies" },
 	];
 

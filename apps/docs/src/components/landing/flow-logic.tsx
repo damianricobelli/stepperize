@@ -35,16 +35,16 @@ const DEMOS: Demo[] = [
 		id: "guards",
 		icon: ShieldCheck,
 		label: "Validation that blocks",
-		body: "A failed schema check makes the guard return false. The move is cancelled, not just frowned upon.",
-		api: "beforeStepChange",
+		body: "next() checks the step against its schema. A failed check cancels the move and hands back the issues to show.",
+		api: "next · issues",
 		Block: ValidatedCheckoutBlock,
 	},
 	{
 		id: "branching",
 		icon: GitBranch,
 		label: "Branching paths",
-		body: "An earlier answer rewrites the path. A personal account skips the team step entirely.",
-		api: "goTo · canGoTo",
+		body: "An earlier answer rewrites the path. A personal account skips the team step entirely, and Back returns the way you came.",
+		api: "next map · prev",
 		Block: ConditionalOnboardingBlock,
 	},
 	{
@@ -88,8 +88,8 @@ export function FlowLogic() {
 				title="Real flow logic, not just step tracking."
 			>
 				Most stepper libraries stop at "which step is active". Stepperize
-				handles the hard parts too: guards that block, computed branching, and
-				async transitions with retry. These demos are live.
+				handles the hard parts too: validation that blocks, declarative
+				branching, and async transitions with retry. These demos are live.
 			</SectionHeading>
 
 			<div className="mt-12 grid gap-4 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.6fr)] lg:gap-6">

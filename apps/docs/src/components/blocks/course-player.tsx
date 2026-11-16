@@ -17,7 +17,7 @@ export function CoursePlayerBlock() {
 			linear
 			className="w-full max-w-xl rounded-xl border bg-background p-6 shadow-sm"
 		>
-			{({ stepper }) => (
+			{(stepper) => (
 				<div className="grid gap-6 sm:grid-cols-[180px_1fr]">
 					<div>
 						<div className="mb-3 flex items-center gap-2 text-sm font-semibold">
@@ -25,22 +25,20 @@ export function CoursePlayerBlock() {
 							React basics
 						</div>
 						<Stepper.List className="flex flex-col gap-0.5">
-							<Stepper.Items>
-								{(step) => (
-									<Stepper.Item key={step.id} step={step.id}>
-										<Stepper.Trigger className="group flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left transition-colors disabled:cursor-not-allowed data-[status=active]:bg-muted">
-											<span className="grid size-5 shrink-0 place-items-center rounded-full border text-muted-foreground group-data-[status=active]:border-primary group-data-[status=active]:text-primary group-data-[status=previous]:border-chart-2 group-data-[status=previous]:bg-chart-2 group-data-[status=previous]:text-white">
-												<Check className="hidden size-3 group-data-[status=previous]:block" />
-												<Play className="hidden size-2.5 group-data-[status=active]:block" />
-												<Lock className="hidden size-2.5 group-data-[status=upcoming]:block" />
-											</span>
-											<span className="min-w-0 flex-1">
-												<Stepper.Title className="block truncate text-sm font-medium" />
-											</span>
-										</Stepper.Trigger>
-									</Stepper.Item>
-								)}
-							</Stepper.Items>
+							{(step) => (
+								<Stepper.Item key={step.id} step={step.id}>
+									<Stepper.Trigger className="group flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left transition-colors disabled:cursor-not-allowed data-[state=current]:bg-muted">
+										<span className="grid size-5 shrink-0 place-items-center rounded-full border text-muted-foreground group-data-[state=current]:border-primary group-data-[state=current]:text-primary group-data-[state=complete]:border-chart-2 group-data-[state=complete]:bg-chart-2 group-data-[state=complete]:text-white">
+											<Check className="hidden size-3 group-data-[state=complete]:block" />
+											<Play className="hidden size-2.5 group-data-[state=current]:block" />
+											<Lock className="hidden size-2.5 group-data-[state=pending]:block" />
+										</span>
+										<span className="min-w-0 flex-1">
+											<Stepper.Title className="block truncate text-sm font-medium" />
+										</span>
+									</Stepper.Trigger>
+								</Stepper.Item>
+							)}
 						</Stepper.List>
 					</div>
 
@@ -59,7 +57,7 @@ export function CoursePlayerBlock() {
 							</p>
 						</Stepper.Content>
 
-						<Stepper.Actions className="mt-4 flex justify-between">
+						<div className="mt-4 flex justify-between">
 							<Stepper.Prev className="inline-flex h-9 items-center rounded-lg border bg-background px-4 text-sm font-medium transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-50">
 								Previous
 							</Stepper.Prev>
@@ -87,7 +85,7 @@ export function CoursePlayerBlock() {
 									Mark complete
 								</Stepper.Next>
 							)}
-						</Stepper.Actions>
+						</div>
 					</div>
 				</div>
 			)}

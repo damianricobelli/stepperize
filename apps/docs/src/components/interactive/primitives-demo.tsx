@@ -1,6 +1,6 @@
 "use client";
 
-import { defineStepper } from "@stepperize/react";
+import { defineStepper } from "@stepperize/react-v8";
 import { useState } from "react";
 
 const checkout = defineStepper([

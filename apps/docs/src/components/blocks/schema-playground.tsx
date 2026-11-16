@@ -7,8 +7,8 @@ import { z } from "zod";
 
 /**
  * Shared result panel. Each demo below owns its own `defineStepper` and only
- * passes the resolved `validate()` result here for rendering — the validation
- * logic stays per-library, this is just presentation.
+ * passes the outcome of `next()` here for rendering — the validation logic
+ * stays per-library, this is just presentation.
  */
 type ValidationResult =
 	| { success: true; data: unknown }
@@ -16,6 +16,29 @@ type ValidationResult =
 			success: false;
 			issues: ReadonlyArray<{ message: string }>;
 	  };
+
+/**
+ * `next(data)` validates the step against its schema and resolves with what
+ * happened. A throwaway flow from `definition.create()` runs it without React.
+ */
+async function check(
+	form: {
+		create: () => {
+			next: (
+				data: unknown,
+			) => Promise<
+				| { accepted: true; data: { user?: unknown } }
+				| { accepted: false; issues?: ReadonlyArray<{ message: string }> }
+			>;
+		};
+	},
+	value: unknown,
+): Promise<ValidationResult> {
+	const result = await form.create().next(value);
+	return result.accepted
+		? { success: true, data: result.data.user }
+		: { success: false, issues: result.issues ?? [] };
+}
 
 function Demo({
 	title,
@@ -92,9 +115,7 @@ export function SchemaZodBlock() {
 	// Re-validate whenever the value changes — and once on mount, so the result
 	// reflects the initial value instead of waiting for the first keystroke.
 	useEffect(() => {
-		zodForm
-			.validate("user", { username })
-			.then((r) => setResult(r as ValidationResult));
+		check(zodForm, { username }).then(setResult);
 	}, [username]);
 
 	return (
@@ -126,9 +147,7 @@ export function SchemaValibotBlock() {
 	const [result, setResult] = useState<ValidationResult | null>(null);
 
 	useEffect(() => {
-		valibotForm
-			.validate("user", { email })
-			.then((r) => setResult(r as ValidationResult));
+		check(valibotForm, { email }).then(setResult);
 	}, [email]);
 
 	return (
@@ -158,9 +177,7 @@ export function SchemaArktypeBlock() {
 	const [result, setResult] = useState<ValidationResult | null>(null);
 
 	useEffect(() => {
-		arktypeForm
-			.validate("user", { code })
-			.then((r) => setResult(r as ValidationResult));
+		check(arktypeForm, { code }).then(setResult);
 	}, [code]);
 
 	return (

@@ -18,9 +18,9 @@ export function ProgressOverviewBlock() {
 
 	return (
 		<Stepper.Root className="w-full max-w-md rounded-xl border bg-background p-6 shadow-sm">
-			{({ stepper }) => {
+			{(stepper) => {
 				const completedSteps = stepper.index;
-				const remaining = stepper.count - stepper.index - 1;
+				const remaining = stepper.steps.length - stepper.index - 1;
 				const percent = Math.round(stepper.progress * 100);
 				// Sum the typed `estMinutes` of every step the user hasn't finished.
 				const minutesLeft = stepper.steps
@@ -60,8 +60,14 @@ export function ProgressOverviewBlock() {
 							</div>
 						) : (
 							<ol className="space-y-1">
-								{stepper.steps.map((step) => {
-									const status = stepper.status(step.id);
+								{stepper.steps.map((step, index) => {
+									// Positional, like the bar above: steps before the current one.
+									const status =
+										index < stepper.index
+											? "previous"
+											: index === stepper.index
+												? "active"
+												: "upcoming";
 									return (
 										<li
 											key={step.id}
@@ -93,7 +99,7 @@ export function ProgressOverviewBlock() {
 							</ol>
 						)}
 
-						<Stepper.Actions className="mt-5 flex gap-2">
+						<div className="mt-5 flex gap-2">
 							<Stepper.Prev className="inline-flex h-9 items-center rounded-lg border bg-background px-4 text-sm font-medium transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-50">
 								Back
 							</Stepper.Prev>
@@ -121,7 +127,7 @@ export function ProgressOverviewBlock() {
 									Continue
 								</Stepper.Next>
 							)}
-						</Stepper.Actions>
+						</div>
 					</>
 				);
 			}}

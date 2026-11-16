@@ -27,18 +27,16 @@ export function OrgSetupBlock() {
 			linear
 			className="w-full max-w-md rounded-xl border bg-background p-6 shadow-sm"
 		>
-			{({ stepper }) => (
+			{(stepper) => (
 				<>
 					<Stepper.List className="flex gap-1 rounded-lg bg-muted p-1">
-						<Stepper.Items>
-							{(step) => (
-								<Stepper.Item key={step.id} step={step.id} className="flex-1">
-									<Stepper.Trigger className="w-full rounded-md px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors disabled:cursor-not-allowed data-[status=active]:bg-background data-[status=active]:text-foreground data-[status=active]:shadow-sm data-[status=previous]:text-foreground">
-										<Stepper.Title />
-									</Stepper.Trigger>
-								</Stepper.Item>
-							)}
-						</Stepper.Items>
+						{(step) => (
+							<Stepper.Item key={step.id} step={step.id} className="flex-1">
+								<Stepper.Trigger className="w-full rounded-md px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors disabled:cursor-not-allowed data-[state=current]:bg-background data-[state=current]:text-foreground data-[state=current]:shadow-sm data-[state=complete]:text-foreground">
+									<Stepper.Title />
+								</Stepper.Trigger>
+							</Stepper.Item>
+						)}
 					</Stepper.List>
 
 					<div className="mt-6 min-h-32">
@@ -101,7 +99,7 @@ export function OrgSetupBlock() {
 						</Stepper.Content>
 					</div>
 
-					<Stepper.Actions className="mt-6 flex justify-between">
+					<div className="mt-6 flex justify-between">
 						<Stepper.Prev className={buttonVariants({ variant: "outline" })}>
 							Back
 						</Stepper.Prev>
@@ -127,7 +125,7 @@ export function OrgSetupBlock() {
 						) : (
 							<Stepper.Next className={buttonVariants()}>Continue</Stepper.Next>
 						)}
-					</Stepper.Actions>
+					</div>
 				</>
 			)}
 		</Stepper.Root>

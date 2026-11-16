@@ -12,18 +12,16 @@ export function SegmentedBlock() {
 
 	return (
 		<Stepper.Root className="w-full max-w-md rounded-xl border bg-background p-6 shadow-sm">
-			{({ stepper }) => (
+			{(stepper) => (
 				<>
 					<Stepper.List className="flex gap-1 rounded-lg bg-muted p-1">
-						<Stepper.Items>
-							{(step) => (
-								<Stepper.Item key={step.id} step={step.id} className="flex-1">
-									<Stepper.Trigger className="w-full rounded-md px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors data-[status=active]:bg-background data-[status=active]:text-foreground data-[status=active]:shadow-sm">
-										<Stepper.Title />
-									</Stepper.Trigger>
-								</Stepper.Item>
-							)}
-						</Stepper.Items>
+						{(step) => (
+							<Stepper.Item key={step.id} step={step.id} className="flex-1">
+								<Stepper.Trigger className="w-full rounded-md px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors data-[state=current]:bg-background data-[state=current]:text-foreground data-[state=current]:shadow-sm">
+									<Stepper.Title />
+								</Stepper.Trigger>
+							</Stepper.Item>
+						)}
 					</Stepper.List>
 
 					<div className="mt-6 grid min-h-24 place-items-center rounded-lg border bg-muted/30 p-4 text-center text-sm text-muted-foreground">
@@ -41,7 +39,7 @@ export function SegmentedBlock() {
 						)}
 					</div>
 
-					<Stepper.Actions className="mt-6 flex justify-between">
+					<div className="mt-6 flex justify-between">
 						<Stepper.Prev className="inline-flex h-9 items-center rounded-lg border bg-background px-4 text-sm font-medium transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-50">
 							Back
 						</Stepper.Prev>
@@ -69,7 +67,7 @@ export function SegmentedBlock() {
 								Next
 							</Stepper.Next>
 						)}
-					</Stepper.Actions>
+					</div>
 				</>
 			)}
 		</Stepper.Root>
