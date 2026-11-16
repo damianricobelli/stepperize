@@ -1,0 +1,71 @@
+---
+title: Shared state
+description: Read one flow from several components, and re-render only what changed.
+---
+
+`useStepper()` creates a flow that belongs to the component that calls it. When
+several components need the same flow, put it in the `Provider`.
+
+```tsx
+function Page() {
+  return (
+    <checkout.Provider linear onFinish={placeOrder}>
+      <Header />
+      <Steps />
+      <Actions />
+    </checkout.Provider>
+  );
+}
+```
+
+The `Provider` accepts the same [options](/docs/v9/react/api/options) as
+`useStepper`. `Stepper.Root` is a provider too.
+
+## Reading it
+
+```tsx
+function Actions() {
+  const stepper = checkout.useStepperContext();
+  return (
+    <button type="button" onClick={() => stepper.next()}>
+      {stepper.isLast ? "Place order" : "Continue"}
+    </button>
+  );
+}
+```
+
+Calling `useStepperContext` outside its own `Provider` throws
+[SZ100](/docs/v9/core/errors#sz100).
+
+## Selectors
+
+Without arguments, the component re-renders on every change. Pass a selector to
+re-render only when its result changes.
+
+```tsx
+function Header() {
+  const title = checkout.useStepperContext((stepper) => stepper.current.title);
+  return <h2>{title}</h2>;
+}
+```
+
+A selector may return an object or an array. It then re-renders on every
+change, because the result is new each time; select primitives when you want to
+skip renders.
+
+```tsx
+// Re-renders only when the step changes.
+const id = checkout.useStepperContext((s) => s.current.id);
+
+// Works, and re-renders on every change.
+const view = checkout.useStepperContext((s) => ({ id: s.current.id, last: s.isLast }));
+```
+
+## Which one to use
+
+| You have | Use |
+| --- | --- |
+| One component that renders the whole flow | `useStepper()` |
+| A header, a body and a footer in different components | `Provider` + `useStepperContext()` |
+| The `Stepper` primitives | `Stepper.Root`, and `useStepperContext()` inside it |
+| Two independent flows of the same definition on a page | Two `Provider`s, or two `useStepper()` calls |

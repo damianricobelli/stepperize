@@ -1,0 +1,65 @@
+---
+title: The step in the URL
+description: Keep the current step and the address bar in sync with one option.
+---
+
+Pass the URL value as `step`. The flow starts there and goes there whenever the
+value changes, which is what makes the browser's back and forward buttons work.
+Update the URL from `onChange`.
+
+```tsx
+function Checkout() {
+  const { step } = useParams();
+  const router = useRouter();
+
+  const stepper = checkout.useStepper({
+    step,
+    onChange: (snapshot) => {
+      if (snapshot.step !== step) router.replace(`/checkout/${snapshot.step}`);
+    },
+  });
+}
+```
+
+## It cannot be used to skip steps
+
+Following the URL behaves like `goTo`: the `linear` option and the guard still
+apply. Someone who opens `/checkout/payment` directly in a linear flow starts
+at the first step.
+
+When the flow cannot follow the value (an unknown id, a step that is not
+reachable yet, a guard that says no), `onChange` is called with where the flow
+really is. The code above then corrects the URL, with nothing else to write.
+
+## With a persisted snapshot
+
+Use both. The snapshot restores the data and the completed steps, so a deep
+link to a step the person already completed is honored.
+
+```tsx
+checkout.useStepper({
+  step,
+  snapshot: savedSnapshot,
+  onChange: (snapshot) => {
+    save(snapshot);
+    if (snapshot.step !== step) router.replace(`/checkout/${snapshot.step}`);
+  },
+});
+```
+
+## Search params
+
+Nothing changes: `step` is any string, `null` or `undefined`.
+
+```tsx
+const [params, setParams] = useSearchParams();
+const step = params.get("step");
+
+checkout.useStepper({
+  step,
+  onChange: (snapshot) => snapshot.step !== step && setParams({ step: snapshot.step }),
+});
+```
+
+Prefer `replace` over `push` when correcting the URL, so a refused deep link
+does not add an entry to the history.

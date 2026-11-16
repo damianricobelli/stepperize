@@ -1,0 +1,94 @@
+---
+title: Options
+description: Everything a flow can be configured with.
+---
+
+The same options are accepted by `defineStepper` (as defaults), `useStepper`,
+`Provider` and `Stepper.Root`. Callbacks always see your latest props: there is
+nothing to memoize.
+
+| Option | Type | Description |
+| --- | --- | --- |
+| `linear` | `boolean` | Only move forward through `next()`. Default `false`. |
+| `next` | `object` | Where each step leads. |
+| `guard` | `function` | Runs before every move and can cancel it. |
+| `snapshot` | `Partial<Snapshot>` | Where the flow starts. Read once. |
+| `step` | `string \| null` | An outside value the flow follows, such as the URL. |
+| `onChange` | `(snapshot) => void` | Called after the step, data or completion changes. |
+| `onFinish` | `(data) => void` | Called when the flow ends. |
+
+## linear
+
+In a linear flow, `goTo` and the triggers only reach the current step and the
+steps already completed. Everything else is reached through `next()`, which
+validates. Going back is always allowed.
+
+Without `linear`, any step can be opened at any time.
+
+## next
+
+A map from step id to where it leads. See [Branching](/docs/v9/react/guides/branching).
+
+```tsx
+next: {
+  account: (data) => (data.type === "team" ? "team" : "payment"),
+  rejected: null,
+}
+```
+
+- A function receives the step's validated data and returns a step id, or
+  `null` to end the flow.
+- `null` ends the flow at that step.
+- No entry: the following step in the list, or the end after the last one.
+
+## guard
+
+```tsx
+guard: async ({ from, to, direction, data, signal }) => {
+  if (direction !== "next") return;
+  const response = await fetch("/api/check", { method: "POST", body: JSON.stringify(data), signal });
+  return response.ok;
+}
+```
+
+Runs after validation and before every `next`, `prev` and `goTo`. Return
+`false` to cancel the move; anything else allows it.
+
+| Field | Description |
+| --- | --- |
+| `from` | The step being left. |
+| `to` | The step being entered, or `null` when the flow is finishing. |
+| `direction` | `"next"`, `"prev"` or `"goTo"`. |
+| `data` | The flow data as it will be if the move is accepted. |
+| `signal` | Aborted if the move is cancelled by `reset`, `restore` or unmounting. |
+
+## snapshot
+
+```ts
+type Snapshot = {
+  step: string;       // the current step
+  history: string[];  // the path taken, which prev() walks back
+  data: object;       // the data of every step, by id
+  complete: string[]; // the steps next() has validated
+};
+```
+
+Pass any part of it. See [Saving and resuming](/docs/v9/react/guides/persistence).
+
+## step
+
+See [The step in the URL](/docs/v9/react/guides/url). When both `step` and
+`snapshot.step` are given, `step` wins if the flow is allowed to be there.
+
+## onChange
+
+Called with the new snapshot after a move, after `setData`, and after `reset`
+and `restore`. It is not called for `isPending` or for issues alone.
+
+It is also called without a change when the flow cannot follow `step`, so the
+owner of that value can correct it.
+
+## onFinish
+
+Called with the data of every step when `next()` completes a final step. The
+flow stays on that step; call `reset()` to start again.

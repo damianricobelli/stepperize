@@ -1,0 +1,95 @@
+---
+title: Primitives
+description: Props of every Stepper component.
+---
+
+All primitives accept the props of the element they render, a `ref`, and
+`render` to [use your own element](/docs/v9/react/guides/primitives#rendering-your-own-element).
+See [Styling](/docs/v9/react/guides/styling) for their data attributes.
+
+## Root
+
+Renders a `div`. Creates the flow and provides it.
+
+| Prop | Type | Description |
+| --- | --- | --- |
+| Every [option](/docs/v9/react/api/options) | | `linear`, `next`, `guard`, `snapshot`, `step`, `onChange`, `onFinish`. |
+| `orientation` | `"horizontal" \| "vertical"` | Default `"horizontal"`. |
+| `children` | `ReactNode \| (stepper) => ReactNode` | The function form re-renders on every change. |
+
+`onChange` is the flow's callback, not the DOM event.
+
+## List
+
+Renders an `ol`.
+
+| Prop | Type | Description |
+| --- | --- | --- |
+| `children` | `ReactNode \| (step, index) => ReactNode` | The function is called once per step; items inside it need no `step` prop. |
+| `orientation` | `"horizontal" \| "vertical"` | Defaults to the root's. |
+
+## Item
+
+Renders an `li`.
+
+| Prop | Type | Description |
+| --- | --- | --- |
+| `step` | Step id | Required outside a `List` function. |
+
+## Trigger
+
+Renders a `button` that calls `goTo` for its step. Must be inside an `Item`.
+It is disabled when `linear` does not allow reaching the step.
+
+## Title and Description
+
+Render a `span` with the step's `title` or `description` field. Children
+replace it.
+
+## Indicator
+
+Renders a `span` with `aria-hidden`. Empty by default: style it, or pass
+children.
+
+## Content
+
+Renders a `div` while its step is current.
+
+| Prop | Type | Description |
+| --- | --- | --- |
+| `step` | Step id | Required. |
+| `forceMount` | `boolean` | Keep it mounted and `hidden` while its step is not current. |
+
+## Prev and Next
+
+Render a `button`. `Next` calls `next()`, which validates the data stored for
+the current step; `Prev` calls `prev()` and is disabled when there is nowhere
+to go back to.
+
+Call `event.preventDefault()` in `onClick` to handle the move yourself, for
+example to pass form values:
+
+```tsx
+<Stepper.Next
+  onClick={(event) => {
+    event.preventDefault();
+    stepper.next(form.getValues());
+  }}
+>
+  Continue
+</Stepper.Next>
+```
+
+## useItem
+
+`Stepper.useItem()` returns the enclosing item.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `step` | `Step` | The step, with all its fields. |
+| `index` | `number` | Its position. |
+| `state` | `"pending" \| "current" \| "complete"` | |
+| `invalid` | `boolean` | Its last validation failed and its data has not changed since. |
+| `disabled` | `boolean` | `goTo` would be refused right now. |
+
+Outside an `Item` it throws [SZ101](/docs/v9/core/errors#sz101).

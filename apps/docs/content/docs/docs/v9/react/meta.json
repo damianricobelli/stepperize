@@ -1,0 +1,28 @@
+{
+	"title": "React",
+	"description": "Stepperize v9 for React",
+	"root": true,
+	"pages": [
+		"---Start---",
+		"index",
+		"installation",
+		"first-stepper",
+		"migration",
+		"---Guides---",
+		"guides/validation",
+		"guides/branching",
+		"guides/persistence",
+		"guides/url",
+		"guides/shared-state",
+		"guides/forms",
+		"---Primitives---",
+		"guides/primitives",
+		"guides/styling",
+		"guides/accessibility",
+		"---Reference---",
+		"api/define-stepper",
+		"api/options",
+		"api/stepper",
+		"api/primitives"
+	]
+}

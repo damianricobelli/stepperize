@@ -1,0 +1,70 @@
+---
+title: Styling
+description: Style the primitives through data attributes.
+---
+
+The primitives have no styles. Each one sets data attributes that describe its
+state, so plain CSS or Tailwind variants are enough.
+
+## Attributes
+
+| Attribute | Set on | Values |
+| --- | --- | --- |
+| `data-component` | Every primitive | `stepper`, `stepper-list`, `stepper-item`, `stepper-trigger`, `stepper-title`, `stepper-description`, `stepper-indicator`, `stepper-content`, `stepper-prev`, `stepper-next` |
+| `data-state` | `Item`, `Trigger`, `Indicator` | `pending`, `current`, `complete` |
+| `data-invalid` | `Item`, `Trigger`, `Indicator` | Present after a rejected `next()`, until the step's data changes |
+| `data-disabled` | `Item`, `Trigger`, `Prev`, `Next` | Present when the action is not available |
+| `data-pending` | `Root`, `Prev`, `Next` | Present while an async schema or guard runs |
+| `data-orientation` | `Root`, `List` | `horizontal`, `vertical` |
+| `data-step` | `Item`, `Trigger`, `Content` | The step id |
+
+## Tailwind
+
+```tsx
+<Stepper.Trigger className="flex items-center gap-2 text-muted-foreground data-[state=current]:text-foreground data-disabled:opacity-50">
+  <Stepper.Indicator className="size-6 rounded-full border data-[state=complete]:bg-primary data-invalid:border-destructive" />
+  <Stepper.Title />
+</Stepper.Trigger>
+```
+
+## CSS
+
+```css
+[data-component="stepper-list"] {
+  display: flex;
+  gap: 1rem;
+}
+[data-component="stepper-list"][data-orientation="vertical"] {
+  flex-direction: column;
+}
+[data-component="stepper-indicator"][data-state="complete"] {
+  background: var(--primary);
+}
+[data-component="stepper-next"][data-pending] {
+  cursor: progress;
+}
+```
+
+## Disabled and pending
+
+A button that cannot be used right now gets `data-disabled`. Style that
+attribute rather than `:disabled`: while an async check runs, the buttons are
+`aria-disabled` instead of `disabled`, so the one that was pressed keeps
+keyboard focus.
+
+## Lines between steps
+
+There is no separator component. Draw the line with CSS on the items, which
+keeps the list a clean list of steps for screen readers.
+
+```css
+[data-component="stepper-item"]:not(:last-child)::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+[data-component="stepper-item"][data-state="complete"]::after {
+  background: var(--primary);
+}
+```

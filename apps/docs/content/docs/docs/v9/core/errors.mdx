@@ -1,0 +1,81 @@
+---
+title: Errors and warnings
+description: Every diagnostic code, what it means and how to fix it.
+---
+
+Diagnostics carry a stable code and a link to this page. Warnings appear only
+in development and are removed from production builds; errors are thrown in
+both.
+
+## SZ001
+
+**Warning.** A primitive received a `render` function that did not put the
+props it was given on an element. The ARIA attributes, ids, handlers and `ref`
+are missing from the page.
+
+```tsx
+// Wrong: the props are dropped.
+<Stepper.Next render={() => <Button>Continue</Button>} />
+
+// Right
+<Stepper.Next render={(props) => <Button {...props} />}>Continue</Stepper.Next>
+```
+
+If you spread into your own component, it must forward the `ref` to its
+element.
+
+## SZ002
+
+**Warning.** A `Stepper.Trigger` has no accessible name. `Stepper.Indicator` is
+hidden from screen readers, so a trigger that only contains one is announced as
+an unnamed button.
+
+```tsx
+<Stepper.Trigger aria-label={step.title}>
+  <Stepper.Indicator />
+</Stepper.Trigger>
+```
+
+## SZ003
+
+**Warning.** A `Stepper.Trigger` is rendered outside `Stepper.List`. Keyboard
+navigation and the list semantics depend on the list. Move the trigger inside
+it, or use a plain button that calls `goTo`.
+
+## SZ100
+
+**Error.** A component read a flow that is not provided above it.
+
+- `useStepperContext()` needs the `Provider` or `Stepper.Root` of the same
+  definition as an ancestor. A provider of another definition does not count.
+- The primitives need `Stepper.Root`.
+
+If the component only needs its own flow, use `useStepper()` instead.
+
+## SZ101
+
+**Error.** A primitive that belongs to a step was rendered outside
+`Stepper.Item`, or a `Stepper.Item` has no `step`.
+
+`Trigger`, `Indicator` and `Stepper.useItem()` need an item around them. An
+item gets its step from the `Stepper.List` function, or from its `step` prop:
+
+```tsx
+<Stepper.List>{() => <Stepper.Item>…</Stepper.Item>}</Stepper.List>
+
+<Stepper.Item step="payment">…</Stepper.Item>
+```
+
+## SZ102
+
+**Error.** A step id does not exist in the definition. It is thrown by `goTo`,
+`setData`, a `next` branch that returns an unknown id, and `Stepper.Item`.
+
+TypeScript catches this at compile time; it usually means a value was cast, or
+came from outside, such as a URL. For outside values use the
+[`step` option](/docs/v9/react/guides/url), which ignores unknown ids.
+
+## SZ103
+
+**Error.** The list of steps is not valid: it is empty, or two steps share an
+`id`.

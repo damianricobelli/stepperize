@@ -1,0 +1,185 @@
+---
+title: Migrating from v8
+description: What changed in v9, and a codemod that rewrites most of it.
+---
+
+v9 keeps the idea of v8, one typed definition, and removes most of what you had
+to wire by hand. `next()` validates, one snapshot replaces the controlled
+props, and one state per step replaces status and completion.
+
+## 1. Update
+
+```bash
+npm install @stepperize/react@^9
+```
+
+## 2. Run the codemod
+
+```bash
+npx @stepperize/codemod v9 src
+```
+
+It rewrites what has a direct equivalent and leaves a
+`// TODO(stepperize-v9)` comment where a decision is yours. Add `--dry` to see
+what it would change without writing files. Commit first, run your formatter
+afterwards, then review the diff.
+
+The codemod follows steppers created by `useStepper()` and
+`useStepperContext()`, the `Stepper.Root` function child, and values typed as
+`Stepper`. It does not follow a stepper through your own hooks, refs or untyped
+props, and it does not touch CSS: rename `data-status` and `data-complete`
+selectors to `data-state` by hand.
+
+```bash
+grep -rn "TODO(stepperize-v9)" src
+```
+
+## 3. Go through the rest
+
+The sections below cover everything the codemod flags, in the order you are
+most likely to meet it.
+
+### Validation moved into next()
+
+```tsx
+// v8
+const stepper = checkout.useStepper({
+  beforeStepChange: async ({ direction, validate }) => {
+    if (direction !== "next") return true;
+    return (await validate()).success;
+  },
+});
+await stepper.next({ data: values, complete: true });
+
+// v9
+const stepper = checkout.useStepper();
+await stepper.next(values);
+```
+
+`next()` validates against the step's schema, marks it complete and returns
+the issues when it fails. Delete guards that only called `validate()`. The
+guard still exists for other checks and is now called `guard`.
+
+| v8 | v9 |
+| --- | --- |
+| `beforeStepChange` | `guard` |
+| `ctx.validate()` inside the guard | Not needed: validation runs before the guard |
+| `stepper.validate(id)` | `await stepper.next()`, then `stepper.issues(id)` |
+| `direction: "goto"` | `direction: "goTo"` |
+| `ctx.fromIndex`, `ctx.toIndex`, `ctx.statuses` | `ctx.from`, `ctx.to` (`null` when finishing) |
+| `next({ data, complete })` | `next(data)` |
+| `result.from` | Removed. `result.to` is `null` when the flow finished |
+
+### Controlled props became a snapshot
+
+```tsx
+// v8
+checkout.useStepper({
+  step,
+  onStepChange: setStep,
+  data,
+  onDataChange: setData,
+  completed,
+  onCompletedChange: setCompleted,
+});
+
+// v9
+checkout.useStepper({
+  snapshot: saved,
+  onChange: save,
+});
+```
+
+| v8 | v9 |
+| --- | --- |
+| `defaultStep`, `defaultData`, `defaultCompleted` | `snapshot: { step, data, complete }` |
+| `data` + `onDataChange`, `completed` + `onCompletedChange` | `snapshot` + `onChange`, and `restore()` to replace state later |
+| `step` + `onStepChange` | `step` + `onChange`. See [The step in the URL](/docs/v9/react/guides/url) |
+| `onInvalidStep` | Not needed: unknown ids are ignored and `onChange` reports the real step |
+
+### One state per step
+
+v8 had a positional `status` and a separate, explicit completion. v9 has one
+`state` per step, and a step becomes `complete` when `next()` validates it.
+
+| v8 | v9 |
+| --- | --- |
+| `stepper.status(id)`: `active`, `previous`, `upcoming` | `stepper.state(id)`: `current`, `complete`, `pending` |
+| `stepper.isComplete(id)` | `stepper.state(id) === "complete"` |
+| `stepper.completed` | `stepper.snapshot().complete` |
+| `stepper.setComplete(id)` | `stepper.restore({ complete: [...] })`, or let `next()` do it |
+| `data-status`, `data-complete` | `data-state` |
+
+`previous` and `complete` are not the same thing: a step the person jumped over
+is before the current one, but was never completed. If you styled by position,
+compare indexes instead.
+
+### Data is a plain object
+
+| v8 | v9 |
+| --- | --- |
+| `stepper.data.get("shipping")` | `stepper.data.shipping` |
+| `stepper.data.all()` | `stepper.data` |
+| `stepper.data.set("shipping", value)` | `stepper.setData("shipping", value)` |
+| `stepper.data.update(id, fn)` | `stepper.setData(id, fn(stepper.data[id]))` |
+| `stepper.data.clear(id)` | `stepper.restore({ data: { ...stepper.data, [id]: undefined } })` |
+| `stepper.data.reset()` | `stepper.restore({ data: {} })` |
+
+### Derived values
+
+| v8 | v9 |
+| --- | --- |
+| `stepper.id` | `stepper.current.id` |
+| `stepper.count` | `stepper.steps.length` |
+| `stepper.is("review")` | `stepper.current.id === "review"` |
+| `stepper.canPrev` | `!stepper.isFirst && !stepper.isPending` |
+| `stepper.canNext` | `!stepper.isLast && !stepper.isPending` |
+| `isFirst`, `isLast`, `progress` | Unchanged. `isLast` now knows about branches |
+
+`next()` on the last step is no longer refused: it finishes the flow and calls
+`onFinish`. Move the code that ran after your last step there.
+
+### Navigation options
+
+| v8 | v9 |
+| --- | --- |
+| `goTo(id, { bypassPolicy: true })` | Describe the jump in the [`next` map](/docs/v9/react/guides/branching), or use `restore({ step: id })` |
+| `goTo(id, { data })`, `prev({ data })` | `setData(...)`, then move |
+| `reset({ keepData: true })` | `restore({ step, history: [] })` |
+| `await reset()` | `reset()` is synchronous and does not run the guard |
+
+### Primitives
+
+| v8 | v9 |
+| --- | --- |
+| `<Stepper.Root>{({ stepper }) => …}` | `<Stepper.Root>{(stepper) => …}` |
+| `<Stepper.Items>{fn}</Stepper.Items>` inside `List` | `<Stepper.List>{fn}</Stepper.List>` |
+| `Stepper.Actions` | A `div` |
+| `Stepper.Separator` | CSS on the items. See [Styling](/docs/v9/react/guides/styling#lines-between-steps) |
+| `Title` renders `h4`, `Description` renders `p` | Both render `span`. Use `render` for another element |
+| `@stepperize/react/primitives` | Use the `Stepper` of your definition |
+
+The markup now follows the flow: a `linear` stepper is an ordered list of steps
+with `aria-current="step"` instead of tabs. If your tests query by role, a
+linear flow has `button`s where it had `tab`s. See
+[Accessibility](/docs/v9/react/guides/accessibility).
+
+### Definition helpers
+
+| v8 | v9 |
+| --- | --- |
+| `definition.get(id)` | `definition.steps.find((step) => step.id === id)` |
+| `definition.at(index)` | `definition.steps[index]` |
+| `definition.parseStep(value)` | Pass the value as the `step` option |
+| `definition.validate(id, value)` | Call the schema: `step.schema["~standard"].validate(value)` |
+| `useStepperContext(selector, isEqual)` | `useStepperContext(selector)`. Object results are safe |
+| Utilities exported by `@stepperize/core` | Removed. The core now exports `createStepper` |
+
+## New in v9
+
+Not needed to migrate, but worth knowing once you have:
+
+- [Branching](/docs/v9/react/guides/branching) with a typed `next` map, and
+  flows with more than one ending.
+- [The step in the URL](/docs/v9/react/guides/url) with one option.
+- The flow [without React](/docs/v9/core), for tests and servers.

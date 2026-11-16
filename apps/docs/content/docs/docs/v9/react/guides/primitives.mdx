@@ -1,0 +1,128 @@
+---
+title: Primitives
+description: Unstyled components that handle roles, keyboard, focus and announcements.
+---
+
+Every definition comes with a `Stepper` object: components bound to your steps.
+They render plain elements with no styles, and take care of the parts that are
+easy to get wrong.
+
+```tsx
+const { Stepper } = checkout;
+
+function CheckoutSteps() {
+  return (
+    <Stepper.Root linear onFinish={placeOrder}>
+      <Stepper.List>
+        {() => (
+          <Stepper.Item>
+            <Stepper.Trigger>
+              <Stepper.Indicator />
+              <Stepper.Title />
+              <Stepper.Description />
+            </Stepper.Trigger>
+          </Stepper.Item>
+        )}
+      </Stepper.List>
+
+      <Stepper.Content step="shipping">
+        <ShippingForm />
+      </Stepper.Content>
+      <Stepper.Content step="payment">
+        <PaymentForm />
+      </Stepper.Content>
+      <Stepper.Content step="review">
+        <Review />
+      </Stepper.Content>
+
+      <Stepper.Prev>Back</Stepper.Prev>
+      <Stepper.Next>Continue</Stepper.Next>
+    </Stepper.Root>
+  );
+}
+```
+
+## How they fit together
+
+| Component | Element | What it does |
+| --- | --- | --- |
+| `Root` | `div` | Owns the flow. Accepts every [option](/docs/v9/react/api/options). |
+| `List` | `ol` | The list of steps. Give it a function to render one item per step. |
+| `Item` | `li` | One step. Everything inside knows which step it belongs to. |
+| `Trigger` | `button` | Goes to its step. |
+| `Title`, `Description` | `span` | The step's `title` and `description` fields, unless you pass children. |
+| `Indicator` | `span` | A decorative mark, hidden from screen readers. |
+| `Content` | `div` | The panel of a step. Rendered only while its step is current. |
+| `Prev`, `Next` | `button` | Go back, and validate and go forward. |
+
+## Reading the flow inside Root
+
+`Stepper.Root` is a provider. Use the function form of its children, or
+`useStepperContext` in any component below it.
+
+```tsx
+<Stepper.Root>
+  {(stepper) => (
+    <>
+      <p>Step {stepper.index + 1} of {stepper.steps.length}</p>
+      <Stepper.Next>{stepper.isLast ? "Finish" : "Continue"}</Stepper.Next>
+    </>
+  )}
+</Stepper.Root>
+```
+
+## Reading the step inside Item
+
+`Stepper.useItem()` returns the item's `step`, `index`, `state`, `invalid` and
+`disabled`.
+
+```tsx
+function Mark() {
+  const item = Stepper.useItem();
+  return <Stepper.Indicator>{item.state === "complete" ? "✓" : item.index + 1}</Stepper.Indicator>;
+}
+```
+
+## Rendering your own element
+
+Every primitive takes a `render` function. Spread the props you receive: they
+carry the ARIA attributes, ids, handlers and the `ref`.
+
+```tsx
+<Stepper.Next render={(props) => <Button {...props} variant="primary" />}>
+  Continue
+</Stepper.Next>
+```
+
+Forgetting to spread them is reported in development as
+[SZ001](/docs/v9/core/errors#sz001).
+
+## A list you lay out yourself
+
+Without a function, render the items you want and name their step:
+
+```tsx
+<Stepper.List>
+  <Stepper.Item step="shipping">…</Stepper.Item>
+  <li aria-hidden className="separator" />
+  <Stepper.Item step="payment">…</Stepper.Item>
+</Stepper.List>
+```
+
+## Vertical layouts
+
+```tsx
+<Stepper.Root orientation="vertical">
+```
+
+Arrow keys follow the orientation, and `data-orientation` is set on the root
+and the list for your styles.
+
+## Keeping panels mounted
+
+`Stepper.Content` unmounts when its step is not current. Pass `forceMount` to
+keep it in the DOM, hidden, so uncontrolled form state survives.
+
+```tsx
+<Stepper.Content step="shipping" forceMount>
+```

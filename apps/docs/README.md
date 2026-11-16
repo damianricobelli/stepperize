@@ -40,7 +40,14 @@ pnpm check
 
 Documentation pages live in `content/docs`.
 
-- `content/docs/docs/latest` contains the current docs.
+- `content/docs/docs/v8` contains the current docs (`CURRENT_DOCS_VERSION` in
+  `src/lib/docs-tree.ts`); `v9` is the next version.
+- From v9 on, docs are split by framework:
+  `content/docs/docs/v9/{framework}/...`, served at
+  `/docs/v9/{framework}/...`. To document a new binding, add it to
+  `src/lib/frameworks.ts`, create its folder with a `meta.json` (`"root": true`)
+  and list it in `content/docs/docs/v9/meta.json`. The sidebar switcher,
+  canonical URLs and sitemap follow.
 - `content/docs/docs/v2` through `content/docs/docs/v6` contain migration docs
   for previous releases.
 - Section ordering and labels are controlled by the colocated `meta.json`

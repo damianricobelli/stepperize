@@ -1,0 +1,85 @@
+---
+title: Introduction
+description: Typed multi-step flows for React, from one definition.
+---
+
+Stepperize is for flows where someone moves through named steps: checkout,
+onboarding, surveys, import wizards, approval flows and multi-step forms.
+
+You describe the steps once. The definition gives you a typed hook, a provider
+and a set of accessible, unstyled components that all share the same step ids.
+
+```tsx
+import { defineStepper } from "@stepperize/react";
+import { z } from "zod";
+
+const checkout = defineStepper([
+  { id: "shipping", title: "Shipping", schema: z.object({ address: z.string().min(1) }) },
+  { id: "payment", title: "Payment", schema: z.object({ card: z.string().length(16) }) },
+  { id: "review", title: "Review" },
+]);
+
+function Checkout() {
+  const stepper = checkout.useStepper({ onFinish: (data) => placeOrder(data) });
+
+  return (
+    <section>
+      <h2>{stepper.current.title}</h2>
+
+      {stepper.match({
+        shipping: (_step, data) => <ShippingForm defaultValues={data} />,
+        payment: (_step, data) => <PaymentForm defaultValues={data} />,
+        review: () => <Review data={stepper.data} />,
+      })}
+
+      <button type="button" disabled={stepper.isFirst} onClick={() => stepper.prev()}>
+        Back
+      </button>
+      <button type="button" onClick={() => stepper.next(readForm())}>
+        {stepper.isLast ? "Place order" : "Continue"}
+      </button>
+    </section>
+  );
+}
+```
+
+## What you get
+
+- **One call moves forward.** `next(data)` saves the step's data, validates it
+  against the step's schema and moves on. It resolves with what happened
+  instead of throwing.
+- **Typed everywhere.** Step ids, each step's data and your own fields
+  (`title`, `icon`, anything) are inferred from the definition.
+- **Branching as data.** A `next` map decides where each step leads from its
+  validated data, and a flow can have more than one ending.
+- **Resumable.** One `snapshot` goes in, one `onChange` comes out. The current
+  step can follow the URL with a single option.
+- **Accessible primitives.** Roles, keyboard navigation, focus and
+  announcements are handled for you.
+- **Small.** About 2.1 kB for the hooks and 4.7 kB with the primitives, min + gzip,
+  with no dependencies besides React.
+
+## Next
+
+<Cards>
+	<Card
+		href="/docs/v9/react/installation"
+		title="Installation"
+		description="Add the package to a React 18 or 19 project."
+	/>
+	<Card
+		href="/docs/v9/react/first-stepper"
+		title="Your first stepper"
+		description="A working flow, built in three small steps."
+	/>
+	<Card
+		href="/docs/v9/react/migration"
+		title="Coming from v8"
+		description="What changed, and a codemod that does most of it."
+	/>
+	<Card
+		href="/docs/v9/core"
+		title="Without React"
+		description="The same state machine in tests, servers and agents."
+	/>
+</Cards>

@@ -6,10 +6,11 @@ import { DocsLayout } from "fumadocs-ui/layouts/docs";
 import { type DocsPageProps, renderDocsPage } from "@/components/docs-page";
 import {
 	getCanonicalDocsPath,
+	getDocsFramework,
 	getDocsPageSlugs,
+	getDocsTabs,
 	getDocsTree,
 	getDocsVersion,
-	getDocsVersionTabs,
 } from "@/lib/docs-tree";
 import { FAQ_ITEMS } from "@/lib/faq-data";
 import { FAQ_ITEMS_V7 } from "@/lib/faq-data-v7";
@@ -131,6 +132,7 @@ const loadDocsPage = createServerFn({ method: "GET" })
 		const pageTree = getDocsTree(
 			source.getPageTree(),
 			getDocsVersion(data.slugs),
+			getDocsFramework(data.slugs),
 		);
 
 		return serializeLoaderData({
@@ -139,12 +141,14 @@ const loadDocsPage = createServerFn({ method: "GET" })
 			full: page.data.full,
 			lastModified: page.data.lastModified?.toISOString(),
 			pageTree: await source.serializePageTree(pageTree),
+			version: getDocsVersion(data.slugs),
 			path: page.path,
 			title: page.data.title,
 			toc: [],
 		} satisfies DocsPageProps & {
 			pageTree: Awaited<ReturnType<typeof source.serializePageTree>>;
 			path: string;
+			version: string;
 		});
 	});
 
@@ -159,7 +163,7 @@ function Page() {
 		<DocsLayout
 			{...baseOptions()}
 			tabMode="auto"
-			tabs={getDocsVersionTabs()}
+			tabs={getDocsTabs(data.version)}
 			tree={data.pageTree}
 		>
 			{clientLoader.useContent(data.path, data)}

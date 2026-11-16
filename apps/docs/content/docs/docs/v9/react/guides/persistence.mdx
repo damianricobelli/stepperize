@@ -1,0 +1,56 @@
+---
+title: Saving and resuming
+description: One snapshot goes in, one callback comes out.
+---
+
+A snapshot is everything a flow needs to continue later: the current step, the
+path taken, the data of every step and which steps are complete. It is plain
+JSON when your data is.
+
+```tsx
+const stepper = checkout.useStepper({
+  snapshot: JSON.parse(localStorage.getItem("checkout") ?? "{}"),
+  onChange: (snapshot) => localStorage.setItem("checkout", JSON.stringify(snapshot)),
+});
+```
+
+- `snapshot` is where the flow starts. It is read once. You can pass any part
+  of it, for example only `{ step: "payment" }`.
+- `onChange` is called after the step, the data or the completion changes.
+
+Step ids that no longer exist in the definition are dropped, so an old saved
+snapshot never breaks a newer version of your flow.
+
+## Saving to a server
+
+`onChange` is also called by `setData`. If you write drafts on every keystroke,
+debounce the request:
+
+```tsx
+const save = useDebouncedCallback((snapshot) => api.saveDraft(snapshot), 500);
+const stepper = checkout.useStepper({ onChange: save });
+```
+
+## Loading a draft later
+
+When the draft arrives after the first render, apply it with `restore`. It
+replaces the state without validation or guards.
+
+```tsx
+useEffect(() => {
+  api.loadDraft().then((draft) => draft && stepper.restore(draft));
+}, []);
+```
+
+`restore` merges with the current state, so `restore({ data })` keeps the
+current step.
+
+## Starting over
+
+`reset()` goes back to the snapshot the flow started with and cancels a move
+that is still running.
+
+## Reading the snapshot
+
+`stepper.snapshot()` returns the current one at any time, for example to send
+it along with a support request.

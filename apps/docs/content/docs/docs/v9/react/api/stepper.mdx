@@ -1,0 +1,75 @@
+---
+title: Stepper
+description: What useStepper and useStepperContext return.
+---
+
+A stepper is an immutable view of the flow at one moment, plus the actions that
+change it. Every change produces a new view.
+
+## State
+
+| Property | Type | Description |
+| --- | --- | --- |
+| `steps` | `Step[]` | The steps of the definition. |
+| `current` | `Step` | The step being shown, with all its fields. |
+| `index` | `number` | Position of `current` in `steps`. |
+| `isFirst` | `boolean` | `current` is the first step. |
+| `isLast` | `boolean` | `next()` finishes the flow. See [Branching](/docs/v9/react/guides/branching#islast). |
+| `progress` | `number` | Position of `current` in `steps`, from `0` to `1`. |
+| `data` | `object` | The data of every step, by id. Typed by each step's schema input. |
+| `isPending` | `boolean` | An async schema or guard is running. |
+
+## Queries
+
+| Method | Returns | Description |
+| --- | --- | --- |
+| `state(id)` | `"pending" \| "current" \| "complete"` | `complete` means `next()` validated the step and moved on. |
+| `issues(id?)` | `Issue[] \| undefined` | Issues of the last rejected `next()` for a step, the current one by default, until its data changes. |
+| `canGoTo(id)` | `boolean` | Whether `goTo(id)` is allowed right now. Does not run the guard. |
+| `match(handlers)` | The handler's result | Runs the handler of the current step with `(step, data)`. Exhaustive. |
+| `snapshot()` | `Snapshot` | Everything needed to resume the flow. |
+
+## Actions
+
+| Method | Description |
+| --- | --- |
+| `next(data?)` | Saves `data` for the current step, validates it and moves on. On a final step it finishes the flow. |
+| `prev()` | Goes back to the step the person came from. Never validates. |
+| `goTo(id)` | Jumps to a step. Does not validate; `linear` and the guard apply. |
+| `setData(id, data)` | Replaces the data of a step. |
+| `reset()` | Back to the initial snapshot. Cancels a running move. |
+| `restore(snapshot)` | Replaces any part of the state, without validation or guards. |
+
+## Results
+
+`next`, `prev` and `goTo` resolve with a result and do not throw for expected
+outcomes.
+
+```ts
+type Result =
+  | { accepted: true; to: StepId | null; data: FlowData }
+  | { accepted: false; reason: Reason; issues?: Issue[] };
+```
+
+`to` is `null` when the flow finished.
+
+| Reason | Meaning |
+| --- | --- |
+| `invalid` | The step's schema rejected its data. `issues` says why. |
+| `guard` | Your guard returned `false`. |
+| `policy` | `linear` does not allow jumping to that step. |
+| `pending` | Another move is still running. |
+| `boundary` | `prev()` was called with nowhere to go back to. |
+| `cancelled` | `reset()`, `restore()` or unmounting interrupted the move. |
+
+```tsx
+const result = await stepper.next(values);
+if (result.accepted) {
+  if (result.to === null) toast("Done");
+} else if (result.reason === "invalid") {
+  showErrors(result.issues);
+}
+```
+
+Exceptions thrown by your own schema or guard are not caught: the promise
+rejects with them.

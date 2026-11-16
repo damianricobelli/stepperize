@@ -1,0 +1,70 @@
+---
+title: createStepper
+description: Create a flow and drive it.
+---
+
+```ts
+import { createStepper } from "@stepperize/core";
+
+const flow = createStepper(steps, options);
+```
+
+| Parameter | Description |
+| --- | --- |
+| `steps` | At least one step with a unique `id`, an optional `schema`, and any other field. |
+| `options` | Optional. The same [options](/docs/v9/react/api/options) every binding accepts. |
+
+## The flow
+
+A flow has every property and action of a [stepper](/docs/v9/react/api/stepper),
+and reads always return the latest state:
+
+```ts
+await flow.next(values);
+flow.current.id;
+flow.isLast;
+flow.data;
+```
+
+It adds four members for whoever owns it.
+
+| Member | Description |
+| --- | --- |
+| `get()` | The current immutable view. A new object after every change, the same object until then. |
+| `subscribe(listener)` | Calls `listener` after every change. Returns a function that unsubscribes. |
+| `setOptions(options)` | Replaces the options. Bindings call it on every render so callbacks stay current. |
+| `destroy()` | Cancels a running move and drops every listener. |
+
+## Subscribing
+
+`get` and `subscribe` are the contract external stores expect, so connecting a
+framework takes a few lines.
+
+```ts
+// React
+const stepper = useSyncExternalStore(flow.subscribe, flow.get);
+
+// Svelte
+const stepper = readable(flow.get(), (set) => flow.subscribe(() => set(flow.get())));
+
+// Vue
+const stepper = shallowRef(flow.get());
+onScopeDispose(flow.subscribe(() => (stepper.value = flow.get())));
+```
+
+Views are immutable: a view you kept keeps describing the moment it was taken.
+
+## Types
+
+| Type | Description |
+| --- | --- |
+| `Step` | `{ id: string; schema?: StandardSchemaV1 }` plus your own fields. |
+| `Id<S>` | Union of the step ids. |
+| `Input<S, I>`, `Output<S, I>` | What a step stores, and what its schema produces. |
+| `FlowData<S>` | The data of every step, by id. |
+| `Options<S>` | The options. |
+| `Stepper<S>`, `Flow<S>` | A view, and a live flow. |
+| `Snapshot<S>` | `{ step, history, data, complete }`. |
+| `Result<S>`, `Reason` | What a move resolves with. |
+| `GuardContext<S>` | The argument of `guard`. |
+| `Issue` | `{ message, path? }`, as Standard Schema defines it. |

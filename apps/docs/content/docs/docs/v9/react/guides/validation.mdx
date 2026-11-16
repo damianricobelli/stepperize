@@ -1,0 +1,76 @@
+---
+title: Validation
+description: Give a step a schema and next() validates it for you.
+---
+
+Add a `schema` to a step. It can come from Zod, Valibot, ArkType or any
+[Standard Schema](https://standardschema.dev) library.
+
+```tsx
+const signup = defineStepper([
+  { id: "account", schema: z.object({ email: z.string().email() }) },
+  { id: "plan", schema: z.object({ plan: z.enum(["free", "pro"]) }) },
+  { id: "confirm" },
+]);
+```
+
+## What next() does
+
+```tsx
+const result = await stepper.next({ email });
+```
+
+1. Saves the data you pass as the data of the current step.
+2. Validates it against the step's schema. Async schemas are awaited.
+3. If it is valid, marks the step `complete` and moves on.
+4. If it is not, stays on the step and keeps the data you passed, so the form
+   does not lose what the person typed.
+
+It never throws for an invalid step. The result says what happened:
+
+```tsx
+if (!result.accepted && result.reason === "invalid") {
+  console.log(result.issues); // [{ message: "Invalid email", path: ["email"] }]
+}
+```
+
+Calling `next()` without an argument validates the data already stored for the
+step, which is what you want when the data was written with `setData`.
+
+## Showing the errors
+
+`issues(id?)` returns the issues of the last rejected `next()` for a step, the
+current one by default. They disappear as soon as that step's data changes.
+
+```tsx
+function Errors() {
+  const stepper = signup.useStepperContext();
+  return stepper.issues()?.map((issue) => <p key={issue.message}>{issue.message}</p>);
+}
+```
+
+Each issue has a `message` and an optional `path`, as Standard Schema defines
+them.
+
+## Types
+
+A schema also types the step's data. `data.account` and the `data` argument of
+`match` are the schema's input type, and the [`next` map](/docs/v9/react/guides/branching)
+receives its output.
+
+```tsx
+stepper.data.account?.email; // string | undefined
+stepper.setData("plan", { plan: "team" }); // type error: "team" is not a plan
+```
+
+## Pending state
+
+While an async schema or guard runs, `stepper.isPending` is `true` and other
+moves are refused with `reason: "pending"`. Synchronous schemas never set it,
+so there is no flicker.
+
+## Checks that are not a schema
+
+For anything a schema cannot express, such as asking the server, use a
+[guard](/docs/v9/react/api/options#guard). It runs after validation and can
+cancel the move.

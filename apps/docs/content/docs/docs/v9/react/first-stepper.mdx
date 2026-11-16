@@ -1,0 +1,72 @@
+---
+title: Your first stepper
+description: Define the steps, render the current one, and move between them.
+---
+
+## 1. Define the steps
+
+A step needs an `id`. Every other field is yours and stays typed.
+
+```tsx
+import { defineStepper } from "@stepperize/react";
+
+export const onboarding = defineStepper([
+  { id: "profile", title: "Profile" },
+  { id: "team", title: "Team" },
+  { id: "done", title: "All set" },
+]);
+```
+
+Create the definition once, outside your components. It is not state: it is the
+typed description of the flow.
+
+## 2. Render the current step
+
+`useStepper()` creates a flow owned by the component and re-renders it on every
+change. `match` runs the handler of the current step and is exhaustive: forget
+a step and TypeScript tells you.
+
+```tsx
+function Onboarding() {
+  const stepper = onboarding.useStepper();
+
+  return (
+    <section>
+      <h2>{stepper.current.title}</h2>
+
+      {stepper.match({
+        profile: () => <ProfileStep />,
+        team: () => <TeamStep />,
+        done: () => <p>You are ready.</p>,
+      })}
+    </section>
+  );
+}
+```
+
+## 3. Move
+
+```tsx
+<button type="button" disabled={stepper.isFirst} onClick={() => stepper.prev()}>
+  Back
+</button>
+<button type="button" onClick={() => stepper.next()}>
+  {stepper.isLast ? "Finish" : "Continue"}
+</button>
+```
+
+`next()` on the last step finishes the flow and calls `onFinish`:
+
+```tsx
+const stepper = onboarding.useStepper({
+  onFinish: (data) => saveOnboarding(data),
+});
+```
+
+## Where to go next
+
+- Add a schema to a step and let `next()` validate it:
+  [Validation](/docs/v9/react/guides/validation).
+- Skip steps depending on the answers: [Branching](/docs/v9/react/guides/branching).
+- Read the flow from several components: [Shared state](/docs/v9/react/guides/shared-state).
+- Use the ready-made accessible components: [Primitives](/docs/v9/react/guides/primitives).
