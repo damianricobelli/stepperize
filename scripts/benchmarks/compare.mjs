@@ -21,7 +21,7 @@ const root = fileURLToPath(new URL("../../", import.meta.url));
 // Raw samples stay next to the harness. The v8 documentation keeps its own v7 → v8 numbers.
 const output = join(root, "scripts/benchmarks/results.json");
 const requireReact = createRequire(join(root, "packages/react/package.json"));
-// The docs app pins the published 8.0.1 under the `@stepperize/react` alias: that is the baseline.
+// The docs app installs the published 8.0.1 as `@stepperize/react-v8`: that is the baseline.
 const requireBaseline = createRequire(join(root, "apps/docs/package.json"));
 const requireTsup = createRequire(requireReact.resolve("tsup"));
 const esbuild = requireTsup("esbuild");
@@ -60,7 +60,7 @@ try {
 	symlinkSync(realpathSync(join(root, "packages/react/node_modules")), join(dir, "node_modules"));
 	const versions = {};
 	// Baseline: the published files, with the core they shipped with.
-	const published = realpathSync(requireBaseline.resolve("@stepperize/react"));
+	const published = realpathSync(requireBaseline.resolve("@stepperize/react-v8"));
 	// Candidate: the working tree, bundled from source so a stale `dist` cannot be measured by mistake.
 	const sources = ["core", "react"].flatMap((pkg) => sourceFiles(join(root, `packages/${pkg}/src`))).sort();
 	const tree = createHash("sha256");
@@ -84,7 +84,7 @@ try {
 			source: "npm",
 			sourceSha256: sha(readFileSync(published)),
 			full: { ...common, entryPoints: [published] },
-			headless: { ...common, entryPoints: [realpathSync(requireBaseline.resolve("@stepperize/react/headless"))] },
+			headless: { ...common, entryPoints: [realpathSync(requireBaseline.resolve("@stepperize/react-v8/headless"))] },
 		},
 		v9: {
 			version: "9.0.0",

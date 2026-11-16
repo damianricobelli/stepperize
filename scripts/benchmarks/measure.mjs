@@ -74,13 +74,13 @@ export async function runBenchmarks({ React, createRoot, flushSync, v8, v9 }) {
 				api.restore({ step: "step-0", history: [] });
 				return done;
 			},
-			// v9 validates inside `next()`: a framework-free flow parked on the last step, so a valid
-			// value also finishes the flow (a state write) and an invalid one stores draft and issues.
+			// v9 validates a step of a flow: write the value (a state write), then check it without moving.
 			validator: (flow, id) => {
 				const machine = flow.create({ snapshot: { step: id } });
 				return async (value) => {
-					const result = await machine.next(value);
-					return { valid: result.accepted, value: result.data?.[id], issues: result.issues };
+					machine.setData(id, value);
+					const issues = await machine.validate();
+					return { valid: !issues, value: machine.data[id], issues };
 				};
 			},
 			primitives: (flow, steps) =>
@@ -418,8 +418,8 @@ export async function runBenchmarks({ React, createRoot, flushSync, v8, v9 }) {
 				let resetRenders = 0;
 				for (let i = 0; i < scenario.operations; i++) {
 					flushSync(() => {
-						use.setComplete(api, "step-0", true);
 						use.setData(api, "step-0", i);
+						use.setComplete(api, "step-0", true);
 					});
 					assert.strictEqual(accepted(await transition(() => api.goTo(lastId))), true);
 					assert.strictEqual(use.data(api, "step-0"), i);
@@ -441,8 +441,9 @@ export async function runBenchmarks({ React, createRoot, flushSync, v8, v9 }) {
 				const pendingStates = [];
 				if (scenario.kind === "reset-preserve")
 					flushSync(() => {
-						use.setComplete(api, "step-0", true);
+						// Data first: in v9, writing to a complete step makes it pending again.
 						use.setData(api, "step-0", "retained");
+						use.setComplete(api, "step-0", true);
 					});
 				renderCount = 0;
 				const start = performance.now();

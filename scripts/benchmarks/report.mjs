@@ -8,8 +8,8 @@ const CAVEATS = {
 	"guard-async": "v9 next() also completes the step and records history",
 	"reset-preserve": "v9 has no partial reset: restore({ step })",
 	"reset-full": "v9 completion set up through restore()",
-	"schema-valid": "v8 definition.validate() · v9 validates inside next() and finishes the flow",
-	"schema-invalid": "v8 definition.validate() · v9 validates inside next() and stores draft + issues",
+	"schema-valid": "v8 definition.validate() · v9 setData() + validate() on a flow: two state writes",
+	"schema-invalid": "v8 definition.validate() · v9 setData() + validate() on a flow: stores draft + issues",
 };
 
 // Interquartile ranges that overlap mean the medians cannot be told apart in this run.
