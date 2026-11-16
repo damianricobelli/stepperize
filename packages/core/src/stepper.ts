@@ -14,6 +14,25 @@ type State<S extends readonly Step[]> = {
 const isPromise = <T>(value: T | Promise<T>): value is Promise<T> =>
 	typeof (value as { then?: unknown } | undefined)?.then === "function";
 
+/** Step id -> position. Checked and built once per step list, however many flows are created from it. */
+const indexes = new WeakMap<readonly Step[], Map<string, number>>();
+function index(steps: readonly Step[]) {
+	let positions = indexes.get(steps);
+	if (!positions) {
+		if (!steps.length) fail("SZ103", "A flow needs at least one step.");
+		positions = new Map();
+		for (const step of steps) {
+			if (positions.has(step.id)) fail("SZ103", `Duplicate step id "${step.id}".`);
+			positions.set(step.id, positions.size);
+		}
+		indexes.set(steps, positions);
+	}
+	return positions;
+}
+
+/** A running move. The `AbortController` only exists when a guard was handed its signal. */
+type Move = { cancelled?: boolean; controller?: AbortController };
+
 /**
  * Create a flow. This is the whole state machine: the React hooks, tests and
  * agents all drive this same object.
@@ -25,12 +44,7 @@ const isPromise = <T>(value: T | Promise<T>): value is Promise<T> =>
  */
 export function createStepper<const S extends readonly Step[]>(steps: S, options: Options<S> = {}): Flow<S> {
 	type I = Id<S>;
-	if (!steps.length) fail("SZ103", "A flow needs at least one step.");
-	const positions = new Map<string, number>();
-	for (const step of steps) {
-		if (positions.has(step.id)) fail("SZ103", `Duplicate step id "${step.id}".`);
-		positions.set(step.id, positions.size);
-	}
+	const positions = index(steps);
 	const position = (id: string) => positions.get(id) ?? fail("SZ102", `Step "${id}" not found.`);
 	const known = (id: unknown): id is I => positions.has(id as string);
 
@@ -47,9 +61,24 @@ export function createStepper<const S extends readonly Step[]>(steps: S, options
 	const initial = options.snapshot;
 	const listeners = new Set<() => void>();
 	let state = read(initial);
+
+	/** `linear`: completed steps can be revisited; everything else is reached through `next()`. */
+	const allowed = (id: I, at = state) => !options.linear || steps[at.index].id === id || at.complete.includes(id);
+
+	// `step` wins over the snapshot when the policy allows it: a deep link cannot skip validation.
+	if (known(options.step) && allowed(options.step)) state = { ...state, index: position(options.step) };
+	/** The last `options.step` acted upon, so a stale value re-rendered by its owner is not followed twice. */
+	let followed: Options<S>["step"] = steps[state.index].id;
 	let view: Stepper<S> | undefined;
-	/** The running move, if any. Aborting it is how `reset`, `restore` and `destroy` cancel. */
-	let running: AbortController | undefined;
+	/** The running move, if any. Cancelling it is how `reset`, `restore` and `destroy` interrupt. */
+	let running: Move | undefined;
+	function cancel() {
+		if (running) {
+			running.cancelled = true;
+			running.controller?.abort();
+			running = undefined;
+		}
+	}
 
 	const snapshot = (): Snapshot<S> => ({
 		step: steps[state.index].id,
@@ -67,8 +96,7 @@ export function createStepper<const S extends readonly Step[]>(steps: S, options
 	}
 
 	function replace(next: Partial<Snapshot<S>> | undefined) {
-		running?.abort();
-		running = undefined;
+		cancel();
 		set(read(next));
 	}
 
@@ -82,22 +110,26 @@ export function createStepper<const S extends readonly Step[]>(steps: S, options
 		...write: [value?: unknown]
 	): Promise<Result<S>> {
 		if (running) return { accepted: false, reason: "pending" };
-		const controller = new AbortController();
-		running = controller;
+		const self: Move = {};
+		running = self;
 		const from = state.index;
 		const id: I = steps[from].id;
 		const merge = (): FlowData<S> => (write.length ? { ...state.data, [id]: write[0] } : state.data);
-		/** Only a real promise makes the flow pending: synchronous schemas and guards never flicker. */
+		/**
+		 * Only a real promise is awaited and makes the flow pending: synchronous
+		 * schemas and guards never flicker, and cost no extra microtasks.
+		 */
 		const wait = <T>(value: T | Promise<T>) => {
-			if (isPromise(value) && !state.pending) set({ ...state, pending: true }, false);
+			if (!state.pending) set({ ...state, pending: true }, false);
 			return value;
 		};
 		try {
 			let output: unknown = merge()[id];
 			if (validate) {
 				const value = output;
-				const checked = await wait(steps[from].schema?.["~standard"].validate(value) ?? { value });
-				if (controller.signal.aborted) return { accepted: false, reason: "cancelled" };
+				let checked = steps[from].schema?.["~standard"].validate(value) ?? { value };
+				if (isPromise(checked)) checked = await wait(checked);
+				if (self.cancelled) return { accepted: false, reason: "cancelled" };
 				if (checked.issues) {
 					// Keep the rejected draft and its issues together, so the UI can show both.
 					set({
@@ -111,17 +143,19 @@ export function createStepper<const S extends readonly Step[]>(steps: S, options
 				output = checked.value;
 			}
 			const to = target(output);
-			const allowed = await wait(
-				options.guard?.({
+			if (options.guard) {
+				self.controller = new AbortController();
+				let allowed = options.guard({
 					from: steps[from],
 					to: to === null ? null : steps[to],
 					direction,
 					data: merge(),
-					signal: controller.signal,
-				}),
-			);
-			if (controller.signal.aborted) return { accepted: false, reason: "cancelled" };
-			if (allowed === false) return { accepted: false, reason: "guard" };
+					signal: self.controller.signal,
+				});
+				if (isPromise(allowed)) allowed = await wait(allowed);
+				if (self.cancelled) return { accepted: false, reason: "cancelled" };
+				if (allowed === false) return { accepted: false, reason: "guard" };
+			}
 
 			const data = merge();
 			const { [id]: _checked, ...issues } = state.issues;
@@ -144,15 +178,12 @@ export function createStepper<const S extends readonly Step[]>(steps: S, options
 			if (to === null) options.onFinish?.(data);
 			return { accepted: true, to: to === null ? null : steps[to].id, data };
 		} finally {
-			if (running === controller) {
+			if (running === self) {
 				running = undefined;
 				if (state.pending) set({ ...state, pending: false }, false);
 			}
 		}
 	}
-
-	/** `linear`: completed steps can be revisited; everything else is reached through `next()`. */
-	const allowed = (id: I, at = state) => !options.linear || steps[at.index].id === id || at.complete.includes(id);
 
 	const actions = {
 		next: (...data: [data?: unknown]) =>
@@ -161,20 +192,24 @@ export function createStepper<const S extends readonly Step[]>(steps: S, options
 				(output) => {
 					const id: I = steps[state.index].id;
 					const branch = options.next?.[id];
-					const to = branch ? branch(output as never) : steps[state.index + 1]?.id;
-					return to === undefined ? null : position(to);
+					// A `null` entry, or a branch that returns `null`, ends the flow at this step.
+					const to = branch === null ? null : branch ? branch(output as never) : steps[state.index + 1]?.id;
+					return to == null ? null : position(to);
 				},
 				true,
 				...data,
 			),
-		prev: async (): Promise<Result<S>> => {
+		// Not `async`: returning `move()` from an async function would cost extra microtasks per move.
+		prev: (): Promise<Result<S>> => {
 			const to = state.history.at(-1) ?? steps[state.index - 1]?.id;
-			return to === undefined ? { accepted: false, reason: "boundary" } : move("prev", () => position(to));
+			return to === undefined
+				? Promise.resolve({ accepted: false, reason: "boundary" })
+				: move("prev", () => position(to));
 		},
-		goTo: async (id: I): Promise<Result<S>> => {
+		goTo: (id: I): Promise<Result<S>> => {
 			const to = position(id);
-			if (to === state.index) return { accepted: true, to: id, data: state.data };
-			return allowed(id) ? move("goTo", () => to) : { accepted: false, reason: "policy" };
+			if (to === state.index) return Promise.resolve({ accepted: true, to: id, data: state.data });
+			return allowed(id) ? move("goTo", () => to) : Promise.resolve({ accepted: false, reason: "policy" });
 		},
 		setData: (id: I, data: unknown) => {
 			position(id);
@@ -184,6 +219,15 @@ export function createStepper<const S extends readonly Step[]>(steps: S, options
 		restore: (next: Partial<Snapshot<S>>) => replace({ ...snapshot(), ...next }),
 		snapshot,
 	};
+
+	/** Follow `options.step`. When it cannot be followed, `onChange` restates where the flow really is. */
+	function follow() {
+		const want = options.step;
+		if (want == null || want === steps[state.index].id) return;
+		const restate = () => options.onChange?.(snapshot());
+		if (known(want)) actions.goTo(want).then((result) => result.accepted || restate());
+		else restate();
+	}
 
 	function get(): Stepper<S> {
 		if (view) return view;
@@ -196,6 +240,10 @@ export function createStepper<const S extends readonly Step[]>(steps: S, options
 			steps,
 			current,
 			index,
+			isFirst: !index,
+			isLast:
+				options.next?.[current.id as I] === null || (index === steps.length - 1 && !options.next?.[current.id as I]),
+			progress: steps.length > 1 ? index / (steps.length - 1) : 1,
 			data,
 			isPending: pending,
 			state: (id) => (id === current.id ? "current" : complete.includes(id) ? "complete" : "pending"),
@@ -222,10 +270,13 @@ export function createStepper<const S extends readonly Step[]>(steps: S, options
 			options = next;
 			// `canGoTo` depends on the policy: rebuild the view when it changes.
 			if (next.linear !== policy) set(state, false);
+			if (next.step !== followed) {
+				followed = next.step;
+				follow();
+			}
 		},
 		destroy() {
-			running?.abort();
-			running = undefined;
+			cancel();
 			listeners.clear();
 		},
 	};

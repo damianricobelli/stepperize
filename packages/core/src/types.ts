@@ -93,21 +93,41 @@ export type Options<S extends readonly Step[]> = {
 	linear?: boolean;
 	/**
 	 * Where each step leads, from its validated data. Steps without an entry go
-	 * to the following one.
+	 * to the following one. `null` ends the flow at that step, so a flow can have
+	 * more than one ending; a branch may also return `null`.
 	 *
 	 * @example
-	 * next: { account: (data) => (data.type === "team" ? "team" : "payment") }
+	 * next: {
+	 *   account: (data) => (data.type === "team" ? "team" : "payment"),
+	 *   rejected: null,
+	 * }
 	 */
-	next?: { [I in Id<S>]?: (data: Output<S, I>) => Id<S> };
+	next?: { [I in Id<S>]?: ((data: Output<S, I>) => Id<S> | null) | null };
 	/** Runs after validation and before every move. Return `false` to cancel it. May be async. */
 	// biome-ignore lint/suspicious/noConfusingVoidType: a guard that returns nothing allows the move.
 	guard?: (context: GuardContext<S>) => boolean | void | Promise<boolean | void>;
-	/** Called after the step, data or completion changes. Persist the snapshot to resume later. */
+	/**
+	 * Called after the step, data or completion changes. Persist the snapshot to resume later.
+	 * `setData` calls it too: debounce slow writes when you save drafts on every keystroke.
+	 */
 	onChange?: (snapshot: Snapshot<S>) => void;
 	/** Called when `next()` completes the last step, with the data of every step. Submit here. */
 	onFinish?: (data: FlowData<S>) => void;
 	/** Where to start: any part of a saved snapshot, or just `{ step }`. */
 	snapshot?: Partial<Snapshot<S>>;
+	/**
+	 * Follow a step that lives somewhere else, such as the URL. The flow starts
+	 * there and goes there whenever the value changes, like `goTo`: `linear` and
+	 * the guard still apply. When it cannot follow (unknown id, refused move),
+	 * `onChange` is called with where the flow really is, so you can correct the source.
+	 *
+	 * @example
+	 * useStepper({
+	 *   step: params.step,
+	 *   onChange: (snapshot) => snapshot.step !== params.step && router.replace(snapshot.step),
+	 * });
+	 */
+	step?: Id<S> | (string & {}) | null;
 };
 
 /** An immutable view of a flow at one moment, plus the actions that change it. */
@@ -116,6 +136,12 @@ export type Stepper<S extends readonly Step[]> = {
 	current: S[number];
 	/** Position of `current` in `steps`. */
 	index: number;
+	/** `current` is the first of `steps`. */
+	isFirst: boolean;
+	/** `next()` finishes the flow: a step whose `next` entry is `null`, or the last of `steps` without a branch. */
+	isLast: boolean;
+	/** Position of `current` in `steps`, from `0` (first) to `1` (last). */
+	progress: number;
 	data: FlowData<S>;
 	/** `true` while an async schema or guard is running. */
 	isPending: boolean;
@@ -138,7 +164,7 @@ export type Stepper<S extends readonly Step[]> = {
 	setData: <I extends Id<S>>(id: I, data: Input<S, I>) => void;
 	/** Back to the initial snapshot. Cancels a running move. */
 	reset: () => void;
-	/** Replace the state without validation or guards: resume a draft, or follow the URL. */
+	/** Replace the state without validation or guards: resume a draft. To follow the URL, use the `step` option. */
 	restore: (snapshot: Partial<Snapshot<S>>) => void;
 	snapshot: () => Snapshot<S>;
 };

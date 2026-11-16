@@ -50,11 +50,18 @@ describe("moving", () => {
 	});
 
 	it("rejects a second move while one is running", async () => {
-		const flow = createStepper([{ id: "a" }, { id: "b" }, { id: "c" }]);
+		const flow = createStepper([{ id: "a" }, { id: "b" }, { id: "c" }], { guard: async () => true });
 		const [first, second] = await Promise.all([flow.next(), flow.next()]);
 		expect(first.accepted).toBe(true);
 		expect(second).toEqual({ accepted: false, reason: "pending" });
 		expect(flow.current.id).toBe("b");
+	});
+
+	it("settles a synchronous move before the next statement runs", async () => {
+		const flow = createStepper([{ id: "a" }, { id: "b" }, { id: "c" }], { guard: () => true });
+		const moving = flow.next();
+		expect(flow.current.id).toBe("b");
+		expect(await moving).toMatchObject({ accepted: true, to: "b" });
 	});
 
 	it("throws a coded error for unknown ids and invalid step lists", () => {
@@ -116,6 +123,21 @@ describe("branching", () => {
 		expect(flow.current.id).toBe("account");
 		await flow.next({ type: "team" });
 		expect(flow.current.id).toBe("team");
+	});
+
+	it("ends at any step whose entry is null, or when a branch returns null", async () => {
+		const onFinish = vi.fn();
+		const flow = createStepper(steps, {
+			next: { account: (data) => (data.type === "team" ? "team" : null), team: null },
+			onFinish,
+		});
+		expect(flow.isLast).toBe(false);
+		expect(await flow.next({ type: "team" })).toMatchObject({ accepted: true, to: "team" });
+		expect(flow.isLast).toBe(true);
+		expect(await flow.next()).toMatchObject({ accepted: true, to: null });
+		flow.reset();
+		expect(await flow.next({ type: "personal" })).toMatchObject({ accepted: true, to: null });
+		expect(onFinish).toHaveBeenCalledTimes(2);
 	});
 
 	it("goes back by order when a resumed flow has no history, without inventing one", async () => {
@@ -218,6 +240,18 @@ describe("views", () => {
 		expect(flow.get().match({ a: () => "first", b: (step, data) => `${step.id}:${String(data)}` })).toBe("b:undefined");
 	});
 
+	it("derive isFirst, isLast and progress, and a branch means the flow does not end here", async () => {
+		const flow = createStepper(steps);
+		expect([flow.isFirst, flow.isLast, flow.progress]).toEqual([true, false, 0]);
+		await flow.goTo("team");
+		expect([flow.isFirst, flow.isLast, flow.progress]).toEqual([false, false, 0.5]);
+		await flow.goTo("payment");
+		expect([flow.isFirst, flow.isLast, flow.progress]).toEqual([false, true, 1]);
+		const loop = createStepper(steps, { snapshot: { step: "payment" }, next: { payment: () => "account" } });
+		expect(loop.isLast).toBe(false);
+		expect(createStepper([{ id: "only" }]).progress).toBe(1);
+	});
+
 	it("stops notifying after destroy()", () => {
 		const flow = createStepper([{ id: "a" }]);
 		const listener = vi.fn();
@@ -225,5 +259,43 @@ describe("views", () => {
 		flow.destroy();
 		flow.setData("a", 1);
 		expect(listener).not.toHaveBeenCalled();
+	});
+});
+
+describe("following an outside step", () => {
+	const flush = () => new Promise((resolve) => setTimeout(resolve));
+
+	it("starts there, and goes there when the value changes", async () => {
+		const flow = createStepper(steps, { step: "team" });
+		expect(flow.current.id).toBe("team");
+		flow.setOptions({ step: "payment" });
+		await flush();
+		expect(flow.current.id).toBe("payment");
+		expect(flow.snapshot().history).toEqual(["team"]);
+	});
+
+	it("ignores a stale value its owner renders again after the flow moved on", async () => {
+		const flow = createStepper(steps, { step: "account" });
+		await flow.next({ type: "team" });
+		flow.setOptions({ step: "account" });
+		await flush();
+		expect(flow.current.id).toBe("team");
+	});
+
+	it("restates the real step through onChange when it cannot follow", async () => {
+		const seen: string[] = [];
+		const onChange = (snapshot: { step: string }) => seen.push(snapshot.step);
+		// A deep link cannot skip validation in a linear flow.
+		const flow = createStepper(steps, { linear: true, step: "payment", onChange });
+		expect(flow.current.id).toBe("account");
+		flow.setOptions({ linear: true, step: "payment", onChange });
+		await flush();
+		expect(seen).toEqual(["account"]);
+		// Unknown ids, and moves the guard refuses.
+		flow.setOptions({ linear: true, step: "nope", onChange });
+		flow.setOptions({ step: "team", guard: () => false, onChange });
+		await flush();
+		expect(flow.current.id).toBe("account");
+		expect(seen).toEqual(["account", "account", "account"]);
 	});
 });

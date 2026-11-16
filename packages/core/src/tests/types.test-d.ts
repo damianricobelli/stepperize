@@ -50,3 +50,7 @@ expectTypeOf(
 		team: () => 2,
 	}),
 ).toEqualTypeOf<number>();
+expectTypeOf(flow.isLast).toEqualTypeOf<boolean>();
+// `step` takes any string: it usually comes from a URL.
+createStepper(steps, { step: "team" });
+createStepper(steps, { step: new URLSearchParams("").get("step") });

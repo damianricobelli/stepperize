@@ -1,4 +1,4 @@
-import { StrictMode } from "react";
+import { StrictMode, useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, renderHook } from "vitest-browser-react";
 import { defineStepper } from "../headless";
@@ -89,6 +89,20 @@ describe("Provider and useStepperContext", () => {
 		expect(container.querySelector("output")?.textContent).toBe("b");
 	});
 
+	it("accepts a selector that builds a new object", async () => {
+		let api!: { id: string; last: boolean };
+		function Probe() {
+			api = flow.useStepperContext((s) => ({ id: s.current.id, last: s.isLast }));
+			return null;
+		}
+		await render(
+			<flow.Provider snapshot={{ step: "c" }}>
+				<Probe />
+			</flow.Provider>,
+		);
+		expect(api).toEqual({ id: "c", last: true });
+	});
+
 	it("throws a coded error outside its own Provider", async () => {
 		const other = defineStepper([{ id: "x" }]);
 		function Probe() {
@@ -104,6 +118,38 @@ describe("Provider and useStepperContext", () => {
 			),
 		).rejects.toThrow(/SZ100/);
 		error.mockRestore();
+	});
+});
+
+describe("step", () => {
+	it("keeps the flow and a URL in sync in both directions", async () => {
+		const linear = defineStepper([{ id: "a" }, { id: "b" }, { id: "c" }], { linear: true });
+		const url = { value: "c", set: (_step: string) => {} };
+		let api!: ReturnType<typeof linear.useStepper>;
+		function Page() {
+			const [param, setParam] = useState(url.value);
+			url.value = param;
+			url.set = setParam;
+			api = linear.useStepper({
+				step: param,
+				onChange: (snapshot) => snapshot.step !== param && setParam(snapshot.step),
+			});
+			return null;
+		}
+		// A deep link to a step that is not reachable yet is corrected.
+		await render(<Page />);
+		expect([api.current.id, url.value]).toEqual(["a", "a"]);
+		// The flow moves: the URL follows.
+		await act(async () => {
+			await api.next();
+		});
+		expect([api.current.id, url.value]).toEqual(["b", "b"]);
+		// The URL moves (the back button): the flow follows.
+		await act(async () => url.set("a"));
+		expect([api.current.id, url.value]).toEqual(["a", "a"]);
+		// A hand-edited URL is corrected too.
+		await act(async () => url.set("nope"));
+		expect([api.current.id, url.value]).toEqual(["a", "a"]);
 	});
 });
 

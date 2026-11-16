@@ -16,6 +16,7 @@ const OPTION_KEYS = [
 	"onChange",
 	"onFinish",
 	"snapshot",
+	"step",
 ] as const satisfies readonly (keyof Options<readonly Step[]>)[];
 type Missing = Exclude<keyof Options<readonly Step[]>, (typeof OPTION_KEYS)[number]>;
 const _exhaustive: [Missing] extends [never] ? true : { missing: Missing } = true;

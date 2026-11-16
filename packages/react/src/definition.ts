@@ -15,7 +15,8 @@ export type Definition<S extends readonly Step[]> = {
 	useStepper: (options?: Options<S>) => Stepper<S>;
 	/**
 	 * The flow of the nearest `Provider` or `Stepper.Root`. Pass a selector to
-	 * re-render only when its result changes; return a primitive or a stable reference.
+	 * re-render only when its result changes. A selector that builds a new object
+	 * or array re-renders on every change; select primitives to skip renders.
 	 */
 	useStepperContext: {
 		(): Stepper<S>;
@@ -45,7 +46,20 @@ export function createDefinition<const S extends readonly Step[]>(steps: S, defa
 	}
 
 	function useSelect<T>(flow: Flow<S>, selector: (stepper: Stepper<S>) => T): T {
-		const get = () => selector(flow.get());
+		// Views are immutable, so one result per view is enough. This also keeps selectors
+		// that build an object or array from looping: the same view returns the same result.
+		const cache = React.useRef<{ view?: Stepper<S>; selector?: typeof selector; result?: T }>({}).current;
+		// `flow` is a proxy: read its method once per render, not once per notification.
+		const read = flow.get;
+		const get = () => {
+			const view = read();
+			if (cache.view !== view || cache.selector !== selector) {
+				cache.view = view;
+				cache.selector = selector;
+				cache.result = selector(view);
+			}
+			return cache.result as T;
+		};
 		return React.useSyncExternalStore(flow.subscribe, get, get);
 	}
 

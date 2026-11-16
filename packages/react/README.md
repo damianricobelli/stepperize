@@ -9,121 +9,191 @@ Type-safe step-by-step workflows for React.
 ## Installation
 
 ```bash
-npm install @stepperize/react@^8.0.0
+npm install @stepperize/react
 ```
 
-Requires React 18 or 19. This branch prepares v8; see the [migration guide](https://stepperize.com/docs/v8/migration/v8).
+Requires React 18 or 19. This branch is v9, which is not published yet; the
+documentation site still describes 8.0.
 
-## Quick Start
+## Quick start
 
 ```tsx
 import { defineStepper } from "@stepperize/react";
+import { z } from "zod";
 
-const wizard = defineStepper([
-  { id: "account", title: "Account" },
-  { id: "profile", title: "Profile" },
-  { id: "done", title: "Done" },
+const checkout = defineStepper([
+  { id: "shipping", title: "Shipping", schema: z.object({ address: z.string().min(1) }) },
+  { id: "payment", title: "Payment", schema: z.object({ card: z.string().length(16) }) },
+  { id: "review", title: "Review" },
 ]);
 
-function Wizard() {
-  const stepper = wizard.useStepper();
+function Checkout() {
+  const stepper = checkout.useStepper({ onFinish: (data) => placeOrder(data) });
 
   return (
-    <div>
+    <section>
       <h2>{stepper.current.title}</h2>
 
       {stepper.match({
-        account: () => <AccountStep />,
-        profile: () => <ProfileStep />,
-        done: () => <DoneStep />,
+        shipping: (_step, data) => <ShippingForm defaultValues={data} />,
+        payment: (_step, data) => <PaymentForm defaultValues={data} />,
+        review: () => <Review data={stepper.data} />,
       })}
 
-      <button type="button" onClick={() => stepper.prev()} disabled={!stepper.canPrev}>
+      {stepper.issues()?.map((issue) => <p key={issue.message}>{issue.message}</p>)}
+
+      <button type="button" disabled={stepper.isFirst} onClick={() => stepper.prev()}>
         Back
       </button>
-      <button type="button" onClick={() => stepper.next()} disabled={!stepper.canNext}>
-        Next
+      <button type="button" onClick={() => stepper.next(readForm())}>
+        {stepper.isLast ? "Place order" : "Continue"}
       </button>
-    </div>
+    </section>
   );
 }
 ```
 
-## Shared State
+`next(data)` saves the data of the current step, validates it against the
+step's `schema` (any [Standard Schema](https://standardschema.dev)) and moves
+on. It resolves with what happened instead of throwing:
 
-`useStepper()` always creates an independent local instance. Shared children explicitly consume their matching Provider:
+```tsx
+const result = await stepper.next(values);
+if (!result.accepted) console.log(result.reason, result.issues);
+```
+
+## The stepper
+
+| | |
+| --- | --- |
+| `current`, `index`, `steps` | Where the flow is. |
+| `isFirst`, `isLast`, `progress` | Derived position. `isLast` means `next()` finishes the flow. |
+| `state(id)` | `"pending"`, `"current"` or `"complete"`. |
+| `data`, `setData(id, data)` | The data of every step, keyed by step id and typed by its schema. |
+| `issues(id?)` | Why the last `next()` was rejected, until the data changes. |
+| `next(data?)`, `prev()`, `goTo(id)` | Moves. Each resolves with `{ accepted, ... }`. |
+| `canGoTo(id)`, `isPending` | Whether a jump is allowed, and whether an async check is running. |
+| `match(handlers)` | Exhaustive rendering by step. |
+| `snapshot()`, `restore(snapshot)`, `reset()` | Save, resume and start over. |
+
+## Options
+
+Pass them to `defineStepper(steps, options)` as defaults, or to `useStepper`,
+`Provider` and `Stepper.Root` per instance.
+
+```tsx
+checkout.useStepper({
+  // Only move forward through next(); completed steps can be revisited.
+  linear: true,
+  // Branch on a step's validated data.
+  next: { shipping: (data) => (data.address === "pickup" ? "review" : "payment") },
+  // Runs before every move. Return false to cancel it. May be async.
+  guard: ({ direction }) => direction !== "prev" || confirm("Discard changes?"),
+  // Resume a saved flow, and save it on every change.
+  snapshot: JSON.parse(localStorage.getItem("checkout") ?? "{}"),
+  onChange: (snapshot) => localStorage.setItem("checkout", JSON.stringify(snapshot)),
+  // The last step was completed.
+  onFinish: (data) => placeOrder(data),
+});
+```
+
+### Keep the step in the URL
+
+`step` makes the flow follow a value that lives somewhere else. `linear` and
+the guard still apply, so a deep link cannot skip validation; when the flow
+cannot follow, `onChange` tells you where it really is.
+
+```tsx
+const { step } = useParams();
+const stepper = checkout.useStepper({
+  step,
+  onChange: (snapshot) => snapshot.step !== step && router.replace(`/checkout/${snapshot.step}`),
+});
+```
+
+## Shared state
+
+`useStepper()` owns an independent flow. To share one, wrap the tree in the
+`Provider` and read it with `useStepperContext`. A selector re-renders the
+component only when its result changes.
 
 ```tsx
 function Page() {
-  return <wizard.Provider><Header /><Actions /></wizard.Provider>;
+  return (
+    <checkout.Provider linear>
+      <Header />
+      <Actions />
+    </checkout.Provider>
+  );
 }
+
 function Header() {
-  const title = wizard.useStepperContext((stepper) => stepper.current.title);
+  const title = checkout.useStepperContext((stepper) => stepper.current.title);
   return <h2>{title}</h2>;
 }
+
 function Actions() {
-  const stepper = wizard.useStepperContext();
-  return <button type="button" disabled={!stepper.canNext} onClick={() => stepper.next()}>Next</button>;
+  const stepper = checkout.useStepperContext();
+  return (
+    <button type="button" onClick={() => stepper.next()}>
+      {stepper.isLast ? "Place order" : "Continue"}
+    </button>
+  );
 }
 ```
 
-`Stepper.Root` is also an owner; it creates its own shared instance. Configure the owner and read it with `useStepperContext()` or the Root render prop.
-
 ## Primitives
 
+Unstyled components that handle roles, keyboard navigation, focus and
+announcements. `Stepper.Root` owns the flow and accepts every option.
+
 ```tsx
-const { Stepper } = wizard;
+const { Stepper } = checkout;
 
-function PrimitiveWizard() {
+function CheckoutSteps() {
   return (
-    <Stepper.Root>
-      {() => (
-        <>
-          <Stepper.List>
-            <Stepper.Items>
-              {(step) => (
-                <Stepper.Item key={step.id} step={step.id}>
-                  <Stepper.Trigger>
-                    <Stepper.Indicator />
-                    <Stepper.Title>{step.title}</Stepper.Title>
-                  </Stepper.Trigger>
-                </Stepper.Item>
-              )}
-            </Stepper.Items>
-          </Stepper.List>
+    <Stepper.Root linear>
+      <Stepper.List>
+        {() => (
+          <Stepper.Item>
+            <Stepper.Trigger>
+              <Stepper.Indicator />
+              <Stepper.Title />
+            </Stepper.Trigger>
+          </Stepper.Item>
+        )}
+      </Stepper.List>
 
-          <Stepper.Actions>
-            <Stepper.Prev>Back</Stepper.Prev>
-            <Stepper.Next>Next</Stepper.Next>
-          </Stepper.Actions>
-        </>
-      )}
+      <Stepper.Content step="shipping">...</Stepper.Content>
+      <Stepper.Content step="payment">...</Stepper.Content>
+      <Stepper.Content step="review">...</Stepper.Content>
+
+      <Stepper.Prev>Back</Stepper.Prev>
+      <Stepper.Next>Continue</Stepper.Next>
     </Stepper.Root>
   );
 }
 ```
 
+Style them through `data-state`, `data-invalid`, `data-disabled`,
+`data-pending` and `data-orientation`. Inside an item, `Stepper.useItem()`
+returns its `step`, `index`, `state`, `invalid` and `disabled`.
+
+## Without React
+
+The same state machine runs anywhere: tests, servers, agents.
+
+```ts
+const flow = checkout.create({ linear: true });
+await flow.next({ address: "1 Main St" });
+flow.current.id; // "payment"
+```
+
+## Smaller bundles with your own UI
+
+Import `defineStepper` from `@stepperize/react/headless` to keep the hooks and
+the `Provider` without the `Stepper` components.
+
 ## Documentation
 
 Read the full docs at [stepperize.com](https://stepperize.com).
-
-## Navigation in v8
-
-```tsx
-const result = await stepper.next({ data: values, complete: true });
-if (!result.accepted) console.log(result.reason);
-await stepper.goTo("done", { bypassPolicy: true }); // intentional branch; guard still runs
-await stepper.reset(); // restore mount-time step, data and completion
-await stepper.reset({ keepData: true, keepCompleted: true });
-```
-
-`complete: true` marks the source step only after acceptance. Defaults are captured at mount. Navigation methods use the latest committed state; hook reads are render snapshots. Treat definitions and snapshot data as immutable.
-
-See [local and shared state](https://stepperize.com/docs/v8/guides/local-and-shared-state) and [the v8 changelog](https://stepperize.com/docs/v8/changelog).
-
-
-### Smaller bundles with a custom UI
-
-Import `defineStepper` from `@stepperize/react/headless` to keep hooks, Provider, selectors and validation without the generated `Stepper` components. The default import path still includes all accessible primitives.
-
-See the [bundle comparison and example](https://stepperize.com/docs/v8/guides/performance#smaller-bundles-with-your-own-ui). Contributors can run `pnpm benchmark:size` to verify built public entries and their minified/gzip sizes.

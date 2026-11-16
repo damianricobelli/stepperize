@@ -1,7 +1,7 @@
 // Diagnostics. Warnings sit behind `process.env.NODE_ENV !== "production"` at
 // every call site, so bundlers drop the checks and their messages.
 
-const DOCS = "https://stepperize.com/docs/v9/errors";
+const DOCS = "https://stepperize.com/docs/v9/core/errors";
 
 /** Stable, searchable codes. Each one has an anchor on the errors page. */
 export type Code =
