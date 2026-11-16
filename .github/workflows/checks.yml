@@ -2,7 +2,7 @@ name: Checks
 on:
   pull_request:
   push:
-    branches: [main, v8]
+    branches: [main, v8, v9]
 permissions:
   contents: read
 jobs:
@@ -37,6 +37,8 @@ jobs:
       - run: pnpm --filter @stepperize/react exec playwright install --with-deps --only-shell chromium
       - run: pnpm turbo build --filter=@stepperize/react...
       - run: node scripts/check-bundle.mjs
+      - run: pnpm --filter @stepperize/codemod typecheck
+      - run: pnpm --filter @stepperize/codemod test
       - run: pnpm lint
       - run: pnpm --filter docs registry:build
       - run: pnpm --filter docs exec tsc --noEmit

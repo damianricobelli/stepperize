@@ -1,8 +1,105 @@
 import { assert } from "vitest";
 
 // All timed work runs in Chromium with one bundled production React runtime.
-export async function runBenchmarks({ React, createRoot, flushSync, v7, v8 }) {
-	const libraries = { v7, v8 };
+export async function runBenchmarks({ React, createRoot, flushSync, v8, v9 }) {
+	const libraries = { v8, v9 };
+	const h = React.createElement;
+	const SEED = { "step-0": "seed" };
+	/** Step whose completion the completion scenarios toggle. Not the current one: v9 reports that as "current". */
+	const WATCHED = "step-1";
+	const done = { accepted: true };
+	/**
+	 * Each version runs the same scenario through its own public API. Where the two
+	 * are not the same amount of work, the comment says so; the report repeats it.
+	 */
+	const adapters = {
+		v8: {
+			config: (guard) => ({ beforeStepChange: guard, defaultData: SEED }),
+			controlled: (step, setStep) => ({ step, onStepChange: (id) => setStep(id) }),
+			id: (api) => api.id,
+			data: (api, id) => api.data.get(id),
+			allData: (api) => api.data.all(),
+			completed: (api) => api.completed,
+			isComplete: (api, id) => api.isComplete(id),
+			setData: (api, id, value) => api.data.set(id, value),
+			setComplete: (api, id, value) => api.setComplete(id, value),
+			next: (api, payload) => api.next(payload === undefined ? undefined : { data: payload }),
+			prev: (api, payload) => api.prev(payload === undefined ? undefined : { data: payload }),
+			reset: (api) => api.reset(),
+			resetKeeping: (api) => api.reset({ keepData: true, keepCompleted: true }),
+			// Standalone validation on the definition.
+			validator: (flow, id) => async (value) => {
+				const result = await flow.validate(id, value);
+				return { valid: result.success, value: result.data, issues: result.issues };
+			},
+			primitives: (flow, steps) =>
+				h(
+					flow.Stepper.Root,
+					null,
+					h(
+						flow.Stepper.List,
+						null,
+						h(flow.Stepper.Items, null, (step) => item(flow, step)),
+					),
+					steps.map((step) => h(flow.Stepper.Content, { key: step.id, step: step.id }, step.title)),
+					h(flow.Stepper.Prev, null, "Back"),
+					h(flow.Stepper.Next, null, "Next"),
+				),
+		},
+		v9: {
+			config: (guard) => ({ guard, snapshot: { data: SEED } }),
+			controlled: (step, setStep) => ({ step, onChange: (snapshot) => setStep(snapshot.step) }),
+			id: (api) => api.current.id,
+			data: (api, id) => api.data[id],
+			allData: (api) => api.data,
+			completed: (api) => api.snapshot().complete,
+			isComplete: (api, id) => api.state(id) === "complete",
+			setData: (api, id, value) => api.setData(id, value),
+			// v9 has no completion setter (next() completes). `restore` is the public way to write it,
+			// and it rebuilds the whole state, so this is more work than v8's `setComplete`.
+			setComplete: (api, id, value) => api.restore({ complete: value ? [id] : [] }),
+			// v9 `next()` also validates (no schema here), completes the step and records history.
+			next: (api, payload) => (payload === undefined ? api.next() : api.next(payload)),
+			// v9 `prev()` takes no data: write it first, in the same batch.
+			prev: (api, payload) => {
+				if (payload !== undefined) api.setData(api.current.id, payload);
+				return api.prev();
+			},
+			reset: (api) => {
+				api.reset();
+				return done;
+			},
+			// v9 has no partial reset: restoring only the position keeps data and completion.
+			resetKeeping: (api) => {
+				api.restore({ step: "step-0", history: [] });
+				return done;
+			},
+			// v9 validates inside `next()`: a framework-free flow parked on the last step, so a valid
+			// value also finishes the flow (a state write) and an invalid one stores draft and issues.
+			validator: (flow, id) => {
+				const machine = flow.create({ snapshot: { step: id } });
+				return async (value) => {
+					const result = await machine.next(value);
+					return { valid: result.accepted, value: result.data?.[id], issues: result.issues };
+				};
+			},
+			primitives: (flow, steps) =>
+				h(
+					flow.Stepper.Root,
+					null,
+					h(flow.Stepper.List, null, (step) => item(flow, step)),
+					steps.map((step) => h(flow.Stepper.Content, { key: step.id, step: step.id }, step.title)),
+					h(flow.Stepper.Prev, null, "Back"),
+					h(flow.Stepper.Next, null, "Next"),
+				),
+		},
+	};
+	const item = (flow, step) =>
+		h(
+			flow.Stepper.Item,
+			{ key: step.id, step: step.id },
+			h(flow.Stepper.Trigger, null, h(flow.Stepper.Indicator), h(flow.Stepper.Title)),
+		);
 	assert.strictEqual(typeof globalThis.gc, "function", "Chromium must expose GC");
 	assert.strictEqual(globalThis.crossOriginIsolated, true, "High-resolution timers require isolation");
 	// Yield a browser task without setTimeout's nested-timer clamp.
@@ -26,6 +123,21 @@ export async function runBenchmarks({ React, createRoot, flushSync, v7, v8 }) {
 			label: "Mount 100 local flows · 100 steps",
 			kind: "mount",
 			mounts: 100,
+			steps: 100,
+		},
+		{
+			id: "mount-primitives",
+			group: "local",
+			label: "Mount 20 primitive steppers · 10 steps",
+			kind: "primitives",
+			mounts: 20,
+		},
+		{
+			id: "mount-primitives-large",
+			group: "local",
+			label: "Mount 5 primitive steppers · 100 steps",
+			kind: "primitives",
+			mounts: 5,
 			steps: 100,
 		},
 		{ id: "local-data", group: "local", label: "200 local data writes", kind: "data" },
@@ -151,6 +263,7 @@ export async function runBenchmarks({ React, createRoot, flushSync, v7, v8 }) {
 					library.defineStepper(
 						Array.from({ length: scenario.steps }, (_, i) => ({
 							id: `step-${i}`,
+							title: `Step ${i}`,
 							...(scenario.kind === "validation" ? { schema: numberSchema } : {}),
 						})),
 					),
@@ -161,16 +274,17 @@ export async function runBenchmarks({ React, createRoot, flushSync, v7, v8 }) {
 
 	async function measure(version, scenario) {
 		const flow = definitions[scenario.id][version];
+		const use = adapters[version];
 		const lastId = `step-${scenario.steps - 1}`;
 		if (scenario.kind === "validation") {
+			const validate = use.validator(flow, lastId);
 			const values = [];
 			const start = performance.now();
-			for (let i = 0; i < scenario.operations; i++)
-				values.push(await flow.validate(lastId, scenario.valid ? i : "invalid"));
+			for (let i = 0; i < scenario.operations; i++) values.push(await validate(scenario.valid ? i : "invalid"));
 			const ms = performance.now() - start;
 			values.forEach((value, i) => {
-				assert.strictEqual(value.success, scenario.valid);
-				if (scenario.valid) assert.strictEqual(value.data, i);
+				assert.strictEqual(value.valid, scenario.valid);
+				if (scenario.valid) assert.strictEqual(value.value, i);
 				else assert.deepEqual(value.issues, [{ message: "Expected a number" }]);
 			});
 			return { ms, renders: 0 };
@@ -184,33 +298,36 @@ export async function runBenchmarks({ React, createRoot, flushSync, v7, v8 }) {
 					return scenario.guard === "async" ? Promise.resolve(true) : scenario.guard !== "block";
 				}
 			: undefined;
-		const config = { beforeStepChange: guard, defaultData: { "step-0": "seed" } };
-		const sharedHook = version === "v7" ? flow.useStepper : flow.useStepperContext;
+		const config = use.config(guard);
 		const selection = (state) =>
 			scenario.select === "data"
-				? state.data.get("step-0")
+				? use.data(state, "step-0")
 				: scenario.select === "completion"
-					? state.isComplete("step-0")
-					: state.id;
+					? use.isComplete(state, WATCHED)
+					: use.id(state);
 		function Driver() {
-			api = sharedHook();
+			api = flow.useStepperContext();
 			return null;
 		}
 		function Reader() {
-			const value = scenario.select && version === "v8" ? flow.useStepperContext(selection) : selection(sharedHook());
+			const value = scenario.select ? flow.useStepperContext(selection) : selection(flow.useStepperContext());
 			renderCount++;
 			return React.createElement("span", null, String(value));
 		}
 		function Local() {
 			api = flow.useStepper(config);
 			renderCount++;
-			return React.createElement("span", null, scenario.kind === "data" ? String(api.data.get("step-0")) : api.id);
+			return React.createElement(
+				"span",
+				null,
+				scenario.kind === "data" ? String(use.data(api, "step-0")) : use.id(api),
+			);
 		}
 		function Owner({ children }) {
 			const [step, setStep] = React.useState("step-0");
 			return React.createElement(
 				flow.Provider,
-				{ ...config, ...(scenario.controlled ? { step, onStepChange: (id) => setStep(id) } : {}) },
+				{ ...config, ...(scenario.controlled ? use.controlled(step, setStep) : {}) },
 				children,
 			);
 		}
@@ -218,21 +335,23 @@ export async function runBenchmarks({ React, createRoot, flushSync, v7, v8 }) {
 		document.body.append(container);
 		const renderer = createRoot(container);
 		const children =
-			scenario.kind === "mount"
-				? React.createElement(
-						React.Fragment,
-						null,
-						Array.from({ length: scenario.mounts }, (_, key) => React.createElement(Local, { key })),
-					)
-				: scenario.readers
+			scenario.kind === "primitives"
+				? null
+				: scenario.kind === "mount"
 					? React.createElement(
-							Owner,
+							React.Fragment,
 							null,
-							React.createElement(Driver),
-							Array.from({ length: scenario.readers }, (_, key) => React.createElement(Reader, { key })),
+							Array.from({ length: scenario.mounts }, (_, key) => React.createElement(Local, { key })),
 						)
-					: React.createElement(Local);
-		const accepted = (result) => (version === "v7" ? result : result.accepted);
+					: scenario.readers
+						? React.createElement(
+								Owner,
+								null,
+								React.createElement(Driver),
+								Array.from({ length: scenario.readers }, (_, key) => React.createElement(Reader, { key })),
+							)
+						: React.createElement(Local);
+		const accepted = (result) => result.accepted;
 		async function transition(action) {
 			let pending;
 			flushSync(() => {
@@ -247,11 +366,31 @@ export async function runBenchmarks({ React, createRoot, flushSync, v7, v8 }) {
 			const value = scenario.readers
 				? String(selection(api))
 				: scenario.kind === "data"
-					? String(api.data.get("step-0"))
-					: api.id;
+					? String(use.data(api, "step-0"))
+					: use.id(api);
 			assert.strictEqual(container.textContent, value.repeat(scenario.readers || 1));
 		}
 		try {
+			if (scenario.kind === "primitives") {
+				const steps = flow.steps;
+				const start = performance.now();
+				flushSync(() =>
+					renderer.render(
+						React.createElement(
+							React.Fragment,
+							null,
+							Array.from({ length: scenario.mounts }, (_, key) =>
+								React.createElement(React.Fragment, { key }, use.primitives(flow, steps)),
+							),
+						),
+					),
+				);
+				const ms = performance.now() - start;
+				// One trigger per step, plus Prev and Next, in every stepper.
+				assert.strictEqual(container.querySelectorAll("button").length, scenario.mounts * (scenario.steps + 2));
+				assert.strictEqual(container.querySelectorAll("li").length, scenario.mounts * scenario.steps);
+				return { ms, renders: 0 };
+			}
 			if (scenario.kind === "mount") {
 				const start = performance.now();
 				flushSync(() => renderer.render(children));
@@ -267,39 +406,33 @@ export async function runBenchmarks({ React, createRoot, flushSync, v7, v8 }) {
 				const start = performance.now();
 				for (let i = 0; i < scenario.operations; i++)
 					flushSync(() => {
-						if (scenario.kind === "data") api.data.set("step-0", i);
-						else api.setComplete("step-0", i % 2 === 0);
+						if (scenario.kind === "data") use.setData(api, "step-0", i);
+						else use.setComplete(api, WATCHED, i % 2 === 0);
 					});
 				ms = performance.now() - start;
-				if (scenario.kind === "data") assert.strictEqual(api.data.get("step-0"), scenario.operations - 1);
-				else assert.strictEqual(api.isComplete("step-0"), false);
-				assert.strictEqual(api.id, "step-0");
+				if (scenario.kind === "data") assert.strictEqual(use.data(api, "step-0"), scenario.operations - 1);
+				else assert.strictEqual(use.isComplete(api, WATCHED), false);
+				assert.strictEqual(use.id(api), "step-0");
 			} else if (scenario.kind === "reset-full") {
 				ms = 0;
 				let resetRenders = 0;
 				for (let i = 0; i < scenario.operations; i++) {
 					flushSync(() => {
-						api.data.set("step-0", i);
-						api.setComplete("step-0", true);
+						use.setComplete(api, "step-0", true);
+						use.setData(api, "step-0", i);
 					});
 					assert.strictEqual(accepted(await transition(() => api.goTo(lastId))), true);
-					assert.strictEqual(api.data.get("step-0"), i);
-					assert.strictEqual(api.isComplete("step-0"), true);
+					assert.strictEqual(use.data(api, "step-0"), i);
+					assert.strictEqual(use.isComplete(api, "step-0"), true);
 					renderCount = 0;
 					const start = performance.now();
-					const result = await transition(() => {
-						if (version === "v7") {
-							api.data.reset();
-							api.setComplete("step-0", false);
-						}
-						return api.reset();
-					});
+					const result = await transition(() => use.reset(api));
 					ms += performance.now() - start;
 					resetRenders += renderCount;
 					assert.strictEqual(accepted(result), true);
-					assert.strictEqual(api.id, "step-0");
-					assert.deepEqual(api.data.all(), { "step-0": "seed" });
-					assert.deepEqual(api.completed, []);
+					assert.strictEqual(use.id(api), "step-0");
+					assert.deepEqual(use.allData(api), SEED);
+					assert.deepEqual(use.completed(api), []);
 				}
 				renderCount = resetRenders;
 			} else {
@@ -308,8 +441,8 @@ export async function runBenchmarks({ React, createRoot, flushSync, v7, v8 }) {
 				const pendingStates = [];
 				if (scenario.kind === "reset-preserve")
 					flushSync(() => {
-						api.data.set("step-0", "retained");
-						api.setComplete("step-0", true);
+						use.setComplete(api, "step-0", true);
+						use.setData(api, "step-0", "retained");
 					});
 				renderCount = 0;
 				const start = performance.now();
@@ -319,26 +452,19 @@ export async function runBenchmarks({ React, createRoot, flushSync, v7, v8 }) {
 							if (scenario.kind === "boundary") return api.prev();
 							if (scenario.kind === "blocked") return api.next();
 							if (scenario.kind === "jump") return api.goTo(i % 2 === 0 ? lastId : "step-0");
-							if (scenario.kind === "reset-preserve")
-								return i % 2 === 0
-									? api.goTo(lastId)
-									: version === "v8"
-										? api.reset({ keepData: true, keepCompleted: true })
-										: api.reset();
-							return i % 2 === 0
-								? api.next(scenario.kind === "payload" ? { data: i } : undefined)
-								: api.prev(scenario.kind === "payload" ? { data: i } : undefined);
+							if (scenario.kind === "reset-preserve") return i % 2 === 0 ? api.goTo(lastId) : use.resetKeeping(api);
+							const payload = scenario.kind === "payload" ? i : undefined;
+							return i % 2 === 0 ? use.next(api, payload) : use.prev(api, payload);
 						}),
 					);
-					visited.push(api.id);
+					visited.push(use.id(api));
 					pendingStates.push(api.isPending);
 				}
 				ms = performance.now() - start;
 				const rejected = ["boundary", "blocked"].includes(scenario.kind);
 				outcomes.forEach((result, i) => {
 					assert.strictEqual(accepted(result), !rejected);
-					if (rejected && version === "v8")
-						assert.strictEqual(result.reason, scenario.kind === "boundary" ? "boundary" : "guard");
+					if (rejected) assert.strictEqual(result.reason, scenario.kind === "boundary" ? "boundary" : "guard");
 					assert.strictEqual(
 						visited[i],
 						rejected || i % 2 === 1 ? "step-0" : ["jump", "reset-preserve"].includes(scenario.kind) ? lastId : "step-1",
@@ -347,12 +473,12 @@ export async function runBenchmarks({ React, createRoot, flushSync, v7, v8 }) {
 				});
 				assert.strictEqual(guardCalls, scenario.guard ? scenario.operations : 0);
 				if (scenario.kind === "payload") {
-					assert.strictEqual(api.data.get("step-0"), scenario.operations - 2);
-					assert.strictEqual(api.data.get("step-1"), scenario.operations - 1);
+					assert.strictEqual(use.data(api, "step-0"), scenario.operations - 2);
+					assert.strictEqual(use.data(api, "step-1"), scenario.operations - 1);
 				}
 				if (scenario.kind === "reset-preserve") {
-					assert.strictEqual(api.data.get("step-0"), "retained");
-					assert.deepEqual(api.completed, ["step-0"]);
+					assert.strictEqual(use.data(api, "step-0"), "retained");
+					assert.deepEqual(use.completed(api), ["step-0"]);
 				}
 			}
 			assertDom();
@@ -360,8 +486,8 @@ export async function runBenchmarks({ React, createRoot, flushSync, v7, v8 }) {
 			// After timing, check that selectors react to a relevant change.
 			if (scenario.readers && ["data", "completion"].includes(scenario.kind)) {
 				const previousRenders = renderCount;
-				if (scenario.select === "data") flushSync(() => api.data.set("step-0", "changed"));
-				else if (scenario.select === "completion") flushSync(() => api.setComplete("step-0", true));
+				if (scenario.select === "data") flushSync(() => use.setData(api, "step-0", "changed"));
+				else if (scenario.select === "completion") flushSync(() => use.setComplete(api, WATCHED, true));
 				else assert.strictEqual(accepted(await transition(() => api.next())), true);
 				assert.strictEqual(renderCount - previousRenders, scenario.readers);
 				assertDom();
@@ -378,15 +504,15 @@ export async function runBenchmarks({ React, createRoot, flushSync, v7, v8 }) {
 		return sorted[low] + (sorted[Math.ceil(position)] - sorted[low]) * (position - low);
 	};
 	for (const scenario of scenarios) {
-		const samples = { v7: [], v8: [] };
+		const samples = { v8: [], v9: [] };
 		for (let round = -warmups; round < repetitions; round++) {
-			for (const version of Math.abs(round) % 2 === 0 ? ["v7", "v8"] : ["v8", "v7"]) {
+			for (const version of Math.abs(round) % 2 === 0 ? ["v8", "v9"] : ["v9", "v8"]) {
 				globalThis.gc();
 				const result = await measure(version, scenario);
 				if (round >= 0) samples[version].push(result);
 			}
 		}
-		for (const version of ["v7", "v8"]) {
+		for (const version of ["v8", "v9"]) {
 			const sorted = samples[version].map((sample) => sample.ms).sort((a, b) => a - b);
 			const counts = samples[version].map((sample) => sample.renders).sort((a, b) => a - b);
 			scenario[version] = {
