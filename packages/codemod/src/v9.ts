@@ -12,7 +12,15 @@ export type TransformResult = {
 	rewrites: number;
 	/** `// TODO(stepperize-v9)` comments added for changes that need a decision. */
 	todos: number;
+	/** The message of each comment added, in order. */
+	notes: string[];
+	/** Rewrites that were applied but deserve a look, because the meaning of what they touch changed. */
+	warnings: string[];
 };
+
+/** `data-status="previous"` meant "before the current step"; `data-state="complete"` means "validated by `next()`". */
+export const STYLES_WARNING =
+	'Selectors for the "previous" status and for `data-complete` now target `data-state="complete"`. A step is complete once `next()` validates it, not because it comes before the current one: check them if the flow jumps with `goTo()`.';
 
 const PREFIX = "TODO(stepperize-v9):";
 const PACKAGES = /^@stepperize\/(react|core)(\/|$)/;
@@ -31,7 +39,7 @@ const TODO = {
 	nextPayload: "`next()` takes the step data directly: `next(data)` instead of `next({ data, complete })`.",
 	prevPayload: "`prev()` takes no arguments. Call `setData(id, data)` before it to keep a draft.",
 	goToOptions:
-		"`goTo(id)` takes no options. `bypassPolicy` is gone (use `restore({ step })` to skip `linear` and the guard); call `setData` to save data.",
+		"`goTo(id)` takes no options. To branch on the data of the current step, declare the branch in the `next` option and call `next(data)`. Otherwise call `setData` to save data; `bypassPolicy` is gone (use `restore({ step })` to skip `linear` and the guard).",
 	resetOptions:
 		"`reset()` takes no options. To keep data or completion, use `restore({ step, data, complete })` with the parts to keep.",
 	resultFrom:
@@ -61,6 +69,21 @@ const TODO = {
 		"`@stepperize/react/primitives` was removed. Use the `Stepper` components returned by `defineStepper` from `@stepperize/react`.",
 	rootProps: "`Stepper.Root` now calls its function child with the stepper itself: `(stepper) => ...`.",
 	items: "`Stepper.Items` was removed. Pass the function as the only child of `Stepper.List`.",
+	unresolved: (object: string, api: string) =>
+		`\`${object}.${api}\` looks like the v8 API, but the codemod could not tell that \`${object}\` is a stepper. If it is: ${
+			(
+				{
+					"data.get()": `read \`${object}.data[id]\`.`,
+					"data.all()": `read \`${object}.data\`.`,
+					"data.set()": `write with \`${object}.setData(id, value)\`.`,
+					"data.update()": `write with \`${object}.setData(id, value)\`.`,
+					canPrev: `use \`!${object}.isFirst && !${object}.isPending\`.`,
+					canNext: `use \`!${object}.isLast && !${object}.isPending\`.`,
+					isComplete: `use \`${object}.state(id) === "complete"\`.`,
+					setComplete: "a step is complete once `next()` validates it.",
+				} as Record<string, string>
+			)[api]
+		}`,
 	destructured: (name: string) =>
 		`\`${name}\` is no longer on the stepper. ${
 			(
@@ -98,7 +121,40 @@ const DEFAULTS: Record<string, string> = { defaultStep: "step", defaultData: "da
 const GUARD_FIELDS = ["fromIndex", "toIndex", "statuses"];
 const STATICS = ["get", "at", "parseStep", "validate"];
 
-type Kind = "stepper" | "data" | "next" | "prev" | "goTo" | "reset" | "result" | "guard";
+type Kind = "stepper" | "data" | "next" | "prev" | "goTo" | "reset" | "result" | "guard" | "ref";
+/** v8 names that are unmistakable enough to flag on a value the codemod could not follow. */
+const LOOSE = ["canPrev", "canNext", "isComplete", "setComplete"];
+const LOOSE_DATA = ["get", "set", "all", "update"];
+
+const STATES: Record<string, string> = { active: "current", previous: "complete", upcoming: "pending" };
+/** Where the positional "previous" or the old `data-complete` are styled: their meaning changed. */
+const POSITIONAL = /status=["']?previous|data-\[complete\b|\[data-complete\b|(?:^|[\s"'`-])data-complete:/m;
+
+/** `data-status` selectors, as Tailwind variants or CSS attribute selectors, become `data-state`. */
+function restyle(code: string) {
+	let count = 0;
+	const next = code
+		.replace(/(\[data-|data-\[)status=(["']?)(active|previous|upcoming)\2\]/g, (_, open, quote, status) => {
+			count++;
+			return `${open}state=${quote}${STATES[status]}${quote}]`;
+		})
+		.replace(/(\[data-|data-\[)complete(?:=(["']?)true\2)?\]/g, (_, open) => {
+			count++;
+			return `${open}state=complete]`;
+		})
+		.replace(/(^|[\s"'`-])data-complete:(?=[\w[-])/gm, (_, before) => {
+			count++;
+			return `${before}data-[state=complete]:`;
+		});
+	return { code: next, count };
+}
+
+/** Lines that still style the v8 attributes, for files the codemod does not rewrite (CSS, or code it cannot place). */
+export function leftoverStyles(source: string): number[] {
+	return source
+		.split("\n")
+		.flatMap((text, index) => (/data-\[?(status|complete)\b/.test(text) && !text.includes(PREFIX) ? [index + 1] : []));
+}
 
 const isId = (node: Node, name?: string) => node?.type === "Identifier" && (name === undefined || node.name === name);
 const isFn = (node: Node) => node?.type === "ArrowFunctionExpression" || node?.type === "FunctionExpression";
@@ -125,7 +181,14 @@ function parser(file: string) {
 /** Migrate one file from v8 to v9. Pure: it never touches the disk. */
 export function transform(source: string, file = "file.tsx"): TransformResult {
 	// Cheap exit: nothing in this file mentions a stepper.
-	if (!/stepper/i.test(source)) return { code: source, rewrites: 0, todos: 0 };
+	if (!/stepper/i.test(source)) return { code: source, rewrites: 0, todos: 0, notes: [], warnings: [] };
+	// Edits that fit in a line are made on the text first: reprinting the JSX around them would reformat it.
+	const text = run(source, file, true);
+	const result = run(text.code, file, false);
+	return { ...result, rewrites: result.rewrites + text.rewrites };
+}
+
+function run(source: string, file: string, textual: boolean): TransformResult {
 	const useTabs = /^\t/m.test(source);
 	const format = {
 		useTabs,
@@ -134,9 +197,11 @@ export function transform(source: string, file = "file.tsx"): TransformResult {
 		lineTerminator: source.includes("\r\n") ? "\r\n" : "\n",
 		arrowParensAlways: true,
 	};
-	const ast = recast.parse(source, { ...format, parser: parser(file) });
+	// recast expands tabs before parsing, which moves every offset: the text pass reads the parser's own tree.
+	const ast = textual ? parser(file).parse(source) : recast.parse(source, { ...format, parser: parser(file) });
 	let rewrites = 0;
 	let todos = 0;
+	const notes: string[] = [];
 
 	// ---- Comments -----------------------------------------------------------
 
@@ -155,6 +220,7 @@ export function transform(source: string, file = "file.tsx"): TransformResult {
 		if (node.comments?.some((comment: Node) => comment.value === text)) return;
 		node.comments = [...(node.comments ?? []), b.commentLine(text, true, false)];
 		todos++;
+		notes.push(message);
 	}
 
 	// ---- Names --------------------------------------------------------------
@@ -178,11 +244,13 @@ export function transform(source: string, file = "file.tsx"): TransformResult {
 	const shapes = new Map<string, Node[]>();
 
 	const isDefine = (node: Node) => node?.type === "CallExpression" && isId(node.callee) && define.has(node.callee.name);
+	let imported = false;
 
 	recast.visit(ast, {
 		visitImportDeclaration(path: Path) {
 			const from: string = path.node.source.value;
 			const ours = PACKAGES.test(from);
+			imported ||= ours;
 			if (from === "@stepperize/react/primitives") todo(path, TODO.primitivesEntry);
 			for (const specifier of path.node.specifiers ?? []) {
 				if (specifier.type !== "ImportSpecifier") continue;
@@ -267,6 +335,77 @@ export function transform(source: string, file = "file.tsx"): TransformResult {
 				name.object.type === "JSXIdentifier" &&
 				definitions.has(name.object.name);
 
+	const blank = (child: Node) => child.type === "JSXText" && !child.value.trim();
+	/** The file works with a stepper, so v8 names and selectors in it are ours to migrate. */
+	const ours = imported || definitions.size > 0 || namespaces.size > 0 || /stepper[^/\\]*$/i.test(file);
+
+	if (textual) {
+		const unit = useTabs ? "\t" : " ".repeat(format.tabWidth);
+		const edits: { start: number; end: number; text: string }[] = [];
+		const lineStart = (at: number) => source.lastIndexOf("\n", at - 1) + 1;
+		const lineEnd = (at: number) => {
+			const end = source.indexOf("\n", at);
+			return end < 0 ? source.length : end + 1;
+		};
+		const alone = (node: Node) =>
+			!source.slice(lineStart(node.start), node.start).trim() && !source.slice(node.end, lineEnd(node.end)).trim();
+		recast.visit(ast, {
+			visitJSXElement(path: Path) {
+				const { node } = path;
+				const name = component(node.openingElement.name);
+				if (name === "Root")
+					for (const child of node.children) {
+						const fn = child.type === "JSXExpressionContainer" ? child.expression : undefined;
+						const param = isFn(fn) ? fn.params[0] : undefined;
+						const only =
+							param?.type === "ObjectPattern" && !param.typeAnnotation && param.properties.length === 1
+								? param.properties[0]
+								: undefined;
+						// `({ stepper }) =>` becomes `(stepper) =>`.
+						if (only?.type === "ObjectProperty" && keyName(only) === "stepper" && isId(only.value))
+							edits.push({ start: param.start, end: param.end, text: only.value.name });
+					}
+				if (name === "List") {
+					const children = node.children.filter((child: Node) => !blank(child));
+					const [items] = children;
+					if (
+						children.length === 1 &&
+						items.type === "JSXElement" &&
+						component(items.openingElement.name) === "Items" &&
+						items.closingElement &&
+						alone(items.openingElement) &&
+						alone(items.closingElement)
+					) {
+						// Drop the two `Stepper.Items` lines and bring what they wrapped one level out.
+						const inner = source.slice(lineEnd(items.openingElement.end), lineStart(items.closingElement.start));
+						// A template literal may span lines whose indentation is content.
+						if (!inner.includes("`"))
+							edits.push({
+								start: lineStart(items.openingElement.start),
+								end: lineEnd(items.closingElement.end),
+								text: inner
+									.split("\n")
+									.map((entry) => (entry.startsWith(unit) ? entry.slice(unit.length) : entry))
+									.join("\n"),
+							});
+					}
+				}
+				this.traverse(path);
+			},
+		});
+		let code = source;
+		let applied = 0;
+		let limit = Number.POSITIVE_INFINITY;
+		// From the end, so earlier offsets stay valid. An edit inside another one is left to the second pass.
+		for (const edit of edits.sort((a, z) => z.start - a.start)) {
+			if (edit.end > limit) continue;
+			code = code.slice(0, edit.start) + edit.text + code.slice(edit.end);
+			limit = edit.start;
+			applied++;
+		}
+		return { code, rewrites: applied, todos: 0, notes: [], warnings: [] };
+	}
+
 	// ---- Bindings -----------------------------------------------------------
 
 	/** Scope node → name → what the binding holds. Scope nodes are stable across traversals. */
@@ -340,7 +479,12 @@ export function transform(source: string, file = "file.tsx"): TransformResult {
 	const typeOf = (node: Node): Node => (node?.type === "TSTypeAnnotation" ? node.typeAnnotation : node);
 	const isStepperType = (node: Node) => {
 		const type = typeOf(node);
-		return type?.type === "TSTypeReference" && isId(type.typeName) && types.has(type.typeName.name);
+		if (type?.type !== "TSTypeReference" || !isId(type.typeName)) return false;
+		return (
+			types.has(type.typeName.name) ||
+			// Written in place: `ReturnType<typeof flow.useStepper>`.
+			(type.typeName.name === "ReturnType" && /\buseStepper(Context)?>/.test(recast.print(type).code))
+		);
 	};
 	const membersOf = (node: Node): Node[] => {
 		const type = typeOf(node);
@@ -385,6 +529,72 @@ export function transform(source: string, file = "file.tsx"): TransformResult {
 			this.traverse(path);
 		},
 	});
+
+	// Refs that hold a stepper: `useRef<Stepper | null>(null)`, read as `ref.current`.
+	const holdsStepper = (type: Node): boolean =>
+		isStepperType(type) || (type?.type === "TSUnionType" && type.types.some(holdsStepper));
+	recast.visit(ast, {
+		visitVariableDeclarator(path: Path) {
+			const { id, init } = path.node;
+			const callee = init?.type === "CallExpression" ? init.callee : undefined;
+			const arguments_ = init?.typeParameters ?? init?.typeArguments;
+			if (
+				isId(id) &&
+				(isId(callee, "useRef") || (isMember(callee) && callee.property.name === "useRef")) &&
+				arguments_?.params.some(holdsStepper)
+			)
+				mark(declared(path, id.name), id.name, "ref");
+			this.traverse(path);
+		},
+	});
+	const isStepper = (path: Path, node: Node): boolean =>
+		node?.type === "TSNonNullExpression"
+			? isStepper(path, node.expression)
+			: kindOf(path, node) === "stepper" ||
+				(isMember(node) && node.property.name === "current" && kindOf(path, node.object) === "ref");
+
+	/** What the app's own hooks return: a stepper (`true`), or an object with steppers under these keys. */
+	const returns = new Map<string, true | Set<string>>();
+	function record(path: Path, value: Node) {
+		let owner = path;
+		while (owner && !recast.types.namedTypes.Function.check(owner.node)) owner = owner.parent;
+		const name = owner?.node.id?.name ?? (isId(owner?.parent?.node?.id) ? owner.parent.node.id.name : undefined);
+		if (!name || !value) return;
+		const hook = hookOf(value);
+		if (isStepper(path, value) || hook === "useStepper" || (hook === "useStepperContext" && !value.arguments.length))
+			returns.set(name, true);
+		else if (value.type === "ObjectExpression") {
+			const keys = value.properties
+				.filter((prop: Node) => prop.type === "ObjectProperty" && isStepper(path, prop.value))
+				.map((prop: Node) => keyName(prop));
+			const known = returns.get(name);
+			if (keys.length && known !== true) returns.set(name, new Set([...(known ?? []), ...keys]));
+		}
+	}
+	// Two rounds: a hook may be declared after the component that calls it, or return another hook's stepper.
+	for (let round = 0; round < 2; round++)
+		recast.visit(ast, {
+			visitVariableDeclarator(path: Path) {
+				const { id, init } = path.node;
+				// Another name for a stepper: `const stepper = ref.current`.
+				if (isId(id) && isStepper(path, init)) mark(declared(path, id.name), id.name, "stepper");
+				const made = init?.type === "CallExpression" && isId(init.callee) ? returns.get(init.callee.name) : undefined;
+				if (made === true) bind(id, path, isId(id) ? declared(path, id.name) : path.scope?.node);
+				else if (made && id.type === "ObjectPattern")
+					for (const prop of id.properties)
+						if (prop.type === "ObjectProperty" && made.has(keyName(prop) as string) && isId(prop.value))
+							mark(declared(path, prop.value.name), prop.value.name, "stepper");
+				this.traverse(path);
+			},
+			visitReturnStatement(path: Path) {
+				record(path, path.node.argument);
+				this.traverse(path);
+			},
+			visitArrowFunctionExpression(path: Path) {
+				if (path.node.body.type !== "BlockStatement") record(path.get("body"), path.node.body);
+				this.traverse(path);
+			},
+		});
 
 	// Results of moves: `const result = await stepper.next()`.
 	const isMove = (path: Path, node: Node) => {
@@ -449,6 +659,10 @@ export function transform(source: string, file = "file.tsx"): TransformResult {
 		if (name === "reset" && count) todo(path, TODO.resetOptions);
 	}
 
+	/** A value the codemod did not follow, in a place where a v8 name on it is most likely a stepper's. */
+	const loose = (path: Path, node: Node) =>
+		!kindOf(path, node) && node.type !== "ThisExpression" && (ours || /stepper/i.test(recast.print(node).code));
+
 	recast.visit(ast, {
 		visitUnaryExpression(path: Path) {
 			const { node } = path;
@@ -511,6 +725,16 @@ export function transform(source: string, file = "file.tsx"): TransformResult {
 				return undefined;
 			}
 
+			// The v8 data API on something that was not followed here.
+			if (
+				isMember(owner) &&
+				owner.property.name === "data" &&
+				LOOSE_DATA.includes(name) &&
+				args.length <= 2 &&
+				loose(path, owner.object)
+			)
+				return todo(path, TODO.unresolved(recast.print(owner.object).code, `data.${name}()`));
+
 			if (kindOf(path, owner) !== "stepper") return undefined;
 			if (name === "is" && args.length === 1) {
 				path.replace(equals(member(clone(owner), "current", "id"), args[0]));
@@ -529,6 +753,8 @@ export function transform(source: string, file = "file.tsx"): TransformResult {
 			const name: string = node.property.name;
 			const kind = kindOf(path, node.object);
 			if (kind === "result" && name === "from") todo(path, TODO.resultFrom);
+			if (LOOSE.includes(name) && loose(path, node.object))
+				return todo(path, TODO.unresolved(recast.print(node.object).code, name));
 			if (kind !== "stepper") return undefined;
 			const stepper = () => clone(node.object);
 			let next: Node;
@@ -656,8 +882,6 @@ export function transform(source: string, file = "file.tsx"): TransformResult {
 			);
 	}
 
-	const blank = (child: Node) => child.type === "JSXText" && !child.value.trim();
-
 	recast.visit(ast, {
 		visitCallExpression(path: Path) {
 			const { node } = path;
@@ -714,9 +938,8 @@ export function transform(source: string, file = "file.tsx"): TransformResult {
 		},
 	});
 
-	if (!rewrites && !todos) return { code: source, rewrites, todos };
-	let { code } = recast.print(ast, format);
-	if (useTabs) {
+	let code = rewrites || todos ? recast.print(ast, format).code : source;
+	if (useTabs && code !== source) {
 		// recast indents the lines it prints with spaces after the tabs it kept: finish the job on those lines only.
 		const original = new Set(source.split(/\r?\n/));
 		code = code
@@ -724,5 +947,13 @@ export function transform(source: string, file = "file.tsx"): TransformResult {
 			.map((line) => (original.has(line) ? line : line.replace(/^[\t ]+/, (indent) => indent.replace(/ {4}/g, "\t"))))
 			.join(format.lineTerminator);
 	}
-	return { code, rewrites, todos };
+	const warnings: string[] = [];
+	if (ours) {
+		// Selectors are rewritten on the text: they live in class names, wherever those are written.
+		if (POSITIONAL.test(code)) warnings.push(STYLES_WARNING);
+		const styled = restyle(code);
+		code = styled.code;
+		rewrites += styled.count;
+	}
+	return { code, rewrites, todos, notes, warnings };
 }

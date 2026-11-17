@@ -27,15 +27,19 @@ Commit your work first.
 npx @stepperize/codemod v9 src
 ```
 
-Pass one or more files or directories. It reads `.ts`, `.tsx`, `.js` and
+Pass one or more files or directories. It rewrites `.ts`, `.tsx`, `.js` and
 `.jsx` files. Add `--dry` to see what would change without writing anything.
 
-Then:
+When it finishes it prints what is left for you: each kind of comment it wrote
+with the files it is in, the rewrites worth a look, and the style sheets that
+still use the v8 attributes. Then:
 
-1. Run your formatter. Rewritten lines keep your quotes and indentation, but
-   not your line breaks.
+1. Run your formatter. Lines the codemod did not have to touch stay as they
+   were; a rewritten statement keeps your quotes and indentation, but not
+   always its line breaks.
 2. Search for the comments it left. Each one sits above a statement that
    needs a decision, and says what replaces the old API.
+3. Run your type checker. It finds any v8 call the codemod could not follow.
 
 ```bash
 grep -rn "TODO(stepperize-v9)" src
@@ -66,16 +70,21 @@ grep -rn "TODO(stepperize-v9)" src
 
 The codemod only rewrites a value it can tell is a stepper: the result of
 `useStepper()` and `useStepperContext()`, the argument of a selector, the
-function child of `Stepper.Root`, and anything typed as a `Stepper`.
+function child of `Stepper.Root`, anything typed as a `Stepper`, a stepper read
+from a ref typed as one, and what your own hooks return when they are in the
+same file.
 
-It does not follow a stepper through your own hooks, refs, context or untyped
-props. After running it, search for what may be left:
+It does not follow a stepper across files, through context of your own or
+through untyped props. Where it finds the unmistakable v8 names on such a value
+(`.data.get()`, `.data.set()`, `.canNext`, `.isComplete()` and the like) it
+leaves a comment instead of guessing. Type the prop as `Stepper` and run the
+codemod again to have it rewritten.
 
-```bash
-grep -rnE "\.data\.(get|set|all|update)\(|\.canNext|\.canPrev|\.isComplete\(|\.status\(" src
-```
+### Styles
 
-It does not touch CSS. Rename your selectors by hand:
+In files that use a stepper, the codemod renames the selectors, both as
+Tailwind variants (`data-[status=active]:`) and as CSS attribute selectors
+inside strings:
 
 | v8 | v9 |
 | --- | --- |
@@ -83,6 +92,11 @@ It does not touch CSS. Rename your selectors by hand:
 | `data-status="previous"` | `data-state="complete"`, with the difference [explained below](#one-state-per-step) |
 | `data-status="upcoming"` | `data-state="pending"` |
 | `data-complete` | `data-state="complete"` |
+
+It lists the files where `previous` became `complete`, because the two only
+match in a flow walked with `next()`. Style sheets are read but never
+rewritten: it prints each line that still mentions `data-status` or
+`data-complete` for you to update.
 
 ## 3. Go through the rest
 

@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { transform } from "../v9";
+import { leftoverStyles, STYLES_WARNING, transform } from "../v9";
 
 const HEAD = `import { defineStepper } from "@stepperize/react";
 
@@ -114,7 +114,7 @@ export function Whole(stepper: Alias, other: Other) {
 
 	it("leaves alone what is not provably a stepper", () => {
 		const source = `import { useStepper } from "some-ui-kit";\nimport { Stepper } from "@mui/material";\nconst nav = <Stepper.Actions />;\nfunction C({ user, stepper }) {\n\tconst other = useStepper();\n\treturn [user.id, stepper.id, other.id, other.data.get("a")];\n}\n`;
-		expect(transform(source)).toEqual({ code: source, rewrites: 0, todos: 0 });
+		expect(transform(source)).toEqual({ code: source, rewrites: 0, todos: 0, notes: [], warnings: [] });
 		const unrelated = `const form = useForm();\nform.next({ data: 1 });\nexport const id = form.id;\n`;
 		expect(transform(unrelated).code).toBe(unrelated);
 	});
@@ -179,6 +179,147 @@ export function Whole(stepper: Alias, other: Other) {
 		expect(code).toContain("return stepper.state(stepper.current.id) === 'complete';");
 		expect(code).toContain("flow.useStepper({ snapshot: {\n    step: 'a'\n  } });");
 		expect(code).not.toContain("\t");
+	});
+});
+
+describe("steppers reached indirectly", () => {
+	it("follows a stepper kept in a ref", () => {
+		const source = `import { useRef } from "react";
+import { defineStepper, type Stepper } from "@stepperize/react";
+
+const flow = defineStepper([{ id: "a" }]);
+
+function Component() {
+	const ref = useRef<Stepper | null>(null);
+	const save = () => {
+		const stepper = ref.current;
+		if (!stepper) return;
+		stepper.data.set("a", stepper.data.get("a"));
+	};
+	return save;
+}
+`;
+		const result = transform(source);
+		expect(result.code).toContain('stepper.setData("a", stepper.data.a);');
+		expect(result.todos).toBe(0);
+	});
+
+	it("follows a stepper returned by the app's own hook, alone or inside an object", () => {
+		const source = `${HEAD}
+function Step() {
+	const { stepper, total } = useInvites();
+	const other = useFlow();
+	return [stepper.data.get("a"), other.count, total];
+}
+
+function useInvites() {
+	const stepper = flow.useStepperContext();
+	return { stepper, total: stepper.count };
+}
+
+const useFlow = () => flow.useStepperContext();
+`;
+		const result = transform(source);
+		expect(result.code).toContain("return [stepper.data.a, other.steps.length, total];");
+		expect(result.code).toContain("return { stepper, total: stepper.steps.length };");
+		expect(result.todos).toBe(0);
+	});
+
+	it("follows a stepper typed in place", () => {
+		const source = `${HEAD}
+function Nav({ stepper }: { stepper: ReturnType<typeof flow.useStepper> }) {
+	return stepper.canNext;
+}
+`;
+		expect(transform(source).code).toContain("return !stepper.isLast && !stepper.isPending;");
+	});
+
+	it("flags the v8 API on a value it could not follow instead of leaving it silently", () => {
+		const source = `${HEAD}
+function Nav(props) {
+	props.stepper.data.set("a", 1);
+	return props.stepper.canNext;
+}
+`;
+		const result = transform(source);
+		expect(result.todos).toBe(2);
+		expect(result.notes[0]).toContain("`props.stepper.data.set()` looks like the v8 API");
+		expect(result.notes[1]).toContain("use `!props.stepper.isLast && !props.stepper.isPending`");
+		expect(result.code).toContain('props.stepper.data.set("a", 1);');
+		// Flagged once: a second run adds nothing.
+		expect(transform(result.code).code).toBe(result.code);
+	});
+
+	it("does not flag look-alikes in files that have nothing to do with a stepper", () => {
+		const source = `// stepper-free helper\nexport const read = (response) => response.data.get("a");\n`;
+		expect(transform(source, "helpers.ts").code).toBe(source);
+	});
+});
+
+describe("selectors", () => {
+	it("rewrites Tailwind variants and CSS attribute selectors to data-state", () => {
+		const source = `${HEAD}
+const classes = "data-[status=active]:bg-primary group-data-[status=upcoming]/item:opacity-50 data-[complete]:ring-1 data-complete:font-bold";
+const css = '[data-status="active"] > [data-complete]';
+`;
+		const result = transform(source);
+		expect(result.code).toContain(
+			'"data-[state=current]:bg-primary group-data-[state=pending]/item:opacity-50 data-[state=complete]:ring-1 data-[state=complete]:font-bold"',
+		);
+		expect(result.code).toContain(`'[data-state="current"] > [data-state=complete]'`);
+		expect(result.rewrites).toBe(6);
+		expect(result.warnings).toEqual([STYLES_WARNING]);
+		expect(leftoverStyles(result.code)).toEqual([]);
+	});
+
+	it("warns only when the positional status was involved", () => {
+		const active = transform(`${HEAD}const classes = "data-[status=active]:bg-primary";\n`);
+		expect(active.warnings).toEqual([]);
+		const previous = transform(`${HEAD}const classes = "data-[status=previous]:bg-primary";\n`);
+		expect(previous.code).toContain("data-[state=complete]:bg-primary");
+		expect(previous.warnings).toEqual([STYLES_WARNING]);
+	});
+
+	it("leaves selectors alone in files it cannot tie to a stepper, and reports their lines", () => {
+		const source = `// a stepper-like table\nexport const row = "data-[status=active]:bg-primary";\n`;
+		expect(transform(source, "table.ts").code).toBe(source);
+		expect(leftoverStyles(source)).toEqual([2]);
+		expect(leftoverStyles('.item[data-status="previous"] {}\n.other {}\n')).toEqual([1]);
+	});
+});
+
+describe("formatting", () => {
+	it("keeps every line it does not have to touch", () => {
+		const source = `${HEAD}
+export function Wizard() {
+	return (
+		<Stepper.Root className="grid">
+			{({ stepper }) => (
+				<div
+					className="flex"
+				>
+					<Stepper.List>
+						<Stepper.Items>
+							{(step) => (
+								<Stepper.Item
+									key={step.id}
+									step={step.id}
+								/>
+							)}
+						</Stepper.Items>
+					</Stepper.List>
+					<p>{stepper.current.title}</p>
+				</div>
+			)}
+		</Stepper.Root>
+	);
+}
+`;
+		const expected = source
+			.replace("({ stepper }) =>", "(stepper) =>")
+			.replace(/\t+<\/?Stepper\.Items>\n/g, "")
+			.replace(/^\t(\t{5,}(?:\{\(step|<Stepper\.Item|key=|step=|\/>|\)\}))/gm, "$1");
+		expect(transform(source).code).toBe(expected);
 	});
 });
 
@@ -311,7 +452,7 @@ describe("whole files", () => {
 		const first = transform(SAMPLE);
 		expect(first.rewrites).toBeGreaterThan(8);
 		expect(first.todos).toBe(7);
-		expect(transform(first.code)).toEqual({ code: first.code, rewrites: 0, todos: 0 });
+		expect(transform(first.code)).toEqual({ code: first.code, rewrites: 0, todos: 0, notes: [], warnings: [] });
 	});
 
 	it("parses plain TypeScript, where <T>value is a cast and not JSX", () => {
@@ -321,7 +462,7 @@ describe("whole files", () => {
 
 	it("skips files that never mention a stepper", () => {
 		const source = "export const answer = 42;\n";
-		expect(transform(source)).toEqual({ code: source, rewrites: 0, todos: 0 });
+		expect(transform(source)).toEqual({ code: source, rewrites: 0, todos: 0, notes: [], warnings: [] });
 	});
 });
 
@@ -353,6 +494,31 @@ describe("cli", () => {
 		} finally {
 			rmSync(root, { recursive: true, force: true });
 		}
+	});
+
+	it("groups what is left, reports style sheets and says what to do next", () => {
+		const root = mkdtempSync(join(tmpdir(), "stepperize-codemod-"));
+		try {
+			writeFileSync(join(root, "checkout.tsx"), SAMPLE);
+			writeFileSync(join(root, "stepper.css"), '.item[data-status="active"] {}\n');
+			const output = run("v9", root, "--dry");
+			expect(output).toContain('Left for you, as "TODO(stepperize-v9)" comments:');
+			expect(output).toMatch(/Still styled with the v8 attributes[\s\S]*stepper\.css:1/);
+			expect(output).toContain("Install the new version: @stepperize/react@9.");
+			expect(readFileSync(join(root, "stepper.css"), "utf8")).toContain("data-status");
+		} finally {
+			rmSync(root, { recursive: true, force: true });
+		}
+	});
+
+	it("fails on an unknown option or a path that does not exist", () => {
+		expect(() => run("v9", "src", "--write")).toThrow(
+			expect.objectContaining({ status: 1, stdout: expect.stringContaining("Unknown option: --write") }),
+		);
+		expect(() => run("v9", join(tmpdir(), "stepperize-nowhere"))).toThrow(
+			expect.objectContaining({ status: 1, stdout: expect.stringContaining("not found") }),
+		);
+		expect(run("--help")).toContain("Usage:");
 	});
 
 	it("prints usage and fails without a transform or a path", () => {

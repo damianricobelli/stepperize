@@ -8,17 +8,22 @@ Migrates code between major versions of Stepperize.
 npx @stepperize/codemod v9 src
 ```
 
-Pass one or more files or directories. It reads `.ts`, `.tsx`, `.js` and `.jsx`
-files and skips `node_modules`, `dist` and other build output. Add `--dry` to
-see what would change without writing anything.
+Pass one or more files or directories. It rewrites `.ts`, `.tsx`, `.js` and
+`.jsx` files and skips `node_modules`, `dist` and other build output. Add
+`--dry` to see what would change without writing anything.
 
 Commit your work first, then:
 
-1. Run the codemod. It prints the files it changed and a summary.
-2. Run your formatter: rewritten lines keep your quotes and indentation, but
-   not your line breaks.
-3. Search for `TODO(stepperize-v9)`. Each comment sits above a statement that
+1. Run the codemod. It prints the files it changed, then what is left for you:
+   each kind of `TODO(stepperize-v9)` with its files, the rewrites worth a
+   look, and the style sheets that still use the v8 attributes.
+2. Install `@stepperize/react@9`.
+3. Run your formatter. Lines the codemod did not have to touch are left as they
+   were; a rewritten statement keeps your quotes and indentation, but not
+   always its line breaks.
+4. Search for `TODO(stepperize-v9)`. Each comment sits above a statement that
    needs a decision and says what replaces the old API.
+5. Run your type checker. It finds any v8 call the codemod could not follow.
 
 Run it once: a second run changes nothing, and the comments are not repeated.
 
@@ -45,6 +50,9 @@ Run it once: a second run changes nothing, and the comments are not repeated.
 | `<Stepper.Actions>`, `<Stepper.Separator>` | `<div>`, `<hr>` |
 | `beforeStepChange` | `guard` |
 | `defaultStep`, `defaultData`, `defaultCompleted` | `snapshot: { step, data, complete }` |
+| `data-[status=active]`, `[data-status="active"]` | `data-[state=current]`, `[data-state="current"]` |
+| `data-[status=upcoming]` | `data-[state=pending]` |
+| `data-[status=previous]`, `data-[complete]`, `data-complete:` | `data-[state=complete]` |
 
 Options are rewritten in `defineStepper(steps, options)`, `useStepper(options)`
 and as props of `Stepper.Root` and `Provider`.
@@ -71,10 +79,27 @@ The codemod only rewrites a value it can tell is a stepper:
 - an argument or variable typed as a stepper: `Stepper` from
   `@stepperize/react`, or an alias such as `ReturnType<typeof flow.useStepper>`.
 
-It does not follow a stepper through your own hooks, refs, context or untyped
-props. After running it, search for what may be left: `.data.get(`, `.data.set(`,
-`.canNext`, `.canPrev`, `.isComplete(`.
+- a stepper kept in a ref typed as one (`useRef<Stepper | null>(null)`) and
+  read into a variable: `const stepper = ref.current`;
+- what your own hooks return, when the hook is in the same file: the stepper
+  itself, or an object that carries it (`return { stepper, invites }`).
 
-It does not touch CSS either. `data-status="active | previous | upcoming"` is now
-`data-state="current | complete | pending"`; update selectors such as
-`data-[status=active]:`.
+It does not follow a stepper across files, through context of your own or
+through untyped props. Where it finds the unmistakable v8 names on such a value
+(`.data.get()`, `.data.set()`, `.data.all()`, `.data.update()`, `.canPrev`,
+`.canNext`, `.isComplete()`, `.setComplete()`), it leaves a
+`TODO(stepperize-v9)` instead of guessing. Typing the prop as `Stepper` and
+running the codemod again rewrites it.
+
+### Styles
+
+In files that use a stepper, `data-status` selectors become `data-state`, as
+Tailwind variants and as CSS attribute selectors inside strings. One of them
+changes meaning: `previous` meant "before the current step", and `complete`
+means "validated by `next()`". They match in a flow walked with `next()`; in a
+flow that jumps with `goTo()`, check the styles. The summary lists the files
+where this happened.
+
+Style sheets (`.css`, `.scss`, `.sass`, `.less`, `.pcss`, `.styl`) are read but
+never rewritten: the summary lists each line that still mentions `data-status`
+or `data-complete`, for you to update if it targets a stepper part.
