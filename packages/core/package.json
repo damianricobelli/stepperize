@@ -43,7 +43,7 @@
 		"prepublishOnly": "pnpm run build",
 		"clean": "rm -rf .turbo && rm -rf node_modules dist",
 		"test": "vitest run",
-		"typecheck": "tsc --noEmit"
+		"typecheck": "tsc --noEmit && tsc -p tsconfig.test.json"
 	},
 	"peerDependencies": {
 		"typescript": ">=5.0.2"

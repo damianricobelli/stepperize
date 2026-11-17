@@ -1,6 +1,6 @@
 "use client";
 
-import { defineStepper, type Stepper } from "@stepperize/react";
+import { defineStepper, type Stepper } from "@stepperize/react-v8";
 import type { ReactNode } from "react";
 
 const flow = defineStepper([

@@ -27,33 +27,31 @@ export function PlanPickerBlock() {
 			linear
 			className="w-full max-w-md rounded-xl border bg-background p-6 shadow-sm"
 		>
-			{({ stepper }) => (
+			{(stepper) => (
 				<>
 					<Stepper.List className="flex items-center justify-between">
-						<Stepper.Items>
-							{(step, index) => (
-								<div
-									key={step.id}
-									className="flex flex-1 items-center last:flex-none"
+						{(step, index) => (
+							<div
+								key={step.id}
+								className="flex flex-1 items-center last:flex-none"
+							>
+								<Stepper.Item
+									step={step.id}
+									className="flex items-center gap-2"
 								>
-									<Stepper.Item
-										step={step.id}
-										className="flex items-center gap-2"
-									>
-										<Stepper.Indicator className="group grid size-7 place-items-center rounded-full border text-xs font-semibold transition-colors data-[status=active]:border-primary data-[status=active]:bg-primary data-[status=active]:text-primary-foreground data-[status=previous]:border-primary data-[status=previous]:bg-primary data-[status=previous]:text-primary-foreground data-[status=upcoming]:border-border data-[status=upcoming]:text-muted-foreground">
-											<span className="group-data-[status=previous]:hidden">
-												{index + 1}
-											</span>
-											<Check className="hidden size-3.5 group-data-[status=previous]:block" />
-										</Stepper.Indicator>
-										<Stepper.Title className="hidden text-xs font-medium sm:block" />
-									</Stepper.Item>
-									{index < stepper.count - 1 && (
-										<div className="mx-2 h-px flex-1 bg-border" />
-									)}
-								</div>
-							)}
-						</Stepper.Items>
+									<Stepper.Indicator className="group grid size-7 place-items-center rounded-full border text-xs font-semibold transition-colors data-[state=current]:border-primary data-[state=current]:bg-primary data-[state=current]:text-primary-foreground data-[state=complete]:border-primary data-[state=complete]:bg-primary data-[state=complete]:text-primary-foreground data-[state=pending]:border-border data-[state=pending]:text-muted-foreground">
+										<span className="group-data-[state=complete]:hidden">
+											{index + 1}
+										</span>
+										<Check className="hidden size-3.5 group-data-[state=complete]:block" />
+									</Stepper.Indicator>
+									<Stepper.Title className="hidden text-xs font-medium sm:block" />
+								</Stepper.Item>
+								{index < stepper.steps.length - 1 && (
+									<div className="mx-2 h-px flex-1 bg-border" />
+								)}
+							</div>
+						)}
 					</Stepper.List>
 
 					<div className="mt-6 min-h-40">
@@ -123,7 +121,7 @@ export function PlanPickerBlock() {
 						</Stepper.Content>
 					</div>
 
-					<Stepper.Actions className="mt-6 flex justify-between">
+					<div className="mt-6 flex justify-between">
 						<Stepper.Prev className={buttonVariants({ variant: "outline" })}>
 							Back
 						</Stepper.Prev>
@@ -148,10 +146,12 @@ export function PlanPickerBlock() {
 							</button>
 						) : (
 							<Stepper.Next className={buttonVariants()}>
-								{stepper.index === stepper.count - 2 ? "Subscribe" : "Continue"}
+								{stepper.index === stepper.steps.length - 2
+									? "Subscribe"
+									: "Continue"}
 							</Stepper.Next>
 						)}
-					</Stepper.Actions>
+					</div>
 				</>
 			)}
 		</Stepper.Root>

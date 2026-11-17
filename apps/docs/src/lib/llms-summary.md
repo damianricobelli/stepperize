@@ -1,81 +1,87 @@
-# Stepperize v8
+# Stepperize v9
 
-Type-safe step-by-step flows for React 18 and 19. Web primitives are unstyled; the logic hook can be used with custom React Native UI. The v8 branch prepares the next major release.
+Type-safe step-by-step flows. `@stepperize/core` is the state machine, with no framework; `@stepperize/react` binds it to React 18 and 19 with hooks and unstyled, accessible primitives.
 
-## Ownership
+## Definition
 
-Define the immutable step array once at module scope:
+Define the steps once at module scope, in a client module:
 
 ```tsx
+"use client";
 import { defineStepper } from "@stepperize/react";
-const checkout = defineStepper([
-  { id: "shipping", title: "Shipping" },
-  { id: "payment", title: "Payment" },
-  { id: "review", title: "Review" },
-], { linear: true });
+const checkout = defineStepper(
+  [
+    { id: "shipping", title: "Shipping", schema: shippingSchema },
+    { id: "payment", title: "Payment", schema: paymentSchema },
+    { id: "review", title: "Review" },
+  ],
+  { linear: true },
+);
 ```
 
-- checkout.useStepper(options?) ALWAYS creates local independent state, even inside a Provider.
-- checkout.Provider owns and shares state without markup.
-- checkout.Stepper.Root owns and shares state with a container and orientation.
-- checkout.useStepperContext() consumes the nearest matching owner; throws when missing.
-- checkout.useStepperContext(selector, isEqual?) subscribes to a selected value. Default comparison is Object.is. Pure object selectors are safe; supply equality to skip equivalent object selections.
-- A Root always creates its own scope, including under a Provider. Different definitions never share contexts.
+- checkout.useStepper(options?) creates a flow owned by that component. It re-renders on every change.
+- checkout.Provider and checkout.Stepper.Root own a flow and share it with everything below.
+- checkout.useStepperContext() reads the nearest owner and throws SZ100 when there is none. checkout.useStepperContext(selector) re-renders only when the selected value changes; a selector may return an object.
+- checkout.create(options?) returns the same flow without React, for tests, servers and agents.
+- checkout.steps is the step array.
 
-## Instance
+`schema` is any Standard Schema v1 (Zod, Valibot, ArkType). It types the step's data and output.
 
-State: steps, current, id, index, count, progress (index / (count - 1), or 1 for a single step), isFirst, isLast, canPrev, canNext, isPending, completed.
-Queries: is(id), status(id), isComplete(id?), canGoTo(id).
-Render: match({ shipping: (step, data) => ..., payment: ..., review: ... }), exhaustive and data typed per step schema input.
-Static helpers live on definition: steps, get(id), at(index), parseStep(unknown), validate(id, value).
+## Stepper
 
-## Navigation
+State: steps, current, index, isFirst, isLast, progress, data, output, isPending, isFinished.
+Queries: state(id) is "pending", "current" or "complete"; issues(id?) are the issues of the last failed check, gone once that step's data changes; canGoTo(id).
+Render: match({ shipping: (step, data) => ..., payment: ..., review: ... }), exhaustive.
+Actions: next(data?), prev(), goTo(id), setData(id, data), validate(id?), reset(), restore(snapshot), snapshot().
 
-next({data?, complete?}?), prev({data?, complete?}?), goTo(id, {data?, complete?, bypassPolicy?}?), reset({keepData?, keepCompleted?}?).
-All return Promise<NavigationResult>: {accepted:true,from,to} or {accepted:false,reason}.
-Reasons: guard, policy, pending, boundary, same-step, invalid-step, cancelled.
-Await the result and test result.accepted, NEVER its truthiness. Exceptions from callbacks reject the promise.
+Removed since v8: id, count, completed, canPrev, canNext, is, status, isComplete, setComplete and the data.* methods. Use current, index, state, data and setData.
 
-Data payloads belong to the SOURCE step, and complete:true marks the SOURCE complete. Both commit atomically after guard acceptance. At the final step next() returns boundary; use an application submit action.
-Linear policy applies to goTo, canGoTo, triggers and list keyboard navigation. It allows current, previous and immediate next steps. Intentional branches opt out with bypassPolicy:true; the guard always still runs.
-Reset restores mount-time defaultStep/defaultData/defaultCompleted through the guard. Preserve selected state with keepData/keepCompleted. Controlled owners must apply the requested defaults.
+## Moves
 
-## Data and completion
+next(data?) saves the data on the current step, validates it against the step's schema, completes the step and moves on. On the last step it finishes the flow: onFinish runs, the result has to: null and isFinished becomes true. prev() takes no arguments and returns along the path taken. goTo(id) jumps, subject to linear.
 
-Data API: get(id?), set(value), set(id,value), update(id,previous=>next), all(), clear(id?), reset().
-update composes against preceding writes in the same event. Treat snapshots/previous data as immutable.
-clear empties data; data.reset restores mount defaults only. Navigation reset restores all state by default.
-Schemas follow Standard Schema v1 (Zod, Valibot, ArkType). get(id), set(id,value), update and match handlers use schema INPUT types. validate returns schema OUTPUT without replacing stored drafts automatically.
-setComplete(id?,value=true) and isComplete(id?) are explicit business completion. status is positional: active, previous, upcoming. Previous does not mean complete.
+All three return Promise<Result>: { accepted: true, to, data } or { accepted: false, reason }. Reasons: invalid (with issues), guard, policy, pending, boundary, cancelled, finished. Await the result and test result.accepted, never its truthiness.
 
-## Owner options
+validate(id?) checks a step's stored data without moving and resolves with its issues or undefined.
 
-Definition defaults: defaultStep, defaultData, defaultCompleted, linear.
-useStepper/Provider/Root: those defaults plus step/onStepChange, data/onDataChange, completed/onCompletedChange, onInvalidStep, beforeStepChange.
-Defaults are captured at mount. Each controlled piece remains authoritative until props update; external prop changes do not run guards.
+Completion follows the data: setData on a complete step makes it pending again, and in a linear flow so are the steps completed after it. There is no completion setter.
 
-beforeStepChange(ctx) returns false to reject, true/undefined to allow, optionally asynchronously. Context includes from,to,fromIndex,toIndex,direction,data,statuses,signal,validate(idOrStep?). direction is next/prev/goto/reset. validate() uses source data including staged payload.
-Async guards set isPending and reject overlapping moves. Owner unmount, authoritative state changes or data/completion writes cancel obsolete guards. Pass signal to cancellable work. onStepChange is a synchronous accepted-transition notification; awaitable blocking work belongs in the guard.
+data holds each step as it was typed (schema input). output holds what each complete step's schema produced (schema output).
+
+## Options
+
+Accepted by defineStepper as defaults and by useStepper, Provider, Stepper.Root and create per flow:
+
+- linear: completed steps can be revisited; every other step is reached through next().
+- next: branches, as { stepId: (output, data) => nextId | null }. A null entry or result ends the flow at that step.
+- guard({ from, to, direction, data, signal }): return false to refuse a move, optionally asynchronously. to is null when the flow is finishing. Validation is not the guard's job.
+- onFinish(output, data): runs once when the flow finishes. Return a promise and the flow stays pending until it settles; if it rejects, the user can try again.
+- snapshot: where to start, as { step, history, data, complete }. Read once.
+- onChange(snapshot): called after every change worth persisting.
+- step: an outside value the flow follows, such as a URL parameter. linear and guard still apply; onInvalidStep(id) reports where the flow really is when it cannot follow.
 
 ## Primitives
 
-Generated Stepper: Root, List, Items, Item, Trigger, Content, Indicator, Title, Description, Separator, Actions, Next, Prev.
-Items iterates steps; Item gets an explicit step id or derives it under Items. List and Separator inherit Root orientation unless overridden. Trigger has type=button, instance-unique ARIA ids and keyboard navigation. Content forceMount retains hidden inactive panels. data-status is positional; data-complete is explicit completion. Root may render children or ({stepper}) => children. createStepperPrimitives is INTERNAL and not exported.
+checkout.Stepper has Root, List, Item, Trigger, Title, Description, Indicator, Content, Prev and Next. They are unstyled.
+
+Stepper.List takes a function child: (step) => <Stepper.Item step={step.id}>...</Stepper.Item>. Stepper.Content takes step and optionally forceMount. Stepper.useItem() returns the enclosing item, including its state and pending. A linear flow renders an ordered list with aria-current="step"; a free flow renders tabs. Root has data-pending while a move runs and data-finished once the flow is done.
+
+For custom markup or React Native, @stepperize/react/headless exports defineStepper with the same hooks and no Stepper primitives.
 
 ## Forms
 
-Keep editable field state and errors in the form library. Validate on form submit, then await stepper.next({data:values,complete:true}). Seed a remounted form from stepper.data.get(id). Shared form children use useStepperContext. A guard can protect non-form navigation too. Final submission belongs to the application.
+Keep field state in the form library. On submit, await stepper.next(values): it validates against the step's schema and returns the issues when it fails. Seed a remounted form from stepper.data[id]. Save a draft with stepper.setData(id, values) before stepper.prev().
 
 ## Documentation
 
-- /docs/v8/guides/local-and-shared-state — complete examples and interactive ownership demo
-- /docs/v8/api/react/use-stepper-context — selectors and scopes
-- /docs/v8/guides/navigation — outcomes, guards, policy and reset
-- /docs/v8/forms — form integration patterns
-- /docs/v8/migration/v8 — upgrade from v7
-- /docs/v8/migration/v7 — historical v6-to-v7 guide; apply v8 migration afterwards
-- /docs/v8/changelog
+- /docs/v9/react/first-stepper: a complete first flow
+- /docs/v9/react/concepts/moves: next, prev, goTo and their results
+- /docs/v9/react/guides/validation: schemas, issues and output
+- /docs/v9/react/guides/branching: declarative branches
+- /docs/v9/react/guides/persistence and /docs/v9/react/guides/url: snapshots and the URL
+- /docs/v9/react/forms: form library integrations
+- /docs/v9/react/migration: upgrade from v8, with `npx @stepperize/codemod v9 src`
+- /docs/v9/react/migration-agent: the rules an agent follows to finish that upgrade
+- /docs/v9/core: the state machine without a framework
 
-Old v7 auto-sharing useStepper calls, boolean navigation results, implicit goTo bypass and step-only reset are obsolete in v8. Older nested APIs (navigation.next, metadata, Scoped) are also obsolete.
-
-For custom markup or React Native, @stepperize/react/headless exports defineStepper with the same state API but no Stepper UI primitives. Import from @stepperize/react for the generated accessible components. Bundle measurements: https://stepperize.com/docs/v8/guides/performance
+The v8 API (beforeStepChange, next({ data, complete }), data.get/set, status, setComplete, Stepper.Items) is obsolete in v9.

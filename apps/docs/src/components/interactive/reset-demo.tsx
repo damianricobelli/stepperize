@@ -1,6 +1,6 @@
 "use client";
 
-import { defineStepper, type ResetOptions } from "@stepperize/react";
+import { defineStepper, type ResetOptions } from "@stepperize/react-v8";
 import { useState } from "react";
 
 const flow = defineStepper(

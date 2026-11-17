@@ -14,6 +14,7 @@ import {
 	cls,
 	deriveNames,
 	hasFields,
+	indent,
 	kebab,
 	type Names,
 	source,
@@ -52,7 +53,7 @@ const DATE_PICKERS: Record<Base, string> = {
 	aria: ARIA_DATE_PICKER,
 };
 
-export const STEPPERIZE_DEPENDENCY = "@stepperize/react@^8.0.0";
+export const STEPPERIZE_DEPENDENCY = "@stepperize/react@^9.0.0";
 
 // ─── Framework-agnostic core ─────────────────────────────────────────────────
 
@@ -153,7 +154,7 @@ function stepContentFile(config: StudioConfig, names: Names): string {
 		"",
 		`export function ${Flow}StepContent() {`,
 		"\t// Subscribes to the step id only: typing in a field never re-renders this.",
-		`\tconst id = ${flow}.useStepperContext((stepper) => stepper.id);`,
+		`\tconst id = ${flow}.useStepperContext((stepper) => stepper.current.id);`,
 		"\tconst Step = STEP_COMPONENTS[id];",
 		"",
 		"\treturn (",
@@ -175,16 +176,39 @@ function flowFile(config: StudioConfig, names: Names): string {
 	const vertical = layout === "vertical";
 
 	const typeImports = [
-		controlled ? "UseStepperOptions" : null,
-		guard ? "BeforeStepChange" : null,
 		behavior.persist ? "FlowData" : null,
+		guard ? "Options" : null,
 	].filter(Boolean);
+	// One callback reports every change: the step for the router, the data for the draft.
+	const onChange = [
+		behavior.persist ? "draft.save(snapshot.data);" : null,
+		controlled
+			? "if (snapshot.step !== step) onStepChange(snapshot.step);"
+			: null,
+	].filter((line): line is string => line !== null);
 	const rootProps = [
 		vertical ? 'orientation="vertical"' : null,
-		controlled ? "{...props}" : null,
-		behavior.persist ? "defaultData={draft.data}" : null,
-		behavior.persist ? "onDataChange={draft.save}" : null,
-		guard ? "beforeStepChange={validateForward}" : null,
+		controlled ? "step={step}" : null,
+		controlled ? "onInvalidStep={onInvalidStep}" : null,
+		behavior.persist ? "snapshot={{ data: draft.data }}" : null,
+		onChange.length === 1
+			? `onChange={(snapshot) => ${onChange[0].replace(/;$/, "").replace(/^if \((.*)\) (.*)$/, "$1 && $2")}}`
+			: null,
+		onChange.length === 2
+			? [
+					"onChange={(snapshot) => {",
+					...onChange.map((l) => `\t${l}`),
+					"}}",
+				].join("\n")
+			: null,
+		guard ? "guard={validateForward}" : null,
+		[
+			"onFinish={async (output) => {",
+			"\t// Send the validated data of every step to your API here. Return the request:",
+			"\t// the flow stays pending until it settles, then stepper.isFinished is true.",
+			"\tconsole.log(output);",
+			"}}",
+		].join("\n"),
 		`className="${vertical ? "flex flex-col gap-8 sm:flex-row" : "grid gap-8"}"`,
 	].filter((p): p is string => p !== null);
 
@@ -192,6 +216,12 @@ function flowFile(config: StudioConfig, names: Names): string {
 	const body = vertical
 		? [`<div${cls("min-w-0 flex-1")}>`, `\t${content}`, "</div>"]
 		: [content];
+	const propNames = [
+		"step",
+		"onStepChange",
+		"onInvalidStep",
+		routed ? "children" : null,
+	].filter(Boolean);
 
 	return source([
 		USE_CLIENT,
@@ -205,9 +235,11 @@ function flowFile(config: StudioConfig, names: Names): string {
 		routed
 			? null
 			: `import { ${Flow}StepContent } from "./${slug}-step-content";`,
-		controlled || guard || behavior.persist
-			? `import type { ${flow}Steps } from "./steps";`
-			: null,
+		guard
+			? `import { ${flow}Steps } from "./steps";`
+			: controlled || behavior.persist
+				? `import type { ${flow}Steps } from "./steps";`
+				: null,
 		behavior.persist
 			? 'import { useSavedDraft } from "./use-saved-draft";'
 			: null,
@@ -217,20 +249,39 @@ function flowFile(config: StudioConfig, names: Names): string {
 		behavior.persist
 			? `const DRAFT_KEY = ${str(`stepperize:${slug}:v1`)};`
 			: null,
-		guard ? "" : null,
-		guard
-			? "// Going back is always allowed; moving forward needs a valid step."
-			: null,
-		guard
-			? `const validateForward: BeforeStepChange<typeof ${flow}Steps> = async ({ fromIndex, toIndex, validate }) =>`
-			: null,
-		guard ? "\ttoIndex < fromIndex || (await validate()).success;" : null,
+		...(guard
+			? [
+					"",
+					"// next() validates each step against its schema. This covers the step list:",
+					"// going back is always allowed, jumping ahead needs the step being left to be valid.",
+					`const validateForward: NonNullable<Options<typeof ${flow}Steps>["guard"]> = async ({ from, to, direction, data }) => {`,
+					'\tif (direction !== "goTo" || !to || !("schema" in from)) return true;',
+					`\tif (${flow}Steps.indexOf(to) < ${flow}Steps.indexOf(from)) return true;`,
+					'\tconst result = await from.schema["~standard"].validate(data[from.id]);',
+					"\treturn !result.issues;",
+					"};",
+				]
+			: []),
 		"",
 		controlled
-			? `type ${Flow}FlowProps = Pick<UseStepperOptions<typeof ${flow}Steps>, "step" | "onStepChange" | "onInvalidStep">${routed ? " & {\n\tchildren: ReactNode;\n}" : ""};`
+			? [
+					`type ${Flow}StepId = (typeof ${flow}Steps)[number]["id"];`,
+					"",
+					`type ${Flow}FlowProps = {`,
+					"\t/** The step in the URL. The flow follows it. */",
+					"\tstep?: string | null;",
+					"\t/** The flow moved: update the URL. */",
+					`\tonStepChange: (step: ${Flow}StepId) => void;`,
+					"\t/** The URL names a step the flow cannot be on: correct it. */",
+					`\tonInvalidStep?: (current: ${Flow}StepId) => void;`,
+					routed ? "\tchildren: ReactNode;" : null,
+					"};",
+				]
+					.filter((l) => l !== null)
+					.join("\n")
 			: null,
 		"",
-		`export function ${Flow}Flow(${controlled ? (routed ? `{ children, ...props }: ${Flow}FlowProps` : `props: ${Flow}FlowProps`) : ""}) {`,
+		`export function ${Flow}Flow(${controlled ? `{ ${propNames.join(", ")} }: ${Flow}FlowProps` : ""}) {`,
 		behavior.persist
 			? `\tconst draft = useSavedDraft<FlowData<typeof ${flow}Steps>>(DRAFT_KEY);`
 			: null,
@@ -240,7 +291,7 @@ function flowFile(config: StudioConfig, names: Names): string {
 			? "\t\t<Stepper.Root"
 			: `\t\t<Stepper.Root${rootProps.length ? ` ${rootProps[0]}` : ""}>`,
 		...(rootProps.length > 1
-			? [...rootProps.map((p) => `\t\t\t${p}`), "\t\t>"]
+			? [...rootProps.map((p) => indent(p, 3)), "\t\t>"]
 			: []),
 		`\t\t\t<${Flow}Nav />`,
 		...body.map((line) => `\t\t\t${line}`),

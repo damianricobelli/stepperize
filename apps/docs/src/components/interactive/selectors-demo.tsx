@@ -1,6 +1,6 @@
 "use client";
 
-import { defineStepper } from "@stepperize/react";
+import { defineStepper } from "@stepperize/react-v8";
 
 const flow = defineStepper([{ id: "details" }, { id: "review" }], {
 	defaultData: { details: "Ada" },

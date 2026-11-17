@@ -1,32 +1,16 @@
-export type {
-	BeforeStepChange,
-	FlowData,
-	Get,
-	GoToOptions,
-	InputOf,
-	NavigationFailureReason,
-	NavigationPayload,
-	NavigationResult,
-	OutputOf,
-	ResetOptions,
-	StandardSchemaV1,
-	Step,
-	StepChangeContext,
-	StepChangeValidator,
-	StepDirection,
-	StepMatcher,
-	Stepper,
-	StepperData,
-	StepStatus,
-	ValidationResult,
-} from "@stepperize/core";
-export * from "./define-stepper";
-export type { UniqueStepIds } from "./definition";
-export type {
-	ControlledStep,
-	DefineStepperOptions,
-	HeadlessStepperDefinition,
-	ProviderProps,
-	StepperDefinition,
-	UseStepperOptions,
-} from "./types";
+import type { Options, Step } from "@stepperize/core";
+import { createDefinition, type Definition } from "./definition";
+import { createPrimitives, type Primitives } from "./primitives";
+
+export type * from "@stepperize/core";
+export type { Definition, ProviderProps } from "./definition";
+export type * from "./primitives/types";
+
+/** Define a typed flow: hooks, a Provider and accessible, unstyled UI primitives. */
+export function defineStepper<const S extends readonly Step[]>(
+	steps: S,
+	options?: Options<S>,
+): Definition<S> & { Stepper: Primitives<S> } {
+	const { definition, scope } = createDefinition(steps, options);
+	return { ...definition, Stepper: createPrimitives(scope) };
+}

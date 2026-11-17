@@ -1,0 +1,157 @@
+---
+title: Styling
+description: Style the primitives through data attributes.
+---
+
+The primitives ship no styles. Each one exposes its state as `data-*`
+attributes, and you style against them with Tailwind variants, plain CSS, or
+anything that can target an attribute selector. Your markup stays yours; the
+library tells you what state each element is in.
+
+## Attributes
+
+| Attribute | Set on | Values |
+| --- | --- | --- |
+| `data-component` | Every primitive | `stepper`, `stepper-list`, `stepper-item`, `stepper-trigger`, `stepper-title`, `stepper-description`, `stepper-indicator`, `stepper-content`, `stepper-prev`, `stepper-next` |
+| `data-state` | `Item`, `Trigger`, `Indicator` | `pending`, `current`, `complete` |
+| `data-invalid` | `Item`, `Trigger`, `Indicator` | Present after a rejected `next()` or `validate()`, until the step's data changes |
+| `data-disabled` | `Item`, `Trigger`, `Prev`, `Next` | Present when the action is not available |
+| `data-pending` | `Root`, `Prev`, `Next` | Present while an async schema, guard or `onFinish` runs |
+| `data-finished` | `Root` | Present once the flow has finished, until it changes |
+| `data-orientation` | `Root`, `List` | `horizontal`, `vertical` |
+| `data-step` | `Item`, `Trigger`, `Content` | The step id |
+
+## data-state: the workhorse
+
+`data-state` is the [state of the step](/docs/v9/react/concepts/step-state):
+
+- **`current`**: the step being shown.
+- **`complete`**: `next()` validated it and moved on, and its data has not changed since.
+- **`pending`**: everything else.
+
+### With Tailwind
+
+Target it with the `data-[…]` variant. A typical trigger and indicator:
+
+```tsx
+<Stepper.Trigger className="flex items-center gap-2 text-muted-foreground data-[state=current]:text-foreground data-disabled:opacity-50">
+  <Stepper.Indicator className="size-6 rounded-full border data-[state=complete]:bg-primary data-invalid:border-destructive" />
+  <Stepper.Title />
+</Stepper.Trigger>
+```
+
+### Styling children with group-data
+
+Put `group` on the element that has the attribute, then read it from a child
+with `group-data-[state=…]`. This is how the blocks swap a number for a check
+mark once a step is complete, with no JavaScript:
+
+```tsx
+<Stepper.List>
+  {(step, index) => (
+    <Stepper.Item>
+      <Stepper.Indicator className="group grid size-7 place-items-center rounded-full border">
+        <span className="group-data-[state=complete]:hidden">{index + 1}</span>
+        <CheckIcon className="hidden size-4 group-data-[state=complete]:block" />
+      </Stepper.Indicator>
+    </Stepper.Item>
+  )}
+</Stepper.List>
+```
+
+When several elements each have their own `data-state`, name the group
+(`group/item` and `group-data-[state=current]/item:`) so a child reads the
+right one.
+
+### With plain CSS
+
+Attribute selectors work anywhere:
+
+```css
+[data-component="stepper-list"] {
+  display: flex;
+  gap: 1rem;
+}
+[data-component="stepper-list"][data-orientation="vertical"] {
+  flex-direction: column;
+}
+[data-component="stepper-indicator"][data-state="complete"] {
+  background: var(--primary);
+}
+[data-component="stepper-next"][data-pending] {
+  cursor: progress;
+}
+```
+
+Here it is on a real block. Each indicator becomes a check mark when its step
+is complete:
+
+<Preview>
+	<VerticalStepperBlock />
+</Preview>
+
+## data-invalid
+
+Present on the item, trigger and indicator of a step whose last `next()` was
+rejected by its schema, until that step's data changes.
+
+```tsx
+<Stepper.Indicator className="border data-invalid:border-destructive data-invalid:text-destructive" />
+```
+
+## data-orientation
+
+`orientation` on `Stepper.Root` is reflected on the root and the list, and
+decides which arrow keys move between tabs. Style both layouts from one
+definition:
+
+```tsx
+<Stepper.Root orientation="vertical" className="data-[orientation=vertical]:flex data-[orientation=vertical]:gap-8">
+  <Stepper.List className="flex gap-2 data-[orientation=vertical]:flex-col">
+    {/* items */}
+  </Stepper.List>
+</Stepper.Root>
+```
+
+## data-component
+
+Every primitive carries a `data-component` value: a stable selector that
+survives class name changes, useful for design-system overrides.
+
+## Disabled and pending
+
+A button that cannot be used right now gets `data-disabled`. Style that
+attribute rather than `:disabled`: while an async check runs, the buttons are
+`aria-disabled` instead of `disabled`, so the one that was pressed keeps
+keyboard focus.
+
+## Lines between steps
+
+There is no separator component. Draw the line with CSS on the items, which
+keeps the list a clean list of steps for screen readers.
+
+```css
+[data-component="stepper-item"]:not(:last-child)::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+[data-component="stepper-item"][data-state="complete"]::after {
+  background: var(--primary);
+}
+```
+
+## State is not position
+
+`data-state="complete"` means the step was validated, not that it is before
+the current one. A step that was skipped is `pending` even if it is earlier in
+the list. To style by position instead, see
+[Step state](/docs/v9/react/concepts/step-state#styling-by-position-instead).
+
+## Where to go next
+
+- [Primitives API](/docs/v9/react/api/primitives): the components that set
+  these attributes.
+- [Blocks gallery](/blocks): copy-paste components that put all of this
+  together.

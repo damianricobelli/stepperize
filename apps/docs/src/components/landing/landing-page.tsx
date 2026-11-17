@@ -18,7 +18,7 @@ import { StatBar } from "./social-proof";
  * client-side navigation into the docs (no full reload).
  */
 const DOCS = {
-	getStarted: "v8/getting-started/first-stepper",
+	getStarted: "v9/react/first-stepper",
 } as const;
 
 /**

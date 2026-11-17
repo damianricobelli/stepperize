@@ -1,30 +1,46 @@
 import type * as PageTree from "fumadocs-core/page-tree";
 import type { LayoutTab } from "fumadocs-ui/layouts/shared";
+import {
+	DEFAULT_FRAMEWORK,
+	type DocsFramework,
+	FRAMEWORKS,
+	hasFrameworks,
+	isDocsFramework,
+} from "./frameworks";
 
-export const CURRENT_DOCS_VERSION = "v8";
-type DocsVersion = "v8" | "v7" | "v6" | "v5" | "v4" | "v3" | "v2";
+export const CURRENT_DOCS_VERSION = "v9";
+/** Where links written before v9, which carry no version, land when v9 has no such page. */
+export const LEGACY_DOCS_VERSION = "v8";
+const DOCS_VERSIONS = ["v9", "v8", "v7", "v6", "v5", "v4", "v3", "v2"] as const;
+type DocsVersion = (typeof DOCS_VERSIONS)[number];
 
+/**
+ * The sidebar of one version. Versions split by framework have one sidebar per
+ * framework, found at `{version}/{framework}`.
+ */
 export function getDocsTree(
 	tree: PageTree.Root,
 	version: string | undefined,
+	framework?: string,
 ): PageTree.Root {
-	const folder = findDocsVersionFolder(tree, version);
+	const path = [version ?? CURRENT_DOCS_VERSION, framework]
+		.filter(Boolean)
+		.join("/");
+	const folder = findDocsFolder(tree, path);
+	// Fumadocs caches navigation by root id, so each sidebar needs its own identity.
+	const $id = `${tree.$id ?? "docs"}:${path}`;
 
 	if (!folder) {
-		return {
-			...tree,
-			$id: `${tree.$id ?? "docs"}:${version ?? CURRENT_DOCS_VERSION}`,
-			children: [],
-		};
+		return { ...tree, $id, children: [] };
 	}
 
-	return {
-		...tree,
-		// Fumadocs caches navigation by root id, so each version needs its own identity.
-		$id: `${tree.$id ?? "docs"}:${version ?? CURRENT_DOCS_VERSION}`,
-		children: folder.children,
-		name: folder.name,
-	};
+	return { ...tree, $id, children: folder.children, name: folder.name };
+}
+
+/** The framework a docs URL belongs to, or `undefined` for versions that are not split. */
+export function getDocsFramework(slugs: string[]): DocsFramework | undefined {
+	if (!hasFrameworks(getDocsVersion(slugs))) return undefined;
+	return isDocsFramework(slugs[1]) ? slugs[1] : DEFAULT_FRAMEWORK;
 }
 
 export function getDocsVersion(slugs: string[]): DocsVersion {
@@ -32,10 +48,19 @@ export function getDocsVersion(slugs: string[]): DocsVersion {
 	return isDocsVersion(version) ? version : CURRENT_DOCS_VERSION;
 }
 
+/** Whether the URL names its version, rather than relying on the current one. */
+export function hasDocsVersion(slugs: string[]): boolean {
+	return isDocsVersion(slugs[0]);
+}
+
 export function getDocsPageSlugs(slugs: string[]): string[] {
 	const version = getDocsVersion(slugs);
 	const page =
 		isDocsVersion(slugs[0]) || slugs[0] === "latest" ? slugs.slice(1) : slugs;
+	// `/docs/v9/guides/x` has no framework: send it to the default one.
+	if (hasFrameworks(version) && !isDocsFramework(page[0])) {
+		return ["docs", version, DEFAULT_FRAMEWORK, ...page];
+	}
 	return ["docs", version, ...page];
 }
 
@@ -44,16 +69,38 @@ export function getCanonicalDocsPath(slugs: string[]): string {
 }
 
 const DOCS_TAB_LABELS = {
-	latest: "v8",
-	current: "Version 8 documentation",
 	migration: "Migration notes",
 };
+
+/**
+ * The sidebar switcher. Inside a version split by framework it lists that
+ * version's frameworks first, then the other versions.
+ */
+export function getDocsTabs(
+	version: string = CURRENT_DOCS_VERSION,
+): LayoutTab[] {
+	const versions = getDocsVersionTabs();
+	if (!hasFrameworks(version)) return versions;
+	return [
+		...FRAMEWORKS.map((framework) => ({
+			title: `${framework.title} · ${version}`,
+			description: framework.description,
+			url: `/docs/${version}/${framework.id}`,
+		})),
+		...versions.filter((tab) => tab.url !== `/docs/${version}`),
+	];
+}
 
 export function getDocsVersionTabs(): LayoutTab[] {
 	return [
 		{
-			title: DOCS_TAB_LABELS.latest,
-			description: DOCS_TAB_LABELS.current,
+			title: CURRENT_DOCS_VERSION,
+			description: "Version 9 documentation",
+			url: `/docs/${CURRENT_DOCS_VERSION}`,
+		},
+		{
+			title: "v8",
+			description: "Version 8 documentation",
 			url: "/docs/v8",
 		},
 		{
@@ -89,9 +136,9 @@ export function getDocsVersionTabs(): LayoutTab[] {
 	];
 }
 
-function findDocsVersionFolder(
+function findDocsFolder(
 	node: PageTree.Root | PageTree.Folder,
-	version = CURRENT_DOCS_VERSION,
+	version: string,
 ): PageTree.Folder | undefined {
 	for (const child of node.children) {
 		if (child.type !== "folder") {
@@ -108,7 +155,7 @@ function findDocsVersionFolder(
 			return child;
 		}
 
-		const found = findDocsVersionFolder(child, version);
+		const found = findDocsFolder(child, version);
 
 		if (found) {
 			return found;
@@ -117,13 +164,5 @@ function findDocsVersionFolder(
 }
 
 function isDocsVersion(value: string | undefined): value is DocsVersion {
-	return (
-		value === "v8" ||
-		value === "v7" ||
-		value === "v6" ||
-		value === "v5" ||
-		value === "v4" ||
-		value === "v3" ||
-		value === "v2"
-	);
+	return (DOCS_VERSIONS as readonly string[]).includes(value as string);
 }

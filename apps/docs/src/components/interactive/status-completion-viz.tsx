@@ -1,6 +1,6 @@
 "use client";
 
-import { defineStepper } from "@stepperize/react";
+import { defineStepper } from "@stepperize/react-v8";
 import { cn } from "@/lib/utils";
 import { StatusIcon } from "../status-icon";
 import { ExampleFrame } from "./example-frame";

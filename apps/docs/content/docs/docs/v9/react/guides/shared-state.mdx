@@ -1,0 +1,197 @@
+---
+title: Local and shared state
+description: Choose who owns a flow, and re-render only what changed.
+---
+
+The name of the hook tells you where the flow lives.
+
+| API | What it does |
+| --- | --- |
+| `checkout.useStepper(options)` | Creates a flow that belongs to the component. Every call is independent. |
+| `checkout.Provider` | Creates a flow and shares it with everything below. |
+| `checkout.useStepperContext()` | Reads the flow of the nearest provider of that definition. |
+| `checkout.useStepperContext(selector)` | Reads one part of it, and re-renders only when that part changes. |
+| `checkout.Stepper.Root` | A provider that also renders the container of the primitives. |
+
+## One definition, many flows
+
+Keep the definition outside your components. It holds the steps and the typed
+APIs, not a current step, so every owner gets its own flow.
+
+```tsx title="checkout.ts"
+import { defineStepper } from "@stepperize/react";
+
+export const checkout = defineStepper([
+  { id: "shipping", title: "Shipping" },
+  { id: "payment", title: "Payment" },
+  { id: "review", title: "Review" },
+]);
+```
+
+## A local flow
+
+Use `useStepper()` when one component renders the whole flow. Each mounted
+`LocalCheckout` has its own step, data and completion.
+
+```tsx
+import { checkout } from "./checkout";
+
+export function LocalCheckout() {
+  const stepper = checkout.useStepper();
+
+  return (
+    <section>
+      <h2>{stepper.current.title}</h2>
+      <button type="button" disabled={stepper.isFirst} onClick={() => stepper.prev()}>
+        Back
+      </button>
+      <button type="button" onClick={() => stepper.next()}>
+        {stepper.isLast ? "Place order" : "Continue"}
+      </button>
+    </section>
+  );
+}
+```
+
+## A shared flow
+
+Split the same UI into components. Put one provider above them, and replace
+the local hook with `useStepperContext`.
+
+```tsx
+import { checkout } from "./checkout";
+
+export function SharedCheckout() {
+  return (
+    <checkout.Provider linear onFinish={(output) => console.log(output)}>
+      <Header />
+      <Panel />
+      <Actions />
+    </checkout.Provider>
+  );
+}
+
+function Header() {
+  const index = checkout.useStepperContext((stepper) => stepper.index);
+  return (
+    <p>
+      Step {index + 1} of {checkout.steps.length}
+    </p>
+  );
+}
+
+function Panel() {
+  const stepper = checkout.useStepperContext();
+  return stepper.match({
+    shipping: (step) => <h2>{step.title}</h2>,
+    payment: (step) => <h2>{step.title}</h2>,
+    review: (step) => <h2>{step.title}</h2>,
+  });
+}
+
+function Actions() {
+  const stepper = checkout.useStepperContext();
+  return (
+    <>
+      <button type="button" disabled={stepper.isFirst} onClick={() => stepper.prev()}>
+        Back
+      </button>
+      <button type="button" onClick={() => stepper.next()}>
+        {stepper.isLast ? "Place order" : "Continue"}
+      </button>
+    </>
+  );
+}
+```
+
+The `Provider` accepts the same [options](/docs/v9/react/api/options) as
+`useStepper`. Options go on the owner: the components below read the flow and
+call its actions, and cannot reconfigure it.
+
+`Header` subscribes to the index only, so writing data does not re-render it.
+
+## Selectors
+
+Without arguments, `useStepperContext()` returns the stepper and the component
+re-renders on every change of the flow. Pass a selector to re-render only when
+its result changes.
+
+```tsx
+// Re-renders only when the step changes.
+const id = checkout.useStepperContext((s) => s.current.id);
+
+// Re-renders only when an async check starts or ends.
+const pending = checkout.useStepperContext((s) => s.isPending);
+
+// Re-renders only when the data of this step changes.
+const shipping = checkout.useStepperContext((s) => s.data.shipping);
+```
+
+Results are compared by identity. Strings, numbers, booleans and objects the
+stepper already holds work as you expect. A selector that builds a new object
+or array is safe, and re-renders on every change, because its result is new
+each time:
+
+```tsx
+const view = checkout.useStepperContext((s) => ({ id: s.current.id, last: s.isLast }));
+```
+
+Prefer two selectors over one that builds an object.
+
+You rarely need selectors for correctness. Reach for them when a component is
+expensive to render and only cares about part of the flow, such as a header
+above a form that writes data on every keystroke.
+
+## With the primitives
+
+`Stepper.Root` is a provider too. Use it in place of `Provider` when you render
+the primitives, and read the flow the same way.
+
+```tsx
+const { Stepper } = checkout;
+
+export function PrimitiveCheckout() {
+  return (
+    <Stepper.Root linear>
+      <Stepper.List>
+        {() => (
+          <Stepper.Item>
+            <Stepper.Trigger>
+              <Stepper.Title />
+            </Stepper.Trigger>
+          </Stepper.Item>
+        )}
+      </Stepper.List>
+      <Actions />
+    </Stepper.Root>
+  );
+}
+```
+
+`Actions` is the same component as before. Each root gets its own element ids,
+so two checkouts on one page do not collide.
+
+## Nested flows and missing providers
+
+- A `Provider` inside another `Provider` of the **same** definition creates a
+  separate flow for its own subtree.
+- A provider of **another** definition does not hide the outer one: each
+  definition has its own context.
+- `useStepperContext()` without a matching provider above throws
+  [SZ100](/docs/v9/core/errors#sz100). It never creates a flow silently.
+- `useStepper()` below a provider deliberately creates a new local flow.
+
+Always import the same definition object in the provider and its consumers.
+Two definitions built from the same steps are two different flows.
+
+## Which one to use
+
+| You have | Use |
+| --- | --- |
+| One component that renders the whole flow | `useStepper()` |
+| A header, a body and a footer in different components | `Provider` + `useStepperContext()` |
+| The `Stepper` primitives | `Stepper.Root`, and `useStepperContext()` inside it |
+| Two independent flows of the same definition on a page | Two `Provider`s, or two `useStepper()` calls |
+| A flow that must outlive its components, or run outside React | [`create()`](/docs/v9/core) |
+
+Next: [building multi-step forms](/docs/v9/react/forms).

@@ -24,13 +24,19 @@ function pathFor(
 
 /**
  * Branching + dynamic flow paths: the account type chosen on the first step
- * decides which steps come next. `goTo` jumps across the skipped step, and the
- * progress dots are rendered from the same computed path.
+ * decides which steps come next. The `next` map skips the team step, `prev()`
+ * returns along the path actually taken, and the progress dots are rendered
+ * from the same computed path.
  */
 export function ConditionalOnboardingBlock() {
 	return (
 		<Stepper.Root
 			linear
+			// A branch receives its own step's data, then the data of every step.
+			next={{
+				profile: (_data, flow) =>
+					flow.account === "personal" ? "done" : "team",
+			}}
 			className="w-full max-w-md rounded-xl border bg-background p-6 shadow-sm"
 		>
 			{() => <Inner />}
@@ -40,19 +46,9 @@ export function ConditionalOnboardingBlock() {
 
 function Inner() {
 	const stepper = useStepperContext();
-	const type =
-		(stepper.data.get("account") as AccountType | undefined) ?? "team";
+	const type = (stepper.data.account as AccountType | undefined) ?? "team";
 	const path = pathFor(type);
 	const pos = path.indexOf(stepper.current.id as (typeof path)[number]);
-
-	const goNext = () => {
-		const next = path[pos + 1];
-		if (next) stepper.goTo(next, { bypassPolicy: true, complete: true });
-	};
-	const goBack = () => {
-		const prev = path[pos - 1];
-		if (prev) stepper.goTo(prev);
-	};
 
 	return (
 		<>
@@ -78,14 +74,14 @@ function Inner() {
 						icon={User}
 						title="Just me"
 						hint="A personal workspace"
-						onClick={() => stepper.data.set("account", "personal")}
+						onClick={() => stepper.setData("account", "personal")}
 					/>
 					<Choice
 						active={type === "team"}
 						icon={Users}
 						title="With my team"
 						hint="Invite people to collaborate"
-						onClick={() => stepper.data.set("account", "team")}
+						onClick={() => stepper.setData("account", "team")}
 					/>
 				</Stepper.Content>
 
@@ -128,19 +124,19 @@ function Inner() {
 				</Stepper.Content>
 			</div>
 
-			{!stepper.is("done") && (
+			{stepper.current.id !== "done" && (
 				<div className="mt-4 flex justify-between">
 					<button
 						type="button"
-						onClick={goBack}
-						disabled={pos === 0}
+						onClick={() => stepper.prev()}
+						disabled={stepper.isFirst}
 						className="inline-flex h-9 items-center rounded-lg border bg-background px-4 text-sm font-medium transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-50"
 					>
 						Back
 					</button>
 					<button
 						type="button"
-						onClick={goNext}
+						onClick={() => stepper.next()}
 						className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
 					>
 						{path[pos + 1] === "done" ? "Finish" : "Continue"}

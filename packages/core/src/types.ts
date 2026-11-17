@@ -1,311 +1,214 @@
 /**
- * A step definition. Only `id` is required; every other property is user data
- * and stays fully typed throughout Stepperize.
- *
- * Add a `schema` (any [Standard Schema](https://standardschema.dev)) to type
- * the step's flow data and enable `validate()`.
- */
-type Step<Id extends string = string, Data extends object = object> = {
-	id: Id;
-} & Data;
-
-/**
  * Minimal vendored copy of the [Standard Schema](https://standardschema.dev) v1
- * interface, used to type flow data and drive `validate()` across Zod, Valibot,
- * ArkType, and any other compliant library — with no runtime dependency.
+ * interface, so Zod, Valibot, ArkType and any other compliant library type and
+ * validate step data with no runtime dependency.
  */
-interface StandardSchemaV1<Input = unknown, Output = Input> {
-	readonly "~standard": StandardSchemaV1.Props<Input, Output>;
-}
-
-namespace StandardSchemaV1 {
-	export interface Props<Input = unknown, Output = Input> {
+export interface StandardSchemaV1<Input = unknown, Output = Input> {
+	readonly "~standard": {
 		readonly version: 1;
 		readonly vendor: string;
-		readonly validate: (value: unknown) => Result<Output> | Promise<Result<Output>>;
-		readonly types?: Types<Input, Output> | undefined;
-	}
-	export type Result<Output> = SuccessResult<Output> | FailureResult;
-	export interface SuccessResult<Output> {
-		readonly value: Output;
-		readonly issues?: undefined;
-	}
-	export interface FailureResult {
-		readonly issues: ReadonlyArray<Issue>;
-	}
-	export interface Issue {
-		readonly message: string;
-		readonly path?: ReadonlyArray<PropertyKey | PathSegment> | undefined;
-	}
-	export interface PathSegment {
-		readonly key: PropertyKey;
-	}
-	export interface Types<Input = unknown, Output = Input> {
-		readonly input: Input;
-		readonly output: Output;
-	}
-	export type InferInput<Schema extends StandardSchemaV1> = NonNullable<Schema["~standard"]["types"]>["input"];
-	export type InferOutput<Schema extends StandardSchemaV1> = NonNullable<Schema["~standard"]["types"]>["output"];
+		readonly validate: (value: unknown) => StandardSchemaV1.Result<Output> | Promise<StandardSchemaV1.Result<Output>>;
+		readonly types?: { readonly input: Input; readonly output: Output } | undefined;
+	};
 }
 
-type SchemaOf<Steps extends readonly Step[], Id extends Get.Id<Steps>> =
-	Get.StepById<Steps, Id> extends {
-		schema: infer S;
+export namespace StandardSchemaV1 {
+	export type Result<Output> =
+		| { readonly value: Output; readonly issues?: undefined }
+		| { readonly issues: ReadonlyArray<Issue> };
+	export interface Issue {
+		readonly message: string;
+		readonly path?: ReadonlyArray<PropertyKey | { readonly key: PropertyKey }> | undefined;
 	}
-		? S extends StandardSchemaV1
-			? S
-			: never
-		: never;
+}
 
-/** Input (draft) type for a step's flow data, or `unknown` when the step has no schema. */
-type InputOf<Steps extends readonly Step[], Id extends Get.Id<Steps>> = [SchemaOf<Steps, Id>] extends [never]
-	? unknown
-	: StandardSchemaV1.InferInput<SchemaOf<Steps, Id>>;
+export type Issue = StandardSchemaV1.Issue;
 
-/** Output (validated) type for a step's flow data, or `unknown` when the step has no schema. */
-type OutputOf<Steps extends readonly Step[], Id extends Get.Id<Steps>> = [SchemaOf<Steps, Id>] extends [never]
-	? unknown
-	: StandardSchemaV1.InferOutput<SchemaOf<Steps, Id>>;
+/** A step. Only `id` is required; add a `schema` to type and validate its data. Every other field is yours. */
+export type Step = { id: string; schema?: StandardSchemaV1<any, any> };
+
+/** Union of the step ids of a flow. */
+export type Id<S extends readonly Step[]> = S[number]["id"];
+
+/** The step with the given id. */
+export type StepOf<S extends readonly Step[], I extends Id<S>> = Extract<S[number], { id: I }>;
+
+type Types<S extends readonly Step[], I extends Id<S>> =
+	StepOf<S, I> extends { schema: StandardSchemaV1<infer Input, infer Output> } ? [Input, Output] : [unknown, unknown];
+
+/** What a step stores: its schema's input, or `unknown` without a schema. */
+export type Input<S extends readonly Step[], I extends Id<S>> = Types<S, I>[0];
+
+/** What a step's schema produces after validation, or `unknown` without a schema. */
+export type Output<S extends readonly Step[], I extends Id<S>> = Types<S, I>[1];
+
+/** The data of every step, keyed by step id. */
+export type FlowData<S extends readonly Step[]> = { [I in Id<S>]?: Input<S, I> };
+
+/** What the schema of every complete step produced, keyed by step id. */
+export type FlowOutput<S extends readonly Step[]> = { [I in Id<S>]?: Output<S, I> };
 
 /**
- * Positional UI status derived from the active index.
- *
- * Explicit completion is separate: use `stepper.setComplete()` and
- * `stepper.isComplete()` for business completion.
+ * - `"current"`: the step being shown.
+ * - `"complete"`: `next()` validated it and moved on, and its data has not changed since.
+ * - `"pending"`: everything else.
  */
-type StepStatus = "active" | "previous" | "upcoming";
+export type StepState = "pending" | "current" | "complete";
 
-type StepDirection = "next" | "prev" | "goto" | "reset";
-
-type MaybePromise<T> = T | Promise<T>;
+/** Everything a flow needs to resume: plain JSON when your data is. */
+export type Snapshot<S extends readonly Step[]> = {
+	step: Id<S>;
+	/** Steps walked to get here, oldest first. `prev()` returns along it. */
+	history: Id<S>[];
+	data: FlowData<S>;
+	complete: Id<S>[];
+};
 
 /**
- * Committed cross-step data, not live field state. Use it for review
- * screens, summaries, branching decisions, and resumable wizards. With a per-step
- * `schema`, each entry is typed as that schema's input.
+ * Why a move did not happen.
+ * - `"invalid"`: the step's schema rejected its data. `issues` says why.
+ * - `"guard"`: your `guard` returned `false`.
+ * - `"policy"`: `linear` forbids jumping to that step.
+ * - `"pending"`: another move is still running.
+ * - `"boundary"`: there is no previous step.
+ * - `"finished"`: the flow already finished. Any move, `setData`, `reset()` or `restore()` reopens it.
+ * - `"cancelled"`: `reset()`, `restore()` or `destroy()` interrupted it.
  */
-type FlowData<Steps extends readonly Step[] = readonly Step[]> = {
-	[Id in Get.Id<Steps>]?: InputOf<Steps, Id>;
-};
+export type Reason = "invalid" | "guard" | "policy" | "pending" | "boundary" | "finished" | "cancelled";
 
-type StepChangeValidator<
-	Steps extends readonly Step[] = readonly Step[],
-	FromId extends Get.Id<Steps> = Get.Id<Steps>,
-> = {
-	/**
-	 * Validate the step being left against this transition's data snapshot.
-	 *
-	 * Inside `beforeStepChange`, this includes any pending navigation payload
-	 * before it has been committed to `stepper.data`.
-	 */
-	(): Promise<ValidationResult<OutputOf<Steps, FromId>>>;
-	<Id extends Get.Id<Steps>>(id: Id): Promise<ValidationResult<OutputOf<Steps, Id>>>;
-	<Id extends Get.Id<Steps>>(step: Get.StepById<Steps, Id>): Promise<ValidationResult<OutputOf<Steps, Id>>>;
-};
+export type Result<S extends readonly Step[]> =
+	/** `to` is `null` when `next()` completed the last step: the flow is finished. */
+	| { accepted: true; to: Id<S> | null; data: FlowData<S> }
+	| { accepted: false; reason: Reason; issues?: ReadonlyArray<Issue> };
 
-type StepChangeContextBase<Steps extends readonly Step[], FromId extends Get.Id<Steps>> = {
-	from: Get.StepById<Steps, FromId>;
-	to: Steps[number];
-	fromIndex: number;
-	toIndex: number;
-	direction: StepDirection;
-	data: FlowData<Steps>;
-	validate: StepChangeValidator<Steps, FromId>;
-	statuses: Record<Get.Id<Steps>, StepStatus>;
-	/** Aborted when this transition is superseded or its owner unmounts. */
+export type GuardContext<S extends readonly Step[]> = {
+	from: S[number];
+	/** `null` when `next()` is finishing the flow. */
+	to: S[number] | null;
+	direction: "next" | "prev" | "goTo";
+	/** Flow data as it will be if the move is accepted. */
+	data: FlowData<S>;
+	/** Aborted when the move is cancelled. Pass it to `fetch`. */
 	signal: AbortSignal;
 };
 
-/**
- * Context passed to the step-change guard and to `onStepChange`.
- *
- * `data` includes any payload passed to `next`, `prev`, `goTo`, or `reset`
- * before callbacks run, so validation does not need to wait for React state.
- *
- * Use `ctx.validate()` in guards to validate the step being left against that
- * transition data snapshot.
- */
-type StepChangeContext<Steps extends readonly Step[] = readonly Step[]> = {
-	[FromId in Get.Id<Steps>]: StepChangeContextBase<Steps, FromId>;
-}[Get.Id<Steps>];
-
-/**
- * The step-change guard. Runs before a step change on imperative navigation
- * (`next`, `prev`, `goTo`, `reset`). Return `false` to cancel the change.
- *
- * Does not run for external controlled `step` changes; those are authoritative.
- */
-type BeforeStepChange<Steps extends readonly Step[] = readonly Step[]> = (
-	context: StepChangeContext<Steps>,
-) => MaybePromise<boolean | undefined>;
-
-/**
- * Optional data passed while navigating.
- *
- * `data` is staged for the current step before the guard runs, and persisted
- * only if the change is accepted.
- */
-type NavigationPayload = {
-	data?: unknown;
-	/** Mark the source step complete only if this transition is accepted. */
-	complete?: boolean;
-};
-
-/** Expected navigation outcomes. Exceptions from user callbacks still reject the promise. */
-type NavigationFailureReason = "guard" | "policy" | "pending" | "boundary" | "same-step" | "invalid-step" | "cancelled";
-type NavigationResult<Id extends string = string> =
-	| { accepted: true; from: Id; to: Id }
-	| { accepted: false; reason: NavigationFailureReason };
-
-/** A deliberate jump may bypass linear policy, but never the guard. */
-type GoToOptions = NavigationPayload & { bypassPolicy?: boolean };
-
-/** Restore mount-time defaults. Preserve selected pieces explicitly. */
-type ResetOptions = { keepData?: boolean; keepCompleted?: boolean };
-
-type ValidationResult<T = unknown> =
-	| { success: true; data: T }
-	| { success: false; issues: ReadonlyArray<StandardSchemaV1.Issue> };
-
-type StepperData<Steps extends readonly Step[] = readonly Step[]> = {
+export type Options<S extends readonly Step[]> = {
+	/** Only move forward through `next()`, which validates. Completed steps can be revisited. Default `false`. */
+	linear?: boolean;
 	/**
-	 * Get flow data for the current step, or for a specific step when an id is
-	 * passed. With an id, the result is typed as that step's schema input.
+	 * Where each step leads, from its validated data. Steps without an entry go
+	 * to the following one. `null` ends the flow at that step, so a flow can have
+	 * more than one ending; a branch may also return `null`. The second argument
+	 * is the data of every step, for branches that depend on an earlier answer.
 	 *
 	 * @example
-	 * ```ts
-	 * stepper.data.get();             // current step (unknown)
-	 * stepper.data.get("shipping");   // ShippingInput | undefined
-	 * ```
+	 * next: {
+	 *   account: (data) => (data.type === "team" ? "team" : "payment"),
+	 *   profile: (_data, flow) => (flow.account?.type === "team" ? "invite" : "done"),
+	 *   rejected: null,
+	 * }
 	 */
-	get: {
-		(): unknown;
-		<Id extends Get.Id<Steps>>(id: Id): InputOf<Steps, Id> | undefined;
-	};
+	next?: { [I in Id<S>]?: ((data: Output<S, I>, flow: FlowData<S>) => Id<S> | null) | null };
+	/** Runs after validation and before every move. Return `false` to cancel it. May be async. */
+	// biome-ignore lint/suspicious/noConfusingVoidType: a guard that returns nothing allows the move.
+	guard?: (context: GuardContext<S>) => boolean | void | Promise<boolean | void>;
 	/**
-	 * Set flow data for the current step, or for a specific step when an id is
-	 * passed. With an id, the value is type-checked against that step's schema input.
+	 * Called after the step, data or completion changes. Persist the snapshot to resume later.
+	 * `setData` calls it too: debounce slow writes when you save drafts on every keystroke.
+	 */
+	onChange?: (snapshot: Snapshot<S>) => void;
+	/**
+	 * Called once when `next()` completes the last step. Submit here. `output` is
+	 * what the schemas produced for every complete step (transforms and defaults
+	 * applied); `data` is everything as it was typed. Return a promise and the
+	 * flow stays pending until it settles; if it rejects, so does `next()` and
+	 * the flow is not finished, so the user can try again.
+	 */
+	onFinish?: (output: FlowOutput<S>, data: FlowData<S>) => unknown;
+	/** Where to start: any part of a saved snapshot, or just `{ step }`. */
+	snapshot?: Partial<Snapshot<S>>;
+	/**
+	 * Follow a step that lives somewhere else, such as the URL. The flow starts
+	 * there and goes there whenever the value changes, like `goTo`: `linear` and
+	 * the guard still apply. When it cannot follow, `onInvalidStep` is called.
 	 *
 	 * @example
-	 * ```ts
-	 * stepper.data.set(formValues);
-	 * stepper.data.set("payment", paymentValues);
-	 * ```
+	 * useStepper({
+	 *   step: params.step,
+	 *   onChange: (snapshot) => snapshot.step !== params.step && router.push(snapshot.step),
+	 *   onInvalidStep: (current) => router.replace(current),
+	 * });
 	 */
-	set: {
-		(value: unknown): void;
-		<Id extends Get.Id<Steps>>(id: Id, value: InputOf<Steps, Id>): void;
-	};
-	/** Compose an update against the latest value, including preceding writes in the same event. */
-	update: <Id extends Get.Id<Steps>>(
-		id: Id,
-		updater: (previous: InputOf<Steps, Id> | undefined) => InputOf<Steps, Id>,
-	) => void;
-	all: () => FlowData<Steps>;
-	clear: (id?: Get.Id<Steps>) => void;
-	reset: () => void;
+	step?: Id<S> | (string & {}) | null;
+	/**
+	 * Called when the flow cannot follow `step`: an unknown id, a step `linear`
+	 * does not allow yet, or a move the guard refused. It receives the step the
+	 * flow is on, so you can correct the source without adding a history entry.
+	 */
+	onInvalidStep?: (current: Id<S>) => void;
 };
 
-/** Exhaustive matcher for the current step. */
-type StepMatcher<Steps extends readonly Step[] = readonly Step[]> = <Result>(
-	handlers: Get.Match<Steps, Result>,
-) => Result;
-
-type StepMap<Steps extends readonly Step[] = readonly Step[]> = {
-	steps: Steps;
-	ids: Get.Id<Steps>[];
-	get: <Id extends Get.Id<Steps>>(id: Id) => Get.StepById<Steps, Id> | undefined;
-	at: <Index extends number>(index: Index) => Steps[Index] | undefined;
-	/** Get the index for a step id (or any string), or `-1` when missing. */
-	indexOf: (id: Get.Id<Steps> | (string & {})) => number;
-	/** Check whether an arbitrary string is one of the step ids. */
-	has: <Id extends string>(id: Id) => boolean;
-	first: () => Steps[number] | undefined;
-	last: () => Steps[number] | undefined;
-	next: <Id extends Get.Id<Steps>>(id: Id) => Steps[number] | undefined;
-	prev: <Id extends Get.Id<Steps>>(id: Id) => Steps[number] | undefined;
-	neighbors: <Id extends Get.Id<Steps>>(id: Id) => { prev: Steps[number] | undefined; next: Steps[number] | undefined };
-};
-
-/**
- * Runtime stepper instance returned by `useStepper`.
- *
- * The instance is intentionally lean: it exposes live state, queries, flow data,
- * validation, rendering, and navigation. Static step lookups live on the
- * definition (`wizard.get`, `wizard.at`) and on the raw `steps` array.
- */
-type Stepper<Steps extends readonly Step[] = readonly Step[]> = {
-	steps: Steps;
-	current: Steps[number];
-	id: Get.Id<Steps>;
+/** An immutable view of a flow at one moment, plus the actions that change it. */
+export type Stepper<S extends readonly Step[]> = {
+	steps: S;
+	current: S[number];
+	/** Position of `current` in `steps`. */
 	index: number;
-	count: number;
-	progress: number;
-	/** Explicitly completed step ids, independent from positional status. */
-	completed: Get.Id<Steps>[];
+	/** `current` is the first of `steps`. */
 	isFirst: boolean;
+	/** `next()` finishes the flow: a step whose `next` entry is `null`, or the last of `steps` without a branch. */
 	isLast: boolean;
-	canPrev: boolean;
-	canNext: boolean;
+	/** Position of `current` in `steps`, from `0` (first) to `1` (last). */
+	progress: number;
+	/** What each step holds as it was typed: drafts included. Fill your fields from here. */
+	data: FlowData<S>;
+	/** What the schema of each complete step produced: transforms and defaults applied. */
+	output: FlowOutput<S>;
+	/** `true` while an async schema, guard or `onFinish` is running. */
 	isPending: boolean;
-	data: StepperData<Steps>;
-	status: <Id extends Get.Id<Steps>>(id: Id) => StepStatus;
-	setComplete: (id?: Get.Id<Steps>, value?: boolean) => void;
-	isComplete: (id?: Get.Id<Steps>) => boolean;
+	/** `next()` completed the last step and `onFinish` settled. `false` again as soon as the flow changes. */
+	isFinished: boolean;
+	state: (id: Id<S>) => StepState;
+	/** Issues from the last failed validation of a step (the current one by default), until its data changes. */
+	issues: (id?: Id<S>) => ReadonlyArray<Issue> | undefined;
+	/** Whether `goTo(id)` is allowed right now. Does not run the guard. */
+	canGoTo: (id: Id<S>) => boolean;
+	/** Run the handler of the current step. Exhaustive: a missing step is a type error. */
+	match: <R>(handlers: { [I in Id<S>]: (step: StepOf<S, I>, data: Input<S, I> | undefined) => R }) => R;
 	/**
-	 * Validate a step's stored flow data against its schema. Defaults to the
-	 * current step. Steps without a schema always succeed with the stored value.
+	 * Check a step's data (the current step by default) against its schema
+	 * without moving. Resolves with the issues, or `undefined` when it is valid;
+	 * `issues(id)` returns the same until the data changes.
 	 */
-	validate: <Id extends Get.Id<Steps>>(id?: Id) => Promise<ValidationResult<OutputOf<Steps, Id>>>;
-	/** Synchronous eligibility under the navigation policy. Does not execute async guards. */
-	canGoTo: <Id extends Get.Id<Steps>>(id: Id) => boolean;
-	is: <Id extends Get.Id<Steps>>(id: Id) => boolean;
-	match: StepMatcher<Steps>;
-	next: (payload?: NavigationPayload) => Promise<NavigationResult<Get.Id<Steps>>>;
-	prev: (payload?: NavigationPayload) => Promise<NavigationResult<Get.Id<Steps>>>;
-	/** Move to a specific step, respecting linear policy unless bypassPolicy is explicit. */
-	goTo: (id: Get.Id<Steps>, options?: GoToOptions) => Promise<NavigationResult<Get.Id<Steps>>>;
+	validate: (id?: Id<S>) => Promise<ReadonlyArray<Issue> | undefined>;
 	/**
-	 * Restore the initial step, data and completion. keepData/keepCompleted preserve selected values.
+	 * Save `data` for the current step, validate it, and move on. On the last
+	 * step it completes the flow and resolves with `to: null`.
 	 */
-	reset: (options?: ResetOptions) => Promise<NavigationResult<Get.Id<Steps>>>;
+	next: (data?: unknown) => Promise<Result<S>>;
+	/** Go back to the step you came from. Never validates. */
+	prev: () => Promise<Result<S>>;
+	/** Jump to a step. Does not validate; `linear` and the guard still apply. */
+	goTo: (id: Id<S>) => Promise<Result<S>>;
+	/**
+	 * Save a draft. A complete step whose data changes is no longer complete; in
+	 * a `linear` flow neither are the steps completed after it.
+	 */
+	setData: <I extends Id<S>>(id: I, data: Input<S, I>) => void;
+	/** Back to the initial snapshot. Cancels a running move. */
+	reset: () => void;
+	/** Replace the state without validation or guards: resume a draft. To follow the URL, use the `step` option. */
+	restore: (snapshot: Partial<Snapshot<S>>) => void;
+	snapshot: () => Snapshot<S>;
 };
 
-namespace Get {
-	export type Id<Steps extends readonly Step[] = readonly Step[]> = Steps[number]["id"];
-
-	export type StepById<Steps extends readonly Step[], Id extends Get.Id<Steps>> = Extract<Steps[number], { id: Id }>;
-
-	/**
-	 * Exhaustive handler map keyed by step id. Each handler also receives that
-	 * step's flow data, typed as the step's schema input.
-	 */
-	export type Match<Steps extends readonly Step[], Result> = {
-		[Id in Get.Id<Steps>]: (step: Get.StepById<Steps, Id>, data: InputOf<Steps, Id> | undefined) => Result;
-	};
-}
-
-export type {
-	BeforeStepChange,
-	FlowData,
-	Get,
-	GoToOptions,
-	InputOf,
-	MaybePromise,
-	NavigationFailureReason,
-	NavigationPayload,
-	NavigationResult,
-	OutputOf,
-	ResetOptions,
-	StandardSchemaV1,
-	Step,
-	StepChangeContext,
-	StepChangeValidator,
-	StepDirection,
-	StepMap,
-	StepMatcher,
-	Stepper,
-	StepperData,
-	StepStatus,
-	ValidationResult,
+/** A live flow: reads always return the latest state. Works without any framework. */
+export type Flow<S extends readonly Step[]> = Stepper<S> & {
+	/** The current immutable view. A new object after every change. */
+	get: () => Stepper<S>;
+	subscribe: (listener: () => void) => () => void;
+	/** Replace the options. The hooks call this on every render. */
+	setOptions: (options: Options<S>) => void;
+	/** Cancel a running move and drop every listener. */
+	destroy: () => void;
 };

@@ -89,9 +89,9 @@ export const BLOCKS = [
 		useCase:
 			"Use for short flows (3–4 steps) where users benefit from seeing and jumping between all steps at once.",
 		accessibility:
-			"Each segment is a real `Stepper.Trigger` button with `data-status`; active state is conveyed by both color and weight, not color alone.",
+			"Each segment is a real `Stepper.Trigger` button with `data-state`; active state is conveyed by both color and weight, not color alone.",
 		customization:
-			"Style the active tab via `data-[status=active]`. Replace the pill background with an underline by removing the `bg-background` and adding a bottom border.",
+			"Style the active tab via `data-[state=current]`. Replace the pill background with an underline by removing the `bg-background` and adding a bottom border.",
 		related: ["breadcrumb", "progress-bar", "circular"],
 	},
 	{
@@ -121,7 +121,7 @@ export const BLOCKS = [
 		useCase:
 			"Fits wizards embedded in app shells where a breadcrumb visually matches the surrounding navigation.",
 		accessibility:
-			"Renders as an ordered trail; the current step uses `aria-current` via `data-status=active`. Chevrons are `aria-hidden`.",
+			"Renders as an ordered trail; the current step is marked with `aria-current` and `data-state=current`. Chevrons are `aria-hidden`.",
 		customization:
 			"Replace chevrons with slashes or arrows, and truncate long labels with `max-w` + `truncate` on the title.",
 		related: ["segmented", "vertical-stepper", "progress-bar"],
@@ -157,9 +157,9 @@ export const BLOCKS = [
 		useCase:
 			"The canonical 'create your account' flow — collect a few fields per step and validate before advancing.",
 		accessibility:
-			"Inputs are labelled and validation messages are associated with their fields; the Next button reflects `canNext`.",
+			"Inputs are labelled and validation messages are associated with their fields; `Stepper.Next` is `aria-disabled` while a check runs.",
 		customization:
-			"Add or remove steps in the definition; per-step validation lives in a `beforeStepChange` guard you can extend.",
+			"Add or remove steps in the definition; per-step validation lives in each step's `schema`, which `next()` checks.",
 		related: ["org-setup", "team-invites", "conditional-onboarding"],
 	},
 	{
@@ -254,7 +254,7 @@ export const BLOCKS = [
 		id: "validated-checkout",
 		title: "Validated Checkout",
 		description:
-			"A checkout where each step has a Zod schema; validate() inside a beforeStepChange guard blocks invalid input before the review step.",
+			"A checkout where each step has a Zod schema; next() validates it and blocks invalid input before the review step.",
 		category: "commerce",
 		capabilities: ["validation"],
 		difficulty: "advanced",
@@ -349,7 +349,7 @@ export const BLOCKS = [
 		accessibility:
 			"The pending state is announced; controls disable via `isPending` so users can't double-submit.",
 		customization:
-			"The pairing step awaits real work in `beforeStepChange`; surface progress with `stepper.isPending`.",
+			"The pairing step awaits real work in the `guard`; surface progress with `stepper.isPending`.",
 		related: ["async-provisioning", "two-factor", "cicd-pipeline"],
 	},
 
@@ -464,17 +464,17 @@ export const BLOCKS = [
 		id: "save-resume",
 		title: "Save & Resume",
 		description:
-			"A controlled wizard whose active step is synced to localStorage and the URL hash.",
+			"A resumable wizard whose snapshot is synced to localStorage and the URL hash.",
 		category: "flow-control",
 		capabilities: ["persistence"],
 		difficulty: "advanced",
-		tags: ["persistence", "controlled", "localstorage", "url", "resume"],
+		tags: ["persistence", "snapshot", "localstorage", "url", "resume"],
 		useCase:
 			"Long flows users leave and return to — reload or share a URL and land back on the same step.",
 		accessibility:
 			"Restoring state doesn't move focus unexpectedly; the active step is announced on mount.",
 		customization:
-			"Driven controlled via `step` + `onStepChange`; persist to a backend instead of localStorage if you prefer.",
+			"Saved through `onChange(snapshot)` and resumed with `restore()`; persist to a backend instead of localStorage if you prefer.",
 		related: ["dashboard-wizard", "validated-checkout", "ai-workflow"],
 		featured: true,
 	},
@@ -516,7 +516,7 @@ export const BLOCKS = [
 		id: "dashboard-wizard",
 		title: "Dashboard Wizard",
 		description:
-			"A SaaS settings wizard with sticky step nav, per-step validation, and an unsaved-changes guard wired through beforeStepChange and beforeunload.",
+			"A SaaS settings wizard with sticky step nav, per-step validation, and an unsaved-changes guard wired through guard and beforeunload.",
 		category: "flow-control",
 		capabilities: ["validation", "persistence"],
 		difficulty: "advanced",
@@ -526,7 +526,7 @@ export const BLOCKS = [
 		accessibility:
 			"The unsaved-changes prompt is keyboard-dismissible; sticky nav keeps focus targets stable.",
 		customization:
-			"Combines a `beforeStepChange` guard with a `beforeunload` listener; swap the dirty-check for your form state.",
+			"Combines a `guard` with a `beforeunload` listener; swap the dirty-check for your form state.",
 		related: ["save-resume", "validated-checkout", "org-setup"],
 		featured: true,
 	},

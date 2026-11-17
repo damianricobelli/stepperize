@@ -1,0 +1,126 @@
+---
+title: The step in the URL
+description: Keep the current step and the address bar in sync.
+---
+
+Three options do it. `step` makes the flow follow the URL, `onChange` updates
+the URL when the flow moves, and `onInvalidStep` corrects a URL the flow
+cannot follow.
+
+```tsx
+function Checkout() {
+  const { step } = useParams();
+  const router = useRouter();
+
+  const stepper = checkout.useStepper({
+    step,
+    onChange: (snapshot) => {
+      if (snapshot.step !== step) router.push(`/checkout/${snapshot.step}`);
+    },
+    onInvalidStep: (current) => router.replace(`/checkout/${current}`),
+  });
+}
+```
+
+The example uses a Next.js style router. Any router works: the options only
+need a string to read and two functions to call.
+
+## How it behaves
+
+| Something happens | The flow | Your callback |
+| --- | --- | --- |
+| The page opens on `/checkout/payment` | Starts on `payment`, if it is allowed to | None |
+| The person presses Continue | Moves to the next step | `onChange`, where you `push` the new URL |
+| The person presses the browser's Back button | Goes to the step in the URL, like `goTo` | `onChange`, with the step already matching |
+| The URL names a step that does not exist | Stays where it is | `onInvalidStep`, where you `replace` the URL |
+| The URL names a step that is not reachable yet | Stays where it is | `onInvalidStep` |
+
+`step` accepts any string, `null` or `undefined`, so you can pass what the
+router gives you without checking it first.
+
+## Why two callbacks
+
+They need different history behavior.
+
+- A real move should **push** an entry, so the Back button returns to the
+  previous step.
+- A correction should **replace** the bad entry, so the Back button does not
+  land on it again.
+
+`onChange` is only called when something changed, and `onInvalidStep` only
+when the flow refused to follow, so each can do the right thing without
+guessing.
+
+## It cannot be used to skip steps
+
+Following the URL behaves like `goTo`: `linear` and the guard still apply.
+Someone who opens `/checkout/payment` directly in a linear flow starts on the
+first step, `onInvalidStep` is called with that step, and the URL is
+corrected.
+
+`onInvalidStep` receives the step the flow is on. It runs when the value is:
+
+- an id that is not in the definition,
+- a step a linear flow does not allow yet,
+- a step the guard refused,
+- or any step while another move is still running.
+
+## With a saved snapshot
+
+Use both. The snapshot restores the data and the completed steps, so a link to
+a step the person already completed is honored after a reload.
+
+```tsx
+checkout.useStepper({
+  step,
+  snapshot: savedSnapshot,
+  onChange: (snapshot) => {
+    save(snapshot);
+    if (snapshot.step !== step) router.push(`/checkout/${snapshot.step}`);
+  },
+  onInvalidStep: (current) => router.replace(`/checkout/${current}`),
+});
+```
+
+When `step` and `snapshot.step` disagree, `step` wins if the flow is allowed
+to be there.
+
+## Search params
+
+Nothing changes when the step is in the query string.
+
+```tsx
+const [params, setParams] = useSearchParams();
+const step = params.get("step");
+
+checkout.useStepper({
+  step,
+  onChange: (snapshot) => {
+    if (snapshot.step !== step) setParams({ step: snapshot.step });
+  },
+  onInvalidStep: (current) => setParams({ step: current }, { replace: true }),
+});
+```
+
+## With a Provider or Stepper.Root
+
+The same three options are props of the owner.
+
+```tsx
+<checkout.Provider
+  step={step}
+  onChange={(snapshot) => snapshot.step !== step && router.push(`/checkout/${snapshot.step}`)}
+  onInvalidStep={(current) => router.replace(`/checkout/${current}`)}
+>
+```
+
+## Details worth knowing
+
+- `onChange` is also called when data changes, which is why the examples
+  compare `snapshot.step` with the URL before navigating.
+- The flow only acts when the value of `step` **changes**. Re-rendering with
+  the same value while the URL catches up does not pull the flow back.
+- `reset()` returns to the flow's initial snapshot, not to the URL. `onChange`
+  then reports the new step and the URL follows.
+- On the server, pass the same route value so the first render shows the
+  right step.

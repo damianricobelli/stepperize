@@ -1,0 +1,95 @@
+---
+title: Introduction
+description: The whole flow as a plain object, with no framework.
+---
+
+`@stepperize/core` is the state machine every binding is built on. It has no
+dependencies and runs anywhere JavaScript does: tests, servers, workers,
+scripts and AI agents drive the same object your UI does.
+
+A **flow** is one running instance: the current step, the data of every step
+and which steps are complete. You move it with `next`, `prev` and `goTo`, and
+every move resolves with what happened.
+
+```bash
+npm install @stepperize/core
+```
+
+```ts
+import { createStepper } from "@stepperize/core";
+
+const flow = createStepper(
+  [
+    { id: "account", schema: accountSchema },
+    { id: "team" },
+    { id: "payment" },
+  ],
+  { next: { account: (data) => (data.type === "team" ? "team" : "payment") } },
+);
+
+await flow.next({ type: "personal" });
+flow.current.id; // "payment"
+flow.snapshot(); // { step: "payment", history: ["account"], data: {…}, complete: ["account"] }
+```
+
+If you already have a definition from a binding, `definition.create(options)`
+returns the same thing.
+
+The concepts are the same as in the React docs, which explain them in depth:
+[steps](/docs/v9/react/concepts/steps),
+[the lifecycle of a move](/docs/v9/react/concepts/moves),
+[step state](/docs/v9/react/concepts/step-state),
+[validation](/docs/v9/react/guides/validation),
+[branching](/docs/v9/react/guides/branching) and
+[snapshots](/docs/v9/react/guides/persistence).
+
+## Testing a flow
+
+Branching, validation and guards can be tested without rendering anything.
+
+```ts
+import { expect, it } from "vitest";
+import { checkout } from "./checkout";
+
+it("skips payment for free orders", async () => {
+  const flow = checkout.create();
+  const result = await flow.next({ total: 0 });
+  expect(result).toMatchObject({ accepted: true, to: "review" });
+});
+
+it("rejects an empty address", async () => {
+  const flow = checkout.create({ snapshot: { step: "shipping" } });
+  const result = await flow.next({ address: "" });
+  expect(result).toMatchObject({ accepted: false, reason: "invalid" });
+});
+```
+
+## On a server
+
+A snapshot is plain data, so a flow can be resumed per request and validated
+with the same schemas the client uses.
+
+```ts
+export async function POST(request: Request) {
+  const { snapshot, values } = await request.json();
+  const flow = checkout.create({ snapshot });
+  const result = await flow.next(values);
+  return Response.json({ result, snapshot: flow.snapshot() });
+}
+```
+
+## Driven by an agent
+
+The actions are a small, typed surface with explicit results, which makes them
+straightforward to expose as tools: `next` with the step's data, `prev`, and
+`snapshot` to read where the flow is. A rejected `next` returns the issues, so
+the model can correct its input and try again.
+
+## Bindings
+
+| Framework | Package | Docs |
+| --- | --- | --- |
+| React | `@stepperize/react` | [React](/docs/v9/react) |
+
+Other frameworks can use the core directly through `subscribe` and `get`. See
+[createStepper](/docs/v9/core/create-stepper#subscribing).

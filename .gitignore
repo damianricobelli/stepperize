@@ -43,3 +43,6 @@ yarn-error.log*
 
 # Local editor and agent config
 .claude/launch.json
+
+# Benchmark raw samples, rewritten by `pnpm benchmark`
+scripts/benchmarks/results.json

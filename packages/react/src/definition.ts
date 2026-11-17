@@ -1,111 +1,96 @@
-import { createStepMap, parseStep, type Step, type Stepper, validateStep } from "@stepperize/core";
+import { createStepper, type Flow, fail, type Options, type Step, type Stepper } from "@stepperize/core";
 import React from "react";
-import { createStepperContext } from "./context";
-import { createStepperStore } from "./store";
-import type { DefineStepperOptions, HeadlessStepperDefinition, ProviderProps, UseStepperOptions } from "./types";
-import { identity, useCommitEffect, useStoreView } from "./utils";
 
-type IsBroadString<T extends string> = string extends T ? true : false;
+/** Layout effects warn on the server; a passive effect is equivalent there. */
+export const useCommitEffect = typeof window === "undefined" ? React.useEffect : React.useLayoutEffect;
 
-type DuplicateStepId<Steps extends readonly Step[], Seen extends string = never> = Steps extends readonly [
-	infer Head,
-	...infer Tail,
-]
-	? Head extends Step
-		? IsBroadString<Head["id"]> extends true
-			? Tail extends readonly Step[]
-				? DuplicateStepId<Tail, Seen>
-				: never
-			: Head["id"] extends Seen
-				? Head["id"]
-				: Tail extends readonly Step[]
-					? DuplicateStepId<Tail, Seen | Head["id"]>
-					: never
-		: never
-	: never;
+export type ProviderProps<S extends readonly Step[]> = Options<S> & { children?: React.ReactNode };
 
-export type UniqueStepIds<Steps extends readonly Step[]> = [DuplicateStepId<Steps>] extends [never]
-	? Steps
-	: `Duplicate step id: ${DuplicateStepId<Steps>}`;
+/** What `defineStepper` returns: one typed flow, usable with or without React. */
+export type Definition<S extends readonly Step[]> = {
+	steps: S;
+	/** A flow without React: tests, servers and agents drive the same state machine. */
+	create: (options?: Options<S>) => Flow<S>;
+	/** A flow owned by this component. Re-renders on every change. */
+	useStepper: (options?: Options<S>) => Stepper<S>;
+	/**
+	 * The flow of the nearest `Provider` or `Stepper.Root`. Pass a selector to
+	 * re-render only when its result changes. A selector that builds a new object
+	 * or array re-renders on every change; select primitives to skip renders.
+	 */
+	useStepperContext: {
+		(): Stepper<S>;
+		<T>(selector: (stepper: Stepper<S>) => T): T;
+	};
+	/** Share one flow with every component below. */
+	Provider: (props: ProviderProps<S>) => React.ReactElement;
+};
 
-function assertValidSteps(steps: readonly Step[]) {
-	if (steps.length === 0) {
-		throw new Error("defineStepper requires at least one step.");
+export function createDefinition<const S extends readonly Step[]>(steps: S, defaults: Options<S> = {}) {
+	const FlowContext = React.createContext<Flow<S> | null>(null);
+	/** Step id -> position, for the primitives that are handed an id. */
+	const positions = new Map(steps.map((step, index) => [step.id as string, index]));
+	const create = (options?: Options<S>) => createStepper(steps, { ...defaults, ...options });
+
+	/** One flow per component instance. `snapshot` is read once; everything else stays current. */
+	function useFlow(options: Options<S> = {}) {
+		const [flow] = React.useState(() => create(options));
+		useCommitEffect(() => flow.setOptions({ ...defaults, ...options }));
+		React.useEffect(() => () => flow.destroy(), [flow]);
+		return flow;
 	}
 
-	const seen = new Set<string>();
-	const duplicates = new Set<string>();
-
-	for (const step of steps) {
-		if (seen.has(step.id)) {
-			duplicates.add(step.id);
-		}
-		seen.add(step.id);
-	}
-
-	if (duplicates.size > 0) {
-		throw new Error(`defineStepper requires unique step ids. Duplicate id(s): ${Array.from(duplicates).join(", ")}.`);
-	}
-}
-
-/** Define an immutable, typed step list. Instances are created by useStepper, Provider or Stepper.Root. */
-export function createDefinition<const Steps extends readonly Step[]>(
-	steps: UniqueStepIds<Steps>,
-	options: DefineStepperOptions<Steps> = {},
-) {
-	const typedSteps = steps as Steps;
-	assertValidSteps(typedSteps);
-	const map = createStepMap(typedSteps);
-	const scope = createStepperContext<Steps>();
-
-	function useOwnedStore(config: UseStepperOptions<Steps>, onSnapshot?: (snapshot: Stepper<Steps>) => void) {
-		const [store] = React.useState(() => createStepperStore(typedSteps, options, config, map));
-		// Only install committed options/lifetime here: no notifications or React state updates.
-		// This runs before descendant layout effects, including StrictMode's layout replay.
-		React.useInsertionEffect(() => {
-			store.activate();
-			if (onSnapshot) store.subscribe(() => onSnapshot(store.getSnapshot()));
-			return () => store.dispose();
-		}, [store, onSnapshot]);
-		React.useInsertionEffect(() => store.stageOptions(config), [store, config]);
-		useCommitEffect(() => store.configure(config), [store, config]);
-		return store;
-	}
-
-	function useStepper(config: UseStepperOptions<Steps> = {}) {
-		// A local instance has one reader. Queue immutable snapshots through React state.
-		const [updatedSnapshot, setSnapshot] = React.useState<Stepper<Steps>>();
-		const store = useOwnedStore(config, setSnapshot);
-		const snapshot = updatedSnapshot ?? store.getServerSnapshot();
-		const { step, data, completed, linear } = config;
-		return React.useMemo(
-			() => store.project(snapshot, { step, data, completed, linear }),
-			[store, snapshot, step, data, completed, linear],
+	function useShared() {
+		return (
+			React.useContext(FlowContext) ??
+			fail("SZ100", "Missing Provider. Wrap the tree in this flow's Provider or Stepper.Root.")
 		);
 	}
 
-	function Provider({ children, ...config }: ProviderProps<Steps>) {
-		const store = useOwnedStore(config);
-		const id = React.useId();
-		const view = useStoreView(store, config);
-		const value = React.useMemo(() => ({ store, id, view }), [store, id, view]);
-		return React.createElement(scope.Context.Provider, { value, children });
+	function useSelect<T>(flow: Flow<S>, selector: (stepper: Stepper<S>) => T): T {
+		const get = React.useMemo(() => {
+			// `flow` is a proxy: read its method once, not once per notification.
+			const read = flow.get;
+			// The whole view needs no selecting: the store already returns the same one until it changes.
+			if (selector === identity) return read as () => T;
+			// Views are immutable, so one result per view is enough. This also keeps selectors
+			// that build an object or array from looping: the same view returns the same result.
+			let seen: Stepper<S> | undefined;
+			let result: T;
+			return () => {
+				const view = read();
+				if (view !== seen) {
+					seen = view;
+					result = selector(view);
+				}
+				return result;
+			};
+		}, [flow, selector]);
+		return React.useSyncExternalStore(flow.subscribe, get, get);
 	}
 
-	const useStepperContext = (<Selected = Stepper<Steps>>(
-		selector: (value: Stepper<Steps>) => Selected = identity as (value: Stepper<Steps>) => Selected,
-		isEqual?: (previous: Selected, next: Selected) => boolean,
-	) => scope.useSelector(selector, isEqual)) as HeadlessStepperDefinition<Steps>["useStepperContext"];
-
-	const definition: HeadlessStepperDefinition<Steps> = {
-		steps: typedSteps,
-		useStepper,
-		useStepperContext,
-		Provider,
-		get: map.get,
-		at: map.at,
-		parseStep: (value) => parseStep(typedSteps, value),
-		validate: (id, value) => validateStep(typedSteps, id, value),
+	const identity = (stepper: Stepper<S>) => stepper;
+	const definition: Definition<S> = {
+		steps,
+		create,
+		useStepper: (options) => {
+			// This component owns the flow and is its only reader, so there is nothing to tear:
+			// plain state is cheaper than `useSyncExternalStore` and lets updates join a transition.
+			const flow = useFlow(options);
+			const [view, setView] = React.useState(flow.get);
+			useCommitEffect(() => {
+				// Catch what changed between the first render and this subscription.
+				if (flow.get() !== view) setView(flow.get);
+				return flow.subscribe(() => setView(flow.get));
+			}, [flow]);
+			return view;
+		},
+		useStepperContext: <T>(selector: (stepper: Stepper<S>) => T = identity as never) =>
+			useSelect(useShared(), selector),
+		Provider: ({ children, ...options }) =>
+			React.createElement(FlowContext.Provider, { value: useFlow(options) }, children),
 	};
-	return { definition, map, scope };
+	return { definition, scope: { steps, positions, defaults, FlowContext, useFlow, useShared, useSelect } };
 }
+
+export type Scope<S extends readonly Step[]> = ReturnType<typeof createDefinition<S>>["scope"];

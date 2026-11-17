@@ -82,7 +82,7 @@ export type StudioStep = {
 export type StudioBehavior = {
 	/** `linear: true` on the definition. */
 	linear: boolean;
-	/** `beforeStepChange` runs `validate()` before moving forward. */
+	/** A `guard` validates the step being left before jumping ahead from the step list. `next()` always validates. */
 	guard: boolean;
 	/** Restore flow data from localStorage. */
 	persist: boolean;

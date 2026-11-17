@@ -4,8 +4,8 @@ import { type Names, source, str, USE_CLIENT } from "./shared";
 /**
  * Navigation adapters: where the current step lives, per framework.
  *
- * The flow component is router-agnostic. It takes `step` / `onStepChange` and
- * these adapters are the only files that import a router. Swapping Next.js for
+ * The flow component is router-agnostic. It takes `step`, `onStepChange` and
+ * `onInvalidStep`, and these adapters are the only files that import a router. Swapping Next.js for
  * TanStack Start only rewrites the files below.
  */
 
@@ -183,7 +183,11 @@ function routes(framework: Framework, names: Names): RouteFile[] {
 						"\tconst router = useRouter();",
 						"",
 						"\treturn (",
-						`\t\t<${Flow}Flow step={step ?? null} onStepChange={(next) => router.push(\`/${slug}/\${next}\`)}>`,
+						`\t\t<${Flow}Flow`,
+						"\t\t\tstep={step ?? null}",
+						`\t\t\tonStepChange={(next) => router.push(\`/${slug}/\${next}\`)}`,
+						`\t\t\tonInvalidStep={(current) => router.replace(\`/${slug}/\${current}\`)}`,
+						"\t\t>",
 						"\t\t\t{children}",
 						`\t\t</${Flow}Flow>`,
 						"\t);",
@@ -243,6 +247,7 @@ function routes(framework: Framework, names: Names): RouteFile[] {
 						`\t\t<${Flow}Flow`,
 						"\t\t\tstep={step ?? null}",
 						`\t\t\tonStepChange={(next) => navigate({ to: ${str(`/${slug}/$step`)}, params: { step: next } })}`,
+						`\t\t\tonInvalidStep={(current) => navigate({ to: ${str(`/${slug}/$step`)}, params: { step: current }, replace: true })}`,
 						"\t\t>",
 						"\t\t\t<Outlet />",
 						`\t\t</${Flow}Flow>`,
@@ -296,7 +301,11 @@ function routes(framework: Framework, names: Names): RouteFile[] {
 						"\tconst navigate = useNavigate();",
 						"",
 						"\treturn (",
-						`\t\t<${Flow}Flow step={step ?? null} onStepChange={(next) => navigate(\`/${slug}/\${next}\`)}>`,
+						`\t\t<${Flow}Flow`,
+						"\t\t\tstep={step ?? null}",
+						`\t\t\tonStepChange={(next) => navigate(\`/${slug}/\${next}\`)}`,
+						`\t\t\tonInvalidStep={(current) => navigate(\`/${slug}/\${current}\`, { replace: true })}`,
+						"\t\t>",
 						"\t\t\t<Outlet />",
 						`\t\t</${Flow}Flow>`,
 						"\t);",

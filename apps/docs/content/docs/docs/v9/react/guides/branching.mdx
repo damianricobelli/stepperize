@@ -1,0 +1,122 @@
+---
+title: Branching
+description: Decide where each step leads from its data, and end a flow in more than one place.
+---
+
+By default `next()` goes to the following step in the list. The `next` option
+changes that per step.
+
+```tsx
+const signup = defineStepper([
+  { id: "account", schema: z.object({ type: z.enum(["personal", "team"]) }) },
+  { id: "team" },
+  { id: "payment" },
+]);
+
+signup.useStepper({
+  next: {
+    account: (data) => (data.type === "team" ? "team" : "payment"),
+  },
+});
+```
+
+`data` is the validated output of that step's schema, and the function must
+return a known step id: a typo is a type error. Steps without an entry keep
+going to the following one.
+
+| Entry for a step | `next()` from that step goes to |
+| --- | --- |
+| None | The following step in the list, or the end after the last one. |
+| A function | The id it returns, or the end if it returns `null`. |
+| `null` | The end of the flow. |
+
+A branch runs after the step was validated and before the
+[guard](/docs/v9/react/guides/navigation#guard-a-move), which receives the
+step the branch chose as `to`. Like every callback, it sees your latest props
+and state, so it can also depend on something outside the flow.
+
+## Depending on an earlier step
+
+The second argument is the data of every step, so a branch can look at an
+answer given earlier in the flow.
+
+```tsx
+const signup = defineStepper([
+  { id: "account", schema: z.object({ type: z.enum(["personal", "team"]) }) },
+  { id: "profile" },
+  { id: "team" },
+  { id: "payment" },
+]);
+
+signup.useStepper({
+  next: {
+    // The account type was answered two steps ago.
+    profile: (_data, flow) => (flow.account?.type === "team" ? "team" : "payment"),
+  },
+});
+```
+
+`flow` already includes the data being saved by this `next()` call.
+
+Try it: pick "Just me" and the team step is skipped; Back returns the way you
+came.
+
+<Preview>
+	<ConditionalOnboardingBlock />
+</Preview>
+
+## Going back
+
+`prev()` returns to the step the person came from, not to the previous one in
+the list. In the example above, going back from `payment` lands on `account`
+for a personal account and on `team` for a team.
+
+A skipped step is never entered, so it stays
+[`pending`](/docs/v9/react/concepts/step-state) and stores no data.
+
+## More than one ending
+
+Without an entry, a step leads to the one after it in the list, so only the
+last step ends the flow. Set an entry to `null` to end the flow at that step.
+A branch may also return `null`.
+
+```tsx
+const application = defineStepper([
+  { id: "form", schema: applicationSchema },
+  { id: "approved" },
+  { id: "rejected" },
+]);
+
+application.useStepper({
+  next: {
+    form: (data) => (data.score >= 50 ? "approved" : "rejected"),
+    approved: null,
+    rejected: null,
+  },
+  onFinish: (output) => submit(output),
+});
+```
+
+Here `approved` would otherwise lead to `rejected`, the next step in the list.
+
+## isLast
+
+`stepper.isLast` is `true` when `next()` is certain to finish the flow: the
+step's entry is `null`, or it is the last step of the list and has no branch.
+Use it for the label of your button.
+
+```tsx
+<button type="button" onClick={() => stepper.next()}>
+  {stepper.isLast ? "Submit" : "Continue"}
+</button>
+```
+
+## Progress
+
+`stepper.progress` is the position of the current step in the list, from `0` to
+`1`. With branches that skip steps it jumps accordingly. If you need progress
+along the path actually taken, count the completed steps instead:
+
+```tsx
+const done = stepper.steps.filter((step) => stepper.state(step.id) === "complete").length;
+```

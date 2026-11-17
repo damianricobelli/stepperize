@@ -1,6 +1,6 @@
 "use client";
 
-import { defineStepper } from "@stepperize/react";
+import { defineStepper } from "@stepperize/react-v8";
 import { useMemo, useState } from "react";
 
 /* Styling only. Stepperize does not depend on any of these classes. */

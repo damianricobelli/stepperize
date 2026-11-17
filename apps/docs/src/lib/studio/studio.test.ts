@@ -422,7 +422,7 @@ describe("generated files", () => {
 		const project = generateProject(DEFAULT_CONFIG);
 		expect(project.dependencies).toEqual(
 			expect.arrayContaining([
-				"@stepperize/react@^8.0.0",
+				"@stepperize/react@^9.0.0",
 				"react-hook-form",
 				"@hookform/resolvers",
 				"zod@^4",

@@ -46,6 +46,7 @@ try {
 				"@vitest/browser-playwright": installed("@vitest/browser-playwright").version,
 				playwright: installed("playwright").version,
 				"@vitejs/plugin-react": installed("@vitejs/plugin-react").version,
+				"axe-core": installed("axe-core").version,
 				"@stepperize/core": "file:./core",
 				vitest: installed("vitest").version,
 				vite: installed("vite").version,

@@ -50,11 +50,12 @@ const BEHAVIORS: {
 	},
 	{
 		key: "guard",
-		label: "Validate before moving on",
+		label: "Validate before jumping ahead",
 		description: (
 			<>
-				<code className="font-mono text-[11px]">beforeStepChange</code> runs the
-				step schema.
+				<code className="font-mono text-[11px]">next()</code> always checks the
+				step schema; a <code className="font-mono text-[11px]">guard</code> also
+				checks it when a later step is opened from the list.
 			</>
 		),
 	},

@@ -1,6 +1,6 @@
 "use client";
 
-import { defineStepper } from "@stepperize/react";
+import { defineStepper } from "@stepperize/react-v8";
 
 const checkout = defineStepper([
 	{ id: "shipping", title: "Shipping" },

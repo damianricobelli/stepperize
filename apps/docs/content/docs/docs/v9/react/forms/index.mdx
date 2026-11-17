@@ -1,0 +1,157 @@
+---
+title: Building multi-step forms
+description: How a form library and Stepperize share the work, and the flow this section builds.
+---
+
+Multi-step forms are the most common reason people reach for Stepperize. This
+section teaches how to build them: the mental model first, then the patterns,
+then the same flow implemented with each form library.
+
+The form library you use (React Hook Form, TanStack Form, Conform, or none) is
+an implementation detail. Learn the patterns first; pick a library second.
+
+## Two libraries, two jobs
+
+A multi-step form has two separate concerns. Stepperize owns one; your form
+library owns the other.
+
+| | Owns | Examples |
+| --- | --- | --- |
+| **Your form library** | The **fields** of one step | Values while typing, touched and dirty state, field errors, registering inputs |
+| **Stepperize** | The **flow** across steps | Which step is current, moving between steps, what each step saved, which steps are complete |
+
+Stepperize does not manage field state. Form libraries already do that well,
+and it is the part that differs most between them.
+
+```text
+   ┌─────────────────── Stepperize (the flow) ───────────────────┐
+   │                                                             │
+   │   Personal  →  Shipping  →  Payment  →  Review  →  finish   │
+   │     ▲            ▲            ▲                             │
+   │  ┌──┴──┐      ┌──┴──┐      ┌──┴──┐                          │
+   │  │ form│      │ form│      │ form│   ← your form library    │
+   │  │ lib │      │ lib │      │ lib │     owns each step's     │
+   │  └─────┘      └─────┘      └─────┘     fields               │
+   └─────────────────────────────────────────────────────────────┘
+```
+
+Each step mounts its own form. When the person continues, that step's values
+are handed to Stepperize, so the review step and your backend can read every
+step's values at the end.
+
+## Where each value lives
+
+| Value | Lives in | Until |
+| --- | --- | --- |
+| What is being typed right now | The form library, or the DOM | The step is submitted |
+| What a step submitted | `stepper.data[stepId]` | The flow is reset or replaced |
+| The errors of the last attempt | The form library, or `stepper.issues(stepId)` | The step's data changes |
+| Everything, across a reload | A saved [snapshot](/docs/v9/react/guides/persistence) | You delete it |
+
+## How they hand off
+
+The whole integration is two touch points.
+
+1. **When a step is submitted**, give its values to Stepperize and move:
+   `await stepper.next(values)`.
+2. **When a step mounts**, fill the form from what was saved:
+   `stepper.data.shipping`.
+
+```tsx
+function ShippingStep() {
+  const stepper = checkout.useStepperContext();
+  return (
+    <ShippingForm
+      defaultValues={stepper.data.shipping}
+      onSubmit={(values) => stepper.next(values)}
+    />
+  );
+}
+```
+
+Everything else in this section (errors, review pages, editing an earlier
+step, saving drafts) is built from those two moves.
+
+## Who validates
+
+Two things can validate a step, and they do different jobs.
+
+| | Runs | When it fails | Good for |
+| --- | --- | --- | --- |
+| **The form library** | On submit, on blur or on change, as you configure it | The submit handler is not called, so `next()` never runs | Showing which field is wrong while typing |
+| **The step's `schema`** | Inside every `next()` | `next()` stays on the step and returns the issues | The gate: no path forward skips it |
+
+You can use either or both:
+
+- **Form library only.** Simple, as long as every way forward goes through
+  the form's submit. A `Stepper.Next` button outside the form would skip it.
+- **Step schema only.** No form library needed. Read the errors from
+  `stepper.issues()`.
+- **Both, with the same schema.** The form library shows errors as the person
+  types; the step's schema guarantees nothing invalid gets through, whatever
+  triggered the move. This is what the library examples in this section do.
+
+[Schemas and validation](/docs/v9/react/guides/validation) covers the step
+side in detail.
+
+## The flow this section builds
+
+Every pattern uses the same checkout:
+
+1. **Personal**: name and email
+2. **Shipping**: address
+3. **Payment**: card details
+4. **Review**: read everything, then place the order
+
+```tsx title="checkout.ts"
+import { defineStepper } from "@stepperize/react";
+import { z } from "zod";
+
+export const personalSchema = z.object({
+  name: z.string().min(1, "Enter your name"),
+  email: z.string().email("Enter a valid email"),
+});
+
+export const shippingSchema = z.object({
+  address: z.string().min(1, "Enter your address"),
+  zip: z.string().regex(/^\d{5}$/, "Enter a 5-digit ZIP"),
+});
+
+export const paymentSchema = z.object({
+  card: z.string().regex(/^\d{16}$/, "Enter a 16-digit card number"),
+});
+
+export const checkout = defineStepper(
+  [
+    { id: "personal", title: "Personal", schema: personalSchema },
+    { id: "shipping", title: "Shipping", schema: shippingSchema },
+    { id: "payment", title: "Payment", schema: paymentSchema },
+    { id: "review", title: "Review" },
+  ],
+  { linear: true },
+);
+```
+
+`linear` means the only way forward is `next()`, which validates. Completed
+steps can be reopened to edit them; once one is edited, the steps after it are
+validated again on the way forward.
+
+<Callout type="info">
+Placing the order is the action of the **Review** step, not a step of its own.
+`next()` on the last step finishes the flow and calls `onFinish` once with the
+validated output of every step. `stepper.isLast` tells you when to label the
+button "Place order", and `stepper.isFinished` when to show the confirmation.
+</Callout>
+
+## Read this section in order
+
+1. **[Core patterns](/docs/v9/react/forms/patterns)**: the building blocks
+   that work with any form library, or none.
+2. **[Schemas and validation](/docs/v9/react/guides/validation)**: what a step
+   schema does, and the difference between a draft and validated output.
+3. **[Common problems](/docs/v9/react/forms/common-problems)**: the bugs
+   every multi-step form runs into, and the fix for each.
+4. **Implementations**: the same flow with
+   [React Hook Form](/docs/v9/react/forms/react-hook-form),
+   [TanStack Form](/docs/v9/react/forms/tanstack-form) and
+   [Conform](/docs/v9/react/forms/conform), so you can compare them.

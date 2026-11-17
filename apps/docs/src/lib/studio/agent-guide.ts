@@ -305,7 +305,7 @@ export function studioAgentGuide(origin = SITE_ORIGIN): string {
 				],
 				[
 					"`behavior`",
-					`object with booleans ${BEHAVIOR_KEYS.map(code).join(", ")}: linear navigation, validate before moving forward (\`beforeStepChange\`), save a draft to localStorage, keep every step mounted (\`Stepper.Content forceMount\`).`,
+					`object with booleans ${BEHAVIOR_KEYS.map(code).join(", ")}: linear navigation, validate the step being left before jumping ahead from the step list (a \`guard\`; \`next()\` always validates steps that have a schema), save a draft to localStorage, keep every step mounted (\`Stepper.Content forceMount\`).`,
 				],
 				[
 					"`steps`",
@@ -390,9 +390,9 @@ export function studioAgentGuide(origin = SITE_ORIGIN): string {
 		"## After installing",
 		"",
 		"- Every file is plain source in the user's project; edit it freely.",
-		"- Send the collected data to an API in the summary step's Finish handler (or the last step's submit). `stepper.data.get(stepId)` returns each step's values.",
+		"- Send the collected data to an API from `onFinish` on `Stepper.Root` (in the flow file). It runs once when `next()` completes the last step and receives the validated output of every step; return the request so the flow stays pending until it settles and `stepper.isFinished` turns true. `stepper.data[stepId]` reads one step's values as typed, `stepper.output[stepId]` what its schema produced.",
 		"- To change the flow's shape later, regenerate from the Studio link and reinstall, or edit `steps.ts`, `schemas.ts` and the step components by hand.",
-		`- Stepperize docs for the APIs used: ${origin}/llms.mdx/docs/v8/api/react/define-stepper, ${origin}/llms.mdx/docs/v8/forms/index, ${origin}/llms.mdx/docs/v8/guides/navigation.`,
+		`- Stepperize docs for the APIs used: ${origin}/llms.mdx/docs/v9/react/api/define-stepper, ${origin}/llms.mdx/docs/v9/react/forms, ${origin}/llms.mdx/docs/v9/react/guides/navigation.`,
 	];
 	return `${sections.join("\n")}\n`;
 }

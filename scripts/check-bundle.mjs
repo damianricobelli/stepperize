@@ -40,7 +40,7 @@ for (const name of entries) {
 	const React = requireReact("react");
 	const { renderToString } = requireReact("react-dom/server");
 	function Shared() {
-		return React.createElement("span", null, flow.useStepperContext().id);
+		return React.createElement("span", null, flow.useStepperContext().current.id);
 	}
 	assert.match(renderToString(React.createElement(flow.Provider, null, React.createElement(Shared))), /start/);
 	if (name.endsWith("/headless")) assert(!("Stepper" in flow));

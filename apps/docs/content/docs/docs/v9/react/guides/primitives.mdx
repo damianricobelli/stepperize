@@ -1,0 +1,200 @@
+---
+title: Primitives
+description: Unstyled components that handle roles, keyboard, focus and announcements.
+---
+
+<Callout title="Looking for finished UI?">
+	Every block in the [Blocks gallery](/blocks) is built from these primitives.
+	Browse them live, copy the code, or install one from the registry.
+</Callout>
+
+Every definition comes with a `Stepper` object: components bound to your steps.
+They render plain elements with no styles, and take care of the parts that are
+easy to get wrong: roles, ids, keyboard navigation, focus and announcements.
+
+For a simple flow, your own buttons and `stepper.match` are enough.
+
+## When to choose primitives
+
+| Use your own markup when... | Use primitives when... |
+| --- | --- |
+| The UI is one panel and two buttons. | There is a visible list of steps people can click. |
+| You already own the ARIA and the keyboard behavior. | You want roles, ids, panels and disabled states wired for you. |
+| Nothing is styled by step state. | You want `data-state` on every item for styling. |
+
+## Basic structure
+
+```tsx
+const { Stepper } = checkout;
+
+function CheckoutSteps() {
+  return (
+    <Stepper.Root linear onFinish={placeOrder}>
+      <Stepper.List>
+        {() => (
+          <Stepper.Item>
+            <Stepper.Trigger>
+              <Stepper.Indicator />
+              <Stepper.Title />
+              <Stepper.Description />
+            </Stepper.Trigger>
+          </Stepper.Item>
+        )}
+      </Stepper.List>
+
+      <Stepper.Content step="shipping">
+        <ShippingForm />
+      </Stepper.Content>
+      <Stepper.Content step="payment">
+        <PaymentForm />
+      </Stepper.Content>
+      <Stepper.Content step="review">
+        <Review />
+      </Stepper.Content>
+
+      <Stepper.Prev>Back</Stepper.Prev>
+      <Stepper.Next>Continue</Stepper.Next>
+    </Stepper.Root>
+  );
+}
+```
+
+<Preview>
+	<UserOnboardingBlock />
+</Preview>
+
+## How the pieces connect
+
+1. `Stepper.Root` creates the flow and provides it. It takes the options.
+2. `Stepper.List` renders the list and handles arrow keys.
+3. Its function child is called once per step.
+4. `Stepper.Item` is one step. Everything inside it knows which one.
+5. `Stepper.Trigger` goes to that step when pressed.
+6. `Stepper.Content` renders while its `step` is current.
+7. `Stepper.Prev` and `Stepper.Next` call `prev()` and `next()`.
+
+## Components
+
+| Component | Element | What it does |
+| --- | --- | --- |
+| `Root` | `div` | Owns the flow. Accepts every [option](/docs/v9/react/api/options). |
+| `List` | `ol` | The list of steps. Give it a function to render one item per step. |
+| `Item` | `li` | One step. Everything inside knows which step it belongs to. |
+| `Trigger` | `button` | Goes to its step. |
+| `Title`, `Description` | `span` | The step's `title` and `description` fields, unless you pass children. |
+| `Indicator` | `span` | A decorative mark, hidden from screen readers. |
+| `Content` | `div` | The panel of a step. Rendered only while its step is current. |
+| `Prev`, `Next` | `button` | Go back, and validate and go forward. |
+
+## Root options
+
+`Stepper.Root` accepts every [option](/docs/v9/react/api/options) as a prop,
+next to the props of its `div`.
+
+```tsx
+<Stepper.Root
+  linear
+  snapshot={saved}
+  onChange={save}
+  onFinish={placeOrder}
+  aria-label="Checkout"
+  className="grid gap-6"
+>
+```
+
+## Reading the flow inside Root
+
+`Stepper.Root` is a provider. Use the function form of its children, or
+`useStepperContext` in any component below it. `useStepper()` would create a
+separate flow.
+
+```tsx
+<Stepper.Root>
+  {(stepper) => (
+    <>
+      <p>Step {stepper.index + 1} of {stepper.steps.length}</p>
+      <Stepper.Next>{stepper.isLast ? "Finish" : "Continue"}</Stepper.Next>
+    </>
+  )}
+</Stepper.Root>
+```
+
+## Reading the step inside Item
+
+`Stepper.useItem()` returns the item's `step`, `index`, `state`, `invalid`,
+`disabled` and `pending`.
+
+```tsx
+function Mark() {
+  const item = Stepper.useItem();
+  return <Stepper.Indicator>{item.state === "complete" ? "✓" : item.index + 1}</Stepper.Indicator>;
+}
+```
+
+## Rendering your own element
+
+Every primitive takes a `render` function. Spread the props you receive: they
+carry the ARIA attributes, ids, handlers and the `ref`.
+
+```tsx
+<Stepper.Next render={(props) => <Button {...props} variant="primary" />}>
+  Continue
+</Stepper.Next>
+```
+
+Forgetting to spread them is reported in development as
+[SZ001](/docs/v9/core/errors#sz001).
+
+## A list you lay out yourself
+
+Without a function, render the items you want and name their step:
+
+```tsx
+<Stepper.List>
+  <Stepper.Item step="shipping">…</Stepper.Item>
+  <li aria-hidden className="separator" />
+  <Stepper.Item step="payment">…</Stepper.Item>
+</Stepper.List>
+```
+
+## Next with form values
+
+`Stepper.Next` calls `next()` with no argument, which validates what the step
+already has stored. That fits steps whose fields write to the flow as they
+change. For a form that hands over its values on submit, use a submit button,
+or take over the click:
+
+```tsx
+<Stepper.Next
+  onClick={(event) => {
+    event.preventDefault();
+    stepper.next(form.getValues());
+  }}
+>
+  Continue
+</Stepper.Next>
+```
+
+## Vertical layouts
+
+```tsx
+<Stepper.Root orientation="vertical">
+```
+
+Arrow keys follow the orientation, and `data-orientation` is set on the root
+and the list for your styles.
+
+## Keeping panels mounted
+
+`Stepper.Content` unmounts when its step is not current. Pass `forceMount` to
+keep it in the DOM, hidden, so uncontrolled form state survives.
+
+```tsx
+<Stepper.Content step="shipping" forceMount>
+```
+
+See [Keeping steps mounted](/docs/v9/react/guides/activity) for the
+alternatives.
+
+Next: [style them](/docs/v9/react/guides/styling), or read the
+[API reference](/docs/v9/react/api/primitives).

@@ -1,0 +1,72 @@
+---
+title: Accessibility
+description: What the primitives handle for you, and the few things only you can provide.
+---
+
+The primitives are accessible without configuration. This page lists what they
+do, so you know what is covered and what is left to you.
+
+## The pattern follows the flow
+
+There is no single correct markup for a stepper, so the primitives pick it from
+how the flow behaves.
+
+| Flow | Markup |
+| --- | --- |
+| `linear` | An ordered list of steps. The triggers are plain buttons; the current one has `aria-current="step"`, and steps that are not reachable yet are disabled. Each panel is a `group` named after the step's `title`. |
+| Free navigation, with triggers | Tabs: `tablist`, `tab` and `tabpanel`, linked with `aria-controls` and `aria-labelledby`. |
+| No triggers | No tabs either: each panel is a `group` named after the step's `title`. |
+
+A linear flow is not a set of tabs: its steps cannot be opened in any order,
+and announcing them as tabs would promise that they can.
+
+## What is handled
+
+| Behavior | Detail |
+| --- | --- |
+| Keyboard | In tabs, arrow keys, `Home` and `End` move between steps, and the selected tab is the list's single tab stop. Left and right swap in right-to-left layouts. In a linear flow the triggers are ordinary buttons in the tab order. |
+| Focus | If focus would be lost after a step change (a field in a panel that unmounted, a button that became disabled), it moves to the new panel. Focus outside the stepper is never moved. |
+| Announcements | When the step changes while focus stays put, for example on `Next`, a polite live region announces the new step's `title`. |
+| Async checks | While a schema, guard or `onFinish` runs, the buttons keep focus: they are `aria-disabled` rather than `disabled`, and the root has `aria-busy`. |
+| Valid markup | `Title` and `Description` are `span`s, so they are valid inside the trigger's `button`. |
+
+## What only you can provide
+
+- **A name for every trigger.** `Stepper.Indicator` is hidden from screen
+  readers. If a trigger only shows a number or an icon, name it:
+
+  ```tsx
+  <Stepper.Trigger aria-label={step.title}>
+    <Stepper.Indicator />
+  </Stepper.Trigger>
+  ```
+
+- **A name for the stepper.** The root is labelled "Stepper". Pass
+  `aria-label` or `aria-labelledby` to describe the flow, and to translate it.
+
+- **Completion beyond color.** `data-state` is for styling. Add text for screen
+  readers, in your language:
+
+  ```tsx
+  function Label() {
+    const item = Stepper.useItem();
+    return (
+      <>
+        <Stepper.Title />
+        {item.state === "complete" && <span className="sr-only">Completed</span>}
+      </>
+    );
+  }
+  ```
+
+- **A string `title` on every step.** Announcements and the names of panels
+  without triggers come from it.
+
+- **Error messages next to their fields.** `issues()` gives you the messages;
+  connect them to the inputs with `aria-describedby` and `aria-invalid`.
+
+## Development checks
+
+In development, mistakes that can be detected are reported with a code: a
+`render` function that drops its props, a trigger without an accessible name, a
+trigger outside its list. See [Errors and warnings](/docs/v9/core/errors).

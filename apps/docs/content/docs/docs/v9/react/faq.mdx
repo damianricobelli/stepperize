@@ -1,0 +1,131 @@
+---
+title: FAQ
+description: Short answers to the questions that come up most.
+---
+
+## Is Stepperize a form library?
+
+No. It manages the **flow**: which step is current, moving between steps, what
+each step saved and which steps are complete. Field state (values while
+typing, touched, field errors) belongs to your form library or to a few lines
+of your own. See [Building multi-step forms](/docs/v9/react/forms).
+
+## Does it ship any styles or markup?
+
+No styles. `useStepper()` gives you state and you write all the markup. The
+optional [`Stepper` primitives](/docs/v9/react/guides/primitives) add
+accessible, unstyled elements that you style through data attributes.
+
+## Do I need @stepperize/core?
+
+Not in a React app: `@stepperize/react` installs it and re-exports its types.
+Import from it directly to run a flow [without React](/docs/v9/core), for
+example in a test or on a server.
+
+## When should I use Provider, Stepper.Root or plain useStepper?
+
+- **`useStepper()`** when one component renders the whole flow.
+- **`Provider`** when several components need the same flow.
+- **`Stepper.Root`** when you use the primitives. It is a provider too.
+
+Components below a `Provider` or a `Stepper.Root` read the flow with
+`useStepperContext()`. See [Shared state](/docs/v9/react/guides/shared-state).
+
+## How do I validate a step before moving on?
+
+Put a `schema` on the step. `next()` validates it and stays on the step when
+it fails. See [Schemas and validation](/docs/v9/react/guides/validation).
+
+```tsx
+const signup = defineStepper([
+  { id: "account", schema: z.object({ email: z.string().email() }) },
+  { id: "done" },
+]);
+```
+
+## What do next, prev and goTo return?
+
+A promise of a result: `{ accepted: true, to, data }` or
+`{ accepted: false, reason, issues? }`. They do not throw for an expected
+outcome. See [Moving between steps](/docs/v9/react/guides/navigation#read-the-result).
+
+## How do I handle the final submit?
+
+Call `next()` on the last step. It finishes the flow and calls `onFinish` once
+with the validated output of every complete step. `stepper.isLast` tells you
+when to change the button's label, and `stepper.isFinished` when to show the
+confirmation. If the request can fail, return its promise from `onFinish`; see
+[Finish the flow](/docs/v9/react/guides/navigation#finish-the-flow).
+
+## Can I validate a step without moving?
+
+Yes: `await stepper.validate()` resolves with the issues, or `undefined`. See
+[Validate without moving](/docs/v9/react/guides/validation#validate-without-moving).
+
+## Where are the values my schema transformed?
+
+In `stepper.output`, and in the first argument of `onFinish`. `stepper.data`
+keeps what was typed. See
+[Draft data and validated output](/docs/v9/react/guides/validation#draft-data-and-validated-output).
+
+## How do I keep the current step in the URL?
+
+Pass the URL value as the `step` option and update the URL from `onChange`.
+See [The step in the URL](/docs/v9/react/guides/url).
+
+## How do I save progress and resume later?
+
+Save the snapshot `onChange` gives you, and pass it back as `snapshot`. See
+[Saving and resuming](/docs/v9/react/guides/persistence).
+
+## Can I run side effects when the step changes?
+
+Yes. Use `onChange` and compare `snapshot.step`, or an effect on
+`stepper.current.id`. See
+[React to a step change](/docs/v9/react/guides/navigation#react-to-a-step-change).
+
+## Can a flow skip steps or have more than one ending?
+
+Yes. The `next` option decides where each step leads from its data, and a
+`null` entry ends the flow at that step. See
+[Branching](/docs/v9/react/guides/branching).
+
+## Can the same step appear twice?
+
+No. Ids are unique: they are the key for the data, the completion and the
+primitives. A repeated id throws when the definition is created. To revisit a
+step, go back to it.
+
+## How do I reset the whole flow?
+
+`stepper.reset()` returns to the snapshot the flow started with and clears
+everything else. To keep the data and only go back to the start, use
+`stepper.restore({ step: "shipping", history: [] })`.
+
+## Does it work with Next.js and server rendering?
+
+Yes. The hooks and the primitives render on the server and hydrate without a
+mismatch. They are client APIs, so the module that calls `defineStepper` and
+the components that use it need `"use client"`. See the
+[production checklist](/docs/v9/react/checklist#server-rendering-and-nextjs).
+
+## Does it work with React Native?
+
+The hooks do. Import `defineStepper` from `@stepperize/react/headless`, which
+has no DOM code, and render your own views. The `Stepper` primitives render
+HTML elements and are for the web.
+
+## Which React versions are supported?
+
+React 18 and 19.
+
+## Does it work without TypeScript?
+
+Yes, but the typed ids, the typed data and the exhaustive `match` are most of
+what you gain.
+
+## I am coming from v8. What changed?
+
+`next()` validates, one snapshot replaced the controlled props, and one state
+per step replaced status and completion. There is a codemod. See
+[Migrating from v8](/docs/v9/react/migration).

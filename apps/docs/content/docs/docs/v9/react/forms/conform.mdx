@@ -1,0 +1,174 @@
+---
+title: Conform
+description: A complete flow with validation, review and final submission.
+---
+
+This two-step example keeps the two jobs apart: Conform owns the fields of the
+profile step, and Stepperize owns the flow, what the step saved and the final
+submission.
+
+```bash
+npm install @stepperize/react @conform-to/react @conform-to/zod zod
+```
+
+The example uses Zod 4 through `@conform-to/zod/v4`. With Zod 3, import
+`parseWithZod` from `@conform-to/zod`.
+
+## Complete example
+
+Pass `onFinish` from your application to perform the final request. It should
+reject on failure; the flow then stays open and the person can retry.
+
+```tsx title="signup.tsx"
+"use client";
+
+import { getInputProps, useForm } from "@conform-to/react";
+import { parseWithZod } from "@conform-to/zod/v4";
+import { defineStepper } from "@stepperize/react";
+import { useState } from "react";
+import { z } from "zod";
+
+const profileSchema = z.object({
+  name: z.string().min(1, "Enter your name"),
+  email: z.string().email("Enter a valid email"),
+});
+type Profile = z.infer<typeof profileSchema>;
+
+const signup = defineStepper([
+  { id: "profile", title: "Profile", schema: profileSchema },
+  { id: "review", title: "Review" },
+]);
+
+type Props = { onFinish: (profile: Profile) => Promise<void> };
+
+export function Signup({ onFinish }: Props) {
+  return (
+    <signup.Provider
+      linear
+      // `output` is what the schemas produced. Returning the promise keeps the
+      // flow pending while it runs, and unfinished if it rejects.
+      onFinish={async (output) => {
+        if (output.profile) await onFinish(output.profile);
+      }}
+    >
+      <Flow />
+    </signup.Provider>
+  );
+}
+
+function Flow() {
+  const stepper = signup.useStepperContext();
+  if (stepper.isFinished) return <p role="status">Saved successfully.</p>;
+
+  return stepper.match({
+    profile: () => <ProfileForm />,
+    review: () => <Review />,
+  });
+}
+
+function ProfileForm() {
+  const stepper = signup.useStepperContext();
+  const [form, fields] = useForm({
+    defaultValue: stepper.data.profile ?? { name: "", email: "" },
+    onValidate({ formData }) {
+      return parseWithZod(formData, { schema: profileSchema });
+    },
+    onSubmit(event, { submission }) {
+      event.preventDefault();
+      if (submission?.status === "success") void stepper.next(submission.value);
+    },
+    shouldValidate: "onSubmit",
+    shouldRevalidate: "onInput",
+  });
+
+  return (
+    <form id={form.id} onSubmit={form.onSubmit} noValidate>
+      <label htmlFor={fields.name.id}>Name</label>
+      <input {...getInputProps(fields.name, { type: "text" })} />
+      <p id={fields.name.errorId} role="alert">
+        {fields.name.errors}
+      </p>
+
+      <label htmlFor={fields.email.id}>Email</label>
+      <input {...getInputProps(fields.email, { type: "email" })} />
+      <p id={fields.email.errorId} role="alert">
+        {fields.email.errors}
+      </p>
+
+      <button type="submit" disabled={stepper.isPending}>
+        Review
+      </button>
+    </form>
+  );
+}
+
+function Review() {
+  const stepper = signup.useStepperContext();
+  const profile = stepper.data.profile;
+  const [error, setError] = useState("");
+
+  async function finish() {
+    setError("");
+    try {
+      await stepper.next();
+    } catch {
+      setError("Could not save. Try again.");
+    }
+  }
+
+  return (
+    <section>
+      <h2>Review</h2>
+      <p>
+        {profile?.name} · {profile?.email}
+      </p>
+      {error && <p role="alert">{error}</p>}
+      <button type="button" disabled={stepper.isPending} onClick={() => stepper.prev()}>
+        Edit
+      </button>
+      <button type="button" disabled={stepper.isPending} onClick={finish}>
+        {stepper.isPending ? "Saving…" : "Finish"}
+      </button>
+    </section>
+  );
+}
+```
+
+## Why this works
+
+- **One provider owns the flow.** Every component below reads it with
+  `useStepperContext()`.
+- **The form validates the fields; the step validates the move.** Both use
+  `profileSchema`. The form shows field errors as it is configured to; the
+  step's schema guarantees `next()` cannot leave the step with invalid data,
+  whatever called it.
+- **`next(values)` saves and moves in one update.** The profile is stored,
+  the step becomes complete and the review renders, in a single render.
+- **Going back fills the form.** `Edit` calls `prev()`, the form mounts again
+  and takes `stepper.data.profile` as its initial values.
+- **The request is part of the last move.** `onFinish` returns its promise, so
+  `isPending` is `true` while it runs. If it rejects, `next()` rejects, the flow
+  is not finished and the person can try again. Once it resolves,
+  `stepper.isFinished` is `true` and a second press cannot submit twice.
+- **What is sent is the schema's output.** `onFinish` receives what
+  `profileSchema` produced, so nothing has to be parsed again.
+
+Conform parses the `FormData` itself, so `submission.value` is already the
+schema's output when `next()` receives it.
+
+## With a server action
+
+Conform is often paired with a server action that validates again. Keep that
+action for the final submission: call it from `onFinish`, as the example does,
+and let each step's move stay on the client. A step does not need a round trip
+to the server to be left.
+
+## Keeping what was typed
+
+`next(value)` stores the values, and the form reads them back as
+`defaultValue` when it mounts again. To keep fields that were never submitted,
+see [Keeping steps mounted](/docs/v9/react/guides/activity).
+
+Compare with [React Hook Form](/docs/v9/react/forms/react-hook-form) and
+[TanStack Form](/docs/v9/react/forms/tanstack-form), or go back to the
+[patterns](/docs/v9/react/forms/patterns).

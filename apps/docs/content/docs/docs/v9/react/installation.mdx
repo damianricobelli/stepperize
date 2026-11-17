@@ -1,0 +1,63 @@
+---
+title: Installation
+description: Add Stepperize to a React project.
+---
+
+<Tabs items={["pnpm", "npm", "yarn", "bun"]}>
+<Tab value="pnpm">
+
+```bash
+pnpm add @stepperize/react
+```
+
+</Tab>
+<Tab value="npm">
+
+```bash
+npm install @stepperize/react
+```
+
+</Tab>
+<Tab value="yarn">
+
+```bash
+yarn add @stepperize/react
+```
+
+</Tab>
+<Tab value="bun">
+
+```bash
+bun add @stepperize/react
+```
+
+</Tab>
+</Tabs>
+
+## Requirements
+
+- React 18 or 19.
+- TypeScript 5.0 or newer for the typed ids. Nothing needs to be configured.
+- In a framework with Server Components, the module that calls `defineStepper`
+  must be a client module (`"use client"`).
+
+`@stepperize/core` is installed with it. You only import from it directly to
+run a flow [without React](/docs/v9/core).
+
+## Validation libraries
+
+Step schemas use [Standard Schema](https://standardschema.dev), so Zod,
+Valibot, ArkType and any other compliant library work without an adapter.
+Stepperize does not depend on any of them.
+
+## Hooks without the components
+
+The default entry includes the `Stepper` primitives. If you render your own
+markup, import from `/headless` to leave them out of your bundle:
+
+```tsx
+import { defineStepper } from "@stepperize/react/headless";
+```
+
+The definition is the same, without the `Stepper` property. This entry has no
+DOM code, so it is also the one to use in React Native.

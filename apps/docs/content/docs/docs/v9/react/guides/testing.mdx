@@ -1,0 +1,105 @@
+---
+title: Testing
+description: Test the flow without rendering, and the components by role.
+---
+
+A flow has two parts worth testing separately: its logic, which needs no
+React, and the components that show it.
+
+## The flow, without React
+
+`definition.create()` returns the same flow your components use. Branching,
+validation and guards can be asserted directly.
+
+```tsx title="checkout.test.ts"
+import { expect, it, vi } from "vitest";
+import { checkout } from "./checkout";
+
+it("rejects an empty address and keeps what was typed", async () => {
+  const flow = checkout.create({ snapshot: { step: "shipping" } });
+
+  const result = await flow.next({ address: "", zip: "90210" });
+
+  expect(result).toMatchObject({ accepted: false, reason: "invalid" });
+  expect(flow.current.id).toBe("shipping");
+  expect(flow.data.shipping).toEqual({ address: "", zip: "90210" });
+  expect(flow.issues()).toHaveLength(1);
+});
+
+it("finishes once, with the output of every step", async () => {
+  const onFinish = vi.fn();
+  const flow = checkout.create({ onFinish });
+
+  await flow.next({ name: "Ada", email: "ada@example.com" });
+  await flow.next({ address: "1 Main St", zip: "90210" });
+  await flow.next({ card: "4242424242424242" });
+  const result = await flow.next();
+
+  expect(result).toMatchObject({ accepted: true, to: null });
+  expect(onFinish).toHaveBeenCalledOnce();
+  expect(flow.isFinished).toBe(true);
+  expect(await flow.next()).toEqual({ accepted: false, reason: "finished" });
+});
+
+it("does not let a linear flow jump ahead", async () => {
+  const flow = checkout.create();
+  expect(flow.canGoTo("review")).toBe(false);
+  expect(await flow.goTo("review")).toEqual({ accepted: false, reason: "policy" });
+});
+```
+
+Reads on a flow (`flow.current`, `flow.data`) always return the latest state,
+so there is nothing to re-query between steps.
+
+Start from any point with a snapshot instead of walking there:
+
+```tsx
+const flow = checkout.create({
+  snapshot: { step: "review", complete: ["personal", "shipping", "payment"] },
+});
+```
+
+## Components
+
+Render the component and drive it the way a person would. These examples use
+[Vitest Browser Mode](https://vitest.dev/guide/browser/) with
+`vitest-browser-react`; Testing Library works the same way.
+
+```tsx title="checkout.test.tsx"
+import { expect, test } from "vitest";
+import { page } from "vitest/browser";
+import { render } from "vitest-browser-react";
+import { Checkout } from "./checkout-page";
+
+test("shows the errors and stays on the step", async () => {
+  await render(<Checkout />);
+
+  await page.getByRole("button", { name: "Continue" }).click();
+
+  await expect.element(page.getByRole("alert")).toBeVisible();
+  await expect.element(page.getByRole("heading", { name: "Personal" })).toBeVisible();
+});
+```
+
+Assert on roles and names, not on class names. For the primitives:
+
+| Flow | The current step is |
+| --- | --- |
+| `linear` | A `button` with `aria-current="step"` |
+| Free navigation | A `tab` with `aria-selected="true"` |
+
+```tsx
+// linear
+await expect.element(page.getByRole("button", { name: "Payment" })).toHaveAttribute("aria-current", "step");
+
+// free navigation
+await expect.element(page.getByRole("tab", { name: "Payment" })).toHaveAttribute("aria-selected", "true");
+```
+
+## What to cover
+
+- A move that is refused: the step does not change and the reason is shown.
+- Each branch of the `next` map, and that Back returns along it.
+- The finishing move, including the failure path if it makes a request.
+- Resuming from a saved snapshot.
+- An async check: the button shows progress, and a second click does nothing.

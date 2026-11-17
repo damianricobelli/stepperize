@@ -1,0 +1,177 @@
+---
+title: Migrating with an AI agent
+description: A prompt that has a coding agent run the codemod and finish what it leaves.
+---
+
+The [codemod](/docs/v9/react/migration#2-run-the-codemod) rewrites everything
+that has a direct equivalent and leaves a `TODO(stepperize-v9)` comment where a
+decision is needed. Those decisions follow a small set of rules, so a coding
+agent can make most of them. Give it the prompt below.
+
+It works with any agent that can run commands and edit files in your
+repository. Commit your work first, and review the diff as you would any other
+change: the agent is asked to stop and report whatever it is not sure about.
+
+## The prompt
+
+Replace `src` with the folders that hold your code.
+
+````md
+Migrate this project from @stepperize/react v8 to v9.
+
+## Steps
+
+1. Install the new version with the project's package manager:
+   `@stepperize/react@^9`.
+2. Run `npx @stepperize/codemod v9 src --check --json` and read the report. It
+   rewrites what has a direct equivalent and writes a
+   `// TODO(stepperize-v9): ...` comment above each statement that needs a
+   decision. The report has every comment as `todos` (file, line, message),
+   the type errors left as `diagnostics`, the rewrites to double-check as
+   `warnings` and the style sheets to update as `styles`.
+3. Run the project's formatter.
+4. Resolve every entry of `todos` with the rules below, then delete its
+   comment. `grep -rn "TODO(stepperize-v9)" src` must find nothing when you
+   are done.
+5. Update the style sheets in `styles` (rule 9).
+6. Run the type checker and fix what it reports with the same rules. The
+   `diagnostics` of the report are where to start.
+7. Run the tests and the linter. Fix only what this migration broke.
+8. Report: what you changed by hand, and every place where you were not sure
+   the behavior is the same as before.
+
+## Rules
+
+1. Validation is part of `next()`. `next(data)` saves the data on the current
+   step, validates it against the step's schema, completes the step and moves.
+   - Delete a guard whose only job was to call `validate()`. If the guard does
+     something else too, keep that part and drop the `validate()` call: the
+     guard runs after validation has passed.
+   - `next({ data, complete: true })` is `next(data)`. `next()` without an
+     argument validates what `setData` already stored for the step.
+   - A failed validation resolves with
+     `{ accepted: false, reason: "invalid", issues }`. Read the issues from the
+     result or from `stepper.issues(id)` instead of keeping them in your own
+     state. They are gone as soon as that step's data changes; in v8 your own
+     state kept them until the next attempt. Say so in the report.
+   - `stepper.validate(id?)` now resolves with the issues, or `undefined` when
+     the step is valid. It no longer returns `{ success, data }`.
+   - `definition.validate(id, value)` is gone. For the data the flow holds, use
+     `stepper.validate(id)`. For any other value, call the schema:
+     `await schema["~standard"].validate(value)`. It resolves with `{ value }`
+     or `{ issues }`, not with `{ success, data }`.
+
+2. The guard is `guard({ from, to, direction, data, signal })`. `to` is `null`
+   when the flow is finishing. `fromIndex`, `toIndex` and `statuses` are gone:
+   use `from`, `to` and `stepper.state(id)`. The direction `"goto"` is
+   `"goTo"`. `reset()` no longer runs the guard and is synchronous.
+
+3. `next()` on the last step finishes the flow. In v8 it returned `boundary`.
+   Move what ran after the last step into the `onFinish(output, data)` option,
+   return the promise of the request from it, and read `stepper.isFinished`
+   instead of a "submitted" state of your own. `Stepper.Next` is no longer
+   disabled on the last step: it finishes the flow. A last-step button that
+   never called `next()` and only sets state of its own still works: leave
+   it, and list it in the report.
+
+4. Branches are declared, not navigated. A forward jump that skips steps,
+   written as `goTo(target, { data, complete: true })` or
+   `goTo(id, { bypassPolicy: true })`, becomes an entry of the `next` map in
+   the options, followed by `next(data)`. This holds when the target depends
+   on the step's data and when it is fixed (`personal: () => "result"`):
+
+   ```tsx
+   defineStepper(steps, {
+     next: { account: (data) => (data.type === "team" ? "team" : "payment") },
+   });
+   ```
+
+   A branch receives the output of its step's schema (`unknown` without a
+   schema), then the data of every step. A `null` entry or result ends the
+   flow at that step. `prev()` returns to the step the user came from, so
+   delete any history you kept by hand; a back button that calls
+   `goTo(previousId)` still works and can stay. For any other move, call
+   `setData(id, data)` and then `goTo(id)`; `goTo` takes no options.
+
+5. `prev()` takes no arguments. To keep a draft, call
+   `stepper.setData(stepper.current.id, draft)` before it.
+
+6. One state per step. `stepper.status(id)` returned `active`, `previous` or
+   `upcoming`; `stepper.state(id)` returns `current`, `complete` or `pending`.
+   - `active` is `current`.
+   - `previous` meant "before the current step". If the code needs position,
+     compare indexes: `index < stepper.index`. If it needs "done", use
+     `state(id) === "complete"`.
+   - `setComplete()` is gone: a step is complete once `next()` validates it.
+     Editing the data of a complete step makes it pending again.
+
+7. State is one snapshot. Replace the controlled `data`, `onDataChange`,
+   `completed`, `onCompletedChange` and `onStepChange` options with
+   `snapshot` (where to start) and `onChange(snapshot)` (called on every
+   change; `snapshot` is `{ step, history, data, complete }`). To replace the
+   state later, call `stepper.restore({ ... })`.
+   - `reset({ keepData: true, keepCompleted: true })` is
+     `restore({ step: firstStepId, history: [] })`.
+   - `reset({ keepData: true })` is
+     `restore({ step: firstStepId, history: [], complete: [] })`.
+   - `data.clear(id)` is `restore({ data: { ...stepper.data, [id]: undefined } })`
+     and `data.reset()` is `restore({ data: {} })`.
+
+8. The step in the URL. Keep the `step` option. Replace `onStepChange` with
+   `onChange: (snapshot) => snapshot.step !== step && navigate(snapshot.step)`.
+   `onInvalidStep` now receives the step the flow is on. A change of `step`
+   now behaves like `goTo`: `linear` and the guard apply to it.
+   `definition.parseStep()` is gone: `step` accepts any string and ignores
+   unknown ids, so delete the call where its result only fed that option.
+   Where the code needs a typed id, use
+   `definition.steps.find((step) => step.id === value)?.id`.
+
+9. Styles. `data-status="active | previous | upcoming"` is
+   `data-state="current | complete | pending"`, and `data-complete` is
+   `data-state="complete"`. The codemod renames them in code; rename them in
+   style sheets. Where it warned that `previous` became `complete`, keep it if
+   the flow only advances with `next()`; otherwise ask before changing the
+   design.
+
+10. Values the codemod could not follow. A TODO that says a value "looks like
+    the v8 API" marks a stepper that arrives through untyped props or your own
+    context. Type it as `Stepper` from `@stepperize/react`, or as
+    `ReturnType<typeof flow.useStepper>`, and apply the replacement the comment
+    gives.
+
+11. Other removals: `definition.get(id)` is
+    `definition.steps.find((step) => step.id === id)`, `definition.at(index)`
+    is `definition.steps[index]`, `result.from` is gone (read
+    `stepper.current.id` before the move), and `@stepperize/react/primitives`
+    is gone (use the `Stepper` returned by `defineStepper`).
+
+## Constraints
+
+- Do not change behavior that is not part of this migration, and do not
+  refactor code the migration does not touch. Do update a comment that
+  describes the v8 API when it sits next to code you changed.
+- Do not add `any`, `as` or `@ts-expect-error` to silence the type checker.
+- Do not delete a guard, a callback or a style when you cannot tell what it was
+  for. Leave it, and list it in the report.
+- In a linear flow, v9 only lets the user reach completed steps and the next
+  one through `next()`. If a test or a screen depended on jumping ahead, say so
+  in the report instead of working around it.
+- The full guide is at https://stepperize.com/llms.mdx/docs/v9/react/migration.
+  Read it when a case is not covered here.
+````
+
+## After it finishes
+
+Read the report first: it lists the places where the agent was not sure. Then
+check, in the running app, the things neither the codemod nor a type checker
+can see:
+
+- Steps styled as done. `complete` means validated by `next()`, which differs
+  from "before the current step" in flows that jump with `goTo()`.
+- Validation errors. `issues()` clears as soon as the step's data changes,
+  which may be earlier than your own error state did.
+- The last step. `next()` now finishes the flow and calls `onFinish`.
+- Linear flows. A trigger for a step that is not complete yet is disabled.
+
+The [migration guide](/docs/v9/react/migration) explains each change in
+detail.

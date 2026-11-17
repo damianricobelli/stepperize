@@ -1,0 +1,208 @@
+---
+title: Common problems
+description: The bugs most multi-step forms run into, and the fix for each.
+---
+
+Almost every multi-step form bug is one of these. Each maps to a
+[core pattern](/docs/v9/react/forms/patterns).
+
+## Validation shows errors, but the step still changes
+
+**Symptom:** the form shows its errors, yet the person ends up on the next
+step.
+
+**Cause:** the form library validated the fields, but the move did not go
+through the form. A separate Continue button, `Stepper.Next` or a trigger
+called `next()` or `goTo()` directly, and the step itself has no schema, so
+nothing stopped it.
+
+**Fix:** put the schema on the step. `next()` then validates no matter what
+called it, and with `linear` the triggers cannot jump ahead.
+
+```tsx
+const checkout = defineStepper(
+  [
+    { id: "personal", schema: personalSchema },
+    { id: "review" },
+  ],
+  { linear: true },
+);
+```
+
+Keep driving the move from the form's submit as well, so the form library
+shows its field errors. See
+[Pattern 4](/docs/v9/react/forms/patterns#pattern-4-decide-who-validates) and
+[Pattern 9](/docs/v9/react/forms/patterns#pattern-9-let-the-form-drive-the-move).
+
+## Values are not saved
+
+**Symptom:** the review step is empty, or `stepper.data` is `{}`.
+
+**Cause:** the step moved with `stepper.next()` and the values were never
+handed over. Without an argument, `next()` only validates what the step
+already has stored.
+
+**Fix:** pass the values in the call.
+
+```tsx
+await stepper.next(values);
+```
+
+If the values are passed and still missing, check the result: a guard that
+returned `false` discards them.
+
+```tsx
+const result = await stepper.next(values);
+if (!result.accepted) console.log(result.reason);
+```
+
+See [Pattern 1](/docs/v9/react/forms/patterns#pattern-1-save-a-steps-values).
+
+## The form is empty after going back
+
+**Symptom:** Back shows an empty form and the person has to type everything
+again.
+
+**Cause:** each step mounts a fresh form, and it was not given the saved
+values.
+
+**Fix:** use the step's data as the form's initial values.
+
+```tsx
+const form = useForm({ defaultValues: stepper.data.personal });
+```
+
+If what is lost is not form values but component state (an editor, a file
+picker), see [Keeping steps mounted](/docs/v9/react/guides/activity).
+
+## The review page shows old values
+
+**Symptom:** a step was edited, but the review still shows what it had before.
+
+**Cause:** the review copied the data into its own state once, or the edit
+never wrote back to the flow.
+
+**Fix:** read `stepper.data` while rendering, and save edits with `next(values)`
+or `setData`.
+
+```tsx
+function ReviewStep() {
+  const stepper = checkout.useStepperContext();
+  const { shipping } = stepper.data; // read on every render
+  return <p>{shipping?.address}</p>;
+}
+```
+
+## The saved draft is not restored
+
+**Symptom:** the snapshot is in storage, but the flow starts empty.
+
+**Cause:** `snapshot` is read once, when the flow is created. If the saved
+value arrives later (an effect, a request), the option has already been used.
+
+**Fix:** apply it with `restore` when it arrives.
+
+```tsx
+useEffect(() => {
+  const saved = localStorage.getItem("checkout");
+  if (saved) stepper.restore(JSON.parse(saved));
+}, []);
+```
+
+See [Saving and resuming](/docs/v9/react/guides/persistence).
+
+## Async validation runs, but the result is ignored
+
+**Symptom:** the check passes or fails, yet what happens next does not match.
+
+**Cause:** the call was not awaited, so the code branched on a promise, which
+is always truthy.
+
+**Fix:** await the move and read `accepted`.
+
+```tsx
+const result = await stepper.next(values);
+if (!result.accepted) showErrorBanner();
+```
+
+In a guard, the same mistake is computing the answer without returning it:
+
+```tsx
+guard: async ({ data }) => {
+  const ok = await api.check(data);
+  return ok; // returning nothing would allow the move
+},
+```
+
+While the check runs `isPending` is `true`. Bind your submit button to it to
+show progress; a second `next()` is refused anyway.
+
+## Reading the stepper after an await shows the old step
+
+**Symptom:** right after `await stepper.next(values)`, `stepper.current.id` is
+still the step that was just left.
+
+**Cause:** the `stepper` in your handler is the one from the render that
+created the handler. It does not change; the component gets a new one on the
+next render.
+
+**Fix:** use the result of the call.
+
+```tsx
+const result = await stepper.next(values);
+if (result.accepted && result.to === "review") scrollToTop();
+```
+
+## The submit button is enabled too early
+
+**Symptom:** the final action is available before every step is done, or a
+check mark shows on a step that was skipped.
+
+**Cause:** treating "before the current step" as "done". A step that was
+jumped over or skipped by a branch is not complete.
+
+**Fix:** ask for the state.
+
+```tsx
+const ready = stepper.steps.every(
+  (step) => step.id === stepper.current.id || stepper.state(step.id) === "complete",
+);
+```
+
+In a flow with branches, check only the steps that are part of the path taken.
+See [Step state](/docs/v9/react/concepts/step-state).
+
+## A step lost its check mark after an edit
+
+**Symptom:** someone goes back and changes a step that was complete. Its check
+mark disappears, and in a linear flow so do the ones after it; the triggers
+for those steps are disabled.
+
+**Cause:** this is intended. A step is complete while its data is what
+`next()` validated. Once `setData` writes something else, the step has to be
+validated again, and a linear flow does not let anyone past it until it is.
+The data of the later steps is kept.
+
+**Fix:** leave the edited step through `next()`. To return to the review in
+one press, keep calling `next()` until it is reached, as in
+[Pattern 6](/docs/v9/react/forms/patterns#pattern-6-edit-an-earlier-step-then-return).
+
+A form library that only hands its values over on submit (`next(values)`)
+never triggers this: the step is validated in the same call that changes it.
+
+## The order was submitted twice
+
+**Symptom:** a double click on the last button sends two requests.
+
+**Cause:** the request is started from your own click handler, or `onFinish`
+does not return its promise, so the flow finishes before the request does.
+
+**Fix:** make the request in `onFinish` and return its promise. The flow is
+pending while it runs and finished once it resolves; in both states `next()`
+is refused. See
+[Pattern 7](/docs/v9/react/forms/patterns#pattern-7-submit-the-whole-form).
+
+Ready to build it for real? Pick an implementation:
+[React Hook Form](/docs/v9/react/forms/react-hook-form),
+[TanStack Form](/docs/v9/react/forms/tanstack-form) or
+[Conform](/docs/v9/react/forms/conform).

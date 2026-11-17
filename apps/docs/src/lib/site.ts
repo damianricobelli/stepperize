@@ -7,9 +7,9 @@ export const SITE = {
 	defaultTitle: "Stepperize",
 	defaultDescription:
 		"Build type-safe wizards, forms, and onboarding flows in React.",
-	homeOgTitle: "Stepperize v8",
+	homeOgTitle: "Stepperize v9",
 	homeOgDescription:
-		"Explore explicit local and shared state, typed navigation results, and atomic updates for React flows.",
+		"Validation built into next(), declarative branching, resumable snapshots, and accessible primitives for React flows.",
 	twitterCard: "summary_large_image",
 } as const;
 

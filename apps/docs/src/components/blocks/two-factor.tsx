@@ -24,20 +24,18 @@ export function TwoFactorBlock() {
 			linear
 			className="w-full max-w-sm rounded-xl border bg-background p-6 shadow-sm"
 		>
-			{({ stepper }) => (
+			{(stepper) => (
 				<>
 					<div className="mb-4 flex items-center justify-between">
 						<span className="grid size-9 place-items-center rounded-lg bg-primary/10 text-primary">
 							<ShieldCheck className="size-5" />
 						</span>
 						<Stepper.List className="flex gap-1.5">
-							<Stepper.Items>
-								{(step) => (
-									<Stepper.Item key={step.id} step={step.id}>
-										<Stepper.Indicator className="block h-1.5 w-6 rounded-full transition-colors data-[status=active]:bg-primary data-[status=previous]:bg-primary data-[status=upcoming]:bg-muted" />
-									</Stepper.Item>
-								)}
-							</Stepper.Items>
+							{(step) => (
+								<Stepper.Item key={step.id} step={step.id}>
+									<Stepper.Indicator className="block h-1.5 w-6 rounded-full transition-colors data-[state=current]:bg-primary data-[state=complete]:bg-primary data-[state=pending]:bg-muted" />
+								</Stepper.Item>
+							)}
 						</Stepper.List>
 					</div>
 
@@ -94,7 +92,7 @@ export function TwoFactorBlock() {
 						</Stepper.Content>
 					</div>
 
-					<Stepper.Actions className="mt-6 flex justify-between">
+					<div className="mt-6 flex justify-between">
 						<Stepper.Prev className={buttonVariants({ variant: "outline" })}>
 							Back
 						</Stepper.Prev>
@@ -120,7 +118,7 @@ export function TwoFactorBlock() {
 						) : (
 							<Stepper.Next className={buttonVariants()}>Continue</Stepper.Next>
 						)}
-					</Stepper.Actions>
+					</div>
 				</>
 			)}
 		</Stepper.Root>
