@@ -8,9 +8,9 @@ import {
 	isDocsFramework,
 } from "./frameworks";
 
-export const CURRENT_DOCS_VERSION = "v8";
-/** Documented, not released yet. Becomes `CURRENT_DOCS_VERSION` when it ships. */
-export const NEXT_DOCS_VERSION = "v9";
+export const CURRENT_DOCS_VERSION = "v9";
+/** Where links written before v9, which carry no version, land when v9 has no such page. */
+export const LEGACY_DOCS_VERSION = "v8";
 const DOCS_VERSIONS = ["v9", "v8", "v7", "v6", "v5", "v4", "v3", "v2"] as const;
 type DocsVersion = (typeof DOCS_VERSIONS)[number];
 
@@ -48,6 +48,11 @@ export function getDocsVersion(slugs: string[]): DocsVersion {
 	return isDocsVersion(version) ? version : CURRENT_DOCS_VERSION;
 }
 
+/** Whether the URL names its version, rather than relying on the current one. */
+export function hasDocsVersion(slugs: string[]): boolean {
+	return isDocsVersion(slugs[0]);
+}
+
 export function getDocsPageSlugs(slugs: string[]): string[] {
 	const version = getDocsVersion(slugs);
 	const page =
@@ -64,8 +69,6 @@ export function getCanonicalDocsPath(slugs: string[]): string {
 }
 
 const DOCS_TAB_LABELS = {
-	latest: "v8",
-	current: "Version 8 documentation",
 	migration: "Migration notes",
 };
 
@@ -91,13 +94,13 @@ export function getDocsTabs(
 export function getDocsVersionTabs(): LayoutTab[] {
 	return [
 		{
-			title: `${NEXT_DOCS_VERSION} (next)`,
-			description: "Version 9 preview documentation",
-			url: `/docs/${NEXT_DOCS_VERSION}`,
+			title: CURRENT_DOCS_VERSION,
+			description: "Version 9 documentation",
+			url: `/docs/${CURRENT_DOCS_VERSION}`,
 		},
 		{
-			title: DOCS_TAB_LABELS.latest,
-			description: DOCS_TAB_LABELS.current,
+			title: "v8",
+			description: "Version 8 documentation",
 			url: "/docs/v8",
 		},
 		{

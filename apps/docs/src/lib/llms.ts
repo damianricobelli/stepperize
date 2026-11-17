@@ -23,7 +23,7 @@ type DocsPage = ReturnType<typeof source.getPages>[number];
 
 type Section = { title: string; pages: DocsPage[] };
 
-const OLDER_VERSIONS = ["v7", "v6", "v5", "v4", "v3", "v2"] as const;
+const OLDER_VERSIONS = ["v8", "v7", "v6", "v5", "v4", "v3", "v2"] as const;
 
 const nodeName = (node: { name?: unknown }) =>
 	typeof node.name === "string" ? node.name : "";

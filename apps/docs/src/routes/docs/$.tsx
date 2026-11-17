@@ -11,6 +11,8 @@ import {
 	getDocsTabs,
 	getDocsTree,
 	getDocsVersion,
+	hasDocsVersion,
+	LEGACY_DOCS_VERSION,
 } from "@/lib/docs-tree";
 import { FAQ_ITEMS } from "@/lib/faq-data";
 import { FAQ_ITEMS_V7 } from "@/lib/faq-data-v7";
@@ -50,8 +52,10 @@ export const Route = createFileRoute("/docs/$")({
 				search: category ? { category } : {},
 			});
 		}
-		const canonical = getCanonicalDocsPath(splat.split("/").filter(Boolean));
-		if (`/docs/${splat}` !== canonical) {
+		const slugs = splat.split("/").filter(Boolean);
+		const canonical = getCanonicalDocsPath(slugs);
+		// A URL without a version is resolved by the loader, which knows which pages exist.
+		if (hasDocsVersion(slugs) && `/docs/${splat}` !== canonical) {
 			throw redirect({
 				href:
 					canonical +
@@ -124,6 +128,20 @@ const loadDocsPage = createServerFn({ method: "GET" })
 	.handler(async ({ data }) => {
 		const pageSlugs = getDocsPageSlugs(data.slugs);
 		const page = source.getPage(pageSlugs);
+
+		if (!hasDocsVersion(data.slugs)) {
+			// Links written before v9 carry no version: the ones v9 has no page for still open in v8.
+			const legacy = [
+				LEGACY_DOCS_VERSION,
+				...(data.slugs[0] === "latest" ? data.slugs.slice(1) : data.slugs),
+			];
+			const target = page
+				? data.slugs
+				: source.getPage(getDocsPageSlugs(legacy)) && legacy;
+			if (target) {
+				throw redirect({ href: getCanonicalDocsPath(target), replace: true });
+			}
+		}
 
 		if (!page) {
 			throw notFound();

@@ -12,18 +12,18 @@ const COLUMNS: { title: string; links: FooterLink[] }[] = [
 	{
 		title: "Get started",
 		links: [
-			{ label: "Introduction", doc: "latest" },
-			{ label: "Installation", doc: "latest/getting-started/installation" },
-			{ label: "First stepper", doc: "latest/getting-started/first-stepper" },
-			{ label: "Migrating to v8", doc: "v8/migration/v8" },
+			{ label: "Introduction", doc: "v9/react" },
+			{ label: "Installation", doc: "v9/react/installation" },
+			{ label: "First stepper", doc: "v9/react/first-stepper" },
+			{ label: "Migrating to v9", doc: "v9/react/migration" },
 		],
 	},
 	{
 		title: "Guides",
 		links: [
-			{ label: "Forms", doc: "latest/forms" },
-			{ label: "Primitives", doc: "latest/guides/primitives" },
-			{ label: "Navigation", doc: "latest/guides/navigation" },
+			{ label: "Forms", doc: "v9/react/forms" },
+			{ label: "Primitives", doc: "v9/react/guides/primitives" },
+			{ label: "Navigation", doc: "v9/react/guides/navigation" },
 			{ label: "Performance", doc: "v8/guides/performance" },
 		],
 	},

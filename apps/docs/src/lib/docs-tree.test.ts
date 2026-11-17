@@ -9,6 +9,7 @@ import {
 	getDocsTabs,
 	getDocsTree,
 	getDocsVersionTabs,
+	hasDocsVersion,
 } from "./docs-tree";
 import { FRAMEWORKS } from "./frameworks";
 import { docsBreadcrumb } from "./seo";
@@ -23,7 +24,7 @@ function read(version: string, path: string) {
 }
 
 describe("versioned documentation", () => {
-	it("keeps explicit versions and resolves latest or unversioned URLs to v8", () => {
+	it("keeps explicit versions and resolves latest or unversioned URLs to v9", () => {
 		expect(getDocsPageSlugs(["v7", "api", "react", "use-stepper"])).toEqual([
 			"docs",
 			"v7",
@@ -31,16 +32,19 @@ describe("versioned documentation", () => {
 			"react",
 			"use-stepper",
 		]);
-		expect(
-			getCanonicalDocsPath(["latest", "guides", "local-and-shared-state"]),
-		).toBe("/docs/v8/guides/local-and-shared-state");
-		expect(getCanonicalDocsPath(["getting-started", "installation"])).toBe(
-			"/docs/v8/getting-started/installation",
+		expect(getCanonicalDocsPath(["latest", "guides", "url"])).toBe(
+			"/docs/v9/react/guides/url",
 		);
-		expect(getCanonicalDocsPath([])).toBe("/docs/v8");
+		expect(getCanonicalDocsPath(["installation"])).toBe(
+			"/docs/v9/react/installation",
+		);
+		expect(getCanonicalDocsPath([])).toBe("/docs/v9/react");
 		expect(
-			getCanonicalDocsPath(["v7", "guides", "local-and-shared-state"]),
-		).toBe("/docs/v7/guides/local-and-shared-state");
+			getCanonicalDocsPath(["v8", "guides", "local-and-shared-state"]),
+		).toBe("/docs/v8/guides/local-and-shared-state");
+		expect(hasDocsVersion(["v8", "forms"])).toBe(true);
+		expect(hasDocsVersion(["latest", "forms"])).toBe(false);
+		expect(hasDocsVersion(["forms"])).toBe(false);
 	});
 
 	it("offers real v7/v8 roots in the version selector", () => {
@@ -128,7 +132,7 @@ describe("versioned documentation", () => {
 
 	it("uses versioned canonical URLs in sitemap and breadcrumbs", () => {
 		expect(docRouteForSlugs(["docs", "latest", "forms"])).toBe(
-			"/docs/v8/forms",
+			"/docs/v9/react/forms",
 		);
 		expect(docRouteForSlugs(["docs", "v7", "forms"])).toBe("/docs/v7/forms");
 		const trail = docsBreadcrumb("v7/api/react/use-stepper", "useStepper");
