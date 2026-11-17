@@ -8,6 +8,7 @@
 		"installation",
 		"first-stepper",
 		"migration",
+		"migration-agent",
 		"---Core concepts---",
 		"concepts/steps",
 		"concepts/stepper",

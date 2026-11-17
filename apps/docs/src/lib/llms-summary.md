@@ -81,6 +81,7 @@ Keep field state in the form library. On submit, await stepper.next(values): it 
 - /docs/v9/react/guides/persistence and /docs/v9/react/guides/url: snapshots and the URL
 - /docs/v9/react/forms: form library integrations
 - /docs/v9/react/migration: upgrade from v8, with `npx @stepperize/codemod v9 src`
+- /docs/v9/react/migration-agent: the rules an agent follows to finish that upgrade
 - /docs/v9/core: the state machine without a framework
 
 The v8 API (beforeStepChange, next({ data, complete }), data.get/set, status, setComplete, Stepper.Items) is obsolete in v9.

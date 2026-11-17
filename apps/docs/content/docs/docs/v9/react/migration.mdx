@@ -24,22 +24,31 @@ React 18 and 19 are still supported.
 Commit your work first.
 
 ```bash
-npx @stepperize/codemod v9 src
+npx @stepperize/codemod v9 src --check
 ```
 
 Pass one or more files or directories. It rewrites `.ts`, `.tsx`, `.js` and
-`.jsx` files. Add `--dry` to see what would change without writing anything.
+`.jsx` files.
+
+| Option | |
+| --- | --- |
+| `--check` | Type-check the migrated files and list the errors left in them |
+| `--dry` | Report what would change without writing anything |
+| `--json` | Print the report as JSON, for scripts and coding agents |
+| `--no-types` | Do not use the project's TypeScript to find steppers |
 
 When it finishes it prints what is left for you: each kind of comment it wrote
 with the files it is in, the rewrites worth a look, and the style sheets that
-still use the v8 attributes. Then:
+still use the v8 attributes and, with `--check`, the type errors in what it
+migrated. Then:
 
 1. Run your formatter. Lines the codemod did not have to touch stay as they
    were; a rewritten statement keeps your quotes and indentation, but not
    always its line breaks.
 2. Search for the comments it left. Each one sits above a statement that
    needs a decision, and says what replaces the old API.
-3. Run your type checker. It finds any v8 call the codemod could not follow.
+3. Fix the type errors `--check` listed. They are v8 calls the codemod could
+   not rewrite.
 
 ```bash
 grep -rn "TODO(stepperize-v9)" src
@@ -64,6 +73,8 @@ grep -rn "TODO(stepperize-v9)" src
 | `<Stepper.Items>{fn}</Stepper.Items>` inside `List` | `<Stepper.List>{fn}</Stepper.List>` |
 | `<Stepper.Actions>`, `<Stepper.Separator>` | `<div>`, `<hr>` |
 | `beforeStepChange` | `guard` |
+| A guard that only returned `(await validate()).success` | Removed: `next()` validates |
+| `stepper.status(id) === "active"` | `stepper.state(id) === "current"` |
 | `defaultStep`, `defaultData`, `defaultCompleted` | `snapshot: { step, data, complete }` |
 
 ### What it follows
@@ -74,11 +85,12 @@ function child of `Stepper.Root`, anything typed as a `Stepper`, a stepper read
 from a ref typed as one, and what your own hooks return when they are in the
 same file.
 
-It does not follow a stepper across files, through context of your own or
-through untyped props. Where it finds the unmistakable v8 names on such a value
+When the project has a `tsconfig.json` and TypeScript 5 or 6 installed, it
+also asks the type checker, which follows a stepper through props, your own
+context and other files. Otherwise it works from the syntax alone. Either way,
+where it finds the unmistakable v8 names on a value it could not follow
 (`.data.get()`, `.data.set()`, `.canNext`, `.isComplete()` and the like) it
-leaves a comment instead of guessing. Type the prop as `Stepper` and run the
-codemod again to have it rewritten.
+leaves a comment instead of guessing.
 
 ### Styles
 
@@ -99,6 +111,10 @@ rewritten: it prints each line that still mentions `data-status` or
 `data-complete` for you to update.
 
 ## 3. Go through the rest
+
+A coding agent can make most of these decisions for you: see
+[Migrating with an AI agent](/docs/v9/react/migration-agent) for a prompt that
+runs the codemod and resolves what it leaves.
 
 The sections below cover everything the codemod flags, in the order you are
 most likely to meet it.
