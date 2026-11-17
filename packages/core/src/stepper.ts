@@ -125,6 +125,20 @@ export function createStepper<const S extends readonly Step[]>(steps: S, options
 		set(fresh);
 	}
 
+	/** The recorded issues without one step's. Most moves have nothing to clear and keep the same object. */
+	function cleared(id: I) {
+		if (!(id in state.issues)) return state.issues;
+		const { [id]: _checked, ...rest } = state.issues;
+		return rest;
+	}
+
+	/** Remember what a standalone check found. Valid with nothing recorded is no change to publish. */
+	function record(id: I, value: unknown, issues?: ReadonlyArray<Issue>) {
+		if (issues) set({ ...state, issues: { ...state.issues, [id]: { value, issues } } }, false);
+		else if (id in state.issues) set({ ...state, issues: cleared(id) }, false);
+		return issues;
+	}
+
 	const check = (id: I, value: unknown) => steps[position(id)].schema?.["~standard"].validate(value) ?? { value };
 
 	/**
@@ -211,7 +225,6 @@ export function createStepper<const S extends readonly Step[]>(steps: S, options
 			}
 
 			const data = merge();
-			const { [id]: _checked, ...issues } = state.issues;
 			const back = to === null ? -1 : state.history.lastIndexOf(steps[to].id);
 			const all = validate ? { ...state.output, ...outputs, [id]: output } : state.output;
 			set({
@@ -227,7 +240,7 @@ export function createStepper<const S extends readonly Step[]>(steps: S, options
 				data,
 				complete: validate && !state.complete.includes(id) ? [...state.complete, id] : state.complete,
 				output: all,
-				issues: validate ? issues : state.issues,
+				issues: validate ? cleared(id) : state.issues,
 				pending: false,
 				finished: false,
 			});
@@ -282,16 +295,10 @@ export function createStepper<const S extends readonly Step[]>(steps: S, options
 		validate: (id: I = steps[state.index].id): Promise<ReadonlyArray<Issue> | undefined> => {
 			const value = state.data[id];
 			const checked = check(id, value);
-			const record = ({ issues }: { issues?: ReadonlyArray<Issue> }) => {
-				// Valid, and nothing recorded to clear: there is no change to publish.
-				if (issues || id in state.issues) {
-					const { [id]: _checked, ...rest } = state.issues;
-					set({ ...state, issues: issues ? { ...rest, [id]: { value, issues } } : rest }, false);
-				}
-				return issues;
-			};
 			// A synchronous schema records its issues before `validate()` returns.
-			return isPromise(checked) ? checked.then(record) : Promise.resolve(record(checked));
+			return isPromise(checked)
+				? checked.then((result) => record(id, value, result.issues))
+				: Promise.resolve(record(id, value, checked.issues));
 		},
 		reset: () => replace(initial),
 		restore: (next: Partial<Snapshot<S>>) => replace({ ...snapshot(), ...next }, state),
