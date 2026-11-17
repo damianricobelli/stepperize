@@ -7,7 +7,7 @@ export const SITE = {
 	defaultTitle: "Stepperize",
 	defaultDescription:
 		"Build type-safe wizards, forms, and onboarding flows in React.",
-	homeOgTitle: "Stepperize v9",
+	homeOgTitle: "Type-safe multi-step flows for React",
 	homeOgDescription:
 		"Validation built into next(), declarative branching, resumable snapshots, and accessible primitives for React flows.",
 	twitterCard: "summary_large_image",
