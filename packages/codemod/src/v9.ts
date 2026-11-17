@@ -39,7 +39,7 @@ const TODO = {
 	nextPayload: "`next()` takes the step data directly: `next(data)` instead of `next({ data, complete })`.",
 	prevPayload: "`prev()` takes no arguments. Call `setData(id, data)` before it to keep a draft.",
 	goToOptions:
-		"`goTo(id)` takes no options. To branch on the data of the current step, declare the branch in the `next` option and call `next(data)`. Otherwise call `setData` to save data; `bypassPolicy` is gone (use `restore({ step })` to skip `linear` and the guard).",
+		'`goTo(id)` takes no options. A forward jump that skips steps goes in the `next` option, even when its target is fixed (`next: { a: () => "c" }`); then call `next(data)`. For any other move, call `setData` to save data and `goTo(id)`. `bypassPolicy` is gone.',
 	resetOptions:
 		"`reset()` takes no options. To keep data or completion, use `restore({ step, data, complete })` with the parts to keep.",
 	resultFrom:
@@ -62,7 +62,7 @@ const TODO = {
 			get: "`definition.get(id)` was removed. Use `definition.steps.find((step) => step.id === id)`.",
 			at: "`definition.at(index)` was removed. Use `definition.steps[index]`.",
 			parseStep:
-				"`definition.parseStep()` was removed. Pass the raw value to the `step` option: unknown ids are ignored.",
+				"`definition.parseStep()` was removed. Pass the raw value to the `step` option: unknown ids are ignored. Where the code needs a typed id, use `definition.steps.find((step) => step.id === value)?.id`.",
 			validate: "`definition.validate()` was removed. Use `stepper.validate(id)` on a flow, or let `next(data)` do it.",
 		})[name] as string,
 	primitivesEntry:
@@ -121,7 +121,7 @@ const DEFAULTS: Record<string, string> = { defaultStep: "step", defaultData: "da
 const GUARD_FIELDS = ["fromIndex", "toIndex", "statuses"];
 const STATICS = ["get", "at", "parseStep", "validate"];
 
-type Kind = "stepper" | "data" | "next" | "prev" | "goTo" | "reset" | "result" | "guard" | "ref";
+type Kind = "stepper" | "data" | "next" | "prev" | "goTo" | "reset" | "result" | "guard" | "ref" | "status";
 /** v8 names that are unmistakable enough to flag on a value the codemod could not follow. */
 const LOOSE = ["canPrev", "canNext", "isComplete", "setComplete"];
 const LOOSE_DATA = ["get", "set", "all", "update"];
@@ -178,17 +178,35 @@ function parser(file: string) {
 	};
 }
 
-/** Migrate one file from v8 to v9. Pure: it never touches the disk. */
-export function transform(source: string, file = "file.tsx"): TransformResult {
+export type TransformOptions = {
+	/**
+	 * Declarations a type checker knows to be steppers, as `line:name` in the text `prepare()` returns.
+	 * With them the codemod follows a stepper through props, context and other files.
+	 */
+	typed?: ReadonlySet<string>;
+};
+
+const NOTHING: TransformResult = { code: "", rewrites: 0, todos: 0, notes: [], warnings: [] };
+
+/**
+ * The first half of `transform`: the edits that fit in a line, made on the text so the JSX around them
+ * keeps its formatting. A type checker reads this text to say which declarations are steppers.
+ */
+export function prepare(source: string, file = "file.tsx"): TransformResult {
 	// Cheap exit: nothing in this file mentions a stepper.
-	if (!/stepper/i.test(source)) return { code: source, rewrites: 0, todos: 0, notes: [], warnings: [] };
-	// Edits that fit in a line are made on the text first: reprinting the JSX around them would reformat it.
+	if (!/stepper/i.test(source)) return { ...NOTHING, code: source };
+	return run(source, file, true);
+}
+
+/** Migrate one file from v8 to v9. Pure: it never touches the disk. */
+export function transform(source: string, file = "file.tsx", options: TransformOptions = {}): TransformResult {
+	if (!/stepper/i.test(source)) return { ...NOTHING, code: source };
 	const text = run(source, file, true);
-	const result = run(text.code, file, false);
+	const result = run(text.code, file, false, options.typed);
 	return { ...result, rewrites: result.rewrites + text.rewrites };
 }
 
-function run(source: string, file: string, textual: boolean): TransformResult {
+function run(source: string, file: string, textual: boolean, typed?: ReadonlySet<string>): TransformResult {
 	const useTabs = /^\t/m.test(source);
 	const format = {
 		useTabs,
@@ -410,13 +428,21 @@ function run(source: string, file: string, textual: boolean): TransformResult {
 
 	/** Scope node → name → what the binding holds. Scope nodes are stable across traversals. */
 	const bindings = new Map<Node, Map<string, Kind>>();
+	/** The scope that declares `name`. ast-types cannot scan some scopes (a `catch` without a binding): treat those as unknown. */
+	const lookup = (path: Path, name: string) => {
+		try {
+			return path.scope?.lookup(name);
+		} catch {
+			return undefined;
+		}
+	};
 	const mark = (scope: Node, name: string, kind: Kind) => {
 		if (!bindings.has(scope)) bindings.set(scope, new Map());
 		bindings.get(scope)?.set(name, kind);
 	};
-	const declared = (path: Path, name: string) => path.scope?.lookup(name)?.node ?? path.scope?.node;
+	const declared = (path: Path, name: string) => lookup(path, name)?.node ?? path.scope?.node;
 	const kindOf = (path: Path, node: Node): Kind | undefined =>
-		isId(node) ? bindings.get(path.scope?.lookup(node.name)?.node)?.get(node.name) : undefined;
+		isId(node) ? bindings.get(lookup(path, node.name)?.node)?.get(node.name) : undefined;
 
 	/** `const { next, data, id } = useStepper()`: follow what can be followed, flag what is gone. */
 	function destructure(pattern: Node, path: Path, scope: Node) {
@@ -529,6 +555,17 @@ function run(source: string, file: string, textual: boolean): TransformResult {
 			this.traverse(path);
 		},
 	});
+
+	// What a type checker resolved: steppers that arrive through props, context or another file.
+	if (typed?.size)
+		recast.visit(ast, {
+			visitIdentifier(path: Path) {
+				const { node } = path;
+				const scope = node.loc && typed.has(`${node.loc.start.line}:${node.name}`) && lookup(path, node.name);
+				if (scope && !bindings.get(scope.node)?.has(node.name)) mark(scope.node, node.name, "stepper");
+				return false;
+			},
+		});
 
 	// Refs that hold a stepper: `useRef<Stepper | null>(null)`, read as `ref.current`.
 	const holdsStepper = (type: Node): boolean =>
@@ -659,6 +696,85 @@ function run(source: string, file: string, textual: boolean): TransformResult {
 		if (name === "reset" && count) todo(path, TODO.resetOptions);
 	}
 
+	// `status(id)` only ever compared with "active" has an exact v9 equivalent: `state(id) === "current"`.
+	const isStatusCall = (path: Path, node: Node) =>
+		node?.type === "CallExpression" &&
+		isMember(node.callee) &&
+		node.callee.property.name === "status" &&
+		kindOf(path, node.callee.object) === "stepper";
+	/** The `stepper.status` members that can become `stepper.state`, and the literals compared with them. */
+	const exact = new Set<Node>();
+	{
+		const kept = new Map<Node, { call: Node; literals: Node[]; ok: boolean }>();
+		const entry = (key: Node, call: Node) => {
+			if (!kept.has(key)) kept.set(key, { call, literals: [], ok: true });
+			return kept.get(key) as { call: Node; literals: Node[]; ok: boolean };
+		};
+		/** The literal a status is compared with, when the comparison is with "active". */
+		const compared = (path: Path, node: Node) => {
+			const parent = path.parent?.node;
+			if (parent?.type !== "BinaryExpression" || !/^[!=]==?$/.test(parent.operator)) return undefined;
+			const other = parent.left === node ? parent.right : parent.left;
+			return isString(other) && other.value === "active" ? other : undefined;
+		};
+		/** Scope → name → the declarator of a variable that holds a status. */
+		const held = new Map<Node, Map<string, Node>>();
+		recast.visit(ast, {
+			visitVariableDeclarator(path: Path) {
+				const { id, init } = path.node;
+				if (isId(id) && isStatusCall(path, init)) {
+					const scope = declared(path, id.name);
+					mark(scope, id.name, "status");
+					if (!held.has(scope)) held.set(scope, new Map());
+					held.get(scope)?.set(id.name, path.node);
+					entry(path.node, init);
+				}
+				this.traverse(path);
+			},
+		});
+		recast.visit(ast, {
+			visitCallExpression(path: Path) {
+				// Compared in place: `stepper.status(id) === "active"`.
+				if (isStatusCall(path, path.node) && path.parent?.node.type !== "VariableDeclarator") {
+					const literal = compared(path, path.node);
+					const found = entry(path.node, path.node);
+					if (literal) found.literals.push(literal);
+					else found.ok = false;
+				}
+				this.traverse(path);
+			},
+			visitIdentifier(path: Path) {
+				const { node } = path;
+				// A property or a key with the same name is not the variable.
+				const parent = path.parent?.node;
+				if (
+					(parent?.type === "MemberExpression" && parent.property === node && !parent.computed) ||
+					(parent?.type === "ObjectProperty" && parent.key === node && !parent.computed && !parent.shorthand)
+				)
+					return false;
+				// Only names that hold a status are worth resolving.
+				const candidate = [...held.values()].some((names) => names.has(node.name));
+				const declarator = candidate ? held.get(lookup(path, node.name)?.node)?.get(node.name) : undefined;
+				const found = declarator && declarator.id !== node ? kept.get(declarator) : undefined;
+				if (!found) return false;
+				const literal = compared(path, node);
+				if (literal) found.literals.push(literal);
+				else found.ok = false;
+				return false;
+			},
+		});
+		for (const { call, literals, ok } of kept.values()) {
+			if (!ok || !literals.length) continue;
+			exact.add(call.callee);
+			for (const literal of literals) {
+				literal.value = "current";
+				// Printed from `extra.raw` when present: keep the quote the file uses.
+				if (literal.extra?.raw)
+					literal.extra = { ...literal.extra, raw: literal.extra.raw.replace("active", "current") };
+			}
+		}
+	}
+
 	/** A value the codemod did not follow, in a place where a v8 name on it is most likely a stepper's. */
 	const loose = (path: Path, node: Node) =>
 		!kindOf(path, node) && node.type !== "ThisExpression" && (ours || /stepper/i.test(recast.print(node).code));
@@ -767,6 +883,7 @@ function run(source: string, file: string, textual: boolean): TransformResult {
 					b.unaryExpression("!", member(stepper(), name === "canPrev" ? "isFirst" : "isLast")),
 					b.unaryExpression("!", member(stepper(), "isPending")),
 				);
+			else if (name === "status" && exact.has(node)) next = member(stepper(), "state");
 			else if (name === "status" || name === "validate" || name === "setComplete") return todo(path, TODO[name]);
 			else return undefined;
 			path.replace(next);
@@ -804,6 +921,66 @@ function run(source: string, file: string, textual: boolean): TransformResult {
 		});
 	}
 
+	/**
+	 * A guard that did nothing but validate the step on the way forward. `next()` does that now,
+	 * so the whole guard can go:
+	 *
+	 *   async ({ direction, validate }) => {
+	 *     if (direction !== "next") return true;
+	 *     return (await validate()).success;
+	 *   }
+	 */
+	function onlyValidates(fn: Node): boolean {
+		if (!isFn(fn) && fn?.type !== "ObjectMethod") return false;
+		const [context] = fn.params;
+		if (fn.params.length !== 1 || context.type !== "ObjectPattern") return false;
+		const names: Record<string, string> = {};
+		for (const prop of context.properties) {
+			const key = prop.type === "ObjectProperty" ? keyName(prop) : undefined;
+			if ((key !== "direction" && key !== "validate") || !isId(prop.value)) return false;
+			names[key] = prop.value.name;
+		}
+		if (!names.validate) return false;
+		/** `await validate()` */
+		const check = (node: Node) =>
+			node?.type === "AwaitExpression" &&
+			node.argument.type === "CallExpression" &&
+			isId(node.argument.callee, names.validate) &&
+			!node.argument.arguments.length;
+		const success = (node: Node, of: (object: Node) => boolean) =>
+			isMember(node) && node.property.name === "success" && of(node.object);
+		const statements: Node[] = fn.body.type === "BlockStatement" ? [...fn.body.body] : [b.returnStatement(fn.body)];
+		// `if (direction !== "next") return true;`
+		const [first] = statements;
+		if (first?.type === "IfStatement" && !first.alternate) {
+			const { test } = first;
+			const exit = first.consequent.type === "BlockStatement" ? first.consequent.body : [first.consequent];
+			const forward =
+				test.type === "BinaryExpression" &&
+				/^!==?$/.test(test.operator) &&
+				isId(test.left, names.direction) &&
+				isString(test.right) &&
+				test.right.value === "next";
+			const allow =
+				exit.length === 1 && exit[0].type === "ReturnStatement" && exit[0].argument?.type === "BooleanLiteral";
+			if (!names.direction || !forward || !allow || exit[0].argument.value !== true) return false;
+			statements.shift();
+		}
+		const [one, two] = statements;
+		// `return (await validate()).success;`
+		if (statements.length === 1) return one.type === "ReturnStatement" && success(one.argument, check);
+		// `const result = await validate(); return result.success;`
+		const declarator = one?.type === "VariableDeclaration" && one.declarations.length === 1 && one.declarations[0];
+		return (
+			statements.length === 2 &&
+			declarator &&
+			isId(declarator.id) &&
+			check(declarator.init) &&
+			two.type === "ReturnStatement" &&
+			success(two.argument, (object) => isId(object, declarator.id.name))
+		);
+	}
+
 	function removed(name: string) {
 		if (name === "onStepChange") return TODO.onStepChange;
 		if (name === "onInvalidStep") return TODO.onInvalidStep;
@@ -813,6 +990,7 @@ function run(source: string, file: string, textual: boolean): TransformResult {
 	/** `{ defaultStep, beforeStepChange, ... }` as an object literal. */
 	function options(object: Node, path: Path) {
 		if (object?.type !== "ObjectExpression") return;
+		const before = object.properties.length;
 		const snapshot: Node[] = [];
 		const existing = object.properties.find(
 			(prop: Node) => prop.type === "ObjectProperty" && keyName(prop) === "snapshot",
@@ -821,6 +999,13 @@ function run(source: string, file: string, textual: boolean): TransformResult {
 		object.properties = object.properties.filter((prop: Node, index: number) => {
 			const key = prop.type === "ObjectProperty" || prop.type === "ObjectMethod" ? keyName(prop) : undefined;
 			if (!key) return true;
+			if (
+				(key === "beforeStepChange" || key === "guard") &&
+				onlyValidates(prop.type === "ObjectMethod" ? prop : prop.value)
+			) {
+				rewrites++;
+				return false;
+			}
 			if (key === "beforeStepChange") {
 				prop.key = b.identifier("guard");
 				if (prop.type === "ObjectProperty") prop.shorthand = false;
@@ -838,6 +1023,9 @@ function run(source: string, file: string, textual: boolean): TransformResult {
 			}
 			return true;
 		});
+		// The guard was the only option: `useStepper({})` reads better as `useStepper()`.
+		if (before && !object.properties.length && !snapshot.length && path.node.arguments.at(-1) === object)
+			path.node.arguments.pop();
 		if (!snapshot.length) return;
 		if (existing?.value.type === "ObjectExpression") existing.value.properties.push(...snapshot);
 		else if (existing) todo(path, TODO.controlled("defaultStep / defaultData / defaultCompleted"));
@@ -854,6 +1042,10 @@ function run(source: string, file: string, textual: boolean): TransformResult {
 		element.attributes = element.attributes.filter((attribute: Node, index: number) => {
 			if (attribute.type !== "JSXAttribute" || attribute.name.type !== "JSXIdentifier") return true;
 			const key: string = attribute.name.name;
+			if ((key === "beforeStepChange" || key === "guard") && onlyValidates(value(attribute))) {
+				rewrites++;
+				return false;
+			}
 			if (key === "beforeStepChange") {
 				attribute.name = b.jsxIdentifier("guard");
 				guard(value(attribute), path);

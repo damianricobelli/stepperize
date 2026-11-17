@@ -1,7 +1,8 @@
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { leftoverStyles, STYLES_WARNING, transform } from "../v9";
@@ -256,6 +257,68 @@ function Nav(props) {
 	});
 });
 
+describe("rewrites that used to be comments", () => {
+	const guarded = (guard: string) =>
+		transform(
+			`${HEAD}\nfunction Component() {\n\treturn flow.useStepper({\n\t\tbeforeStepChange: ${guard},\n\t});\n}\n`,
+		);
+
+	it("removes a guard that only validated on the way forward", () => {
+		const first = guarded(
+			'async ({ direction, validate }) => {\n\t\t\tif (direction !== "next") return true;\n\t\t\treturn (await validate()).success;\n\t\t}',
+		);
+		expect(first.code).toContain("return flow.useStepper();");
+		expect(first.todos).toBe(0);
+		const second = guarded(
+			"async ({ validate }) => {\n\t\t\tconst result = await validate();\n\t\t\treturn result.success;\n\t\t}",
+		);
+		expect(second.code).toContain("return flow.useStepper();");
+		expect(jsx("\t<Stepper.Root beforeStepChange={async ({ validate }) => (await validate()).success} />").code).toBe(
+			"\t<Stepper.Root />",
+		);
+	});
+
+	it("keeps a guard that does anything else, and says why", () => {
+		const result = guarded(
+			"async ({ validate }) => {\n\t\t\tconst result = await validate();\n\t\t\tif (!result.success) track(result.issues);\n\t\t\treturn result.success;\n\t\t}",
+		);
+		expect(result.code).toContain("guard: async ({ validate }) => {");
+		expect(result.notes).toEqual([expect.stringContaining("`validate()` is not passed to the guard")]);
+	});
+
+	it('turns a status only compared with "active" into a state compared with "current"', () => {
+		expect(line('const on = stepper.status("a") === "active";').code).toBe(
+			'const on = stepper.state("a") === "current";',
+		);
+		const held = line('const status = stepper.status("a");\n\tconst on = status === "active" || status !== "active";');
+		expect(held.body).toContain('const status = stepper.state("a");');
+		expect(held.body).toContain('const on = status === "current" || status !== "current";');
+		expect(held.todos).toBe(0);
+	});
+
+	it("leaves a status used by position as a comment", () => {
+		const result = line(
+			'const status = stepper.status("a");\n\tconst done = status === "previous" || status === "active";',
+		);
+		expect(result.body).toContain('stepper.status("a")');
+		expect(result.body).toContain('status === "active"');
+		expect(result.todos).toBe(1);
+	});
+
+	it("follows the declarations a type checker says are steppers", () => {
+		const source = 'function Nav({ stepper }) {\n\treturn stepper.data.get("a");\n}\n';
+		expect(transform(source, "nav.tsx", { typed: new Set(["1:stepper"]) }).code).toBe(
+			"function Nav({ stepper }) {\n\treturn stepper.data.a;\n}\n",
+		);
+		expect(transform(source, "nav.tsx").todos).toBe(1);
+	});
+
+	it("does not stop at a scope it cannot read", () => {
+		const source = `${HEAD}\nfunction load() {\n\ttry {\n\t\treturn read();\n\t} catch {\n\t\treturn null;\n\t}\n}\n\nfunction Component() {\n\tconst stepper = flow.useStepper();\n\tconst status = stepper.status("a");\n\treturn [load(), status === "active"];\n}\n`;
+		expect(transform(source).code).toContain('stepper.state("a")');
+	});
+});
+
 describe("selectors", () => {
 	it("rewrites Tailwind variants and CSS attribute selectors to data-state", () => {
 		const source = `${HEAD}
@@ -504,8 +567,116 @@ describe("cli", () => {
 			const output = run("v9", root, "--dry");
 			expect(output).toContain('Left for you, as "TODO(stepperize-v9)" comments:');
 			expect(output).toMatch(/Still styled with the v8 attributes[\s\S]*stepper\.css:1/);
-			expect(output).toContain("Install the new version: @stepperize/react@9.");
+			expect(output).toContain("Run your type checker, or this command again with --check");
 			expect(readFileSync(join(root, "stepper.css"), "utf8")).toContain("data-status");
+		} finally {
+			rmSync(root, { recursive: true, force: true });
+		}
+	});
+
+	/** A project with its own TypeScript and a stand-in for the library's types. */
+	function project(files: Record<string, string>) {
+		const root = mkdtempSync(join(tmpdir(), "stepperize-codemod-"));
+		const modules = join(root, "node_modules");
+		const library = join(modules, "@stepperize", "react");
+		mkdirSync(library, { recursive: true });
+		mkdirSync(join(root, "src"));
+		symlinkSync(
+			dirname(createRequire(import.meta.url).resolve("typescript/package.json")),
+			join(modules, "typescript"),
+			"dir",
+		);
+		writeFileSync(join(library, "package.json"), '{ "name": "@stepperize/react", "types": "index.d.ts" }');
+		writeFileSync(
+			join(library, "index.d.ts"),
+			`type Step = { id: string };
+export type Stepper = {
+	steps: readonly Step[]; current: Step; index: number; isFirst: boolean; isLast: boolean; isPending: boolean;
+	data: Record<string, unknown>;
+	next(data?: unknown): Promise<unknown>; prev(): Promise<unknown>; goTo(id: string): Promise<unknown>;
+	setData(id: string, value: unknown): void; state(id: string): string; canGoTo(id: string): boolean;
+	match(handlers: unknown): unknown;
+};
+export declare function defineStepper(steps: readonly Step[]): { steps: readonly Step[]; useStepper(): Stepper };
+`,
+		);
+		writeFileSync(join(root, "package.json"), "{}");
+		writeFileSync(
+			join(root, "tsconfig.json"),
+			'{ "compilerOptions": { "strict": true, "module": "esnext", "moduleResolution": "bundler", "target": "es2022", "noEmit": true }, "include": ["src"] }',
+		);
+		for (const [name, content] of Object.entries(files)) writeFileSync(join(root, "src", name), content);
+		const at = (...args: string[]) =>
+			execFileSync(process.execPath, [cli, "v9", "src", ...args], { cwd: root, encoding: "utf8" });
+		return { root, at, read: (name: string) => readFileSync(join(root, "src", name), "utf8") };
+	}
+
+	const FLOW = `import { defineStepper } from "@stepperize/react";
+
+export const flow = defineStepper([{ id: "a" }, { id: "b" }]);
+export type Flow = ReturnType<typeof flow.useStepper>;
+export const first = flow.parseStep("a");
+`;
+	// The stepper arrives typed from another file: only a type checker can tell what it is.
+	const NAV = `import type { Flow } from "./flow";
+
+export function label(props: { stepper: Flow }) {
+	const { stepper } = props;
+	return stepper.data.get("a");
+}
+
+export const canMove = (api: Flow) => api.canNext;
+`;
+
+	it("uses the project's types to follow a stepper across files", () => {
+		const typed = project({ "flow.ts": FLOW, "nav.ts": NAV });
+		const plain = project({ "flow.ts": FLOW, "nav.ts": NAV });
+		try {
+			expect(typed.at()).toContain("Finding steppers with the types of tsconfig.json");
+			expect(typed.read("nav.ts")).toContain("return stepper.data.a;");
+			expect(typed.read("nav.ts")).toContain("(api: Flow) => !api.isLast && !api.isPending;");
+			expect(typed.read("nav.ts")).not.toContain("TODO(stepperize-v9)");
+
+			// Without them it does not guess: it leaves a comment.
+			plain.at("--no-types");
+			expect(plain.read("nav.ts")).toContain('return stepper.data.get("a");');
+			expect(plain.read("nav.ts")).toContain("TODO(stepperize-v9)");
+		} finally {
+			rmSync(typed.root, { recursive: true, force: true });
+			rmSync(plain.root, { recursive: true, force: true });
+		}
+	});
+
+	it("type-checks what it migrated with --check, and reports everything as JSON with --json", () => {
+		const { root, at, read } = project({ "flow.ts": FLOW, "nav.ts": NAV });
+		try {
+			const report = JSON.parse(at("--dry", "--check", "--json"));
+			expect(report).toMatchObject({ dry: true, types: "tsconfig.json", scanned: 2, errors: [] });
+			expect(report.changed.map((change: { file: string }) => change.file).sort()).toEqual([
+				join("src", "flow.ts"),
+				join("src", "nav.ts"),
+			]);
+			expect(report.todos).toEqual([
+				{
+					file: join("src", "flow.ts"),
+					line: 5,
+					message: expect.stringContaining("`definition.parseStep()` was removed"),
+				},
+			]);
+			// The one call it could not rewrite is the one error left.
+			expect(report.diagnostics).toEqual([
+				expect.objectContaining({
+					file: join("src", "flow.ts"),
+					line: 6,
+					message: expect.stringContaining("parseStep"),
+				}),
+			]);
+			// `--dry` wrote nothing.
+			expect(read("nav.ts")).toBe(NAV);
+
+			const text = at("--check");
+			expect(text).toContain("Type check: 1 error in the migrated files:");
+			expect(text).toMatch(/flow\.ts:6:\d+ {2}Property 'parseStep' does not exist/);
 		} finally {
 			rmSync(root, { recursive: true, force: true });
 		}

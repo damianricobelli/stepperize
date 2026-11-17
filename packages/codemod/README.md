@@ -9,21 +9,34 @@ npx @stepperize/codemod v9 src
 ```
 
 Pass one or more files or directories. It rewrites `.ts`, `.tsx`, `.js` and
-`.jsx` files and skips `node_modules`, `dist` and other build output. Add
-`--dry` to see what would change without writing anything.
+`.jsx` files and skips `node_modules`, `dist` and other build output.
+
+| Option | |
+| --- | --- |
+| `--dry` | Report what would change without writing anything. |
+| `--check` | Type-check the migrated files and list the errors left in them. |
+| `--json` | Print the report as JSON: every TODO with its file and line, the warnings, the style sheets to update and, with `--check`, the type errors. |
+| `--no-types` | Find steppers from the syntax alone, without the project's TypeScript. |
 
 Commit your work first, then:
 
-1. Run the codemod. It prints the files it changed, then what is left for you:
-   each kind of `TODO(stepperize-v9)` with its files, the rewrites worth a
-   look, and the style sheets that still use the v8 attributes.
-2. Install `@stepperize/react@9`.
+1. Install `@stepperize/react@9`, so `--check` compares your code with the new
+   types.
+2. Run the codemod with `--check`. It prints the files it changed, then what
+   is left for you: each kind of `TODO(stepperize-v9)` with its files, the
+   rewrites worth a look, the style sheets that still use the v8 attributes
+   and the type errors in what it migrated.
 3. Run your formatter. Lines the codemod did not have to touch are left as they
    were; a rewritten statement keeps your quotes and indentation, but not
    always its line breaks.
 4. Search for `TODO(stepperize-v9)`. Each comment sits above a statement that
    needs a decision and says what replaces the old API.
-5. Run your type checker. It finds any v8 call the codemod could not follow.
+5. Fix the type errors `--check` listed. They are v8 calls the codemod could
+   not rewrite.
+
+A coding agent can do steps 3 to 5 for you: the
+[agent prompt](https://stepperize.com/docs/v9/react/migration-agent) has the
+rules for every comment the codemod leaves.
 
 Run it once: a second run changes nothing, and the comments are not repeated.
 
@@ -49,6 +62,8 @@ Run it once: a second run changes nothing, and the comments are not repeated.
 | `<Stepper.List><Stepper.Items>{fn}</Stepper.Items></Stepper.List>` | `<Stepper.List>{fn}</Stepper.List>` |
 | `<Stepper.Actions>`, `<Stepper.Separator>` | `<div>`, `<hr>` |
 | `beforeStepChange` | `guard` |
+| A guard that only returned `(await validate()).success` | Removed: `next()` validates |
+| `stepper.status(id) === "active"` | `stepper.state(id) === "current"` |
 | `defaultStep`, `defaultData`, `defaultCompleted` | `snapshot: { step, data, complete }` |
 | `data-[status=active]`, `[data-status="active"]` | `data-[state=current]`, `[data-state="current"]` |
 | `data-[status=upcoming]` | `data-[state=pending]` |
@@ -59,10 +74,11 @@ and as props of `Stepper.Root` and `Provider`.
 
 ### Left as a `TODO(stepperize-v9)` comment
 
-- `status(id)`, `validate()`, `setComplete()`, `data.clear()` and `data.reset()`.
+- `status(id)` compared with `"previous"` or `"upcoming"`, or used as a value.
+- `validate()`, `setComplete()`, `data.clear()` and `data.reset()`.
 - Arguments that no longer exist: `goTo(id, options)`, `prev(payload)`, `reset(options)`.
 - Controlled state: `data`, `onDataChange`, `completed`, `onCompletedChange`, `onStepChange` and `onInvalidStep`.
-- In the guard: `validate()`, `fromIndex`, `toIndex`, `statuses`, and the `"goto"` and `"reset"` directions.
+- In a guard that does more than validate: `validate()`, `fromIndex`, `toIndex`, `statuses`, and the `"goto"` and `"reset"` directions.
 - `result.from` on the result of a move.
 - `definition.get()`, `at()`, `parseStep()` and `validate()`.
 - The `@stepperize/react/primitives` entry.
@@ -84,12 +100,20 @@ The codemod only rewrites a value it can tell is a stepper:
 - what your own hooks return, when the hook is in the same file: the stepper
   itself, or an object that carries it (`return { stepper, invites }`).
 
-It does not follow a stepper across files, through context of your own or
-through untyped props. Where it finds the unmistakable v8 names on such a value
-(`.data.get()`, `.data.set()`, `.data.all()`, `.data.update()`, `.canPrev`,
-`.canNext`, `.isComplete()`, `.setComplete()`), it leaves a
-`TODO(stepperize-v9)` instead of guessing. Typing the prop as `Stepper` and
-running the codemod again rewrites it.
+### With your types
+
+When the project has a `tsconfig.json` and TypeScript installed, the codemod
+also asks the type checker which values are steppers. That follows a stepper
+through props, your own context, hooks in other files and anything else that
+is typed, whatever its name. It prints which config it used.
+
+It needs the TypeScript compiler API (`typescript` 5 or 6). Without it, with
+`--no-types`, or in a JavaScript project, the codemod works from the syntax
+alone and does not follow a stepper across files or through untyped props.
+Either way, where it finds the unmistakable v8 names on a value it could not
+follow (`.data.get()`, `.data.set()`, `.data.all()`, `.data.update()`,
+`.canPrev`, `.canNext`, `.isComplete()`, `.setComplete()`), it leaves a
+`TODO(stepperize-v9)` instead of guessing.
 
 ### Styles
 
