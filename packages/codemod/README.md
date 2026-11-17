@@ -11,6 +11,9 @@ npx @stepperize/codemod v9 src
 Pass one or more files or directories. It rewrites `.ts`, `.tsx`, `.js` and
 `.jsx` files and skips `node_modules`, `dist` and other build output.
 
+It needs Node 22.18 or later (or 24.11 or later). Only the codemod does: your
+project can target any Node version.
+
 | Option | |
 | --- | --- |
 | `--dry` | Report what would change without writing anything. |

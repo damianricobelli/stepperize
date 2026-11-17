@@ -6,6 +6,6 @@ export default defineConfig((options) => ({
 	dts: { entry: "src/index.ts" },
 	sourcemap: false,
 	clean: !options.watch,
-	target: "node18",
+	target: "node22",
 	tsconfig: "tsconfig.json",
 }));
