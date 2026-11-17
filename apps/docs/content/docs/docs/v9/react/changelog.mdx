@@ -1,0 +1,108 @@
+---
+title: Changelog
+description: What changed in each release of Stepperize v9.
+---
+
+Release notes for Stepperize v9. Earlier releases are in the
+[v8 changelog](/docs/v8/changelog).
+
+## v9.0.0
+
+A smaller API on a core that does not depend on a framework. Read
+[Migrating from v8](/docs/v9/react/migration) before upgrading; a codemod
+rewrites most of it.
+
+```bash
+npm install @stepperize/react@^9
+npx @stepperize/codemod v9 src --check
+```
+
+### Breaking changes
+
+- **`next()` validates.** `next(data)` saves the data on the current step,
+  checks it against the step's schema, completes the step and moves on. It
+  replaces `next({ data, complete: true })` and the guard you wrote to call
+  `validate()`. See [Moves](/docs/v9/react/concepts/moves).
+- **`next()` on the last step finishes the flow.** It calls `onFinish` and
+  resolves with `to: null`, where v8 returned `boundary`.
+- **`beforeStepChange` is `guard`.** Its context is
+  `{ from, to, direction, data, signal }`. It runs after validation, and no
+  longer runs for `reset()`.
+- **One state per step.** `state(id)` returns `pending`, `current` or
+  `complete`, and replaces `status()`, `isComplete()` and `setComplete()`.
+  `data-status` and `data-complete` are now `data-state`. See
+  [Step state](/docs/v9/react/concepts/step-state).
+- **Completion follows the data.** Editing a complete step makes it pending
+  again; in a `linear` flow, so are the steps completed after it.
+- **`linear` allows the current step and the completed ones.** The only way
+  forward is `next()`.
+- **Data is a plain object.** Read `stepper.data.shipping` and write with
+  `stepper.setData(id, value)`. The `data.get`, `data.set`, `data.update`,
+  `data.all`, `data.clear` and `data.reset` methods are gone.
+- **Snapshots replace controlled props.** `snapshot`, `onChange`,
+  `snapshot()` and `restore()` replace `data`, `completed`, their defaults and
+  their callbacks. See [Saving and resuming](/docs/v9/react/guides/persistence).
+- **`step` behaves like `goTo`.** `linear` and the guard apply to it, so a deep
+  link cannot skip validation. `onStepChange` is gone: use `onChange`. See
+  [The step in the URL](/docs/v9/react/guides/url).
+- **`prev()`, `goTo()` and `reset()` take no options.** `prev()` returns to
+  the step the user came from. `bypassPolicy` is replaced by declared
+  branches.
+- **Removed from the stepper:** `id`, `count`, `completed`, `canPrev`,
+  `canNext` and `is`. Use `current`, `index`, `steps`, `isFirst`, `isLast` and
+  `isPending`.
+- **Removed from the definition:** `get`, `at`, `parseStep` and `validate`.
+- **Primitives.** `Stepper.List` takes a function child and replaces
+  `Stepper.Items`. `Stepper.Root` calls its function child with the stepper
+  itself. `Actions` and `Separator` are gone, `Title` and `Description` render
+  a `span`, and the `@stepperize/react/primitives` entry is removed.
+- **`@stepperize/core` exports `createStepper`.** Its v8 utilities are gone.
+
+### Added
+
+- **Declarative branching.** A `next` map says where each step leads, typed
+  from the step's schema. A `null` entry ends the flow there, so a flow can
+  have more than one ending. See [Branching](/docs/v9/react/guides/branching).
+- **`issues(id)`.** The issues of the last failed check, gone once the step's
+  data changes. See [Validation](/docs/v9/react/guides/validation).
+- **`validate(id?)`.** Checks a step without moving.
+- **`output`.** What each complete step's schema produced, with transforms and
+  defaults applied, next to `data` as it was typed. `onFinish(output, data)`
+  receives both.
+- **`isFinished`.** The flow finishes once: a second `next()` is refused with
+  `finished`. Return a promise from `onFinish` and the flow stays pending
+  until it settles.
+- **The flow without React.** `definition.create()` and `createStepper` run
+  the same state machine in tests, servers and agents. See
+  [Core](/docs/v9/core).
+- **Selectors can return objects.** `useStepperContext((s) => ({ ... }))` no
+  longer needs an equality function.
+- **Automatic ARIA pattern.** A `linear` flow renders an ordered list of steps
+  with `aria-current="step"`; a free flow renders tabs. See
+  [Accessibility](/docs/v9/react/guides/accessibility).
+- **`Stepper.useItem().pending`**, and `data-pending` and `data-finished` on
+  `Stepper.Root`.
+- **`"use client"`** on the published files, for frameworks with Server
+  Components.
+
+### Changed
+
+- **Smaller.** 5.2 kB with the primitives (was 5.4) and 2.6 kB for the hooks
+  only (was 3.6), minified and gzipped.
+- **`isLast` knows about branches.** It is `true` when `next()` would finish
+  the flow.
+
+### Tooling
+
+- **`@stepperize/codemod`.** `npx @stepperize/codemod v9 <paths>` rewrites
+  what has a direct equivalent, renames `data-status` selectors, and leaves a
+  `TODO(stepperize-v9)` comment where a decision is yours. `--check`
+  type-checks what it migrated and `--json` prints the report for scripts.
+- **A prompt for coding agents** that runs the codemod and resolves what it
+  leaves. See [Migrating with an AI agent](/docs/v9/react/migration-agent).
+
+### Documentation
+
+- The documentation is split by package: [React](/docs/v9/react) and
+  [Core](/docs/v9/core).
+- The Blocks and Stepper Studio generate v9 code.
