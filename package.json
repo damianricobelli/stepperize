@@ -14,6 +14,7 @@
 		"format-and-lint:fix": "biome check . --write",
 		"ci:version": "changeset version",
 		"ci:release": "changeset publish",
+		"release:codemod": "pnpm --filter @stepperize/codemod test && cd packages/codemod && npm publish",
 		"typecheck": "turbo typecheck",
 		"test": "turbo test",
 		"check": "pnpm typecheck && pnpm test && pnpm build",

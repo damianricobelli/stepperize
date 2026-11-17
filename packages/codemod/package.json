@@ -10,7 +10,7 @@
 	"license": "MIT",
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/damianricobelli/stepperize.git",
+		"url": "git+https://github.com/damianricobelli/stepperize.git",
 		"directory": "packages/codemod"
 	},
 	"homepage": "https://stepperize.com",
@@ -19,7 +19,7 @@
 	],
 	"type": "module",
 	"bin": {
-		"stepperize-codemod": "./dist/cli.js"
+		"stepperize-codemod": "dist/cli.js"
 	},
 	"main": "./dist/index.js",
 	"module": "./dist/index.js",
