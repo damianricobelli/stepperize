@@ -1,7 +1,7 @@
 {
 	"name": "@stepperize/codemod",
 	"version": "0.1.0",
-	"private": false,
+	"private": true,
 	"publishConfig": {
 		"access": "public"
 	},

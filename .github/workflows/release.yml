@@ -45,3 +45,6 @@ jobs:
           publish: pnpm ci:release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Trusted publishing cannot create a package that is not on npm yet. Set this secret for the
+          # first release of a new package; without it the action publishes with OIDC, as before.
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
