@@ -1,0 +1,62 @@
+---
+title: defineStepper
+description: The definition, the controller and everything they give you.
+---
+
+```ts
+import { defineStepper } from "@stepperize/lit";
+
+const checkout = defineStepper(steps, options?);
+```
+
+| Argument | Description |
+| --- | --- |
+| `steps` | An array of steps. Each needs a unique `id`; `schema` types and validates its data; every other field is yours. |
+| `options` | Defaults for every flow created from this definition. See [Options](/docs/v9/react/api/options). |
+
+It returns:
+
+| | |
+| --- | --- |
+| `steps` | The array you passed. |
+| `controller(host, source?)` | A `ReactiveController` for a host element. |
+| `create(options?)` | A flow without Lit. See [Core](/docs/v9/core). |
+
+## controller
+
+```ts
+class CheckoutSteps extends LitElement {
+  stepper = checkout.controller(this);
+  stepper = checkout.controller(this, { linear: true, onFinish });
+  stepper = checkout.controller(this, () => ({ step: this.step }));
+  stepper = checkout.controller(this, flow);
+}
+```
+
+| `source` | The controller... |
+| --- | --- |
+| Nothing, or options | Creates a flow and owns it. |
+| A function returning options | The same, and reads the options again after every update of the host, so callbacks and `step` see the host's latest properties. |
+| A flow | Follows that flow without owning it. See [Shared state](/docs/v9/lit/guides/shared-state). |
+
+It updates the host (`requestUpdate()`) on every change of the flow while the
+host is connected, stops when the host is disconnected and resumes, catching up
+with anything it missed, when the host is connected again.
+
+| Member | Description |
+| --- | --- |
+| `value` | The current [stepper](/docs/v9/react/api/stepper): an immutable view plus the actions. A new object after every change. |
+| `flow` | The flow itself, to hand to another controller or to code outside the element. |
+| `steps` | The steps of the definition. |
+| `root()`, `list()`, `item(id)`... | The [primitives](/docs/v9/lit/api/primitives). Not in `/headless`. |
+
+The flow is created the first time it is needed, which is no later than the
+host's first update. `snapshot` is read at that moment, so it can come from a
+property set on the element after it was constructed.
+
+## Types
+
+Everything `@stepperize/core` exports as a type is re-exported:
+`Stepper<S>`, `Flow<S>`, `Options<S>`, `Snapshot<S>`, `Result<S>`, `Id<S>` and
+the rest. `StepperController` and `StepperPrimitives` are the controller
+classes, for typing a field.

@@ -49,6 +49,10 @@ onto an element.
 In Solid it means an `as` component did not spread its props, `ref` included,
 onto an element.
 
+In Lit it is an error, not a warning: a primitive was used outside an opening
+tag. They are element directives, written next to the attributes, as in
+`<ol ${stepper.list()}>`.
+
 ## SZ002
 
 **Warning.** A `Stepper.Trigger` has no accessible name. `Stepper.Indicator` is

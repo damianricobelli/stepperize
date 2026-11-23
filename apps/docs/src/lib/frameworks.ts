@@ -42,6 +42,12 @@ export const FRAMEWORKS = [
 		description: "A reactive stepper and accessible primitives",
 	},
 	{
+		id: "lit",
+		title: "Lit",
+		package: "@stepperize/lit",
+		description: "A reactive controller and accessible directives",
+	},
+	{
 		id: "core",
 		title: "Core",
 		package: "@stepperize/core",

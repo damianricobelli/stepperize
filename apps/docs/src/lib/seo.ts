@@ -683,6 +683,57 @@ export const DOC_KEYWORDS: Record<string, readonly string[]> = {
 		"Stepper as prop",
 		"polymorphic stepper Solid",
 	],
+	"current/lit": [
+		"Lit stepper",
+		"web component wizard",
+		"multi-step flow Lit",
+		"headless stepper web components",
+	],
+	"current/lit/installation": [
+		"install Lit stepper",
+		"@stepperize/lit",
+		"Lit 3 wizard package",
+	],
+	"current/lit/first-stepper": [
+		"Lit stepper tutorial",
+		"LitElement multi-step example",
+		"reactive controller stepper",
+	],
+	"current/lit/guides/forms": [
+		"Lit multi-step form",
+		"web component form wizard",
+		"Lit form validation",
+	],
+	"current/lit/guides/shared-state": [
+		"Lit shared state stepper",
+		"reactive controller shared flow",
+		"Lit context stepper",
+	],
+	"current/lit/guides/url": [
+		"Lit router stepper",
+		"step in URL web component",
+		"wizard route sync",
+	],
+	"current/lit/guides/ssr": [
+		"Lit SSR stepper",
+		"@lit-labs/ssr wizard",
+		"declarative shadow DOM stepper",
+	],
+	"current/lit/guides/primitives": [
+		"Lit stepper directives",
+		"accessible stepper web component",
+		"shadow DOM tabs ARIA",
+	],
+	"current/lit/api/define-stepper": [
+		"defineStepper Lit",
+		"StepperController",
+		"Stepperize Lit API",
+	],
+	"current/lit/api/primitives": [
+		"Lit element directives stepper",
+		"stepper directive options",
+		"Lit tablist directive",
+	],
 	"current/core": [
 		"@stepperize/core",
 		"framework-agnostic stepper",
