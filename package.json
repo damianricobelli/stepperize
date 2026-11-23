@@ -21,7 +21,9 @@
 		"build:packages": "turbo build --filter='./packages/*' --filter=!@stepperize/codemod",
 		"benchmark": "node scripts/benchmarks/compare.mjs",
 		"benchmark:size": "pnpm build:packages && node scripts/check-bundle.mjs",
-		"test:install": "pnpm --filter @stepperize/react exec playwright install chromium --only-shell"
+		"test:install": "pnpm --filter @stepperize/react exec playwright install chromium --only-shell",
+		"test:peer-floor": "node scripts/test-peer-floor.mjs",
+		"test:consumer-types": "node scripts/test-consumer-types.mjs"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "2.6.7",

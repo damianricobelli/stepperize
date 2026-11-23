@@ -8,7 +8,7 @@ Type-safe step-by-step workflows for Svelte 5.
 npm install @stepperize/svelte
 ```
 
-Requires Svelte 5.29 or newer. The documentation is at
+Requires Svelte 5.33.5 or newer. The documentation is at
 [stepperize.com](https://stepperize.com/docs/v9/svelte).
 
 ## Quick start

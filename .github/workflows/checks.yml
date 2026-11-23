@@ -43,6 +43,8 @@ jobs:
       - run: pnpm --filter @stepperize/${{ matrix.binding }} build
       - run: pnpm --filter @stepperize/${{ matrix.binding }} typecheck
       - run: pnpm --filter @stepperize/${{ matrix.binding }} test
+      - name: Build, typecheck and test against the lowest version of each peer range
+        run: node scripts/test-peer-floor.mjs ${{ matrix.binding }}
   docs:
     runs-on: ubuntu-latest
     steps:
@@ -56,6 +58,8 @@ jobs:
       - run: pnpm --filter @stepperize/react exec playwright install --with-deps --only-shell chromium
       - run: pnpm build:packages
       - run: node scripts/check-bundle.mjs
+      - name: Typecheck the published declarations on the oldest TypeScript each package claims
+        run: node scripts/test-consumer-types.mjs
       - run: pnpm --filter @stepperize/codemod typecheck
       - run: pnpm --filter @stepperize/codemod test
       - run: pnpm lint

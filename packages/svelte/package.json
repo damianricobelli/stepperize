@@ -58,7 +58,7 @@
 		"esm-env": "^1.2.2"
 	},
 	"peerDependencies": {
-		"svelte": "^5.29.0"
+		"svelte": "^5.33.5"
 	},
 	"devDependencies": {
 		"@sveltejs/package": "^3.0.3",

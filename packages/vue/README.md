@@ -8,7 +8,7 @@ Type-safe step-by-step workflows for Vue.
 npm install @stepperize/vue
 ```
 
-Requires Vue 3.5 or newer. The documentation is at
+Requires Vue 3.5.4 or newer. The documentation is at
 [stepperize.com](https://stepperize.com/docs/v9/vue).
 
 ## Quick start
