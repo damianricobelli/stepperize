@@ -26,7 +26,8 @@ export const signup = defineStepper([
 
 `next(data)` saves the data for the current step, validates it and only moves
 when it is valid. It resolves with what happened, and `stepper.issues()` holds
-the reasons until the data changes.
+the reasons until the step's data in the flow changes, through the next
+`next(data)` or a `setData`. Typing in a field does not change it by itself.
 
 ```tsx title="Signup.tsx"
 import { For, Match, Switch } from "solid-js";
@@ -49,7 +50,7 @@ export function Signup() {
   }
 
   return (
-    <form onSubmit={submit}>
+    <form novalidate onSubmit={submit}>
       <Switch>
         <Match when={stepper.current.id === "account"}>
           <label>
@@ -71,7 +72,7 @@ export function Signup() {
           </label>
         </Match>
         <Match when={stepper.current.id === "done"}>
-          <p>All set, {stepper.output.profile?.name}.</p>
+          <p>Create the account for {stepper.output.profile?.name}?</p>
         </Match>
       </Switch>
 
@@ -88,8 +89,10 @@ export function Signup() {
 }
 ```
 
-- Pass plain data: `{ ...account }` (or `unwrap(account)`) copies the store, so
-  what the flow stores is a plain object.
+- Pass plain data: `{ ...account }` copies the store, so what the flow stores
+  is a plain object of its own. `unwrap(account)` is not a copy: it is the
+  store's own object, and later edits would change the flow's data behind its
+  back. For a nested store, use `structuredClone(unwrap(account))`.
 - `stepper.data` is what each step holds as it was typed; `stepper.output` is
   what each schema produced, with transforms and defaults applied.
 - `onFinish(output, data)` runs once, when `next()` completes the last step.
@@ -98,14 +101,31 @@ export function Signup() {
 ## Keeping drafts
 
 To keep what was typed when the user goes back, or to persist it, write the
-draft as it changes and read it back when the step mounts:
+draft as it changes and read it back when the step mounts. A step in its own
+component reads the flow with `useStepperContext()`, which needs a shared
+flow: wrap the steps in `signup.Provider` (see
+[Shared state](/docs/v9/solid/guides/shared-state)).
 
 ```tsx title="AccountStep.tsx"
+import { createEffect, on } from "solid-js";
+import { createStore } from "solid-js/store";
+
 const stepper = signup.useStepperContext();
 const [values, setValues] = createStore({ email: "", ...stepper.data.account });
 
-createEffect(() => stepper.setData("account", { ...values }));
+createEffect(
+  on(
+    () => ({ ...values }),
+    (draft) => stepper.setData("account", draft),
+    { defer: true },
+  ),
+);
 ```
+
+`on` makes the effect depend on the values only, and `defer` skips the run on
+mount. A plain `createEffect(() => stepper.setData(...))` reads the flow it
+changes, so it would run again on every change, and its first run would make a
+complete step incomplete without the user touching it.
 
 `setData` does not validate. A step that was complete stops being complete when
 its data changes.

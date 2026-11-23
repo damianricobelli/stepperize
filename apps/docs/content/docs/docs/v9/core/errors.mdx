@@ -7,6 +7,12 @@ Diagnostics carry a stable code and a link to this page. Warnings appear only
 in development and are removed from production builds; errors are thrown in
 both.
 
+The examples below use the React names (`Stepper.Trigger`, `Stepper.Item`,
+`useStepperContext()`). The other bindings emit the same codes for the same
+mistakes with their own names: a trigger directive in Angular or Lit, a
+`stepper-trigger` part in HTML, `injectStepperContext()` or
+`useStepperContext()` for a missing provider.
+
 ## SZ001
 
 **Warning.** A primitive received a `render` function that did not put the
@@ -95,16 +101,22 @@ item gets its step from the `Stepper.List` function, or from its `step` prop:
 <Stepper.Item step="payment">…</Stepper.Item>
 ```
 
+In HTML bound with `bindStepper`: a part that needs a step has no `data-step`,
+on itself or on its `stepper-item`.
+
 ## SZ102
 
 **Error.** A step id does not exist in the definition. It is thrown by `goTo`,
 `setData`, a `next` branch that returns an unknown id, and `Stepper.Item`.
 
-`goTo`, `setData` and `Stepper.Item` throw it directly. A `next` branch that
+`goTo`, `setData` and `Stepper.Item` throw it directly, and so does
+`bindStepper` for a `data-step` that is not in the flow. A `next` branch that
 returns an unknown id makes the `next()` promise reject with it.
 
-TypeScript catches this at compile time; it usually means a value was cast, or
-came from outside, such as a URL. For outside values use the
+Where ids are typed, TypeScript catches this at compile time; it usually means
+a value was cast, or came from outside, such as a URL. Ids written in an HTML
+attribute (`data-step`) or an Angular directive input are plain strings and
+are only checked when the page runs. For outside values use the
 [`step` option](/docs/v9/react/guides/url): it ignores unknown ids and calls
 `onInvalidStep` so you can correct the source.
 

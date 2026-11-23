@@ -249,11 +249,6 @@ export class StepperPrimitives<S extends readonly Step[]> extends StepperControl
 		stepChanged(this.#root, this.#region, this.flow.get().current, this.#ui, this.#inside);
 	}
 
-	override hostConnected() {
-		super.hostConnected();
-		// The flow may have moved while the host was away.
-		this.host.requestUpdate();
-	}
 }
 
 class PartDirective extends AsyncDirective {

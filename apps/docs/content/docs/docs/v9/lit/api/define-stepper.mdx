@@ -50,9 +50,11 @@ with anything it missed, when the host is connected again.
 | `steps` | The steps of the definition. |
 | `root()`, `list()`, `item(id)`... | The [primitives](/docs/v9/lit/api/primitives). Not in `/headless`. |
 
-The flow is created the first time it is needed, which is no later than the
-host's first update. `snapshot` is read at that moment, so it can come from a
-property set on the element after it was constructed.
+The flow is created the first time it is needed, which is no later than when
+the host is connected. `snapshot` is read at that moment, so it can come from
+a property set on the element before it connects: a Lit template binding
+(`.options=${…}`) is, and so is a property assigned before the element is
+appended. One assigned after that is ignored.
 
 ## Types
 

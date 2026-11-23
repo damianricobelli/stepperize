@@ -10,16 +10,7 @@ const demo = defineStepper([
 const TAG = "stepperize-lit-demo";
 
 class LitDemo extends LitElement {
-	static properties = { finished: { state: true } };
-	declare finished: boolean;
-	stepper = demo.controller(this, {
-		onFinish: () => {
-			this.finished = true;
-		},
-		onChange: () => {
-			this.finished = false;
-		},
-	});
+	stepper = demo.controller(this);
 
 	// Light DOM, so the page's utility classes style it like the other demos.
 	protected createRenderRoot() {
@@ -57,7 +48,7 @@ class LitDemo extends LitElement {
 				<div ${s.content("account")} class=${panel}>Create your account.</div>
 				<div ${s.content("plan")} class=${panel}>Pick the plan that fits.</div>
 				<div ${s.content("done")} class=${panel}>
-					${this.finished ? "Finished. Thanks!" : "Press Finish to complete the flow."}
+					${s.value.isFinished ? "Finished. Thanks!" : "Press Finish to complete the flow."}
 				</div>
 				<div class="flex items-center gap-2">
 					<button ${s.prev()} class="rounded-md border px-3 py-1 disabled:opacity-40">Back</button>

@@ -22,22 +22,32 @@ class CheckoutPage extends LitElement {
     step: this.step,
     // The flow moves: push the new step.
     onChange: (snapshot) => {
-      if (snapshot.step !== this.step) history.pushState(null, "", `/checkout/${snapshot.step}`);
+      if (snapshot.step !== this.step) {
+        history.pushState(null, "", `/checkout/${snapshot.step}`);
+        this.step = snapshot.step;
+      }
     },
     // The URL asks for a step the flow cannot be on: correct it without a history entry.
-    onInvalidStep: (current) => history.replaceState(null, "", `/checkout/${current}`),
+    onInvalidStep: (current) => {
+      history.replaceState(null, "", `/checkout/${current}`);
+      this.step = current;
+    },
   }));
 }
 ```
 
-Replace `history.pushState` with your router's navigation call
-(`Router.go`, `router.navigate`...). With no router, read the step from
-`location` and update the property on `popstate`:
+`history.pushState` does not notify anyone, so both callbacks also update the
+property: without that, the element would keep comparing against the old URL.
+A router that sets `step` after it navigates does it for you: replace the two
+`history` calls with its navigation call (`Router.go`, `router.navigate`...)
+and drop the assignments. With no router, read the step from `location`
+before the element connects, and again on `popstate`:
 
 ```ts
 connectedCallback() {
-  super.connectedCallback();
+  // Before `super`: the flow is created when the element connects.
   this.step = location.pathname.split("/").at(-1) ?? "";
+  super.connectedCallback();
   addEventListener("popstate", this.#read);
 }
 
@@ -51,9 +61,14 @@ disconnectedCallback() {
 };
 ```
 
-- Following the URL is a `goTo`: `linear` and the `guard` still apply, so a
-  deep link cannot skip validation.
+- Following the URL is a `goTo`. With `linear`, a deep link cannot open a
+  step before the ones in front of it are complete. Without `linear`, any step
+  can be opened, as with `goTo`.
+- The `guard` runs when the URL changes after the element is connected. It
+  does not run for the step the page first loads on.
 - `onInvalidStep` is called for unknown ids, for steps `linear` does not allow
-  yet and for moves the guard refused.
-- The flow is created on the element's first update, so a `step` or `snapshot`
-  that arrives as a property is used from the start.
+  yet and for URL changes the guard refused.
+- The flow is created when the element is connected, so a `step` or `snapshot`
+  set before that is used from the start: a Lit template binding
+  (`.step=${…}`) is, and so is a property assigned before the element is
+  appended.

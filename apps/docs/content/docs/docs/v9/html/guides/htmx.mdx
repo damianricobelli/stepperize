@@ -37,7 +37,7 @@ step was accepted.
 import { createStepper } from "@stepperize/core";
 import { bindStepper } from "@stepperize/core/dom";
 
-const root = document.getElementById("signup");
+const root = document.getElementById("signup")!;
 const flow = createStepper([{ id: "account", title: "Account" }, { id: "plan", title: "Plan" }], {
   linear: true,
 });

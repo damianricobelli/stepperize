@@ -26,7 +26,8 @@ import { onboarding } from "~/onboarding";
 
 const getSnapshot = query(async () => {
   "use server";
-  return readOnboardingSnapshot();
+  // `null` means nothing was saved; `undefined` means it has not loaded yet.
+  return (await readOnboardingSnapshot()) ?? null;
 }, "onboarding");
 
 export default function Onboarding() {

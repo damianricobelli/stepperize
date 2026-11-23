@@ -129,7 +129,7 @@ See [The step in the URL](/docs/v9/react/guides/url).
 
 Called with the new snapshot after anything a saved copy should know about:
 
-- an accepted `next`, `prev` or `goTo`,
+- an accepted `next`, `prev` or `goTo` to another step,
 - a `next()` rejected by the schema, because the data that was passed is kept,
 - `setData` with a new value, `reset` and `restore`.
 
@@ -161,8 +161,8 @@ When it resolves, `isFinished` becomes `true`. When it rejects, `next()` rejects
 with the same error and the flow is not finished, so the person can try again.
 
 The flow stays on that step. Once finished, `next()` is refused with the reason
-`finished`, so a second press does not submit twice. Any move, a `setData` with
-a new value, `reset()` or `restore()` reopens the flow. See
+`finished`, so a second press does not submit twice. Any move to another step,
+a `setData` with a new value, `reset()` or `restore()` reopens the flow. See
 [Finishing the flow](/docs/v9/react/guides/navigation#finish-the-flow).
 
 Steps that were restored as complete from a snapshot have no output yet, so

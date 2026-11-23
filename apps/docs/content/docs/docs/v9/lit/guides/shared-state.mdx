@@ -70,14 +70,17 @@ class CheckoutHeader extends LitElement {
   stepper?: ReturnType<typeof checkout.controller>;
 
   willUpdate() {
-    this.stepper ??= checkout.controller(this, this.flow);
+    // Only once the flow has arrived: without one, `controller` would create its own.
+    if (this.flow) this.stepper ??= checkout.controller(this, this.flow);
   }
 }
 ```
 
+`Flow` is a type exported by `@stepperize/lit`.
+
 [`@lit/context`](https://lit.dev/docs/data/context/) works too: provide
 `this.stepper.flow` and pass what `ContextConsumer` receives to
-`checkout.controller`. Stepperize does not depend on it.
+`checkout.controller`, once it has a value. Stepperize does not depend on it.
 
 ## Reading only what you need
 

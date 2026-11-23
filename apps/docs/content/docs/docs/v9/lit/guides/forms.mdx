@@ -24,9 +24,11 @@ export const signup = defineStepper([
 
 ## Validate on Continue
 
-A `<form>` per step and `FormData` are enough. `next(data)` saves the data for
+A `<form>` and `FormData` are enough. `novalidate` leaves the checking to the
+schema, so its messages are the ones shown. `next(data)` saves the data for
 the current step, validates it and only moves when it is valid;
-`stepper.issues()` holds the reasons until the data changes.
+`stepper.issues()` holds the reasons until the step's data in the flow changes,
+through the next `next(data)` or a `setData`.
 
 ```ts title="signup-steps.ts"
 import { html, LitElement } from "lit";
@@ -47,7 +49,7 @@ export class SignupSteps extends LitElement {
     const stepper = this.stepper.value;
 
     return html`
-      <form @submit=${this.#submit}>
+      <form novalidate @submit=${this.#submit}>
         ${stepper.match({
           account: (_step, data) => html`
             <label>Email <input name="email" type="email" .value=${data?.email ?? ""} /></label>
@@ -55,7 +57,7 @@ export class SignupSteps extends LitElement {
           profile: (_step, data) => html`
             <label>Name <input name="name" .value=${data?.name ?? ""} /></label>
           `,
-          done: () => html`<p>All set, ${stepper.output.profile?.name}.</p>`,
+          done: () => html`<p>Create the account for ${stepper.output.profile?.name}?</p>`,
         })}
 
         ${stepper.issues()?.map((issue) => html`<p role="alert">${issue.message}</p>`)}

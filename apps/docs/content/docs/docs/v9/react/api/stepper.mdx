@@ -90,7 +90,7 @@ type Result =
 | `policy` | `linear` does not allow jumping to that step. |
 | `pending` | Another move is still running. |
 | `boundary` | `prev()` was called with nowhere to go back to. |
-| `finished` | `next()` was called after the flow finished. Any move, a `setData` with a new value, `reset()` or `restore()` reopens it. |
+| `finished` | `next()` was called after the flow finished. Any move to another step, a `setData` with a new value, `reset()` or `restore()` reopens it. |
 | `cancelled` | `reset()`, `restore()` or unmounting interrupted the move. |
 
 ```tsx

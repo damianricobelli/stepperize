@@ -251,6 +251,11 @@ export function createStepper<const S extends readonly Step[]>(steps: S, options
 				set({ ...state, pending: false, finished: true }, false);
 			}
 			return { accepted: true, to: to === null ? null : steps[to].id, data };
+		} catch (error) {
+			// A guard that passes `signal` to `fetch` rejects with `AbortError` when the move is
+			// cancelled. That is the cancellation, not a failure of the caller's.
+			if (self.cancelled) return { accepted: false, reason: "cancelled" };
+			throw error;
 		} finally {
 			if (running === self) {
 				running = undefined;

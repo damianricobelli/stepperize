@@ -15,9 +15,10 @@ with nothing to configure.
 - **Stable ids.** Ids are built from `APP_ID` and a per-application counter, so
   `aria-controls` and `aria-labelledby` match between the server and the
   client.
-- **No callbacks on the server.** `onChange`, `onFinish`, `onInvalidStep` and
-  the `guard` only run in the browser: options are applied in an
-  after-render effect.
+- **No callbacks on the server.** Nothing moves the flow while it renders on
+  the server, so `onChange`, `onFinish`, `onInvalidStep` and the `guard` do
+  not run there. Following the `step` option happens in an after-render
+  effect, in the browser.
 - **Hydration.** With `provideClientHydration()`, Angular adopts the server
   elements unchanged. The only node added in the browser is the visually
   hidden live region for announcements, appended after hydration.
@@ -25,7 +26,10 @@ with nothing to configure.
 ## Resuming from a cookie or the database
 
 Resolve the snapshot before the component renders and bind it to an input. The
-flow reads `snapshot` when it is created, which is after inputs are set:
+flow reads `snapshot` when it is created, which is after inputs are set.
+Resolved data only reaches inputs with `withComponentInputBinding()` in
+`provideRouter`; without it the input stays `undefined` and the flow starts on
+the first step, with no error.
 
 ```ts
 export const routes: Routes = [

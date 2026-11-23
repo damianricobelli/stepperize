@@ -53,7 +53,8 @@ compile.
 <Callout title="Do not destructure the state">
 	`stepper` works like a `reactive()` object or a Pinia store: `stepper.current`
 	is always the latest, but `const { current } = stepper` is a copy that never
-	changes. The actions (`next`, `prev`, `goTo`...) are safe to destructure.
+	changes. The actions (`next`, `prev`, `goTo`...) are safe to destructure. To
+	watch it, watch a getter (`watch(() => stepper.index, ...)`), not the object.
 </Callout>
 
 ## 3. Move

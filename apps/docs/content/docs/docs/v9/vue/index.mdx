@@ -59,7 +59,7 @@ library, owns the fields. See [Forms](/docs/v9/vue/guides/forms).
   (`title`, `icon`, anything) are inferred from the definition, in `<script>`
   and in templates.
 - **Reactive without ceremony.** The stepper is a reactive object: templates,
-  `computed` and `watch` follow it, with no `.value`.
+  `computed` and `watch(() => stepper.index, ...)` follow it, with no `.value`.
 - **Branching as data.** A `next` map decides where each step leads from its
   validated data, and a flow can have more than one ending.
 - **Resumable.** One `snapshot` goes in, one `onChange` comes out. The current

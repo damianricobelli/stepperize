@@ -132,8 +132,11 @@ function MyButton(props: JSX.ButtonHTMLAttributes<HTMLButtonElement>) {
 }
 
 <Stepper.Next as={MyButton}>Continue</Stepper.Next>
-<Stepper.List as="nav">...</Stepper.List>
+<Stepper.List as="ul">...</Stepper.List>
 ```
+
+With `as`, `type="button"` is not added for you: a component that renders a
+`<button>` inside a `<form>` should set it.
 
 ## Handling the move yourself
 

@@ -26,7 +26,10 @@ export const signup = defineStepper([
 
 `next(data)` saves the data for the current step, validates it and only moves
 when it is valid. It resolves with what happened, and `stepper.issues()` holds
-the reasons until the data changes.
+the reasons until the step's data changes, through the next `next(data)` or a
+`setData`. Typing in a `v-model` field does not change it by itself: to clear
+the message as the user types, write the draft as shown in
+[Keeping drafts](#keeping-drafts).
 
 ```vue title="Signup.vue"
 <script setup lang="ts">
@@ -48,7 +51,7 @@ function submit() {
 </script>
 
 <template>
-  <form @submit.prevent="submit">
+  <form novalidate @submit.prevent="submit">
     <label v-if="stepper.current.id === 'account'">
       Email
       <input v-model="account.email" type="email" />
@@ -57,7 +60,7 @@ function submit() {
       Name
       <input v-model="profile.name" />
     </label>
-    <p v-else>All set, {{ stepper.output.profile?.name }}.</p>
+    <p v-else>Create the account for {{ stepper.output.profile?.name }}?</p>
 
     <p v-for="issue in stepper.issues()" :key="issue.message" role="alert">
       {{ issue.message }}
@@ -79,7 +82,11 @@ function submit() {
 ## Keeping drafts
 
 To keep what was typed when the user goes back, or to persist it, write the
-draft as it changes and read it back when the step mounts:
+draft as it changes and read it back when the step mounts. A step in its own
+component reads the flow with `useStepperContext()`, which needs a shared
+flow: wrap the steps in `signup.Provider` (see
+[Shared state](/docs/v9/vue/guides/shared-state)), or pass `stepper` down as a
+prop.
 
 ```vue title="AccountStep.vue"
 <script setup lang="ts">

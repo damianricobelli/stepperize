@@ -218,7 +218,7 @@ you do not need a state of your own to show the confirmation.
 
 The flow stays on its last step afterwards, and another `next()` is refused
 with the reason `finished`: a second press does not submit twice. The flow
-opens again as soon as it changes: any move, a `setData` with a new value,
+opens again as soon as it changes: any move to another step, a `setData` with a new value,
 `reset()` or `restore()`. `Stepper.Root` has `data-finished` meanwhile, and
 `Stepper.Next` is `aria-disabled`.
 

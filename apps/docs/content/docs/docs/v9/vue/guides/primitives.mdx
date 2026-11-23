@@ -26,7 +26,6 @@ const { Stepper } = checkout;
           <Stepper.Trigger>
             <Stepper.Indicator />
             <Stepper.Title />
-            <Stepper.Description />
           </Stepper.Trigger>
         </Stepper.Item>
       </template>
@@ -79,8 +78,9 @@ receives that item:
 </Stepper.Root>
 ```
 
-In a child component, `checkout.useStepperContext()` and `Stepper.useItem()`
-return the same things.
+In a child component, `checkout.useStepperContext()` returns the same stepper,
+and `Stepper.useItem()` returns the same item as a `ComputedRef`: read
+`.value` in `<script>`.
 
 ## Three patterns, chosen for you
 

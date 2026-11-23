@@ -26,7 +26,8 @@ export const signup = defineStepper([
 
 `next(data)` saves the data for the current step, validates it and only moves
 when it is valid. It resolves with what happened, and `stepper.issues()` holds
-the reasons until the data changes.
+the reasons until the step's data in the flow changes, through the next
+`next(data)` or a `setData`. Typing in a field does not change it by itself.
 
 ```svelte title="Signup.svelte"
 <script lang="ts">
@@ -47,16 +48,16 @@ the reasons until the data changes.
   }
 </script>
 
-<form onsubmit={submit}>
+<form novalidate onsubmit={submit}>
   {#if stepper.current.id === "account"}
     <label>Email <input type="email" bind:value={account.email} /></label>
   {:else if stepper.current.id === "profile"}
     <label>Name <input bind:value={profile.name} /></label>
   {:else}
-    <p>All set, {stepper.output.profile?.name}.</p>
+    <p>Create the account for {stepper.output.profile?.name}?</p>
   {/if}
 
-  {#each stepper.issues() ?? [] as issue (issue.message)}
+  {#each stepper.issues() ?? [] as issue}
     <p role="alert">{issue.message}</p>
   {/each}
 
@@ -77,7 +78,10 @@ the reasons until the data changes.
 ## Keeping drafts
 
 To keep what was typed when the user goes back, or to persist it, write the
-draft as it changes and read it back when the step mounts:
+draft as it changes and read it back when the step mounts. A step in its own
+component reads the flow with `useStepperContext()`, which needs a shared
+flow: wrap the steps in `signup.Provider` (see
+[Shared state](/docs/v9/svelte/guides/shared-state)).
 
 ```svelte title="AccountStep.svelte"
 <script lang="ts">
@@ -85,10 +89,22 @@ draft as it changes and read it back when the step mounts:
 
   const stepper = signup.useStepperContext();
   let values = $state({ email: "", ...stepper.data.account });
-
-  $effect(() => stepper.setData("account", $state.snapshot(values)));
 </script>
+
+<label>
+  Email
+  <input
+    type="email"
+    bind:value={values.email}
+    oninput={() => stepper.setData("account", $state.snapshot(values))}
+  />
+</label>
 ```
+
+Write the draft from the input's event, not from an `$effect`: an effect that
+calls `setData` reads the flow it changes, so it runs again on every change,
+and it would also run once on mount and make a complete step incomplete
+without the user touching it.
 
 `setData` does not validate. A step that was complete stops being complete when
 its data changes.

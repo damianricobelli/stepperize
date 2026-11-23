@@ -44,9 +44,10 @@ export class StepperController<S extends readonly Step[]> implements ReactiveCon
 
 	/**
 	 * The flow: the same object tests, servers and other elements can drive.
-	 * Created the first time it is needed, which is no later than the host's
-	 * first update, so `snapshot` and `step` can come from properties set on
-	 * the element after it was constructed.
+	 * Created the first time it is needed, which is no later than when the host
+	 * is connected, so `snapshot` and `step` can come from properties set on
+	 * the element before that: a Lit template binding does, and so does anything
+	 * assigned before the element is appended.
 	 */
 	get flow(): Flow<S> {
 		this.#flow ??= createStepper(this.steps, this.options);
@@ -67,6 +68,8 @@ export class StepperController<S extends readonly Step[]> implements ReactiveCon
 	hostConnected() {
 		// An element can be moved: follow the flow again every time it is connected.
 		this.#unsubscribe ??= this.flow.subscribe(() => this.host.requestUpdate());
+		// The flow may have moved while the host was away.
+		this.host.requestUpdate();
 	}
 
 	hostDisconnected() {

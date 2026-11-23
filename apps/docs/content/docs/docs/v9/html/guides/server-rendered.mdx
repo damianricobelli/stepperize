@@ -34,8 +34,19 @@ for (const root of document.querySelectorAll<HTMLElement>('[data-component="step
 }
 ```
 
-Without a bundler, import both modules from a CDN that serves ES modules, in a
-`<script type="module">`.
+Without a bundler, import both modules in a `<script type="module">` from a
+CDN that prepares packages for the browser, such as [esm.sh](https://esm.sh):
+
+```html
+<script type="module">
+  import { createStepper } from "https://esm.sh/@stepperize/core";
+  import { bindStepper } from "https://esm.sh/@stepperize/core/dom";
+</script>
+```
+
+A CDN that only serves the published files as they are (unpkg, for example)
+does not work: like most libraries, the files read `process.env.NODE_ENV` to
+drop development warnings, and a browser has no `process`.
 
 ## Templates
 
@@ -117,7 +128,9 @@ first avoids a flash before the script runs.
 ```
 
 With `json_script`, read the steps from that element instead of `data-steps`:
-`JSON.parse(document.getElementById("checkout-steps").textContent)`.
+`JSON.parse(document.getElementById("checkout-steps").textContent)`, and bind
+the root by its id, `document.getElementById("checkout")`, instead of the
+`[data-steps]` loop above, which would not find it.
 
 </Tab>
 <Tab value="Astro">

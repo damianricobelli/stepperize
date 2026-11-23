@@ -37,7 +37,7 @@ class CheckoutSteps extends LitElement {
       })}
 
       <button ?disabled=${stepper.isFirst} @click=${() => stepper.prev()}>Back</button>
-      <button @click=${() => stepper.next(this.readForm())}>
+      <button @click=${() => stepper.next()}>
         ${stepper.isLast ? "Place order" : "Continue"}
       </button>
     `;

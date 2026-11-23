@@ -176,7 +176,9 @@ with `trigger`, and pass that step's values to `next`:
 ```tsx
 async function onContinue() {
   const valid = await form.trigger(["name", "email"]);
-  if (valid) await stepper.next(form.getValues());
+  if (!valid) return;
+  const [name, email] = form.getValues(["name", "email"]);
+  await stepper.next({ name, email });
 }
 ```
 

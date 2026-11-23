@@ -220,6 +220,17 @@ describe("state and data attributes", () => {
 		expect(() => serve(unknown)).toThrow(/SZ102/);
 		expect(() => serve(missing)).toThrow(/SZ101/);
 	});
+
+	it("leaves nothing behind when the markup cannot be bound", async () => {
+		const { root, flow } = serve(
+			'<div data-component="stepper"><div data-component="stepper-content" data-step="nope"></div></div>',
+			{ bind: false },
+		);
+		expect(() => bindStepper(root, flow)).toThrow(/SZ102/);
+		expect(region(root)).toBeNull();
+		// The flow is not followed by a binding that never finished: moving it does not throw.
+		await expect(flow.next()).resolves.toMatchObject({ accepted: true });
+	});
 });
 
 describe("navigation", () => {

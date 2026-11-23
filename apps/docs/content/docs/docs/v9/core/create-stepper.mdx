@@ -72,8 +72,9 @@ see [The step in the URL](/docs/v9/react/guides/url).
 ## Cleaning up
 
 Call `destroy()` when the owner goes away. It cancels a move that is still
-running (its promise resolves with `reason: "cancelled"`) and removes every
-listener.
+running and removes every listener. The guard's `signal` is aborted, and the
+move's promise resolves with `reason: "cancelled"` once the schema or guard it
+was waiting on settles.
 
 ## Types
 

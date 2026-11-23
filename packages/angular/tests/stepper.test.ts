@@ -4,6 +4,7 @@ import {
 	createEnvironmentInjector,
 	EnvironmentInjector,
 	effect,
+	InjectionToken,
 	inject,
 	runInInjectionContext,
 	signal,
@@ -47,6 +48,16 @@ class Reader {
 class Provider {
 	readonly stepper = flow.injectStepperContext();
 }
+
+const START = new InjectionToken<"a" | "b" | "c">("start", { factory: () => "c" });
+
+@Component({
+	selector: "sz-injecting",
+	imports: [Reader],
+	providers: [flow.provideStepper(() => ({ snapshot: { step: inject(START) } }))],
+	template: "<sz-reader />",
+})
+class Injecting {}
 
 @Component({
 	selector: "sz-orphan",
@@ -167,6 +178,12 @@ describe("provideStepper and injectStepperContext", () => {
 		await reader.stepper().next();
 		await fixture.whenStable();
 		expect(reader.seen).toEqual(["b", "c"]);
+		expect(fixture.nativeElement.querySelector("output").textContent).toBe("c");
+	});
+
+	it("reads its options where inject() works", async () => {
+		const fixture = TestBed.createComponent(Injecting);
+		await fixture.whenStable();
 		expect(fixture.nativeElement.querySelector("output").textContent).toBe("c");
 	});
 

@@ -175,8 +175,8 @@ only react when `snapshot.step` changes.
 ### onFinish does not run again
 
 `onFinish` runs once. After the flow has finished, `next()` resolves with
-`reason: "finished"` until the flow changes: any move, a `setData` with a new
-value, `reset()` or `restore()`. If a request inside it can fail, return its
+`reason: "finished"` until the flow changes: any move to another step, a
+`setData` with a new value, `reset()` or `restore()`. If a request inside it can fail, return its
 promise: when it rejects the flow is not finished and `next()` can be called
 again. See [When submitting can fail](/docs/v9/react/guides/navigation#when-submitting-can-fail).
 

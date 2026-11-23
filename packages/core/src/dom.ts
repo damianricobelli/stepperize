@@ -80,7 +80,7 @@ function apply(element: Element, attrs: Attrs) {
  * </div>
  *
  * const flow = createStepper([{ id: "account" }, { id: "plan" }]);
- * const unbind = bindStepper(document.getElementById("signup"), flow);
+ * const unbind = bindStepper(document.getElementById("signup")!, flow);
  */
 export function bindStepper<S extends readonly Step[]>(
 	root: HTMLElement,
@@ -232,13 +232,20 @@ export function bindStepper<S extends readonly Step[]>(
 		if (records.some((record) => record.target !== region)) render();
 	});
 	observer.observe(root, { childList: true, subtree: true });
-	render();
-
-	return () => {
+	const unbind = () => {
 		observer.disconnect();
 		unsubscribe();
 		root.removeEventListener("click", onClick);
 		root.removeEventListener("keydown", onKeydown);
 		region.remove();
 	};
+	try {
+		render();
+	} catch (error) {
+		// Markup the flow cannot be bound to (SZ101, SZ102): leave nothing behind,
+		// or every later move of the flow would throw the same error.
+		unbind();
+		throw error;
+	}
+	return unbind;
 }

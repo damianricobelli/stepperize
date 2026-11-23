@@ -33,11 +33,11 @@ html`<li ${s.item(step.id)} class=${s.at(step.id).state}>…</li>`;
 ```
 
 If the stepper must be fully formed in the server HTML, with no client step,
-write the roles and states as ordinary attributes from `s.at(id)` and
-`s.value`, using the [headless](/docs/v9/lit/installation#the-controller-without-the-primitives)
+write the roles and states as ordinary attributes from `s.value`
+(`s.value.state(id)`, `s.value.canGoTo(id)`, `s.value.current`), using the [headless](/docs/v9/lit/installation#the-controller-without-the-primitives)
 controller, instead of the directives.
 
 ## Without server rendering
 
-Nothing to do. The controller creates the flow on the element's first update
-and the directives apply everything in the same render.
+Nothing to do. The controller creates the flow when the element connects and
+the directives apply everything in the first render.

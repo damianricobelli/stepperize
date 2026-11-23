@@ -39,7 +39,7 @@ const flow = createStepper([
   { id: "plan", title: "Plan" },
 ]);
 
-const unbind = bindStepper(document.getElementById("signup"), flow);
+const unbind = bindStepper(document.getElementById("signup")!, flow);
 ```
 
 Here it is running. The markup below was plain HTML before `bindStepper` ran:
@@ -54,8 +54,9 @@ and keeps them in sync with the flow:
 - **Roles and ids.** A tablist with tabs and tab panels, or an ordered list of
   steps with `aria-current`, or named groups: the same three patterns as the
   [framework primitives](/docs/v9/react/guides/accessibility).
-- **State for your CSS.** `data-state`, `data-invalid`, `data-disabled` and
-  `data-pending` on every part.
+- **State for your CSS.** `data-state` and `data-invalid` on items, triggers
+  and indicators; `data-disabled` on items, triggers, Prev and Next; `data-pending`
+  on the root, Prev and Next.
 - **Panels.** The panel of the current step is shown; the others get `hidden`.
 - **Keyboard.** Arrow keys, Home and End between tabs, mirrored in
   right-to-left pages.

@@ -32,7 +32,8 @@ the business step, not the current label or position.
 | `"review"` | `"confirm-2026"` | Generated ids cannot be typed or bookmarked. |
 
 Ids must be unique. An empty list or a repeated id throws
-[SZ103](/docs/v9/core/errors#sz103) when the definition is created.
+[SZ103](/docs/v9/core/errors#sz103) when the first flow is created: the first
+render that uses the definition, or the first `create()`.
 
 ## Your own fields
 

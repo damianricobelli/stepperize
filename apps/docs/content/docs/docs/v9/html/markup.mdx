@@ -52,11 +52,18 @@ names the framework primitives render, so one stylesheet fits both.
   pass form values to `flow.next(values)`.
 
 ```ts
-document.querySelector("#signup form").addEventListener("submit", (event) => {
+const next = document.querySelector<HTMLButtonElement>('#signup [data-component="stepper-next"]')!;
+
+next.addEventListener("click", (event) => {
   event.preventDefault();
-  flow.next(Object.fromEntries(new FormData(event.currentTarget)));
+  flow.next(Object.fromEntries(new FormData(next.form!)));
 });
 ```
+
+Handle the button, not the form's `submit` event. A `stepper-next` button is a
+`type="button"`, so it never submits the form; and if you make it
+`type="submit"`, the click moves the flow once and your submit handler moves
+it again.
 
 ## Showing issues and other state
 
@@ -66,7 +73,7 @@ beyond the parts:
 ```ts
 flow.subscribe(() => {
   const issues = flow.issues() ?? [];
-  document.querySelector("#errors").textContent = issues.map((issue) => issue.message).join(", ");
+  document.querySelector("#errors")!.textContent = issues.map((issue) => issue.message).join(", ");
 });
 ```
 

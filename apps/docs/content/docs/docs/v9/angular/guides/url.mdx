@@ -37,12 +37,15 @@ export class CheckoutPage {
 Without input binding, turn the parameter into a signal with
 `toSignal(route.paramMap)` and read that in the function.
 
-- Following the route is a `goTo`: `linear` and the `guard` still apply, so a
-  deep link cannot skip validation.
+- Following the route is a `goTo`. With `linear`, a deep link cannot open a
+  step before the ones in front of it are complete. Without `linear`, any step
+  can be opened, as with `goTo`.
+- The `guard` runs when the route changes after the component is created. It does not run for
+  the step the page first loads on.
 - `onInvalidStep` is called for unknown ids, for steps `linear` does not allow
-  yet and for moves the guard refused.
+  yet and for route changes the guard refused.
 - The flow is created when the stepper is first read, which is when the
   template first renders. By then inputs are set, so the flow starts on the
   route's step, on the server too.
-- The options are applied after a render and only in the browser: no callback
-  runs on the server.
+- The route is followed after a render and only in the browser. Nothing moves
+  the flow on the server, so no callback runs there.

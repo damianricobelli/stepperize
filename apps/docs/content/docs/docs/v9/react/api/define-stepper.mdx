@@ -30,7 +30,8 @@ const checkout = defineStepper(
 );
 ```
 
-An empty list or a duplicate id throws [SZ103](/docs/v9/core/errors#sz103).
+An empty list or a duplicate id throws [SZ103](/docs/v9/core/errors#sz103)
+when the first flow is created.
 
 Call it once at module scope, in a client module. It creates a React context,
 so it cannot run in a Server Component.
@@ -155,6 +156,8 @@ Generic helpers are exported from `@stepperize/react` (and from
 | `Id<S>` | Union of the step ids of a step list. |
 | `Input<S, I>`, `Output<S, I>` | What a step stores, and what its schema produces. |
 | `FlowData<S>` | The data of every step, by id. |
+| `FlowOutput<S>` | What the schema of every complete step produced: the type of `output` and of `onFinish`'s first argument. |
+| `Flow<S>` | What `create()` returns: a stepper whose reads are always current, plus `get`, `subscribe`, `setOptions` and `destroy`. |
 | `Options<S>` | The [options](/docs/v9/react/api/options). |
 | `Stepper<S>` | What the hooks return. |
 | `Snapshot<S>` | `{ step, history, data, complete }`. |

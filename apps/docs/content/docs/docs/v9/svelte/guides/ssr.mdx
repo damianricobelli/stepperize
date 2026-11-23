@@ -30,12 +30,12 @@ export function load({ cookies }) {
 
   let { data } = $props();
 
-  const stepper = onboarding.useStepper({
+  const stepper = onboarding.useStepper(() => ({
     snapshot: data.snapshot,
     onChange: (snapshot) => {
       document.cookie = `onboarding=${encodeURIComponent(JSON.stringify(snapshot))}; path=/`;
     },
-  });
+  }));
 </script>
 ```
 

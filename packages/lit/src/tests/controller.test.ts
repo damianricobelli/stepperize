@@ -106,6 +106,15 @@ describe("controller", () => {
 		expect(element.renders).toBe(before);
 	});
 
+	it("catches up with what the flow did while the host was away", async () => {
+		const element = await mount<Owner>("sz-owner");
+		element.remove();
+		await element.stepper.flow.next();
+		document.body.appendChild(element);
+		await settle(element);
+		expect(element.shadowRoot?.textContent).toBe("B");
+	});
+
 	it("uses the definition's defaults and lets a host override them", async () => {
 		const strict = linear.controller(await mount<Owner>("sz-owner"));
 		expect(strict.value.canGoTo("b")).toBe(false);
