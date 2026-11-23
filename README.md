@@ -218,6 +218,8 @@ This repository is a pnpm workspace managed with Turbo.
   the same accessible primitives. See [`packages/svelte`](packages/svelte/README.md).
 - `packages/solid` - Solid binding: a reactive stepper, a provider and the
   same accessible primitives. See [`packages/solid`](packages/solid/README.md).
+- `packages/lit` - Lit binding: a reactive controller and the same accessible
+  primitives as element directives. See [`packages/lit`](packages/lit/README.md).
 - `apps/docs` - the Stepperize documentation site, block gallery, changelog,
   and shadcn-compatible registry.
 
