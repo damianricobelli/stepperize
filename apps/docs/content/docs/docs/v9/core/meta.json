@@ -2,5 +2,5 @@
 	"title": "Core",
 	"description": "The Stepperize v9 state machine, without a framework",
 	"root": true,
-	"pages": ["index", "create-stepper", "errors", "framework-demos"]
+	"pages": ["index", "create-stepper", "errors"]
 }

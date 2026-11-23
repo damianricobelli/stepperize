@@ -545,11 +545,6 @@ export const DOC_KEYWORDS: Record<string, readonly string[]> = {
 		"Stepperize warnings",
 		"stepper error codes",
 	],
-	"current/core/framework-demos": [
-		"Vue stepper",
-		"Svelte stepper",
-		"Solid stepper",
-	],
 	latest: ["React stepper", "multi-step flow", "headless stepper", "wizard"],
 	"latest/getting-started/installation": [
 		"install React stepper",

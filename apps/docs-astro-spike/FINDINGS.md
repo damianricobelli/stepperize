@@ -147,8 +147,8 @@ for (c) is to reserve the demo's height in the wrapper to avoid the shift.
 
 ## Approach (c) inside `apps/docs` (tried, works)
 
-Done on this branch after the Astro spike. Test page: `/docs/v9/core/framework-demos`
-(`content/docs/docs/v9/core/framework-demos.mdx`), a throwaway page to delete before merging anything.
+Done on this branch after the Astro spike, on a throwaway page (`/docs/v9/core/framework-demos`) that
+was removed afterwards. The wrapper, the demos and the Vite setup stay; no docs page uses them yet.
 
 What it took:
 
@@ -176,7 +176,7 @@ Rough edges:
 
 - Biome reports false "unused import/variable" warnings in `.vue` and `.svelte` files, because it
   does not see their use in the template. Three warnings, no errors; an override would silence them.
-- `seo.test.ts` requires keywords for every docs page, so the test page has an entry in
-  `DOC_KEYWORDS`.
+- `seo.test.ts` requires keywords for every docs page: a page that shows these demos needs an
+  entry in `DOC_KEYWORDS`.
 - `vite-plugin-svelte` logs "no Svelte config found" on start. Harmless.
 - A demo's state resets when its tab is closed and reopened (it is unmounted), same as on Astro.
