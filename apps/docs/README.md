@@ -63,6 +63,98 @@ Documentation pages live in `content/docs`.
 The MDX source is configured in `source.config.ts`. Generated Fumadocs output
 is created during install through the `postinstall` script.
 
+### Shared concept pages
+
+A concept that is the same in every binding (steps, moves, validation...) is
+written once, in `content/shared/`, with code for each framework. Every
+framework still has its own page at the same path, so the framework switcher
+keeps the reader on the page, the sidebar and the search title stay per
+framework, and `llms.txt` and each page's `.md` hold the prose plus only that
+framework's code. `content/shared/concepts/steps.mdx` and `moves.mdx` are the
+models.
+
+**Add one.**
+
+1. Write `content/shared/<section>/<page>.mdx`: no frontmatter, prose that does
+   not name a framework, code as below.
+2. In each framework that documents it, add a thin page at the same path, e.g.
+   `content/docs/docs/v9/vue/<section>/<page>.mdx`:
+
+   ```mdx
+   ---
+   title: The lifecycle of a move
+   description: What happens between calling next() and the step changing.
+   ---
+
+   <include cwd>content/shared/concepts/moves.mdx</include>
+   ```
+
+   Use the same title and description everywhere: the site adds the framework
+   to titles, descriptions and social cards. "Edit on GitHub" opens the shared
+   file. A framework that needs a
+   different page writes a normal page there instead.
+3. List the page in that framework's `meta.json` and give it keywords in
+   `DOC_KEYWORDS` (`src/lib/seo.ts`).
+
+**Code per framework.** Put one fenced block per framework in
+`<FrameworkCode>`, each marked with the frameworks it is for:
+
+````mdx
+<FrameworkCode>
+
+```tsx framework="react" title="Header.tsx"
+const stepper = checkout.useStepperContext();
+```
+
+```vue framework="vue" title="StepHeader.vue"
+<script setup lang="ts">
+const stepper = checkout.useStepperContext();
+</script>
+```
+
+```ts framework="angular lit"
+// one block for several frameworks when the code is the same
+```
+
+</FrameworkCode>
+````
+
+A block can be for several frameworks (`framework="react vue svelte solid"`)
+and a framework can have several blocks. Code that only uses the flow object or
+the definition (`checkout.create()`, `defineStepper([...])` without an import)
+is the same everywhere: write a plain fenced block, outside `<FrameworkCode>`.
+Compile every sample with the binding's own checker (tsc, vue-tsc,
+svelte-check, ngc with `strictTemplates`) before you publish it.
+
+**Fallbacks.** A framework without a block of its own gets the `core` blocks
+of that `<FrameworkCode>` (the flow without a framework, written with
+`createStepper` or `flow`), so HTML and Core pages can include a shared page
+without a sample of their own. With neither, the build fails and names the
+missing framework: nothing silently shows another framework's code.
+
+**Prose for some frameworks.** `<FrameworkOnly is="angular lit">...</FrameworkOnly>`
+keeps its content only on those frameworks' pages; `not="..."` does the
+opposite. It works around blocks or inline.
+
+**Links.** Write `/docs/v9/:framework/guides/branching`: on each page it goes to
+that framework's page, or to React's while that framework has none (the link
+upgrades itself when the page is written), and the build fails when neither
+exists. Links to a fixed page (`/docs/v9/core/errors#sz103`) stay as written.
+
+**How it works.** `<include>` (fumadocs-mdx) inlines the shared file into each
+thin page when it compiles, and `remarkFrameworkContent`
+(`src/lib/mdx/remark-framework-content.ts`, registered first in
+`source.config.ts`) reads the framework from the page's path and removes the
+other frameworks' code and prose before anything else runs. The HTML, the
+bundle, the table of contents, search and the processed markdown therefore
+hold one framework only: a Vue page's `.md` is plain markdown with the shared
+prose and the Vue blocks as ordinary fences (`framework="..."` removed), and
+`llms-full.txt` for Vue holds the same. `<FrameworkCode>` and `<FrameworkOnly>`
+are not React components; they never reach the page.
+`src/lib/mdx/remark-framework-content.test.ts` compiles every page that
+includes a shared file and checks that its markdown has the prose, its own
+samples, no other framework's samples, and links that resolve.
+
 ## Routes
 
 Routes live in `src/routes`.

@@ -878,6 +878,16 @@ export const DOC_KEYWORDS: Record<string, readonly string[]> = {
 		"Vue multi-step example",
 		"useStepper Vue",
 	],
+	"current/vue/concepts/steps": [
+		"typed steps Vue",
+		"stepper step ids",
+		"Vue wizard steps",
+	],
+	"current/vue/concepts/moves": [
+		"Vue stepper navigation",
+		"next prev goTo Vue",
+		"navigation guard Vue",
+	],
 	"current/vue/guides/forms": [
 		"Vue multi-step form",
 		"v-model stepper",
@@ -928,6 +938,16 @@ export const DOC_KEYWORDS: Record<string, readonly string[]> = {
 		"Svelte stepper tutorial",
 		"Svelte multi-step example",
 		"runes stepper",
+	],
+	"current/svelte/concepts/steps": [
+		"typed steps Svelte",
+		"stepper step ids",
+		"Svelte wizard steps",
+	],
+	"current/svelte/concepts/moves": [
+		"Svelte stepper navigation",
+		"next prev goTo Svelte",
+		"navigation guard Svelte",
 	],
 	"current/svelte/guides/forms": [
 		"Svelte multi-step form",
@@ -980,6 +1000,16 @@ export const DOC_KEYWORDS: Record<string, readonly string[]> = {
 		"SolidJS multi-step example",
 		"useStepper Solid",
 	],
+	"current/solid/concepts/steps": [
+		"typed steps Solid",
+		"stepper step ids",
+		"SolidJS wizard steps",
+	],
+	"current/solid/concepts/moves": [
+		"Solid stepper navigation",
+		"next prev goTo Solid",
+		"navigation guard Solid",
+	],
 	"current/solid/guides/forms": [
 		"Solid multi-step form",
 		"createStore stepper",
@@ -1031,6 +1061,16 @@ export const DOC_KEYWORDS: Record<string, readonly string[]> = {
 		"Angular signals stepper",
 		"injectStepper",
 	],
+	"current/angular/concepts/steps": [
+		"typed steps Angular",
+		"stepper step ids",
+		"Angular wizard steps",
+	],
+	"current/angular/concepts/moves": [
+		"Angular stepper navigation",
+		"next prev goTo Angular",
+		"navigation guard Angular",
+	],
 	"current/angular/guides/forms": [
 		"Angular multi-step form",
 		"reactive forms wizard",
@@ -1081,6 +1121,16 @@ export const DOC_KEYWORDS: Record<string, readonly string[]> = {
 		"Lit stepper tutorial",
 		"LitElement multi-step example",
 		"reactive controller stepper",
+	],
+	"current/lit/concepts/steps": [
+		"typed steps Lit",
+		"stepper step ids",
+		"web component wizard steps",
+	],
+	"current/lit/concepts/moves": [
+		"Lit stepper navigation",
+		"next prev goTo Lit",
+		"navigation guard Lit",
 	],
 	"current/lit/guides/forms": [
 		"Lit multi-step form",

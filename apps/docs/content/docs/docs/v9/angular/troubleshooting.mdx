@@ -316,12 +316,12 @@ constructor() {
 
 ## TypeScript
 
-### Property 'current' does not exist on type 'StepperRef<…>'
+### `Property 'current' does not exist on type 'StepperRef<…>'`
 
 The stepper is a signal: call it. `stepper().current`, not `stepper.current`.
 Only `stepper.steps` and `stepper.flow` are read without calling it.
 
-### Type 'Stepper<…>' is not assignable to type 'StepperSource'
+### `Type 'Stepper<…>' is not assignable to type 'StepperSource'`
 
 `[stepperRoot]` takes the signal, not its value: bind `stepper`, not
 `stepper()`.
