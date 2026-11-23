@@ -1,5 +1,29 @@
 # @stepperize/react
 
+## 9.1.0
+
+### Patch Changes
+
+- [#186](https://github.com/damianricobelli/stepperize/pull/186) [`81e5774`](https://github.com/damianricobelli/stepperize/commit/81e57740c4a4b0e206c44bf75c230ba6b2a35a41) Thanks [@damianricobelli](https://github.com/damianricobelli)! - Every package now shares one version: `@stepperize/core` and every binding are released together, so `@stepperize/vue@9.1.0` goes with `@stepperize/react@9.1.0` and the v9 documentation.
+  
+  `@stepperize/core`:
+  
+  - The stepper exposes `isLinear`, so code that follows a flow owned elsewhere knows its navigation policy.
+  - A move cancelled by `reset()`, `restore()` or `destroy()` resolves with `reason: "cancelled"` even when what it was waiting on rejects, as a `fetch` aborted through the guard's `signal` does. It used to reject with `AbortError`.
+  - Step ids are percent-encoded where they appear inside DOM ids, so a step id with a space no longer breaks `aria-controls` and `aria-labelledby`.
+  - Arrow keys pressed with Alt, Ctrl or Meta are left to the browser, and a tab the application disabled is skipped instead of becoming the current step.
+  - The live region is styled property by property, which a strict Content Security Policy allows.
+  - Focus left in the panel of another step, during a leave transition, moves to the new panel.
+  
+  `@stepperize/react`: the published types no longer declare `createStepper` and other core values as exports of `@stepperize/react`, which type-checked and then failed at run time.
+  
+  Every binding, including React:
+  
+  - Errors from Next, Prev, a trigger or the arrow keys are reported with `reportError` (the platform's path for errors thrown in event listeners, falling back to `console.error`) instead of being swallowed. A rejecting `onFinish` or a throwing guard now shows up in the console and in error trackers, and the button works again.
+  - `Content` with a step id that is not in the definition throws SZ102 in every binding, as the other parts already did. React's `Stepper.Content` used to render nothing.
+- Updated dependencies [[`796b429`](https://github.com/damianricobelli/stepperize/commit/796b429ccfd78e0485ee9736a5c20872f66c9b50), [`0b64c52`](https://github.com/damianricobelli/stepperize/commit/0b64c5239974db080dead149a1a72120943f6cda), [`81e5774`](https://github.com/damianricobelli/stepperize/commit/81e57740c4a4b0e206c44bf75c230ba6b2a35a41)]:
+  - @stepperize/core@9.1.0
+
 ## 9.0.0
 
 ### Major Changes

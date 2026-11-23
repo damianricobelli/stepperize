@@ -1,5 +1,37 @@
 # @stepperize/core
 
+## 9.1.0
+
+### Minor Changes
+
+- [#186](https://github.com/damianricobelli/stepperize/pull/186) [`796b429`](https://github.com/damianricobelli/stepperize/commit/796b429ccfd78e0485ee9736a5c20872f66c9b50) Thanks [@damianricobelli](https://github.com/damianricobelli)! - Add `@stepperize/core/dom`: the primitives without a framework.
+  
+  `bindStepper(root, flow)` makes HTML that is already on the page a stepper: roles, ids, `data-state`, keyboard navigation, focus hand-off and announcements, kept in sync with the flow. The markup names its parts with the same `data-component` and `data-step` attributes the framework primitives render, so it suits server-rendered pages (Rails, Laravel, Django, Astro) and libraries such as Alpine and htmx. Tabs or an ordered list of steps follow the flow's `isLinear`. Ids, names, roles and tabindex the page wrote are kept, and `aria-controls` / `aria-labelledby` point at the elements that really exist. It handles several steppers on one page, nested ones and shadow roots, picks up stepper parts swapped in later (and ignores every other change on the page), and returns a function that undoes the binding, putting the markup back as the server sent it. It can be imported where there is no DOM, and runs from a CDN that serves the files untouched. The main entry is unchanged and has no DOM code.
+  
+  The shared focus hand-off now also treats a focused element inside a `hidden` panel as lost, so focus moves to the new panel when a panel is kept in the page instead of removed.
+
+- [#186](https://github.com/damianricobelli/stepperize/pull/186) [`0b64c52`](https://github.com/damianricobelli/stepperize/commit/0b64c5239974db080dead149a1a72120943f6cda) Thanks [@damianricobelli](https://github.com/damianricobelli)! - Add `@stepperize/core/primitives`, for binding authors: the ids, ARIA and `data-*` attributes, keyboard navigation, focus hand-off and announcements that every binding's primitives share. The focus hand-off resolves ids and focus in the shadow root a stepper is rendered in, and treats a focused element inside a hidden panel, or inside the leaving panel of another step, as lost.
+  
+  `development()` tells whether development checks run; published files loaded without a bundler (no `process`) skip them instead of failing. New diagnostic codes: SZ004 (a part rendered in another shadow root than its root), SZ005 (a trigger that is not a button) and SZ104 (a flow created where nothing owns it).
+
+- [#186](https://github.com/damianricobelli/stepperize/pull/186) [`81e5774`](https://github.com/damianricobelli/stepperize/commit/81e57740c4a4b0e206c44bf75c230ba6b2a35a41) Thanks [@damianricobelli](https://github.com/damianricobelli)! - Every package now shares one version: `@stepperize/core` and every binding are released together, so `@stepperize/vue@9.1.0` goes with `@stepperize/react@9.1.0` and the v9 documentation.
+  
+  `@stepperize/core`:
+  
+  - The stepper exposes `isLinear`, so code that follows a flow owned elsewhere knows its navigation policy.
+  - A move cancelled by `reset()`, `restore()` or `destroy()` resolves with `reason: "cancelled"` even when what it was waiting on rejects, as a `fetch` aborted through the guard's `signal` does. It used to reject with `AbortError`.
+  - Step ids are percent-encoded where they appear inside DOM ids, so a step id with a space no longer breaks `aria-controls` and `aria-labelledby`.
+  - Arrow keys pressed with Alt, Ctrl or Meta are left to the browser, and a tab the application disabled is skipped instead of becoming the current step.
+  - The live region is styled property by property, which a strict Content Security Policy allows.
+  - Focus left in the panel of another step, during a leave transition, moves to the new panel.
+  
+  `@stepperize/react`: the published types no longer declare `createStepper` and other core values as exports of `@stepperize/react`, which type-checked and then failed at run time.
+  
+  Every binding, including React:
+  
+  - Errors from Next, Prev, a trigger or the arrow keys are reported with `reportError` (the platform's path for errors thrown in event listeners, falling back to `console.error`) instead of being swallowed. A rejecting `onFinish` or a throwing guard now shows up in the console and in error trackers, and the button works again.
+  - `Content` with a step id that is not in the definition throws SZ102 in every binding, as the other parts already did. React's `Stepper.Content` used to render nothing.
+
 ## 5.0.0
 
 ### Major Changes
