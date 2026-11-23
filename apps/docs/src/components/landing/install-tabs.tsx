@@ -13,13 +13,17 @@ const MANAGERS = {
 	bun: "bun add",
 } as const;
 
-/** One package per framework, React first, then the core for everything else. */
+/**
+ * One entry per framework, React first, then the core. `@stepperize/core/dom`
+ * is an entry of `@stepperize/core`: what you install is the package.
+ */
 const PACKAGES = [
 	...BINDINGS,
 	...FRAMEWORKS.filter((entry) => entry.id === CORE_FRAMEWORK),
 ].map((entry) => ({
-	...entry,
-	label: entry.id === CORE_FRAMEWORK ? "No framework" : entry.title,
+	id: entry.id,
+	label: entry.title,
+	package: entry.package.split("/").slice(0, 2).join("/"),
 }));
 
 type Manager = keyof typeof MANAGERS;

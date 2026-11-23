@@ -25,8 +25,7 @@ const OTHERS = BINDINGS.filter((entry) => entry.id !== DEFAULT_FRAMEWORK);
 const CORE = FRAMEWORKS.find((entry) => entry.id === CORE_FRAMEWORK);
 
 const docs = (framework: string) => `${CURRENT_DOCS_VERSION}/${framework}`;
-const name = (entry: { id: string; title: string }) =>
-	entry.id === CORE_FRAMEWORK ? "No framework" : entry.title;
+const name = (entry: { title: string }) => entry.title;
 
 /**
  * One line under the headline: React leads, and the same engine runs in the
@@ -86,7 +85,16 @@ export const checkout = defineStepper(${steps});`;
  * How each framework reads and moves the flow, from its "first stepper" guide.
  * A framework without an entry is still listed, as a link to its docs.
  */
-const USAGE: Record<string, { file: string; code: string; note: string }> = {
+const USAGE: Record<
+	string,
+	{
+		file: string;
+		code: string;
+		note: string;
+		/** Shown in place of the shared definition, for the ones that have none. */
+		first?: { file: string; code: string; label: string };
+	}
+> = {
 	react: {
 		file: "Checkout.tsx",
 		note: "A hook. The component re-renders when the flow changes.",
@@ -145,6 +153,64 @@ const stepper = checkout.useStepper();
   );
 }`,
 	},
+	angular: {
+		file: "checkout.component.ts",
+		note: "A signal. The template follows the flow.",
+		code: `@Component({
+  selector: "app-checkout",
+  template: \`
+    <h2>{{ stepper().current.title }}</h2>
+    <button (click)="stepper().next()">Continue</button>
+  \`,
+})
+export class Checkout {
+  readonly stepper = checkout.injectStepper();
+}`,
+	},
+	lit: {
+		file: "checkout-steps.ts",
+		note: "A reactive controller. The element updates when the flow changes.",
+		code: `export class CheckoutSteps extends LitElement {
+  stepper = checkout.controller(this);
+
+  render() {
+    const stepper = this.stepper.value;
+
+    return html\`
+      <h2>\${stepper.current.title}</h2>
+      <button @click=\${() => stepper.next()}>Continue</button>
+    \`;
+  }
+}`,
+	},
+	html: {
+		file: "checkout.ts",
+		note: "No framework. One call binds a flow to markup your server already rendered.",
+		first: {
+			file: "checkout.html",
+			label: "Your markup, as it is",
+			code: `<div data-component="stepper" id="checkout">
+  <div data-component="stepper-content" data-step="shipping">
+    …
+  </div>
+  <div data-component="stepper-content" data-step="payment">
+    …
+  </div>
+
+  <button data-component="stepper-prev">Back</button>
+  <button data-component="stepper-next">Continue</button>
+</div>`,
+		},
+		code: `import { createStepper } from "@stepperize/core";
+import { bindStepper } from "@stepperize/core/dom";
+
+const flow = createStepper([
+  { id: "shipping", title: "Shipping" },
+  { id: "payment", title: "Payment" },
+]);
+
+bindStepper(document.getElementById("checkout"), flow);`,
+	},
 	core: {
 		file: "checkout.ts",
 		note: "A plain object. Subscribe from anything that runs JavaScript.",
@@ -158,7 +224,7 @@ await flow.next();`,
 };
 
 const TOKEN =
-	/(\/\/.*$|"[^"\n]*"|\b(?:import|from|export|const|function|return|await)\b)/gm;
+	/(\/\/.*$|"[^"\n]*"|\b(?:import|from|export|const|function|return|await|class|extends|readonly)\b)/gm;
 
 /** Enough highlighting to read a short snippet: comments, strings, keywords. */
 function highlight(code: string): ReactNode[] {
@@ -213,6 +279,16 @@ export function Frameworks() {
 	if (!current) return null;
 	const usage = USAGE[current.id];
 	const isCore = current.id === CORE_FRAMEWORK;
+	// The definition, or what this one has in its place. The core has neither.
+	const first =
+		usage.first ??
+		(isCore
+			? undefined
+			: {
+					file: "checkout.ts",
+					label: "Same in every framework",
+					code: definition(current.package),
+				});
 	const isMain = current.id === DEFAULT_FRAMEWORK;
 
 	const onKeyDown = (event: KeyboardEvent, index: number) => {
@@ -294,21 +370,21 @@ export function Frameworks() {
 				aria-labelledby={`framework-tab-${current.id}`}
 				className="mt-4 grid gap-4 lg:grid-cols-2"
 			>
-				{!isCore && (
+				{first && (
 					<CodeFrame
-						filename="checkout.ts"
+						filename={first.file}
 						aside={
 							<span className="text-xs text-muted-foreground">
-								Same in every framework
+								{first.label}
 							</span>
 						}
 					>
-						<Snippet code={definition(current.package)} />
+						<Snippet code={first.code} />
 					</CodeFrame>
 				)}
 				<CodeFrame
 					filename={usage.file}
-					className={cn(isCore && "lg:col-span-2")}
+					className={cn(!first && "lg:col-span-2")}
 				>
 					<Snippet code={usage.code} />
 				</CodeFrame>
