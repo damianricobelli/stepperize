@@ -20,6 +20,7 @@ export const Route = createFileRoute("/")({
 				description: meta.description,
 				socialTitle: meta.socialTitle,
 				socialDescription: meta.socialDescription,
+				socialSection: meta.socialSection,
 				keywords: homeKeywords(),
 				canonical: "/",
 				type: "website",

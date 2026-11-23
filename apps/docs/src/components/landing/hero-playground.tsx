@@ -51,8 +51,17 @@ type StepId = (typeof checkout.steps)[number]["id"];
 type Result =
 	| { accepted: true; to: StepId | null }
 	| { accepted: false; reason: string };
-/** `from` is where the call started: the result itself only says where it led. */
-type LastCall = { method: "next" | "prev"; from: StepId; result: Result };
+type Method = "next" | "prev" | "goTo";
+/**
+ * `from` is where the call started: the result itself only says where it led.
+ * `target` is the step a `goTo()` (a click on the step list) asked for.
+ */
+type LastCall = {
+	method: Method;
+	from: StepId;
+	target?: StepId;
+	result: Result;
+};
 
 const SHIPPING = {
 	standard: { label: "Standard", detail: "3–5 business days", price: 0 },
@@ -94,7 +103,9 @@ export function HeroPlayground() {
 		<Stepper.Root
 			linear
 			guard={async ({ from, direction: move, signal }) => {
-				if (move === "prev") return true;
+				// Back, and jumps from the step list, are never checked: only
+				// `next()` validates the email and places the order.
+				if (move !== "next") return true;
 				if (from.id === "account") return EMAIL_RE.test(emailRef.current);
 				if (from.id === "review") await placeOrder(signal);
 			}}
@@ -110,10 +121,14 @@ export function HeroPlayground() {
 			className="relative overflow-hidden rounded-2xl border bg-card shadow-2xl ring-1 ring-black/[0.02] dark:ring-white/[0.03]"
 		>
 			{(stepper) => {
-				const run = async (method: "next" | "prev") => {
+				const run = async (method: Method, target?: StepId) => {
 					const from = stepper.current.id;
-					const result: Result = await stepper[method]();
-					setLastCall({ method, from, result });
+					const result: Result =
+						method === "goTo" && target
+							? await stepper.goTo(target)
+							: await stepper[method === "prev" ? "prev" : "next"]();
+					// Every call lands in the inspector, so it never shows a stale result.
+					setLastCall({ method, from, target, result });
 					if (!result.accepted && result.reason === "guard") {
 						rejectEmail(emailInputRef.current);
 					}
@@ -169,6 +184,11 @@ export function HeroPlayground() {
 										>
 											<Stepper.Trigger
 												aria-label={step.title}
+												// The list's own goTo(), run here so its result is shown.
+												onClick={(event) => {
+													event.preventDefault();
+													if (!stepper.isPending) void run("goTo", step.id);
+												}}
 												className="pressable hit-44 group/trigger flex rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card disabled:active:scale-100"
 											>
 												<Stepper.Indicator className="flex size-8 items-center justify-center rounded-full border text-xs font-semibold tabular-nums transition-[background-color,border-color,color,box-shadow] duration-200 ease-out-strong group-data-[state=current]/trigger:border-primary group-data-[state=current]/trigger:bg-primary group-data-[state=current]/trigger:text-primary-foreground group-data-[state=current]/trigger:shadow-[0_0_0_4px] group-data-[state=current]/trigger:shadow-primary/15 group-data-[state=complete]/trigger:border-primary/30 group-data-[state=complete]/trigger:bg-primary/10 group-data-[state=complete]/trigger:text-primary group-data-[state=pending]/trigger:bg-muted group-data-[state=pending]/trigger:text-muted-foreground">
@@ -188,7 +208,7 @@ export function HeroPlayground() {
 													aria-hidden
 													className="relative mx-2 h-0.5 flex-1 overflow-hidden rounded-full bg-border"
 												>
-													<span className="absolute inset-0 origin-left scale-x-0 rounded-full bg-primary transition-transform duration-300 ease-in-out-strong group-data-[state=complete]/item:scale-x-100" />
+													<span className="absolute inset-0 origin-left scale-x-0 rounded-full bg-primary transition-transform duration-300 ease-in-out-strong group-data-[state=complete]/item:scale-x-100 motion-reduce:transition-none" />
 												</span>
 											)}
 										</Stepper.Item>
@@ -324,11 +344,13 @@ function getGuardLine(
 ): GuardHighlight {
 	if (isPending) return { line: "order", tone: "pending" };
 	if (!lastCall) return null;
-	const { method, from, result } = lastCall;
+	const { method, from, target, result } = lastCall;
 	if (!result.accepted) {
 		return result.reason === "guard" ? { line: "email", tone: "reject" } : null;
 	}
-	if (method === "prev") return { line: "prev", tone: "pass" };
+	// goTo() to the step already shown is not a move: the guard never ran.
+	if (method === "goTo" && target === from) return null;
+	if (method !== "next") return { line: "others", tone: "pass" };
 	if (from === "account") return { line: "email", tone: "pass" };
 	if (from === "review") return { line: "order", tone: "pass" };
 	return null;
@@ -344,8 +366,16 @@ function WindowBar({ isPending, file }: { isPending: boolean; file: string }) {
 				<span className="size-2.5 rounded-full bg-foreground/15" />
 				<span className="size-2.5 rounded-full bg-foreground/15" />
 			</div>
-			<span className="min-w-0 truncate font-mono text-xs text-muted-foreground">
+			{/*
+			 * Desktop: the bar sits over the code, so it names the file. Phones:
+			 * the live preview comes first, so the bar names what is under it.
+			 */}
+			<span className="min-w-0 truncate font-mono text-xs text-muted-foreground max-lg:hidden">
 				{file}
+			</span>
+			<span className="inline-flex min-w-0 items-center gap-1.5 text-xs font-medium text-muted-foreground lg:hidden">
+				<FrameworkIcon id="react" className="size-3.5" />
+				<span className="truncate">Checkout preview, in React</span>
 			</span>
 			<span className="ml-auto inline-flex shrink-0 items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
 				<span
@@ -355,7 +385,7 @@ function WindowBar({ isPending, file }: { isPending: boolean; file: string }) {
 						isPending ? "bg-amber-500" : "bg-emerald-500",
 					)}
 				/>
-				Live preview
+				Live<span className="max-lg:hidden">&nbsp;preview</span>
 			</span>
 		</div>
 	);
@@ -474,7 +504,11 @@ function FrameworkSelect({ value }: { value: DocsFramework }) {
 				<FrameworkIcon id={value} className="size-3.5" />
 				<SelectValue />
 			</SelectTrigger>
-			<SelectContent align="start" alignItemWithTrigger={false}>
+			<SelectContent
+				align="start"
+				alignItemWithTrigger={false}
+				aria-label="Show the code in"
+			>
 				{CHOICES.map((entry) => (
 					<SelectItem key={entry.id} value={entry.id}>
 						<FrameworkIcon id={entry.id} />
@@ -529,7 +563,7 @@ function Inspector({
 			</div>
 			<div className="flex min-w-0 items-start gap-2 sm:ml-auto sm:items-center">
 				<span className="shrink-0 text-muted-foreground">
-					{lastCall ? `${lastCall.method}() →` : "result →"}
+					{lastCall ? `${callLabel(lastCall)} →` : "result →"}
 				</span>
 				{lastCall ? (
 					<span
@@ -544,9 +578,7 @@ function Inspector({
 						{formatResult(lastCall.result)}
 					</span>
 				) : (
-					<span className="truncate text-muted-foreground/70">
-						press Continue
-					</span>
+					<span className="truncate text-muted-foreground">press Continue</span>
 				)}
 			</div>
 		</div>
@@ -560,6 +592,10 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
 			<span className="text-foreground">{children}</span>
 		</span>
 	);
+}
+
+function callLabel({ method, target }: LastCall) {
+	return method === "goTo" ? `goTo("${target}")` : `${method}()`;
 }
 
 function formatResult(result: Result) {
@@ -618,7 +654,7 @@ function AccountStep({
 				aria-invalid={invalid || undefined}
 				aria-describedby="hero-email-hint"
 				className={cn(
-					"mt-2 h-10 w-full rounded-lg border bg-background px-3 shadow-xs outline-none transition-[border-color,box-shadow] duration-150 placeholder:text-muted-foreground/60 focus:border-primary/60 focus:ring-3 focus:ring-primary/15",
+					"mt-2 h-10 w-full rounded-lg border bg-background px-3 shadow-xs outline-none transition-[border-color,box-shadow] duration-150 placeholder:text-muted-foreground focus:border-primary/60 focus:ring-3 focus:ring-primary/15",
 					invalid &&
 						"border-red-500/60 focus:border-red-500/70 focus:ring-red-500/15",
 				)}
@@ -755,7 +791,7 @@ function DoneStep({
 }) {
 	return (
 		<div className="flex flex-col items-center py-3 text-center">
-			<span className="flex size-12 items-center justify-center rounded-full bg-emerald-500 text-white shadow-lg shadow-emerald-500/25 animate-in duration-500 ease-out-strong zoom-in-75 fade-in-0">
+			<span className="flex size-12 items-center justify-center rounded-full bg-emerald-500 text-white shadow-lg shadow-emerald-500/25 animate-in duration-250 ease-out-strong zoom-in-95 fade-in-0 motion-reduce:animate-none">
 				<Check className="size-6" strokeWidth={2.75} aria-hidden />
 			</span>
 			<p className="mt-4 text-[15px] font-semibold tracking-tight">
@@ -768,7 +804,7 @@ function DoneStep({
 			<button
 				type="button"
 				onClick={onRestart}
-				className="pressable mt-5 inline-flex h-8 items-center gap-1.5 rounded-lg border bg-background px-3 text-xs font-medium outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
+				className="pressable mt-5 inline-flex h-8 items-center gap-1.5 rounded-lg border bg-background px-3 text-xs font-medium outline-none pointer-coarse:h-11 pointer-coarse:px-4 hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
 			>
 				<RotateCcw className="size-3.5" aria-hidden />
 				stepper.reset()

@@ -70,10 +70,10 @@ function Hero() {
 						 * Studio writes React and shadcn/ui code: say so up front, so a
 						 * Vue visitor is not sent to a tool that is not for them yet.
 						 */}
-						<span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+						<span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-accent-foreground">
 							<FrameworkIcon
 								id="react"
-								className="size-3 text-primary dark:text-primary"
+								className="size-3 text-current dark:text-current"
 							/>
 							React
 						</span>
@@ -90,8 +90,8 @@ function Hero() {
 					</Link>
 
 					<h1
-						className="lp-rise mt-7 text-[2.5rem] leading-[1.04] font-semibold tracking-[-0.045em] sm:text-6xl lg:text-[4.5rem]"
-						style={{ animationDelay: "40ms" }}
+						// Moves, never fades: the headline is the largest paint (LCP).
+						className="lp-settle mt-7 text-[2.5rem] leading-[1.04] font-semibold tracking-[-0.045em] sm:text-6xl lg:text-[4.5rem]"
 					>
 						The <span className="text-primary">type-safe</span> way to build{" "}
 						<span className="whitespace-nowrap">multi-step</span> flows.
@@ -142,10 +142,7 @@ function Hero() {
 					</div>
 				</div>
 
-				<div
-					className="lp-lift mx-auto mt-12 max-w-6xl sm:mt-16"
-					style={{ animationDelay: "140ms" }}
-				>
+				<div className="lp-lift mx-auto mt-12 max-w-6xl sm:mt-16">
 					<HeroPlayground />
 					<p className="mx-auto mt-4 max-w-2xl text-center text-[13px] text-balance text-muted-foreground">
 						Live: type an email, step through, then place the order. The

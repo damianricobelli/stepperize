@@ -338,7 +338,7 @@ function Cell({
 				<div className="flex items-center gap-2">
 					<h3 className="text-base font-semibold tracking-tight">{title}</h3>
 					{badge && (
-						<span className="rounded-full border border-primary/25 bg-primary/8 px-2 py-0.5 text-[11px] font-medium text-primary">
+						<span className="rounded-full border border-primary/25 bg-primary/8 px-2 py-0.5 text-[11px] font-medium text-accent-foreground">
 							{badge}
 						</span>
 					)}
@@ -351,7 +351,7 @@ function Cell({
 					params={{ _splat: doc }}
 					className="hit-44 mt-4 inline-flex items-center gap-1 rounded text-sm font-medium text-foreground/80 outline-none hover:text-primary focus-visible:ring-2 focus-visible:ring-ring"
 				>
-					Learn more
+					Learn more<span className="sr-only"> about {title}</span>
 					<ArrowRight
 						className="size-3.5 transition-transform duration-200 ease-out-strong group-hover:translate-x-0.5"
 						aria-hidden

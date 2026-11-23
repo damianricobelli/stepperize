@@ -6,7 +6,7 @@ import {
 	History,
 	Sparkles,
 } from "lucide-react";
-import type { ReactNode } from "react";
+import { type ReactNode, useRef } from "react";
 import { FrameworkIcon } from "@/components/framework-icon";
 import {
 	DropdownMenu,
@@ -78,8 +78,9 @@ function Switcher({
 	className?: string;
 }) {
 	const active = options.find((option) => option.active) ?? options[0];
+	const activeItem = useRef<HTMLDivElement>(null);
 	const trigger = cn(
-		"flex h-9 min-w-0 items-center gap-2 rounded-lg border bg-fd-secondary/50 px-2.5 text-start text-sm font-medium text-fd-secondary-foreground outline-none",
+		"flex h-9 min-w-0 pointer-coarse:h-11 items-center gap-2 rounded-lg border bg-fd-secondary/50 px-2.5 text-start text-sm font-medium text-fd-secondary-foreground outline-none",
 		className,
 	);
 
@@ -110,10 +111,17 @@ function Switcher({
 					className="ms-auto size-3.5 shrink-0 text-fd-muted-foreground"
 				/>
 			</DropdownMenuTrigger>
-			<DropdownMenuContent className="w-auto min-w-(--anchor-width)">
+			<DropdownMenuContent
+				className="w-auto min-w-(--anchor-width)"
+				// Open on the page being read, not on the first entry. Base UI's
+				// popup takes `initialFocus` (its focus manager's option) but does
+				// not type it yet.
+				{...{ initialFocus: activeItem }}
+			>
 				{options.map((option) => (
 					<DropdownMenuItem
 						key={option.id}
+						ref={option.id === active.id ? activeItem : undefined}
 						className="items-center gap-2.5 py-1.5"
 						render={
 							<Link

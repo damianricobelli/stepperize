@@ -171,12 +171,11 @@ describe("versioned documentation", () => {
 			{ name: "React v9", url: "/docs/v9/react" },
 			{ name: "The step in the URL", url: "/docs/v9/react/guides/url" },
 		]);
-		// The framework's own page is not listed twice.
-		expect(
-			docsBreadcrumb("v9/core", "Introduction", () => true).map(
-				(crumb) => crumb.url,
-			),
-		).toEqual(["/", "/docs/v9/core"]);
+		// The framework's own page is not listed twice, and is named for it.
+		expect(docsBreadcrumb("v9/vue", "Introduction", () => true)).toEqual([
+			{ name: "Stepperize", url: "/" },
+			{ name: "Vue v9", url: "/docs/v9/vue" },
+		]);
 	});
 
 	it("gives every current page its keywords", () => {

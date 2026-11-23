@@ -358,24 +358,43 @@
 }
 
 /*
- * Phones: let the announcement banner scroll away instead of stacking a
- * second sticky bar on top of the header. Fumadocs injects the banner height
- * from a <style> in the body, so the override needs the extra specificity.
+ * The announcement banner (`components/site/version-banner.tsx`), found by its
+ * label rather than its id: the id changes with every announcement, so that
+ * people who closed the previous one see the next.
+ *
+ * Phones: let it scroll away instead of stacking a second sticky bar on top
+ * of the header. Fumadocs injects the banner height from a <style> in the
+ * body, so the override needs the extra specificity.
  */
 @media (max-width: 767px) {
   :root:root:root {
     --fd-banner-height: 0px;
   }
 
-  #stepperize-v8 {
+  /* Out of the layout math, so it can grow to fit its text when it wraps. */
+  [role="region"][aria-label="Announcement"] {
     position: relative;
+    height: auto !important;
+    min-height: 3rem;
+    padding-block: 0.375rem;
   }
 }
 
+/* Fumadocs draws the close icon at half the muted color: give it full contrast. */
+[role="region"][aria-label="Announcement"] > button {
+  color: var(--muted-foreground);
+}
+
+/* Finger-sized targets for the controls Fumadocs sizes for a mouse. */
 @media (pointer: coarse) {
-  #stepperize-v8 > button {
-    width: 2.5rem;
-    height: 2.5rem;
+  [role="region"][aria-label="Announcement"] > button {
+    width: 2.75rem;
+    height: 2.75rem;
+  }
+
+  button[aria-label="Open Sidebar"] {
+    min-width: 2.75rem;
+    min-height: 2.75rem;
   }
 }
 
@@ -399,9 +418,17 @@
  * release. Subtle enough for something pressed many times a visit.
  */
 @utility pressable {
-  transition-property: transform, background-color, border-color, color, box-shadow, opacity;
-  transition-duration: 160ms;
-  transition-timing-function: var(--ease-out-strong);
+  /*
+   * The doubled class outranks any single `transition-*` utility (shadcn's
+   * `transition-all` on toggles and tabs), so press feedback owns the
+   * transition wherever it is used. No box-shadow: it repaints every frame,
+   * and a state change can simply swap it.
+   */
+  &:is(.pressable) {
+    transition-property: transform, background-color, border-color, color, opacity;
+    transition-duration: 160ms;
+    transition-timing-function: var(--ease-out-strong);
+  }
   -webkit-user-select: none;
   user-select: none;
   &:active:not(:disabled):not([aria-disabled="true"]) {
@@ -486,13 +513,24 @@ figure.shiki > div.absolute:has(> button) {
   }
 }
 
+/* The headline moves but never fades: it is the page's largest paint (LCP). */
+@keyframes lp-settle {
+  from {
+    transform: translateY(6px);
+  }
+}
+
 .lp-rise {
   animation: lp-rise 480ms var(--ease-out-strong) both;
 }
 
-/* The playground: a large surface, so a shorter travel. */
+.lp-settle {
+  animation: lp-settle 480ms var(--ease-out-strong) both;
+}
+
+/* The playground: a large surface, so a short entrance and no wait. */
 .lp-lift {
-  animation: lp-rise 520ms var(--ease-out-strong) both;
+  animation: lp-rise 320ms var(--ease-out-strong) both;
 }
 
 .lp-swap {
@@ -516,6 +554,11 @@ figure.shiki > div.absolute:has(> button) {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  /* Nothing to fade: the headline is visible from the first frame. */
+  .lp-settle {
+    animation: none;
+  }
+
   /* Gentler, not zero: keep the fade, drop the movement. */
   .lp-rise,
   .lp-lift,
@@ -524,6 +567,21 @@ figure.shiki > div.absolute:has(> button) {
   .lp-from-left,
   .lp-from-below {
     animation-name: lp-fade;
+  }
+}
+
+/*
+ * The homepage's blocks rail: a looping spinner in a card that is scrolled
+ * out of view (or with reduced motion) stops. `data-offscreen` is set by
+ * `components/landing/blocks-rail.tsx`; the gallery is unaffected.
+ */
+[data-rail-card][data-offscreen] .animate-spin {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-rail-card] .animate-spin {
+    animation: none;
   }
 }
 

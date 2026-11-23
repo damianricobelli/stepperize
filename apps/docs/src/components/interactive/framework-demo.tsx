@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import ReactDemo from "@/components/framework-demos/react/ReactDemo";
 
 /** Approach (c): each framework is a lazy chunk exposing `mount(el)`, React only owns the container. */
 const loaders = {
@@ -10,11 +11,27 @@ const loaders = {
 	html: () => import("@/components/framework-demos/mount/html"),
 };
 
+/**
+ * A live demo of the same three-step flow in each framework. React is this
+ * site's own renderer, so its demo renders in place (and on the server); the
+ * others mount their own app into a container once their chunk loads.
+ */
 export function FrameworkDemo({
 	framework,
 }: {
-	framework: keyof typeof loaders;
+	framework: "react" | keyof typeof loaders;
 }) {
+	if (framework === "react") {
+		return (
+			<div data-framework-demo="react" data-state="mounted">
+				<ReactDemo />
+			</div>
+		);
+	}
+	return <MountedDemo framework={framework} />;
+}
+
+function MountedDemo({ framework }: { framework: keyof typeof loaders }) {
 	const ref = useRef<HTMLDivElement>(null);
 	const [state, setState] = useState("loading");
 

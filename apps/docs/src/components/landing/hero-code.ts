@@ -29,7 +29,7 @@ const indent = (code: string, spaces: number) =>
 
 const guard = (email: string, spaces: number) =>
 	indent(
-		`if (direction === "prev") return true;
+		`if (direction !== "next") return true;
 if (from.id === "account") return isEmail(${email});
 if (from.id === "review") await placeOrder();`,
 		spaces,
@@ -234,7 +234,9 @@ ${guard("this.email", 6)}
 	html: {
 		file: "checkout.html",
 		code: `<div data-component="stepper" id="checkout">
-  <div data-component="stepper-content" data-step="account">…</div>
+  <div data-component="stepper-content" data-step="account">
+    <input id="email" type="email" required />
+  </div>
   <div data-component="stepper-content" data-step="shipping">…</div>
   <div data-component="stepper-content" data-step="review">…</div>
   <div data-component="stepper-content" data-step="done">…</div>
@@ -242,8 +244,8 @@ ${guard("this.email", 6)}
 </div>
 
 <script type="module">
-  import { createStepper } from "@stepperize/core";
-  import { bindStepper } from "@stepperize/core/dom";
+  import { createStepper } from "https://esm.sh/@stepperize/core";
+  import { bindStepper } from "https://esm.sh/@stepperize/core/dom";
 
   const email = document.getElementById("email");
   const flow = createStepper([
@@ -300,7 +302,8 @@ export type LineMap = {
 	steps: number[];
 	/** Where each step is rendered, in step order. */
 	render: number[];
-	guard: { prev: number; email: number; order: number };
+	/** `others` is the line that lets every move but `next()` through. */
+	guard: { others: number; email: number; order: number };
 };
 
 export type HeroSource = {
@@ -326,7 +329,7 @@ function build({ file, code, render }: Snippet): HeroSource {
 			),
 			render: render.map((needle) => lineOf(raw, needle)),
 			guard: {
-				prev: lineOf(raw, `direction === "prev"`),
+				others: lineOf(raw, `direction !== "next"`),
 				email: lineOf(raw, `from.id === "account"`),
 				order: lineOf(raw, `from.id === "review"`),
 			},

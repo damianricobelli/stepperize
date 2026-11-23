@@ -8,6 +8,7 @@ import type { ReactNode } from "react";
 import { FrameworkIcon } from "@/components/framework-icon";
 import { docPath, useFramework } from "@/components/landing/framework-choice";
 import { HeaderStars } from "@/components/landing/social-proof";
+import { CURRENT_DOCS_VERSION } from "@/lib/docs-tree";
 import { cn } from "@/lib/utils";
 import { Wordmark } from "./brand";
 
@@ -55,7 +56,7 @@ export function SiteHeader({
 					>
 						Docs
 					</NavLink>
-					{/* Blocks and Studio are shadcn/ui for React: marked where there is room. */}
+					{/* Blocks and Studio are shadcn/ui for React: marked at every width. */}
 					<NavLink active={active === "blocks"} href={{ to: "/blocks" }}>
 						Blocks
 						<ReactMark />
@@ -64,9 +65,13 @@ export function SiteHeader({
 						Studio
 						<ReactMark />
 					</NavLink>
+					{/* The page itself: `/changelog` only redirects there. */}
 					<NavLink
 						active={active === "changelog"}
-						href={{ to: "/changelog" }}
+						href={{
+							to: "/docs/$",
+							params: { _splat: `${CURRENT_DOCS_VERSION}/react/changelog` },
+						}}
 						className="hidden md:inline-flex"
 					>
 						Changelog
@@ -92,8 +97,7 @@ function NavLink({
 	href:
 		| { to: "/docs/$"; params: { _splat: string } }
 		| { to: "/blocks" }
-		| { to: "/studio" }
-		| { to: "/changelog" };
+		| { to: "/studio" };
 	active: boolean;
 	className?: string;
 	children: ReactNode;
@@ -115,7 +119,7 @@ function NavLink({
 
 function ReactMark() {
 	return (
-		<span className="ml-1.5 inline-flex max-md:hidden" title="React">
+		<span className="ml-1 inline-flex sm:ml-1.5" title="React">
 			<FrameworkIcon id="react" className="size-3" />
 			<span className="sr-only">(React)</span>
 		</span>

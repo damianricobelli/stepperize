@@ -1,5 +1,62 @@
-import type { ReactNode } from "react";
+import {
+	type ReactNode,
+	type RefObject,
+	useEffect,
+	useRef,
+	useState,
+} from "react";
 import { cn } from "@/lib/utils";
+
+/* ───────────────────────────── lazy demos ───────────────────────────── */
+
+/**
+ * Whether an element has come near the viewport, once: false on the server
+ * and on first paint, true for good once it is within `margin` of the screen.
+ * Live demos below the fold load then, well before they are seen, so their
+ * code stays out of the first bundle without anyone watching a placeholder.
+ */
+export function useNearViewport<T extends Element>(
+	margin = "800px",
+): [RefObject<T | null>, boolean] {
+	const ref = useRef<T>(null);
+	const [near, setNear] = useState(false);
+	useEffect(() => {
+		const node = ref.current;
+		if (!node || near) return;
+		if (typeof IntersectionObserver === "undefined") {
+			setNear(true);
+			return;
+		}
+		const observer = new IntersectionObserver(
+			(entries) => {
+				if (entries.some((entry) => entry.isIntersecting)) {
+					setNear(true);
+					observer.disconnect();
+				}
+			},
+			{ rootMargin: `${margin} 0px` },
+		);
+		observer.observe(node);
+		return () => observer.disconnect();
+	}, [margin, near]);
+	return [ref, near];
+}
+
+/**
+ * Stands in for a live block until it loads: the size of a typical block, so
+ * the stage around it (which has its own minimum height) never moves.
+ */
+export function DemoPlaceholder({ className }: { className?: string }) {
+	return (
+		<div
+			aria-hidden
+			className={cn(
+				"h-80 w-full max-w-md rounded-xl border bg-background/60 shadow-xs",
+				className,
+			)}
+		/>
+	);
+}
 
 /* ─────────────────────────── layout primitives ──────────────────────── */
 

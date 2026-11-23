@@ -228,6 +228,7 @@ export function softwareApplicationLd() {
 		image: ogImageUrl({
 			title: SITE.homeOgTitle,
 			description: SITE.homeOgDescription,
+			section: SITE.homeOgSection,
 			variant: "website",
 		}),
 		offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
@@ -487,13 +488,16 @@ export type HomeMeta = {
 	description: string;
 	socialTitle: string;
 	socialDescription: string;
+	/** The social image's badge; the default ("Documentation") when unset. */
+	socialSection?: string;
 };
 
 const HOME_META: HomeMeta = {
-	title: SITE.defaultTitle,
+	title: SITE.homeTitle,
 	description: SITE.defaultDescription,
 	socialTitle: SITE.homeOgTitle,
 	socialDescription: SITE.homeOgDescription,
+	socialSection: SITE.homeOgSection,
 };
 
 /** Resolve landing-page metadata. */
@@ -1420,7 +1424,8 @@ export function docsBreadcrumb(
 	return [
 		{ name: "Stepperize", url: "/" },
 		...levels.filter((level) => level.url !== page && hasPage(level.url)),
-		{ name: pageTitle, url: page },
+		// A framework's introduction is its home: named "Vue v9", not "Introduction".
+		{ name: title && page === home ? levels[0].name : pageTitle, url: page },
 	];
 }
 

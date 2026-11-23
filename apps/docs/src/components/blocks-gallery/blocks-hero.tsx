@@ -1,6 +1,7 @@
 "use client";
 
-import { ArrowRight, Blocks, Boxes, ExternalLink } from "lucide-react";
+import { ArrowRight, Boxes, ExternalLink } from "lucide-react";
+import { FrameworkIcon } from "@/components/framework-icon";
 import { cta } from "@/components/site/cta";
 import { BLOCKS, CATEGORIES, REGISTRY_BASE } from "@/lib/blocks";
 
@@ -26,9 +27,19 @@ export function BlocksHero() {
 						className="lp-rise inline-flex items-center gap-2 rounded-full border bg-card/70 px-3 py-1 text-[13px] text-muted-foreground shadow-xs backdrop-blur"
 						style={{ animationDelay: "0ms" }}
 					>
-						<Blocks className="size-3.5 text-primary" aria-hidden />
-						{BLOCKS.length} blocks · {CATEGORIES.length} categories ·
-						shadcn-ready
+						{/* shadcn/ui is React, so the blocks are: said first, in words. */}
+						<FrameworkIcon id="react" className="size-3.5" />
+						<span className="font-medium text-foreground">
+							React · shadcn/ui
+						</span>
+						<span aria-hidden>·</span>
+						{BLOCKS.length} blocks
+						<span aria-hidden className="max-sm:hidden">
+							·
+						</span>
+						<span className="max-sm:hidden">
+							{CATEGORIES.length} categories
+						</span>
 					</span>
 
 					<h1
@@ -36,16 +47,16 @@ export function BlocksHero() {
 						style={{ animationDelay: "80ms" }}
 					>
 						Production-ready{" "}
-						<span className="text-primary">stepper blocks</span>
+						<span className="text-primary">React stepper blocks</span>
 					</h1>
 
 					<p
 						className="lp-rise mx-auto mt-6 max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg"
 						style={{ animationDelay: "160ms" }}
 					>
-						Complete, accessible, customizable stepper flows built with
-						Stepperize and shadcn/ui. Preview them live, inspect the code, open
-						them in v0, or install them straight from the registry.
+						Complete, accessible, customizable stepper flows for React, built
+						with Stepperize and shadcn/ui. Preview them live, inspect the code,
+						open them in v0, or install them straight from the registry.
 					</p>
 
 					<div

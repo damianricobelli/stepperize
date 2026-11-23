@@ -40,59 +40,60 @@ export function HeaderStars({ className }: { className?: string }) {
 
 /**
  * Size and third-party dependencies of each binding, as the visitor reads the
- * page. Sizes are min + gzip from `node scripts/check-bundle.mjs` (the
- * `/headless` entry of each binding: the flow and its glue, core included,
- * without the UI primitives); update them from that script. Dependencies are
- * the `dependencies` of each package other than `@stepperize/core`.
+ * page. Sizes are min + gzip, in KiB, from `node scripts/check-bundle.mjs` at
+ * the repo root (the `/headless` entry of each binding: the flow and its
+ * glue, core included, without the UI primitives; for HTML, `core/dom`);
+ * update them from that script. Dependencies are the `dependencies` of each
+ * package other than `@stepperize/core`: only Svelte has one.
  */
 const FOOTPRINT: Record<
 	DocsFramework,
 	{ size: string; sizeLabel: string; deps: number; depsLabel: string }
 > = {
 	react: {
-		size: "2.6 kB",
+		size: "2.7 KiB",
 		sizeLabel: "React hooks, min + gzip",
 		deps: 0,
 		depsLabel: "third-party dependencies",
 	},
 	vue: {
-		size: "3.2 kB",
+		size: "3.4 KiB",
 		sizeLabel: "Vue composables, min + gzip",
 		deps: 0,
 		depsLabel: "third-party dependencies",
 	},
 	svelte: {
-		size: "3.2 kB",
+		size: "3.5 KiB",
 		sizeLabel: "Svelte flow, min + gzip",
 		deps: 1,
 		depsLabel: "third-party dependency (esm-env)",
 	},
 	solid: {
-		size: "2.9 kB",
+		size: "3.1 KiB",
 		sizeLabel: "Solid flow, min + gzip",
 		deps: 0,
 		depsLabel: "third-party dependencies",
 	},
 	angular: {
-		size: "2.6 kB",
+		size: "3.2 KiB",
 		sizeLabel: "Angular signals, min + gzip",
-		deps: 1,
-		depsLabel: "third-party dependency (tslib)",
+		deps: 0,
+		depsLabel: "third-party dependencies",
 	},
 	lit: {
-		size: "2.5 kB",
+		size: "2.6 KiB",
 		sizeLabel: "Lit controller, min + gzip",
 		deps: 0,
 		depsLabel: "third-party dependencies",
 	},
 	html: {
-		size: "2.8 kB",
-		sizeLabel: "bindStepper, on the 2.2 kB core",
+		size: "4.0 KiB",
+		sizeLabel: "bindStepper, on the 2.3 KiB core",
 		deps: 0,
 		depsLabel: "third-party dependencies",
 	},
 	core: {
-		size: "2.2 kB",
+		size: "2.3 KiB",
 		sizeLabel: "the state machine, min + gzip",
 		deps: 0,
 		depsLabel: "third-party dependencies",
@@ -155,7 +156,7 @@ export function StatBar({ className }: { className?: string }) {
 								href={stat.href}
 								target="_blank"
 								rel="noreferrer noopener"
-								className="flex flex-1 flex-col gap-0.5 px-4 py-4 outline-none transition-colors duration-150 hover:bg-muted/60 focus-visible:bg-muted/60 sm:px-5"
+								className="flex flex-1 flex-col gap-0.5 px-4 py-4 outline-none transition-colors duration-150 hover:bg-muted/60 focus-visible:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset sm:px-5"
 							>
 								{body}
 							</a>

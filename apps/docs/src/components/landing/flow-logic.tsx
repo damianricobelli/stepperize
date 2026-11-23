@@ -10,17 +10,21 @@ import {
 } from "lucide-react";
 import {
 	Activity,
+	type ComponentType,
 	type KeyboardEvent,
-	type ReactNode,
+	lazy,
+	Suspense,
 	useRef,
 	useState,
 } from "react";
 import { FrameworkIcon } from "@/components/framework-icon";
 import { cn } from "@/lib/utils";
-import { AsyncProvisioningBlock } from "../blocks/async-provisioning";
-import { ConditionalOnboardingBlock } from "../blocks/conditional-onboarding";
-import { ValidatedCheckoutBlock } from "../blocks/validated-checkout";
-import { Section, SectionHeading } from "./shared";
+import {
+	DemoPlaceholder,
+	Section,
+	SectionHeading,
+	useNearViewport,
+} from "./shared";
 
 type Demo = {
 	id: string;
@@ -28,7 +32,8 @@ type Demo = {
 	label: string;
 	body: string;
 	api: string;
-	Block: () => ReactNode;
+	/** Loaded when the section nears the screen: below the fold, not in the first bundle. */
+	Block: ComponentType;
 };
 
 const DEMOS: Demo[] = [
@@ -38,7 +43,11 @@ const DEMOS: Demo[] = [
 		label: "Validation that blocks",
 		body: "next() checks the step against its schema. A failed check cancels the move and hands back the issues to show.",
 		api: "next · issues",
-		Block: ValidatedCheckoutBlock,
+		Block: lazy(() =>
+			import("../blocks/validated-checkout").then((m) => ({
+				default: m.ValidatedCheckoutBlock,
+			})),
+		),
 	},
 	{
 		id: "branching",
@@ -46,7 +55,11 @@ const DEMOS: Demo[] = [
 		label: "Branching paths",
 		body: "An earlier answer rewrites the path. A personal account skips the team step entirely, and Back returns the way you came.",
 		api: "next map · prev",
-		Block: ConditionalOnboardingBlock,
+		Block: lazy(() =>
+			import("../blocks/conditional-onboarding").then((m) => ({
+				default: m.ConditionalOnboardingBlock,
+			})),
+		),
 	},
 	{
 		id: "async",
@@ -54,7 +67,11 @@ const DEMOS: Demo[] = [
 		label: "Async work and retry",
 		body: "The transition awaits real work, exposes isPending, fails the first try, and recovers on retry.",
 		api: "isPending",
-		Block: AsyncProvisioningBlock,
+		Block: lazy(() =>
+			import("../blocks/async-provisioning").then((m) => ({
+				default: m.AsyncProvisioningBlock,
+			})),
+		),
 	},
 ];
 
@@ -65,12 +82,14 @@ const DEMOS: Demo[] = [
  */
 export function FlowLogic() {
 	const [active, setActive] = useState(DEMOS[0].id);
-	// Panels settle in when the visitor switches, not on first paint.
+	// Panels settle in when the visitor clicks or taps a tab: not on first
+	// paint, and not from the arrow keys (keyboard moves get no animation).
 	const [switched, setSwitched] = useState(false);
-	const select = (id: string) => {
+	const select = (id: string, animate: boolean) => {
 		setActive(id);
-		setSwitched(true);
+		setSwitched(animate);
 	};
+	const [stageRef, near] = useNearViewport<HTMLDivElement>();
 	const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
 	const onKeyDown = (event: KeyboardEvent, index: number) => {
@@ -84,7 +103,7 @@ export function FlowLogic() {
 		if (delta === undefined) return;
 		event.preventDefault();
 		const next = (index + delta + DEMOS.length) % DEMOS.length;
-		select(DEMOS[next].id);
+		select(DEMOS[next].id, false);
 		tabRefs.current[next]?.focus();
 	};
 
@@ -121,7 +140,8 @@ export function FlowLogic() {
 								aria-controls={`flow-panel-${demo.id}`}
 								tabIndex={selected ? 0 : -1}
 								onClick={(event) => {
-									select(demo.id);
+									// `detail` is 0 for Enter or Space: a keyboard press.
+									select(demo.id, event.detail > 0);
 									// On phones the tabs are a swipeable strip; bring a
 									// half-visible tab fully into view once chosen.
 									event.currentTarget.scrollIntoView({
@@ -175,7 +195,10 @@ export function FlowLogic() {
 					})}
 				</div>
 
-				<div className="relative grid min-h-[28rem] overflow-hidden rounded-3xl border bg-muted/30 sm:min-h-[30rem]">
+				<div
+					ref={stageRef}
+					className="relative grid min-h-[28rem] overflow-hidden rounded-3xl border bg-muted/30 sm:min-h-[30rem]"
+				>
 					<div
 						aria-hidden
 						className="pointer-events-none absolute inset-0 bg-[radial-gradient(var(--color-border)_1px,transparent_1px)] bg-size-[16px_16px] mask-[radial-gradient(ellipse_70%_70%_at_50%_50%,black,transparent)]"
@@ -194,7 +217,9 @@ export function FlowLogic() {
 									switched && "lp-swap",
 								)}
 							>
-								<demo.Block />
+								<Suspense fallback={<DemoPlaceholder />}>
+									{near ? <demo.Block /> : <DemoPlaceholder />}
+								</Suspense>
 							</div>
 						</Activity>
 					))}

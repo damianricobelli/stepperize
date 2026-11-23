@@ -73,8 +73,11 @@ export function InstallTabs({ className }: { className?: string }) {
 			)}
 		>
 			<div className="flex items-center justify-between gap-2 border-b bg-muted/40 px-1.5 py-1.5">
-				<fieldset className="relative grid grid-cols-4">
-					<legend className="sr-only">Package manager</legend>
+				{/* Named on the group itself: a grid fieldset's legend is easy to lose. */}
+				<fieldset
+					aria-label="Package manager"
+					className="relative grid grid-cols-4"
+				>
 					{/* One sliding pill instead of four background swaps. */}
 					<span
 						aria-hidden
@@ -113,7 +116,11 @@ export function InstallTabs({ className }: { className?: string }) {
 						<FrameworkIcon id={pkg.id} className="size-3.5" />
 						<SelectValue />
 					</SelectTrigger>
-					<SelectContent align="end" alignItemWithTrigger={false}>
+					<SelectContent
+						align="end"
+						alignItemWithTrigger={false}
+						aria-label="Framework"
+					>
 						{PACKAGES.map((entry) => (
 							<SelectItem key={entry.id} value={entry.id}>
 								<FrameworkIcon id={entry.id} />
