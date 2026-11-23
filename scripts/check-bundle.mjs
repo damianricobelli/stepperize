@@ -132,23 +132,6 @@ const bindings = [
 		},
 	},
 	{
-		name: "lit",
-		external: ["lit", "lit/*", "@lit/*", "lit-html", "lit-html/*", "lit-element", "lit-element/*"],
-		// The definition has no `Stepper` object: the primitives are directives on the controller.
-		shape: false,
-		async verify({ definition, full }) {
-			const host = {
-				addController() {},
-				removeController() {},
-				requestUpdate() {},
-				updateComplete: Promise.resolve(true),
-			};
-			const controller = definition.controller(host, { snapshot: { step: "finish" } });
-			assert.equal(controller.value.current.id, "finish");
-			assert.equal(typeof controller.root, full ? "function" : "undefined", "Only the full entry has the directives");
-		},
-	},
-	{
 		name: "angular",
 		external: ["@angular/*", "rxjs", "rxjs/*"],
 		// Built in Angular Package Format: the entries are in `dist`, and the primary one imports the secondary by name.
@@ -164,6 +147,23 @@ const bindings = [
 			assert(code.includes("injectStepper"), "Both entries have the signals API");
 			assert.equal(code.includes("stepperRoot"), full, "Only the full entry has the directives");
 			assert(code.includes("ngDeclareDirective") || !full, "The directives are published partially compiled");
+		},
+	},
+	{
+		name: "lit",
+		external: ["lit", "lit/*", "@lit/*", "lit-html", "lit-html/*", "lit-element", "lit-element/*"],
+		// The definition has no `Stepper` object: the primitives are directives on the controller.
+		shape: false,
+		async verify({ definition, full }) {
+			const host = {
+				addController() {},
+				removeController() {},
+				requestUpdate() {},
+				updateComplete: Promise.resolve(true),
+			};
+			const controller = definition.controller(host, { snapshot: { step: "finish" } });
+			assert.equal(controller.value.current.id, "finish");
+			assert.equal(typeof controller.root, full ? "function" : "undefined", "Only the full entry has the directives");
 		},
 	},
 	{
