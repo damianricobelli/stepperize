@@ -1,0 +1,398 @@
+Three words are used throughout these docs. They are different things.
+
+<FrameworkOnly is="react">
+
+| Name | What it is | Where it comes from |
+| --- | --- | --- |
+| **Definition** | The typed description of the steps, with hooks and components bound to it. Holds no state. | `defineStepper(steps)` |
+| **Flow** | One running instance: the current step, the data of every step, which steps are complete. | `useStepper()`, `Provider`, `Stepper.Root` or `create()` each create one |
+| **Stepper** | What your component reads: a picture of the flow at one moment, plus the actions that change it. | Returned by `useStepper()` and `useStepperContext()` |
+
+</FrameworkOnly>
+
+<FrameworkOnly is="vue svelte solid">
+
+| Name | What it is | Where it comes from |
+| --- | --- | --- |
+| **Definition** | The typed description of the steps, with functions and components bound to it. Holds no state. | `defineStepper(steps)` |
+| **Flow** | One running instance: the current step, the data of every step, which steps are complete. | `useStepper()`, `Provider`, `Stepper.Root` or `create()` each create one |
+| **Stepper** | What your component reads: a reactive object that shows the flow as it is now, plus the actions that change it. | Returned by `useStepper()` and `useStepperContext()` |
+
+</FrameworkOnly>
+
+<FrameworkOnly is="angular">
+
+| Name | What it is | Where it comes from |
+| --- | --- | --- |
+| **Definition** | The typed description of the steps, with injection functions bound to it. Holds no state. | `defineStepper(steps)` |
+| **Flow** | One running instance: the current step, the data of every step, which steps are complete. | `injectStepper()`, `provideStepper()` or `create()` each create one |
+| **Stepper** | What your component reads: a picture of the flow at one moment, plus the actions that change it. | The value of the signal `injectStepper()` and `injectStepperContext()` return |
+
+</FrameworkOnly>
+
+<FrameworkOnly is="lit">
+
+| Name | What it is | Where it comes from |
+| --- | --- | --- |
+| **Definition** | The typed description of the steps, with a controller bound to it. Holds no state. | `defineStepper(steps)` |
+| **Flow** | One running instance: the current step, the data of every step, which steps are complete. | `controller(this, options)` or `create()` each create one |
+| **Stepper** | What your element reads: a picture of the flow at one moment, plus the actions that change it. | The controller's `value` |
+
+</FrameworkOnly>
+
+<FrameworkCode>
+
+```tsx framework="react"
+const checkout = defineStepper([{ id: "shipping" }, { id: "payment" }, { id: "review" }]); // definition
+
+function Checkout() {
+  const stepper = checkout.useStepper(); // creates a flow, returns its stepper
+  return <p>{stepper.current.id}</p>;
+}
+```
+
+```vue framework="vue" title="Checkout.vue"
+<script setup lang="ts">
+import { checkout } from "./checkout"; // the definition, made once in a module
+
+const stepper = checkout.useStepper(); // creates a flow, returns its stepper
+</script>
+
+<template>
+  <p>{{ stepper.current.id }}</p>
+</template>
+```
+
+```svelte framework="svelte" title="Checkout.svelte"
+<script lang="ts">
+  import { checkout } from "./checkout"; // the definition, made once in a module
+
+  const stepper = checkout.useStepper(); // creates a flow, returns its stepper
+</script>
+
+<p>{stepper.current.id}</p>
+```
+
+```tsx framework="solid"
+const checkout = defineStepper([{ id: "shipping" }, { id: "payment" }, { id: "review" }]); // definition
+
+function Checkout() {
+  const stepper = checkout.useStepper(); // creates a flow, returns its stepper
+  return <p>{stepper.current.id}</p>;
+}
+```
+
+```ts framework="angular"
+const checkout = defineStepper([{ id: "shipping" }, { id: "payment" }, { id: "review" }]); // definition
+
+@Component({
+  selector: "app-checkout",
+  template: `<p>{{ stepper().current.id }}</p>`,
+})
+export class Checkout {
+  readonly stepper = checkout.injectStepper(); // creates a flow, returns a signal of its stepper
+}
+```
+
+```ts framework="lit"
+const checkout = defineStepper([{ id: "shipping" }, { id: "payment" }, { id: "review" }]); // definition
+
+class CheckoutSteps extends LitElement {
+  stepper = checkout.controller(this); // creates a flow; `value` is its stepper
+
+  render() {
+    return html`<p>${this.stepper.value.current.id}</p>`;
+  }
+}
+```
+
+</FrameworkCode>
+
+## One flat object
+
+Everything you read and everything you do is directly on the stepper. There
+are no nested namespaces to learn.
+
+<FrameworkCode>
+
+```ts framework="react vue svelte solid"
+stepper.current; // the step being shown, with your fields
+stepper.index; // its position
+stepper.data; // the data of every step
+stepper.next(values); // save, validate and move forward
+stepper.prev(); // go back
+```
+
+```ts framework="angular"
+const stepper = this.stepper(); // read the signal: the stepper as it is now
+
+stepper.current; // the step being shown, with your fields
+stepper.index; // its position
+stepper.data; // the data of every step
+stepper.next(values); // save, validate and move forward
+stepper.prev(); // go back
+```
+
+```ts framework="lit"
+const stepper = this.stepper.value; // the stepper as it is now
+
+stepper.current; // the step being shown, with your fields
+stepper.index; // its position
+stepper.data; // the data of every step
+stepper.next(values); // save, validate and move forward
+stepper.prev(); // go back
+```
+
+</FrameworkCode>
+
+Most flows ship with seven members:
+
+| Member | What it gives you |
+| --- | --- |
+| `current` | The step being shown. |
+| `match({...})` | Exhaustive rendering by step id. |
+| `next(data?)`, `prev()` | Move through the flow. |
+| `isFirst`, `isLast` | What your Back and Continue buttons need. |
+| `data` | What each step has saved. |
+
+The rest (branching, snapshots, jumping to a step) is there when you need it.
+The [full reference](/docs/v9/:framework/api/stepper) lists every member.
+
+## Derived from one position
+
+You only express intent: go next, go back, jump to review. The stepper derives
+the consequences from the flow's state, so they can never disagree.
+
+```ts
+const flow = checkout.create(); // the same flow, without a component
+
+flow.index; // 0
+flow.isFirst; // true
+flow.progress; // 0
+
+await flow.next();
+
+flow.index; // 1
+flow.current.id; // "payment"
+flow.state("shipping"); // "complete"
+flow.progress; // 0.5
+```
+
+<FrameworkOnly is="react">
+
+## A stepper is a snapshot in time
+
+Each change produces a new stepper, and your component re-renders with it. The
+one you already hold does not change. That is what makes it safe to compare in
+selectors and effects, and it has one consequence worth knowing: after an
+`await`, the stepper captured by your handler still describes the moment
+before the move.
+
+<FrameworkCode>
+
+```tsx framework="react"
+async function onContinue() {
+  const result = await stepper.next(values);
+
+  stepper.current.id; // still the step you were on
+  if (result.accepted) result.to; // where the flow went, or null if it finished
+}
+```
+
+</FrameworkCode>
+
+Read what happened from the result, not from the stepper in scope. The actions
+themselves (`next`, `prev`, `goTo`, `setData`...) always act on the live flow,
+so calling them from an old stepper is fine.
+
+</FrameworkOnly>
+
+<FrameworkOnly is="vue svelte solid">
+
+## The stepper shows the flow as it is now
+
+Each change of the flow produces a new, immutable view of it. The stepper your
+component holds is one object for its whole life, and every read goes to the
+latest view.
+
+<FrameworkOnly is="vue">
+Reads are tracked, so the template, `computed` and watchers of a getter follow
+the flow.
+</FrameworkOnly>
+
+<FrameworkOnly is="svelte">
+Reads are tracked, so markup, `$derived` and `$effect` follow the flow.
+</FrameworkOnly>
+
+<FrameworkOnly is="solid">
+Reads are tracked, like props, so JSX, memos and effects follow the flow.
+</FrameworkOnly>
+
+Two consequences:
+
+- Do not destructure its state. `const { current } = stepper` copies the step
+  once and stops following the flow; read `stepper.current` where you need it.
+- After an `await`, the stepper already shows the flow after the move.
+
+<FrameworkCode>
+
+```ts framework="vue svelte solid"
+async function onContinue() {
+  const result = await stepper.next(values);
+
+  stepper.current.id; // already the step the flow is on now
+  if (result.accepted) result.to; // where the flow went, or null if it finished
+}
+```
+
+</FrameworkCode>
+
+Read what happened from the result: whether the move was accepted, why not,
+and whether the flow finished. The stepper only tells you where the flow is.
+
+</FrameworkOnly>
+
+<FrameworkOnly is="angular lit">
+
+## Each read is a snapshot in time
+
+Each change produces a new stepper, and your template renders with it. A
+stepper you already read into a variable does not change. That is what makes
+it safe to compare, and it has one consequence worth knowing: after an
+`await`, that variable still describes the moment before the move.
+
+<FrameworkCode>
+
+```ts framework="angular"
+async onContinue() {
+  const stepper = this.stepper();
+  const result = await stepper.next(this.values());
+
+  stepper.current.id; // still the step you were on
+  this.stepper().current.id; // the step the flow is on now
+  if (result.accepted) result.to; // where the flow went, or null if it finished
+}
+```
+
+```ts framework="lit"
+async onContinue() {
+  const stepper = this.stepper.value;
+  const result = await stepper.next(this.values);
+
+  stepper.current.id; // still the step you were on
+  this.stepper.value.current.id; // the step the flow is on now
+  if (result.accepted) result.to; // where the flow went, or null if it finished
+}
+```
+
+</FrameworkCode>
+
+Read what happened from the result, or read the stepper again. The actions
+themselves (`next`, `prev`, `goTo`, `setData`...) always act on the live flow,
+so calling them from an old stepper is fine.
+
+</FrameworkOnly>
+
+## Who owns the flow
+
+<FrameworkOnly is="react">
+
+The component that creates the flow owns it and configures it.
+
+| You write | The flow lives |
+| --- | --- |
+| `checkout.useStepper(options)` | In that component. Each call is a separate flow. |
+| `<checkout.Provider {...options}>` | In the provider, shared with everything below. |
+| `<Stepper.Root {...options}>` | In the root, shared with everything below. |
+| `checkout.create(options)` | Wherever you keep the returned object. |
+
+Options go on the owner. Components below a `Provider` or a `Stepper.Root`
+read the flow with `useStepperContext()` and cannot reconfigure it.
+
+</FrameworkOnly>
+
+<FrameworkOnly is="vue">
+
+The component that creates the flow owns it and configures it.
+
+| You write | The flow lives |
+| --- | --- |
+| `checkout.useStepper(options)` | In that component. Each call is a separate flow. |
+| `<checkout.Provider linear @finish="...">` | In the provider, shared with everything below. |
+| `<Stepper.Root linear @finish="...">` | In the root, shared with everything below. |
+| `checkout.create(options)` | Wherever you keep the returned object. |
+
+Options go on the owner: as an argument, or as props and listeners. Components
+below a `Provider` or a `Stepper.Root` read the flow with
+`useStepperContext()` and cannot reconfigure it.
+
+</FrameworkOnly>
+
+<FrameworkOnly is="svelte">
+
+The component that creates the flow owns it and configures it.
+
+| You write | The flow lives |
+| --- | --- |
+| `checkout.useStepper(options)` | In that component. Each call is a separate flow. |
+| `<checkout.Provider linear onFinish={...}>` | In the provider, shared with everything below. |
+| `<Stepper.Root linear onFinish={...}>` | In the root, shared with everything below. |
+| `checkout.create(options)` | Wherever you keep the returned object. `fromFlow(flow)` reads it reactively. |
+
+Options go on the owner. Components below a `Provider` or a `Stepper.Root`
+read the flow with `useStepperContext()` and cannot reconfigure it.
+
+</FrameworkOnly>
+
+<FrameworkOnly is="solid">
+
+The component that creates the flow owns it and configures it.
+
+| You write | The flow lives |
+| --- | --- |
+| `checkout.useStepper(options)` | In that component. Each call is a separate flow. |
+| `<checkout.Provider linear onFinish={...}>` | In the provider, shared with everything below. |
+| `<Stepper.Root linear onFinish={...}>` | In the root, shared with everything below. |
+| `checkout.create(options)` | Wherever you keep the returned object. |
+
+Options go on the owner. Components below a `Provider` or a `Stepper.Root`
+read the flow with `useStepperContext()` and cannot reconfigure it.
+
+</FrameworkOnly>
+
+<FrameworkOnly is="angular">
+
+The component, directive or service that creates the flow owns it and
+configures it.
+
+| You write | The flow lives |
+| --- | --- |
+| `checkout.injectStepper(options)` | In the caller. Each call is a separate flow. |
+| `providers: [checkout.provideStepper(options)]` | In that injector, shared with everything below it. |
+| `checkout.create(options)` | Wherever you keep the returned object. |
+
+Options go on the owner. `[stepperRoot]` creates no flow: it is bound to a
+stepper your component created and shares it with the components inside it.
+Components below a `provideStepper()` or a `[stepperRoot]` read the flow with
+`injectStepperContext()` and cannot reconfigure it.
+
+</FrameworkOnly>
+
+<FrameworkOnly is="lit">
+
+The element that creates the flow owns it and configures it.
+
+| You write | The flow lives |
+| --- | --- |
+| `checkout.controller(this, options)` | In that element. Each controller is a separate flow. |
+| `checkout.create(options)` | Wherever you keep the returned object. |
+
+Options go on the owner. Another element follows a flow it does not own with
+`checkout.controller(this, flow)`: it reads the flow and calls its actions, but
+never changes its options or destroys it.
+
+</FrameworkOnly>
+
+See [Shared state](/docs/v9/:framework/guides/shared-state).
+
+Next: [the lifecycle of a move](/docs/v9/:framework/concepts/moves).

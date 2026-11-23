@@ -1,0 +1,356 @@
+Every step is in exactly one state.
+
+| State | Meaning |
+| --- | --- |
+| `current` | The step being shown. |
+| `complete` | `next()` validated this step and moved on, and its data has not changed since. |
+| `pending` | Everything else: not reached yet, left without being validated, or edited after it was validated. |
+
+<FrameworkCode>
+
+```ts framework="react vue svelte solid"
+stepper.state("shipping"); // "pending" | "current" | "complete"
+```
+
+```ts framework="angular"
+this.stepper().state("shipping"); // "pending" | "current" | "complete"
+```
+
+```ts framework="lit"
+this.stepper.value.state("shipping"); // "pending" | "current" | "complete"
+```
+
+</FrameworkCode>
+
+The primitives expose the same value as `data-state` on each item, trigger and
+indicator.
+
+<FrameworkOnly is="angular">
+On this page, `stepper` is the value of the signal `injectStepper()` returns:
+`this.stepper()` in a class, `stepper()` in a template.
+</FrameworkOnly>
+
+<FrameworkOnly is="lit">
+On this page, `stepper` is the controller's `value`: `this.stepper.value`.
+</FrameworkOnly>
+
+## What completes a step
+
+Only `next()` does, when the step's data passes its schema and the guard
+allows the move. That includes the final `next()` that finishes the flow.
+
+`prev()` and `goTo()` never complete the step they leave, and never validate
+it. Neither does [`validate()`](/docs/v9/:framework/guides/validation#validate-without-moving):
+it checks, and completing stays with `next()`.
+
+The flows below are made with `create()`, without a component. They behave the
+same in every framework.
+
+```ts
+const flow = checkout.create(); // shipping, payment, review
+
+await flow.next({ address: "1 Main St" });
+flow.state("shipping"); // "complete"
+flow.state("payment"); // "current"
+
+await flow.goTo("review"); // jumps over nothing, but leaves payment unvalidated
+flow.state("payment"); // "pending"
+```
+
+So `complete` is not the same as "before the current step". A step someone
+jumped over, or skipped through a branch, stays `pending`.
+
+## Going back
+
+Completion is remembered. When someone returns to a completed step it reads
+`current` while they are on it, and `complete` again once they leave, however
+they leave.
+
+```ts
+await flow.goTo("shipping");
+flow.state("shipping"); // "current"
+
+await flow.goTo("payment");
+flow.state("shipping"); // "complete" again
+```
+
+## What undoes completion
+
+A step is complete for as long as its data is what `next()` validated. Two
+things end that:
+
+- `setData` writes a different value to it. Writing the same value (compared
+  with `Object.is`) changes nothing.
+- A `next(data)` called from it is rejected by the schema.
+
+```ts
+await flow.goTo("shipping");
+flow.setData("shipping", { address: "" });
+
+await flow.goTo("payment");
+flow.state("shipping"); // "pending": it was edited and not validated again
+```
+
+The step's entry in [`stepper.output`](/docs/v9/:framework/guides/validation#draft-data-and-validated-output)
+goes away with it. Calling `next()` from the step validates it and completes it
+again.
+
+In a [linear](/docs/v9/:framework/guides/navigation#linear-flows) flow the steps
+completed **after** the edited one stop being complete as well. Their data is
+kept, but they have to be reached through `next()` again, which is what
+guarantees that nobody gets past a step whose data was never validated. See
+[Editing a step that was already complete](/docs/v9/:framework/guides/navigation#editing-a-step-that-was-already-complete).
+
+## What completion is used for
+
+- **Reachability.** In a linear flow, `goTo` and the triggers reach the
+  current step and the completed ones. Nothing else.
+- **Styling.** `data-[state=complete]` is what draws the check mark.
+- **Your own rules.** For example, enabling a submit button:
+
+<FrameworkCode>
+
+```tsx framework="react"
+const ready = stepper.steps.every(
+  (step) => step.id === stepper.current.id || stepper.state(step.id) === "complete",
+);
+```
+
+```vue framework="vue" title="SubmitButton.vue"
+<script setup lang="ts">
+import { computed } from "vue";
+import { checkout } from "./checkout";
+
+const stepper = checkout.useStepperContext();
+const ready = computed(() =>
+  stepper.steps.every((step) => step.id === stepper.current.id || stepper.state(step.id) === "complete"),
+);
+</script>
+
+<template>
+  <button type="submit" :disabled="!ready">Place order</button>
+</template>
+```
+
+```svelte framework="svelte" title="SubmitButton.svelte"
+<script lang="ts">
+  import { checkout } from "./checkout";
+
+  const stepper = checkout.useStepperContext();
+  const ready = $derived(
+    stepper.steps.every((step) => step.id === stepper.current.id || stepper.state(step.id) === "complete"),
+  );
+</script>
+
+<button type="submit" disabled={!ready}>Place order</button>
+```
+
+```tsx framework="solid" title="SubmitButton.tsx"
+import { createMemo } from "solid-js";
+import { checkout } from "./checkout";
+
+export function SubmitButton() {
+  const stepper = checkout.useStepperContext();
+  const ready = createMemo(() =>
+    stepper.steps.every((step) => step.id === stepper.current.id || stepper.state(step.id) === "complete"),
+  );
+  return (
+    <button type="submit" disabled={!ready()}>
+      Place order
+    </button>
+  );
+}
+```
+
+```ts framework="angular" title="submit-button.component.ts"
+import { Component, computed } from "@angular/core";
+import { checkout } from "./checkout";
+
+@Component({
+  selector: "app-submit-button",
+  template: `<button type="submit" [disabled]="!ready()">Place order</button>`,
+})
+export class SubmitButton {
+  readonly stepper = checkout.injectStepperContext();
+  readonly ready = computed(() => {
+    const stepper = this.stepper();
+    return stepper.steps.every(
+      (step) => step.id === stepper.current.id || stepper.state(step.id) === "complete",
+    );
+  });
+}
+```
+
+```ts framework="lit" title="submit-button.ts"
+import { html, LitElement } from "lit";
+import { checkout } from "./checkout";
+import { checkoutFlow } from "./checkout-flow";
+
+export class SubmitButton extends LitElement {
+  stepper = checkout.controller(this, checkoutFlow);
+
+  render() {
+    const stepper = this.stepper.value;
+    const ready = stepper.steps.every(
+      (step) => step.id === stepper.current.id || stepper.state(step.id) === "complete",
+    );
+    return html`<button type="submit" ?disabled=${!ready}>Place order</button>`;
+  }
+}
+customElements.define("submit-button", SubmitButton);
+```
+
+</FrameworkCode>
+
+The list of completed ids is part of the [snapshot](/docs/v9/:framework/guides/persistence),
+in the order the steps were completed, so a resumed flow keeps its check
+marks.
+
+## Styling by position instead
+
+If your design fills every step before the current one, whatever happened in
+them, compare positions:
+
+<FrameworkCode>
+
+```tsx framework="react"
+<Stepper.List>
+  {(step, index) => (
+    <Stepper.Item data-passed={index < stepper.index || undefined}>
+      <Stepper.Title />
+    </Stepper.Item>
+  )}
+</Stepper.List>
+```
+
+```vue framework="vue" title="CheckoutSteps.vue"
+<script setup lang="ts">
+import { checkout } from "./checkout";
+
+const { Stepper } = checkout;
+</script>
+
+<template>
+  <Stepper.Root v-slot="stepper">
+    <Stepper.List>
+      <template #item="{ index }">
+        <Stepper.Item :class="{ passed: index < stepper.index }">
+          <Stepper.Title />
+        </Stepper.Item>
+      </template>
+    </Stepper.List>
+  </Stepper.Root>
+</template>
+```
+
+```svelte framework="svelte" title="CheckoutSteps.svelte"
+<script lang="ts">
+  import { checkout } from "./checkout";
+
+  const { Stepper } = checkout;
+</script>
+
+<Stepper.Root>
+  {#snippet children(stepper)}
+    <Stepper.List>
+      {#snippet item(_step, index)}
+        <Stepper.Item data-passed={index < stepper.index || undefined}>
+          <Stepper.Title />
+        </Stepper.Item>
+      {/snippet}
+    </Stepper.List>
+  {/snippet}
+</Stepper.Root>
+```
+
+```tsx framework="solid"
+<Stepper.List>
+  {(_step, index) => (
+    <Stepper.Item data-passed={index < stepper.index || undefined}>
+      <Stepper.Title />
+    </Stepper.Item>
+  )}
+</Stepper.List>
+```
+
+```ts framework="angular"
+template: `
+  <ol stepperList>
+    @for (step of stepper().steps; track step.id; let index = $index) {
+      <li [stepperItem]="step" [attr.data-passed]="index < stepper().index || null">
+        {{ step.title }}
+      </li>
+    }
+  </ol>
+`,
+```
+
+```ts framework="lit"
+const s = this.stepper;
+const stepper = s.value;
+
+return html`
+  <ol ${s.list()}>
+    ${s.steps.map(
+      (step, index) => html`
+        <li ${s.item(step.id)} ?data-passed=${index < stepper.index}>${step.title}</li>
+      `,
+    )}
+  </ol>
+`;
+```
+
+</FrameworkCode>
+
+## Marking a step complete yourself
+
+Completion normally follows validation, and that is what keeps it meaningful.
+When it comes from somewhere else, such as a server that already holds the
+data, set it through the snapshot:
+
+<FrameworkCode>
+
+```ts framework="react vue svelte solid"
+// At the start
+const stepper = checkout.useStepper({ snapshot: { step: "payment", complete: ["shipping"] } });
+
+// Later
+stepper.restore({ complete: [...stepper.snapshot().complete, "payment"] });
+```
+
+```ts framework="angular"
+export class Checkout {
+  // At the start
+  readonly stepper = checkout.injectStepper({ snapshot: { step: "payment", complete: ["shipping"] } });
+
+  // Later
+  markPaid() {
+    const stepper = this.stepper();
+    stepper.restore({ complete: [...stepper.snapshot().complete, "payment"] });
+  }
+}
+```
+
+```ts framework="lit"
+class CheckoutSteps extends LitElement {
+  // At the start
+  stepper = checkout.controller(this, { snapshot: { step: "payment", complete: ["shipping"] } });
+
+  // Later
+  markPaid() {
+    const stepper = this.stepper.value;
+    stepper.restore({ complete: [...stepper.snapshot().complete, "payment"] });
+  }
+}
+```
+
+</FrameworkCode>
+
+## Invalid is separate
+
+A step whose last `next()` or `validate()` was rejected by its schema is not
+in a fourth state: it is still `current`, or `pending` if it is not the one
+being shown. Read `stepper.issues(id)`, or style
+`data-invalid`, which is present until that step's data changes.
+
+Next: [moving between steps](/docs/v9/:framework/guides/navigation).

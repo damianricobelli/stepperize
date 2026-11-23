@@ -1,0 +1,222 @@
+<FrameworkOnly is="react">
+`useStepper()` and `useStepperContext()` return the stepper: a picture of the
+flow at one moment, plus the actions that change it. Every change produces a
+new stepper; the one you hold does not change.
+</FrameworkOnly>
+
+<FrameworkOnly is="vue">
+`useStepper()` and `useStepperContext()` return the stepper as a reactive,
+read-only object: every read gives the flow as it is now and is tracked, so
+the template, `computed` and watchers of a getter follow it. Do not
+destructure its state.
+</FrameworkOnly>
+
+<FrameworkOnly is="svelte">
+`useStepper()`, `useStepperContext()` and `fromFlow()` return the stepper as a
+reactive object: every read gives the flow as it is now and is tracked, so
+markup, `$derived` and `$effect` follow it. Do not destructure its state.
+</FrameworkOnly>
+
+<FrameworkOnly is="solid">
+`useStepper()` and `useStepperContext()` return the stepper as a reactive
+object, like props: every read gives the flow as it is now and is tracked, so
+JSX, memos and effects follow it. Do not destructure its state.
+</FrameworkOnly>
+
+<FrameworkOnly is="angular">
+`injectStepper()` and `injectStepperContext()` return a signal of the stepper:
+a picture of the flow at one moment, plus the actions that change it. Every
+change sets a new stepper; one you already read does not change. Read it as
+`stepper()` in a template and `this.stepper()` in a class. The signal also has
+`steps` and `flow`.
+</FrameworkOnly>
+
+<FrameworkOnly is="lit">
+The controller's `value` is the stepper: a picture of the flow at one moment,
+plus the actions that change it. Every change produces a new stepper; one you
+already read does not change. Read `this.stepper.value` in `render()`. The
+controller also has `steps`, `flow` and `destroy()`: see
+[defineStepper](/docs/v9/lit/api/define-stepper#controller).
+</FrameworkOnly>
+
+See [The flow and the stepper](/docs/v9/:framework/concepts/stepper).
+
+## State
+
+| Property | Type | Description |
+| --- | --- | --- |
+| `steps` | `Step[]` | The steps of the definition. |
+| `current` | `Step` | The step being shown, with all its fields. |
+| `index` | `number` | Position of `current` in `steps`. |
+| `isFirst` | `boolean` | `current` is the first step. |
+| `isLinear` | `boolean` | The flow is `linear`: only `next()` moves forward. The primitives render a list of steps instead of tabs. |
+| `isLast` | `boolean` | `next()` finishes the flow. See [Branching](/docs/v9/:framework/guides/branching#islast). |
+| `progress` | `number` | Position of `current` in `steps`, from `0` to `1`. |
+| `data` | `object` | The data of every step, by id, as it was typed: drafts included. Typed by each step's schema input. |
+| `output` | `object` | What the schema of each complete step produced, by id: transforms and defaults applied. Typed by each step's schema output. See [Draft data and validated output](/docs/v9/:framework/guides/validation#draft-data-and-validated-output). |
+| `isPending` | `boolean` | An async schema, guard or `onFinish` is running. |
+| `isFinished` | `boolean` | `next()` completed a final step and `onFinish` settled. `false` again as soon as the flow changes. See [Finishing](/docs/v9/:framework/guides/navigation#finish-the-flow). |
+
+## Queries
+
+| Method | Returns | Description |
+| --- | --- | --- |
+| `state(id)` | `"pending" \| "current" \| "complete"` | `complete` means `next()` validated the step and moved on, and its data has not changed since. The step being shown is always `current`. See [Step state](/docs/v9/:framework/concepts/step-state). |
+| `issues(id?)` | `Issue[] \| undefined` | Issues of the last failed validation of a step (a rejected `next()` or a `validate()`), the current one by default, until its data changes. |
+| `canGoTo(id)` | `boolean` | Whether `goTo(id)` is allowed right now. Does not run the guard. |
+| `match(handlers)` | The handler's result | Runs the handler of the current step with `(step, data)`. Exhaustive. |
+| `snapshot()` | `Snapshot` | Everything needed to resume the flow. |
+
+## Actions
+
+| Method | Description |
+| --- | --- |
+| `next(data?)` | Saves `data` for the current step, validates it and moves on. On a final step it finishes the flow. |
+| `prev()` | Goes back to the step the person came from, or to the previous step in the list. Never validates. |
+| `goTo(id)` | Jumps to a step. Does not validate; `linear` and the guard apply. |
+| `validate(id?)` | Checks the data of a step, the current one by default, against its schema without moving. Resolves with the issues, or `undefined` when it is valid. |
+| `setData(id, data)` | Replaces the data of a step, right away. A complete step whose data changes is no longer complete. |
+| `reset()` | Back to the initial snapshot. Cancels a running move. |
+| `restore(snapshot)` | Replaces the parts of the state you pass and keeps the rest, without validation or guards. Cancels a running move. |
+
+The actions are the same functions on every stepper of a flow, and they always
+act on the flow as it is now. `setData`, `reset` and `restore` return nothing.
+
+<FrameworkOnly is="vue svelte solid">
+Calling an action inside an effect does not make that effect depend on the
+flow: actions read nothing.
+</FrameworkOnly>
+
+### validate
+
+<FrameworkCode>
+
+```ts framework="react vue svelte solid"
+const issues = await stepper.validate(); // the current step
+if (issues) showErrors(issues);
+
+await stepper.validate("shipping"); // any step, by id
+```
+
+```ts framework="angular"
+const issues = await this.stepper().validate(); // the current step
+if (issues) showErrors(issues);
+
+await this.stepper().validate("shipping"); // any step, by id
+```
+
+```ts framework="lit"
+const issues = await this.stepper.value.validate(); // the current step
+if (issues) showErrors(issues);
+
+await this.stepper.value.validate("shipping"); // any step, by id
+```
+
+</FrameworkCode>
+
+`validate` runs the step's schema on its stored data and remembers the
+result: `stepper.issues(id)` returns the same issues until the data changes. It
+does not move, does not mark the step complete, does not run the guard and does
+not call `onChange`. A step without a schema is always valid.
+
+### setData and completion
+
+A step is complete while its data is the data `next()` validated. Writing a
+different value with `setData` makes the step not complete and removes its
+entry from `output`. In a [linear](/docs/v9/:framework/api/options#linear) flow the
+steps completed after it stop being complete too, so they are reached through
+`next()` again. Writing the same value (compared with `Object.is`) does
+nothing: no change, no `onChange`.
+
+## Results
+
+`next`, `prev` and `goTo` resolve with a result and do not throw for expected
+outcomes.
+
+```ts
+type Result =
+  | { accepted: true; to: StepId | null; data: FlowData }
+  | { accepted: false; reason: Reason; issues?: Issue[] };
+```
+
+`to` is `null` when the flow finished.
+
+| Reason | Meaning |
+| --- | --- |
+| `invalid` | The step's schema rejected its data. `issues` says why. |
+| `guard` | Your guard returned `false`. |
+| `policy` | `linear` does not allow jumping to that step. |
+| `pending` | Another move is still running. |
+| `boundary` | `prev()` was called with nowhere to go back to. |
+| `finished` | `next()` was called after the flow finished. Any move to another step, a `setData` with a new value, `reset()` or `restore()` reopens it. |
+| `cancelled` | `reset()`, `restore()` or destroying the flow interrupted the move. |
+
+<FrameworkCode>
+
+```ts framework="react vue svelte solid"
+const result = await stepper.next(values);
+if (result.accepted) {
+  if (result.to === null) toast("Done");
+} else if (result.reason === "invalid") {
+  showErrors(result.issues);
+}
+```
+
+```ts framework="angular"
+const result = await this.stepper().next(values);
+if (result.accepted) {
+  if (result.to === null) toast("Done");
+} else if (result.reason === "invalid") {
+  showErrors(result.issues);
+}
+```
+
+```ts framework="lit"
+const result = await this.stepper.value.next(values);
+if (result.accepted) {
+  if (result.to === null) toast("Done");
+} else if (result.reason === "invalid") {
+  showErrors(result.issues);
+}
+```
+
+</FrameworkCode>
+
+## What throws
+
+- An exception from your own schema, guard or `next` branch is not caught: the
+  promise rejects with it, and the flow stays where it was.
+- An exception or a rejected promise from `onFinish` rejects `next()` too. The
+  final step is already complete, but the flow is not finished, so `next()` can
+  be called again.
+- `goTo` and `setData` with an id that is not in the definition throw
+  [SZ102](/docs/v9/core/errors#sz102) immediately. TypeScript prevents it
+  unless the id was cast.
+
+## Timing
+
+A move with nothing asynchronous in it is finished when the call returns: the
+flow has already changed, and the promise is already resolved. `"pending"`
+only happens while an async schema, guard or `onFinish` is running.
+
+<FrameworkCode>
+
+```ts framework="react vue svelte solid"
+stepper.next(); // moves to the second step
+stepper.next(); // moves to the third: the first call had finished
+```
+
+```ts framework="angular"
+this.stepper().next(); // moves to the second step
+this.stepper().next(); // moves to the third: the first call had finished
+```
+
+```ts framework="lit"
+this.stepper.value.next(); // moves to the second step
+this.stepper.value.next(); // moves to the third: the first call had finished
+```
+
+</FrameworkCode>
+
+In an event handler this means two calls in a row make two moves. To make one
+move depend on the other, await the result.
