@@ -1,0 +1,376 @@
+---
+title: TanStack Form
+description: A three-step checkout with TanStack Form for Vue, where the form and the step validate with the same Standard Schema.
+---
+
+TanStack Form owns the fields of each step; Stepperize owns the flow, what each
+step saved and the order sent at the end. TanStack Form takes
+[Standard Schema](https://standardschema.dev) validators directly, so the
+schema of a step is also its form's validator, with no adapter.
+
+The code on this page is checked against `@tanstack/vue-form` 1.33, Zod 4.6 and
+Vue 3.5.
+
+## Install
+
+```bash
+npm install @stepperize/vue @tanstack/vue-form zod
+```
+
+## The flow
+
+```ts title="checkout.ts"
+import { defineStepper, type FlowOutput, type Issue } from "@stepperize/vue";
+import { z } from "zod";
+
+export const personalSchema = z.object({
+  name: z.string().trim().min(1, "Enter your name"),
+  email: z.email("Enter a valid email"),
+});
+
+export const shippingSchema = z.object({
+  address: z.string().trim().min(1, "Enter your address"),
+  zip: z.string().regex(/^\d{5}$/, "Enter a 5-digit ZIP"),
+});
+
+export const checkout = defineStepper(
+  [
+    { id: "personal", title: "Personal", schema: personalSchema },
+    { id: "shipping", title: "Shipping", schema: shippingSchema },
+    { id: "review", title: "Review" },
+  ],
+  { linear: true },
+);
+
+export type Order = FlowOutput<typeof checkout.steps>;
+
+/** The first issue of each field, keyed by its path: "email", "address.zip". */
+export function issuesByField(issues: ReadonlyArray<Issue>) {
+  const fields: Record<string, Issue> = {};
+  for (const issue of issues) {
+    const key = (issue.path ?? [])
+      .map((part) => String(typeof part === "object" ? part.key : part))
+      .join(".");
+    fields[key] ??= issue;
+  }
+  return fields;
+}
+```
+
+`issuesByField` keeps whole issues, not just their messages: the schema's own
+errors are issues too, so the template reads `error.message` for both.
+
+## Complete example
+
+```vue title="Checkout.vue"
+<script setup lang="ts">
+import { checkout, type Order } from "./checkout";
+import CheckoutSteps from "./CheckoutSteps.vue";
+
+const { Provider } = checkout;
+
+// Return the promise: the flow stays pending while it runs, and unfinished if it rejects.
+async function placeOrder(order: Order) {
+  const response = await fetch("/api/orders", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(order),
+  });
+  if (!response.ok) throw new Error("Could not place the order");
+}
+</script>
+
+<template>
+  <Provider @finish="placeOrder">
+    <CheckoutSteps />
+  </Provider>
+</template>
+```
+
+```vue title="CheckoutSteps.vue"
+<script setup lang="ts">
+import { checkout } from "./checkout";
+import PersonalStep from "./PersonalStep.vue";
+import ReviewStep from "./ReviewStep.vue";
+import ShippingStep from "./ShippingStep.vue";
+
+const stepper = checkout.useStepperContext();
+</script>
+
+<template>
+  <p v-if="stepper.isFinished" role="status">Order placed.</p>
+  <section v-else>
+    <h2>{{ stepper.current.title }}</h2>
+    <PersonalStep v-if="stepper.current.id === 'personal'" />
+    <ShippingStep v-else-if="stepper.current.id === 'shipping'" />
+    <ReviewStep v-else />
+  </section>
+</template>
+```
+
+```vue title="PersonalStep.vue"
+<script setup lang="ts">
+import { useForm } from "@tanstack/vue-form";
+import { checkout, issuesByField, personalSchema } from "./checkout";
+
+const stepper = checkout.useStepperContext();
+
+const form = useForm({
+  // What the step saved: Back and a restored draft open the form filled in.
+  defaultValues: stepper.data.personal ?? { name: "", email: "" },
+  validators: {
+    // The form checks its fields first, with the step's own schema...
+    onSubmit: personalSchema,
+    // ...and only then hands them to the step, which saves, validates and moves.
+    onSubmitAsync: async ({ value }) => {
+      const result = await stepper.next(value);
+      if (result.accepted || !result.issues) return;
+      // Shaped like the schema's errors, so the template reads `.message` for both.
+      return { fields: issuesByField(result.issues) };
+    },
+  },
+});
+
+const isSubmitting = form.useStore((state) => state.isSubmitting);
+</script>
+
+<template>
+  <form novalidate @submit.prevent.stop="form.handleSubmit()">
+    <form.Field name="name">
+      <template v-slot="{ field }">
+        <label :for="field.name">Name</label>
+        <input
+          :id="field.name"
+          :name="field.name"
+          :value="field.state.value"
+          autocomplete="name"
+          :aria-invalid="field.state.meta.errors.length > 0"
+          @blur="field.handleBlur"
+          @input="field.handleChange(($event.target as HTMLInputElement).value)"
+        />
+        <p v-for="error in field.state.meta.errors" :key="error?.message" role="alert">
+          {{ error?.message }}
+        </p>
+      </template>
+    </form.Field>
+
+    <form.Field name="email">
+      <template v-slot="{ field }">
+        <label :for="field.name">Email</label>
+        <input
+          :id="field.name"
+          :name="field.name"
+          :value="field.state.value"
+          type="email"
+          autocomplete="email"
+          :aria-invalid="field.state.meta.errors.length > 0"
+          @blur="field.handleBlur"
+          @input="field.handleChange(($event.target as HTMLInputElement).value)"
+        />
+        <p v-for="error in field.state.meta.errors" :key="error?.message" role="alert">
+          {{ error?.message }}
+        </p>
+      </template>
+    </form.Field>
+
+    <button type="submit" :disabled="isSubmitting">Continue</button>
+  </form>
+</template>
+```
+
+```vue title="ShippingStep.vue"
+<script setup lang="ts">
+import { useForm } from "@tanstack/vue-form";
+import { checkout, issuesByField, shippingSchema } from "./checkout";
+
+const stepper = checkout.useStepperContext();
+
+const form = useForm({
+  defaultValues: stepper.data.shipping ?? { address: "", zip: "" },
+  validators: {
+    onSubmit: shippingSchema,
+    onSubmitAsync: async ({ value }) => {
+      const result = await stepper.next(value);
+      if (result.accepted || !result.issues) return;
+      return { fields: issuesByField(result.issues) };
+    },
+  },
+});
+
+const isSubmitting = form.useStore((state) => state.isSubmitting);
+
+function back() {
+  // Keep what was typed here, without validating it. Only when something
+  // changed: a new object would make a complete step incomplete.
+  if (form.state.isDirty) stepper.setData("shipping", { ...form.state.values });
+  stepper.prev();
+}
+</script>
+
+<template>
+  <form novalidate @submit.prevent.stop="form.handleSubmit()">
+    <form.Field name="address">
+      <template v-slot="{ field }">
+        <label :for="field.name">Address</label>
+        <input
+          :id="field.name"
+          :name="field.name"
+          :value="field.state.value"
+          autocomplete="street-address"
+          :aria-invalid="field.state.meta.errors.length > 0"
+          @blur="field.handleBlur"
+          @input="field.handleChange(($event.target as HTMLInputElement).value)"
+        />
+        <p v-for="error in field.state.meta.errors" :key="error?.message" role="alert">
+          {{ error?.message }}
+        </p>
+      </template>
+    </form.Field>
+
+    <form.Field name="zip">
+      <template v-slot="{ field }">
+        <label :for="field.name">ZIP</label>
+        <input
+          :id="field.name"
+          :name="field.name"
+          :value="field.state.value"
+          inputmode="numeric"
+          autocomplete="postal-code"
+          :aria-invalid="field.state.meta.errors.length > 0"
+          @blur="field.handleBlur"
+          @input="field.handleChange(($event.target as HTMLInputElement).value)"
+        />
+        <p v-for="error in field.state.meta.errors" :key="error?.message" role="alert">
+          {{ error?.message }}
+        </p>
+      </template>
+    </form.Field>
+
+    <button type="button" @click="back">Back</button>
+    <button type="submit" :disabled="isSubmitting">Review</button>
+  </form>
+</template>
+```
+
+```vue title="ReviewStep.vue"
+<script setup lang="ts">
+import { ref } from "vue";
+import { checkout } from "./checkout";
+
+const stepper = checkout.useStepperContext();
+const error = ref("");
+
+async function placeOrder() {
+  error.value = "";
+  try {
+    // On the last step, next() runs onFinish and waits for it.
+    await stepper.next();
+  } catch {
+    error.value = "Could not place the order. Try again.";
+  }
+}
+</script>
+
+<template>
+  <dl>
+    <dt>Personal</dt>
+    <dd>{{ stepper.data.personal?.name }} · {{ stepper.data.personal?.email }}</dd>
+    <dt>Shipping</dt>
+    <dd>{{ stepper.data.shipping?.address }}, {{ stepper.data.shipping?.zip }}</dd>
+  </dl>
+  <p v-if="error" role="alert">{{ error }}</p>
+
+  <button type="button" :disabled="stepper.isPending" @click="stepper.goTo('personal')">
+    Edit details
+  </button>
+  <button type="button" :disabled="stepper.isPending" @click="stepper.prev()">Back</button>
+  <button type="button" :disabled="stepper.isPending" @click="placeOrder">
+    {{ stepper.isPending ? "Placing order…" : "Place order" }}
+  </button>
+</template>
+```
+
+## Why this works
+
+- **The move is the form's last validator.** `onSubmit` runs the schema first;
+  `onSubmitAsync` only runs when it passed, and calls `next(value)`. When the
+  step accepts, the next step renders. When it refuses, the issues are
+  returned as field errors and the form stays.
+- **`isSubmitting` covers the move.** It is `true` until `onSubmitAsync`
+  settles, so the button is disabled while an async rule of the step runs.
+- **Back fills the form.** `defaultValues` comes from `stepper.data`, so going
+  back, or resuming a draft, shows what was saved.
+- **The request is part of the last move.** `@finish` returns the promise of
+  the request: `stepper.isPending` is `true` while it runs, a second press is
+  refused, and a failure leaves the flow open for another try.
+
+## Which side validates
+
+| | Runs | When it fails |
+| --- | --- | --- |
+| **TanStack Form** | `validators.onSubmit` on submit; add `onChange` or `onBlur` for earlier feedback | `onSubmitAsync` does not run, so `next()` is never called |
+| **The step's `schema`** | Inside every `next()` | `next()` returns `issues`; `onSubmitAsync` returns them as field errors |
+
+To show errors while typing, pass the same schema to `onChange` too:
+`validators: { onChange: personalSchema, onSubmitAsync: ... }`.
+
+## Errors that come from the step
+
+A rule that only the step knows, such as an async check against your server,
+reaches the form through `onSubmitAsync`: it returns
+`{ fields: issuesByField(result.issues) }` and TanStack Form shows each issue
+under its field.
+
+```ts title="checkout.ts"
+export const checkout = defineStepper(
+  [
+    {
+      id: "personal",
+      title: "Personal",
+      // The form keeps `personalSchema`; only the step asks the server.
+      schema: personalSchema.refine(async ({ email }) => !(await isRegistered(email)), {
+        message: "That email already has an account",
+        path: ["email"],
+      }),
+    },
+    { id: "shipping", title: "Shipping", schema: shippingSchema },
+    { id: "review", title: "Review" },
+  ],
+  { linear: true },
+);
+```
+
+`isRegistered` is your own request. The form keeps `personalSchema`, so typing
+never calls it; Continue does, once.
+
+## Drafts and Back
+
+- **Read the saved values once.** `defaultValues` is used when the form is
+  created. The form does not follow `stepper.data` afterwards, and it does not
+  need to: each step mounts its own form.
+- **Back keeps what was typed, without validating it.** `setData` stores a
+  draft. Only write it when `form.state.isDirty`: a complete step whose data
+  changes is no longer complete, and in a `linear` flow neither are the steps
+  after it.
+- **Hand the flow a copy.** `{ ...form.state.values }` is a plain object of its
+  own; the form's state object keeps changing.
+
+## Pitfalls
+
+- **Calling `next()` from `onSubmit` instead.** It works for the happy path,
+  but `onSubmit` has no way to return errors: when the step refuses, nothing
+  is shown unless you write them into the form yourself. A validator returns
+  them.
+- **Mixing strings and issues.** Errors you return yourself are shown as they
+  are; the schema's are issue objects. Return issues, as `issuesByField` does,
+  and render `error.message` for both.
+- **A Continue button outside the form.** `Stepper.Next` calls `next()` without
+  values. Use a submit button inside the form.
+
+## Links
+
+- [TanStack Form for Vue](https://tanstack.com/form/latest/docs/framework/vue/quick-start)
+- [TanStack Form: validation](https://tanstack.com/form/latest/docs/framework/vue/guides/validation)
+- The same flow with [VeeValidate](/docs/v9/vue/forms/vee-validate) and
+  [FormKit](/docs/v9/vue/forms/formkit), or without a library:
+  [Forms](/docs/v9/vue/guides/forms).

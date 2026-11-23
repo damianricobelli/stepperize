@@ -108,6 +108,19 @@ its data changes.
 `stepper.validate()` checks the current step and resolves with its issues, or
 `undefined` when it is valid. Use it for "validate on blur".
 
+## With a form library
+
+The same checkout, built with the form libraries Vue developers use most.
+Each page is a complete example, checked against the library's current
+version:
+
+- [VeeValidate](/docs/v9/vue/forms/vee-validate): `useForm` per step, with
+  any Standard Schema through a small typed-schema adapter.
+- [TanStack Form](/docs/v9/vue/forms/tanstack-form): the step's schema is the
+  form's validator, and the move is its last one.
+- [FormKit](/docs/v9/vue/forms/formkit): FormKit's inputs and rules, with the
+  step's issues shown on them.
+
 ## More
 
 [Schemas and validation](/docs/v9/react/guides/validation) covers async

@@ -120,6 +120,17 @@ its data changes.
 `undefined` when it is valid. It checks the data the flow holds, not the live
 form values: for "validate on blur", write the draft with `setData` first.
 
+## In depth
+
+The same checkout as a component per step, with everything a real form needs:
+errors from the step on their controls, Back that keeps what was typed, and
+the order sent from `onFinish`.
+
+- [Reactive Forms](/docs/v9/angular/forms/reactive-forms): typed forms,
+  Angular validators for feedback, the step's schema as the gate.
+- [Signal Forms](/docs/v9/angular/forms/signal-forms): stable since Angular 22,
+  validating with the step's own Standard Schema.
+
 ## More
 
 [Schemas and validation](/docs/v9/react/guides/validation) covers async

@@ -95,6 +95,12 @@ its data changes.
 `stepper.validate()` checks the current step and resolves with its issues, or
 `undefined` when it is valid. Use it for "validate on blur".
 
+## Fields that are custom elements
+
+An input inside another element's shadow root is not part of the `<form>`
+around it, so `FormData` leaves it out. To build fields as custom elements, see
+[Form-associated elements](/docs/v9/lit/forms/custom-elements).
+
 ## More
 
 [Schemas and validation](/docs/v9/react/guides/validation) covers async

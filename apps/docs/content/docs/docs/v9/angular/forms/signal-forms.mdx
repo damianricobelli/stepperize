@@ -1,0 +1,384 @@
+---
+title: Signal Forms
+description: A three-step checkout with Angular Signal Forms, where each form validates with its step's Standard Schema and submits by calling next().
+---
+
+Signal Forms are Angular's signal-based forms, in `@angular/forms/signals`.
+They are stable since Angular 22.0, after shipping as experimental in 21. A
+form is a tree of fields over a `signal` that holds the model, and it can
+validate with any [Standard Schema](https://standardschema.dev): the same
+schema a Stepperize step uses.
+
+The form owns the fields of each step; Stepperize owns the flow, what each step
+saved and the order sent at the end. The code on this page is checked against
+Angular 22.3 (`ngc` with `strictTemplates`) and Zod 4.6.
+
+## Install
+
+```bash
+npm install @stepperize/angular zod
+```
+
+## The flow
+
+```ts title="checkout.ts"
+import { type FieldTree, standardSchemaError } from "@angular/forms/signals";
+import { defineStepper, type FlowOutput, type Issue } from "@stepperize/angular";
+import { z } from "zod";
+
+export const personalSchema = z.object({
+  name: z.string().trim().min(1, "Enter your name"),
+  email: z.email("Enter a valid email"),
+});
+
+export const shippingSchema = z.object({
+  address: z.string().trim().min(1, "Enter your address"),
+  zip: z.string().regex(/^\d{5}$/, "Enter a 5-digit ZIP"),
+});
+
+export const checkout = defineStepper(
+  [
+    { id: "personal", title: "Personal", schema: personalSchema },
+    { id: "shipping", title: "Shipping", schema: shippingSchema },
+    { id: "review", title: "Review" },
+  ],
+  { linear: true },
+);
+
+export type Order = FlowOutput<typeof checkout.steps>;
+
+/**
+ * The issues a step returned, as Signal Forms errors on the fields they name:
+ * what `validateStandardSchema` does for the form's own schema.
+ */
+export function stepErrors(form: FieldTree<unknown>, issues: ReadonlyArray<Issue>) {
+  return issues.map((issue) => {
+    let fieldTree = form;
+    for (const part of issue.path ?? []) {
+      const key = typeof part === "object" ? part.key : part;
+      fieldTree = (fieldTree as unknown as Record<PropertyKey, FieldTree<unknown>>)[key] ?? fieldTree;
+    }
+    return standardSchemaError(issue, { message: issue.message, fieldTree });
+  });
+}
+```
+
+`stepErrors` turns the issues a step returns into Signal Forms errors on the
+fields they name, the same way `validateStandardSchema` does for the form's
+own schema.
+
+## Complete example
+
+`Checkout` provides one flow to itself and to the steps it renders.
+
+```ts title="checkout.component.ts"
+import { HttpClient } from "@angular/common/http";
+import { Component, inject } from "@angular/core";
+import { firstValueFrom } from "rxjs";
+import { checkout, type Order } from "./checkout";
+import { PersonalStep } from "./personal-step.component";
+import { ReviewStep } from "./review-step.component";
+import { ShippingStep } from "./shipping-step.component";
+
+@Component({
+  selector: "app-checkout",
+  imports: [PersonalStep, ShippingStep, ReviewStep],
+  // One flow for this component and the steps inside it.
+  providers: [
+    checkout.provideStepper(() => {
+      const http = inject(HttpClient);
+      return {
+        // Return the promise: the flow stays pending while it runs, and unfinished if it rejects.
+        onFinish: (order: Order) => firstValueFrom(http.post("/api/orders", order)),
+      };
+    }),
+  ],
+  template: `
+    @if (stepper().isFinished) {
+      <p role="status">Order placed.</p>
+    } @else {
+      <h2>{{ stepper().current.title }}</h2>
+      @switch (stepper().current.id) {
+        @case ("personal") { <app-personal-step /> }
+        @case ("shipping") { <app-shipping-step /> }
+        @case ("review") { <app-review-step /> }
+      }
+    }
+  `,
+})
+export class Checkout {
+  readonly stepper = checkout.injectStepperContext();
+}
+```
+
+```ts title="personal-step.component.ts"
+import { Component, signal } from "@angular/core";
+import { form, FormField, FormRoot, validateStandardSchema } from "@angular/forms/signals";
+import { checkout, personalSchema, stepErrors } from "./checkout";
+
+@Component({
+  selector: "app-personal-step",
+  imports: [FormRoot, FormField],
+  template: `
+    <!-- formRoot sets novalidate and calls the submission action on submit. -->
+    <form [formRoot]="form">
+      <label for="name">Name</label>
+      <input id="name" [formField]="form.name" autocomplete="name" />
+      @if (form.name().touched()) {
+        @for (error of form.name().errors(); track $index) {
+          <p role="alert">{{ error.message }}</p>
+        }
+      }
+
+      <label for="email">Email</label>
+      <input id="email" type="email" [formField]="form.email" autocomplete="email" />
+      @if (form.email().touched()) {
+        @for (error of form.email().errors(); track $index) {
+          <p role="alert">{{ error.message }}</p>
+        }
+      }
+
+      <button type="submit" [disabled]="form().submitting()">Continue</button>
+    </form>
+  `,
+})
+export class PersonalStep {
+  readonly stepper = checkout.injectStepperContext();
+
+  // What the step saved: Back and a restored draft open the form filled in.
+  readonly model = signal({ name: "", email: "", ...this.stepper().data.personal });
+
+  readonly form = form(
+    this.model,
+    // The step's own schema validates the fields as they change.
+    (path) => validateStandardSchema(path, personalSchema),
+    {
+      submission: {
+        // Only runs once the form is valid. What it returns is shown as errors.
+        action: async (field) => {
+          const result = await this.stepper().next(field().value());
+          if (result.accepted || !result.issues) return;
+          // Rules only the step knows about come back as issues.
+          return stepErrors(field, result.issues);
+        },
+      },
+    },
+  );
+}
+```
+
+```ts title="shipping-step.component.ts"
+import { Component, signal } from "@angular/core";
+import { form, FormField, FormRoot, validateStandardSchema } from "@angular/forms/signals";
+import { checkout, shippingSchema, stepErrors } from "./checkout";
+
+@Component({
+  selector: "app-shipping-step",
+  imports: [FormRoot, FormField],
+  template: `
+    <form [formRoot]="form">
+      <label for="address">Address</label>
+      <input id="address" [formField]="form.address" autocomplete="street-address" />
+      @if (form.address().touched()) {
+        @for (error of form.address().errors(); track $index) {
+          <p role="alert">{{ error.message }}</p>
+        }
+      }
+
+      <label for="zip">ZIP</label>
+      <input id="zip" [formField]="form.zip" inputmode="numeric" autocomplete="postal-code" />
+      @if (form.zip().touched()) {
+        @for (error of form.zip().errors(); track $index) {
+          <p role="alert">{{ error.message }}</p>
+        }
+      }
+
+      <button type="button" (click)="back()">Back</button>
+      <button type="submit" [disabled]="form().submitting()">Review</button>
+    </form>
+  `,
+})
+export class ShippingStep {
+  readonly stepper = checkout.injectStepperContext();
+  readonly model = signal({ address: "", zip: "", ...this.stepper().data.shipping });
+
+  readonly form = form(this.model, (path) => validateStandardSchema(path, shippingSchema), {
+    submission: {
+      action: async (field) => {
+        const result = await this.stepper().next(field().value());
+        if (result.accepted || !result.issues) return;
+        return stepErrors(field, result.issues);
+      },
+    },
+  });
+
+  back() {
+    // Keep what was typed here, without validating it. Only when something
+    // changed: a new object would make a complete step incomplete.
+    if (this.form().dirty()) this.stepper().setData("shipping", this.model());
+    void this.stepper().prev();
+  }
+}
+```
+
+```ts title="review-step.component.ts"
+import { Component, signal } from "@angular/core";
+import { checkout } from "./checkout";
+
+@Component({
+  selector: "app-review-step",
+  template: `
+    @let data = stepper().data;
+    <dl>
+      <dt>Personal</dt>
+      <dd>{{ data.personal?.name }} · {{ data.personal?.email }}</dd>
+      <dt>Shipping</dt>
+      <dd>{{ data.shipping?.address }}, {{ data.shipping?.zip }}</dd>
+    </dl>
+    @if (error()) {
+      <p role="alert">{{ error() }}</p>
+    }
+
+    <button type="button" [disabled]="stepper().isPending" (click)="stepper().goTo('personal')">
+      Edit details
+    </button>
+    <button type="button" [disabled]="stepper().isPending" (click)="stepper().prev()">Back</button>
+    <button type="button" [disabled]="stepper().isPending" (click)="placeOrder()">
+      {{ stepper().isPending ? "Placing order…" : "Place order" }}
+    </button>
+  `,
+})
+export class ReviewStep {
+  readonly stepper = checkout.injectStepperContext();
+  readonly error = signal("");
+
+  async placeOrder() {
+    this.error.set("");
+    try {
+      // On the last step, next() runs onFinish and waits for it.
+      await this.stepper().next();
+    } catch {
+      this.error.set("Could not place the order. Try again.");
+    }
+  }
+}
+```
+
+## Why this works
+
+- **One schema, two checks.** `validateStandardSchema(path, personalSchema)`
+  checks the fields as they change. The step's schema runs again inside
+  `next()`: it passes, and it still blocks every other way forward.
+- **Submitting is the move.** `[formRoot]` calls `submit()` on the form's
+  `submission` options when the form is submitted. `submit()` marks every field
+  touched and only runs `action` when the form is valid; `action` calls
+  `next()`.
+- **The step's refusal is shown like any other error.** What `action` returns
+  becomes errors on the fields they name, and a field's error goes away when
+  its value changes.
+- **`submitting()` covers the move.** It is `true` until `action` settles, so
+  the button is disabled while an async rule of the step runs.
+- **Back fills the form.** The model starts from `stepper().data`, so going
+  back, or resuming a draft, shows what was saved.
+- **The request is part of the last move.** `onFinish` returns the promise of
+  the request, so `isPending` is `true` while it runs and a second press is
+  refused. If it fails, `next()` rejects and the flow is not finished.
+
+## Which side validates
+
+| | Runs | When it fails |
+| --- | --- | --- |
+| **Signal Forms** | As the model changes; shown once a field is touched | `submit()` does not run `action`, so `next()` is never called |
+| **The step's `schema`** | Inside every `next()` | `next()` returns `issues`; `action` returns them as errors |
+
+## Errors that come from the step
+
+Keep the form's schema synchronous and put a slow rule on the step only:
+
+```ts title="checkout.ts"
+export const checkout = defineStepper(
+  [
+    {
+      id: "personal",
+      title: "Personal",
+      // The form keeps `personalSchema`; only the step asks the server.
+      schema: personalSchema.refine(async ({ email }) => !(await isRegistered(email)), {
+        message: "That email already has an account",
+        path: ["email"],
+      }),
+    },
+    { id: "shipping", title: "Shipping", schema: shippingSchema },
+    { id: "review", title: "Review" },
+  ],
+  { linear: true },
+);
+```
+
+`isRegistered` is your own request. The form validates `personalSchema` as the
+person types, without a request; Continue runs the step's rule once, and its
+issue comes back from `action` under the email field.
+
+## Drafts and Back
+
+- **Back keeps what was typed, without validating it.** `setData` stores a
+  draft. Only write it when `form().dirty()`: a complete step whose data
+  changes is no longer complete, and in a `linear` flow neither are the steps
+  after it.
+- **The model is yours.** `form()` writes into the `signal` you give it. The
+  example starts it from a copy of `stepper().data`, so the flow only changes
+  through `next()` and `setData`.
+
+## One form for the whole flow
+
+A single model with a part per step works too. Submit only the current step's
+part: `submit()` checks the field tree you give it, not the whole form.
+
+```ts
+readonly model = signal({
+  personal: { name: "", email: "" },
+  shipping: { address: "", zip: "" },
+});
+
+readonly form = form(this.model, (path) => {
+  validateStandardSchema(path.personal, personalSchema);
+  validateStandardSchema(path.shipping, shippingSchema);
+});
+
+continue() {
+  const stepper = this.stepper();
+  // Submits the current step's part of the form: only its fields are checked.
+  return stepper.match<Promise<unknown>>({
+    personal: () => submit(this.form.personal, (field) => this.#next(field)),
+    shipping: () => submit(this.form.shipping, (field) => this.#next(field)),
+    review: () => stepper.next(),
+  });
+}
+
+async #next<T>(field: FieldTree<T>) {
+  const result = await this.stepper().next(field().value());
+  if (result.accepted || !result.issues) return;
+  return stepErrors(field, result.issues);
+}
+```
+
+The model survives every move, so Back keeps what was typed without `setData`.
+
+## Pitfalls
+
+- **Reading `this.form` inside `action`.** The form is still being created
+  when `action` is defined, so TypeScript cannot infer its type and reports an
+  implicit `any`. Use the field tree `action` receives, as above.
+- **`ignoreValidators`.** By default `submit()` runs `action` while async
+  validators are still pending. Pass `ignoreValidators: "none"` in `submission`
+  if a pending check must block the move.
+- **Showing errors before a field is touched.** `errors()` is filled as soon as
+  the form exists. Show them once the field is `touched()`, as above; `submit()`
+  touches every field.
+
+## Links
+
+- [Angular: Signal Forms](https://angular.dev/guide/forms/signals/overview)
+- [Angular: Signal Forms validation](https://angular.dev/guide/forms/signals/validation)
+- [Angular: Signal Forms submission](https://angular.dev/guide/forms/signals/form-submission)
+- The same flow with [Reactive Forms](/docs/v9/angular/forms/reactive-forms),
+  or the short version: [Forms](/docs/v9/angular/guides/forms).

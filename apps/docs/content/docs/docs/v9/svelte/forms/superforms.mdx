@@ -1,0 +1,395 @@
+---
+title: Superforms
+description: A Svelte checkout where each step posts to its own SvelteKit form action, checked in the browser and on the server, and onFinish sends the order.
+---
+
+Superforms validates a form in the browser and again in a SvelteKit form
+action, and shows the errors of either. Stepperize owns the flow: which step is
+current, what each step saved, and the order sent at the end. Each step is a
+Superforms form that posts to its own action; when the server says the step is
+valid, the step hands its data to `next()`.
+
+The code on this page is checked against Superforms 3.1, SvelteKit 3.4,
+Svelte 5.59 and Zod 4.6. Superforms 3 also supports SvelteKit 2.12 and later;
+see [On SvelteKit 2](#on-sveltekit-2).
+
+## Install
+
+```bash
+npm install @stepperize/svelte sveltekit-superforms zod
+```
+
+## The flow
+
+The schemas live in `src/lib`, so the page and its actions share them.
+
+```ts title="src/lib/checkout.ts"
+import { defineStepper, type FlowOutput } from "@stepperize/svelte";
+import { z } from "zod";
+
+export const personalSchema = z.object({
+  name: z.string().trim().min(1, "Enter your name"),
+  email: z.email("Enter a valid email"),
+});
+
+export const shippingSchema = z.object({
+  address: z.string().trim().min(1, "Enter your address"),
+  zip: z.string().regex(/^\d{5}$/, "Enter a 5-digit ZIP"),
+});
+
+/** What the last request sends: every step, validated again on the server. */
+export const orderSchema = z.object({ personal: personalSchema, shipping: shippingSchema });
+
+export const checkout = defineStepper(
+  [
+    { id: "personal", title: "Personal", schema: personalSchema },
+    { id: "shipping", title: "Shipping", schema: shippingSchema },
+    { id: "review", title: "Review" },
+  ],
+  { linear: true },
+);
+
+export type Order = FlowOutput<typeof checkout.steps>;
+```
+
+`orderSchema` checks the whole order once more on the server, at the end.
+
+## The actions
+
+One action per step, and one for the order:
+
+```ts title="src/routes/checkout/+page.server.ts"
+import { fail } from "@sveltejs/kit";
+import { setError, superValidate } from "sveltekit-superforms";
+import { zod4 } from "sveltekit-superforms/adapters";
+import { orderSchema, personalSchema, shippingSchema } from "#lib/checkout.js";
+import { createOrder, isRegistered } from "#lib/server.js";
+import type { Actions } from "./$types";
+
+export const actions = {
+  // One action per step: the server has the last word on each one.
+  personal: async ({ request }) => {
+    const form = await superValidate(request, zod4(personalSchema));
+    if (!form.valid) return fail(400, { form });
+    // A rule only the server can check.
+    if (await isRegistered(form.data.email)) {
+      return setError(form, "email", "That email already has an account");
+    }
+    return { form };
+  },
+
+  shipping: async ({ request }) => {
+    const form = await superValidate(request, zod4(shippingSchema));
+    if (!form.valid) return fail(400, { form });
+    return { form };
+  },
+
+  // The whole order, sent by onFinish. Never trust the steps the browser says it passed.
+  order: async ({ request }) => {
+    const body = await request.formData();
+    const order = orderSchema.safeParse(JSON.parse(String(body.get("order"))));
+    if (!order.success) return fail(400, { message: "Some details are no longer valid." });
+    await createOrder(order.data);
+    return { placed: true };
+  },
+} satisfies Actions;
+```
+
+`isRegistered` and `createOrder` are your own server code. There is no `load`:
+each step builds its form from what the flow saved, as shown below.
+
+## The page
+
+```svelte title="src/routes/checkout/+page.svelte"
+<script lang="ts">
+  import { deserialize } from "$app/forms";
+  import { checkout, type Order } from "#lib/checkout.js";
+  import CheckoutSteps from "./CheckoutSteps.svelte";
+
+  // Return the promise: the flow stays pending while it runs, and unfinished if it rejects.
+  async function placeOrder(order: Order) {
+    const body = new FormData();
+    body.set("order", JSON.stringify(order));
+    const response = await fetch("?/order", { method: "POST", body });
+    const result = deserialize(await response.text());
+    if (result.type !== "success") throw new Error("Could not place the order");
+  }
+</script>
+
+<checkout.Provider onFinish={placeOrder}>
+  <CheckoutSteps />
+</checkout.Provider>
+```
+
+`placeOrder` posts the validated output of every step to the `order` action
+and reads the answer with `deserialize`, as SvelteKit does for its own
+`use:enhance`. It throws when the action fails, so the flow stays open.
+
+```svelte title="src/routes/checkout/CheckoutSteps.svelte"
+<script lang="ts">
+  import { checkout } from "#lib/checkout.js";
+  import PersonalStep from "./PersonalStep.svelte";
+  import ReviewStep from "./ReviewStep.svelte";
+  import ShippingStep from "./ShippingStep.svelte";
+
+  const stepper = checkout.useStepperContext();
+</script>
+
+{#if stepper.isFinished}
+  <p role="status">Order placed.</p>
+{:else}
+  <section>
+    <h2>{stepper.current.title}</h2>
+    {#if stepper.current.id === "personal"}
+      <PersonalStep />
+    {:else if stepper.current.id === "shipping"}
+      <ShippingStep />
+    {:else}
+      <ReviewStep />
+    {/if}
+  </section>
+{/if}
+```
+
+```svelte title="src/routes/checkout/PersonalStep.svelte"
+<script lang="ts">
+  import { defaults, superForm } from "sveltekit-superforms";
+  import { zod4Client } from "sveltekit-superforms/adapters";
+  import { checkout, personalSchema } from "#lib/checkout.js";
+
+  const stepper = checkout.useStepperContext();
+
+  const { form, errors, enhance, submitting } = superForm(
+    // What the step saved: Back and a restored draft open the form filled in.
+    defaults({ name: "", email: "", ...stepper.data.personal }, zod4Client(personalSchema)),
+    {
+      // Names the form, so the answer of another step's action is never applied to it.
+      id: "personal",
+      // Checked in the browser first, then by the `personal` action.
+      validators: zod4Client(personalSchema),
+      resetForm: false,
+      invalidateAll: false,
+      // Runs with the server's answer. Valid there: hand it to the step.
+      onUpdate: async ({ form }) => {
+        if (form.valid) await stepper.next(form.data);
+      },
+    },
+  );
+</script>
+
+<form method="POST" action="?/personal" novalidate use:enhance>
+  <label for="name">Name</label>
+  <input
+    id="name"
+    name="name"
+    autocomplete="name"
+    bind:value={$form.name}
+    aria-invalid={$errors.name ? "true" : undefined}
+    aria-describedby={$errors.name ? "name-error" : undefined}
+  />
+  {#if $errors.name}<p id="name-error" role="alert">{$errors.name[0]}</p>{/if}
+
+  <label for="email">Email</label>
+  <input
+    id="email"
+    name="email"
+    type="email"
+    autocomplete="email"
+    bind:value={$form.email}
+    aria-invalid={$errors.email ? "true" : undefined}
+    aria-describedby={$errors.email ? "email-error" : undefined}
+  />
+  {#if $errors.email}<p id="email-error" role="alert">{$errors.email[0]}</p>{/if}
+
+  <button disabled={$submitting}>Continue</button>
+</form>
+```
+
+```svelte title="src/routes/checkout/ShippingStep.svelte"
+<script lang="ts">
+  import { defaults, superForm } from "sveltekit-superforms";
+  import { zod4Client } from "sveltekit-superforms/adapters";
+  import { checkout, shippingSchema } from "#lib/checkout.js";
+
+  const stepper = checkout.useStepperContext();
+
+  const { form, errors, enhance, submitting, isTainted } = superForm(
+    defaults({ address: "", zip: "", ...stepper.data.shipping }, zod4Client(shippingSchema)),
+    {
+      id: "shipping",
+      validators: zod4Client(shippingSchema),
+      resetForm: false,
+      invalidateAll: false,
+      onUpdate: async ({ form }) => {
+        if (form.valid) await stepper.next(form.data);
+      },
+    },
+  );
+
+  function back() {
+    // Keep what was typed here, without validating it. Only when something
+    // changed: a new object would make a complete step incomplete.
+    if (isTainted()) stepper.setData("shipping", { ...$form });
+    stepper.prev();
+  }
+</script>
+
+<form method="POST" action="?/shipping" novalidate use:enhance>
+  <label for="address">Address</label>
+  <input
+    id="address"
+    name="address"
+    autocomplete="street-address"
+    bind:value={$form.address}
+    aria-invalid={$errors.address ? "true" : undefined}
+    aria-describedby={$errors.address ? "address-error" : undefined}
+  />
+  {#if $errors.address}<p id="address-error" role="alert">{$errors.address[0]}</p>{/if}
+
+  <label for="zip">ZIP</label>
+  <input
+    id="zip"
+    name="zip"
+    inputmode="numeric"
+    autocomplete="postal-code"
+    bind:value={$form.zip}
+    aria-invalid={$errors.zip ? "true" : undefined}
+    aria-describedby={$errors.zip ? "zip-error" : undefined}
+  />
+  {#if $errors.zip}<p id="zip-error" role="alert">{$errors.zip[0]}</p>{/if}
+
+  <button type="button" onclick={back}>Back</button>
+  <button disabled={$submitting}>Review</button>
+</form>
+```
+
+```svelte title="src/routes/checkout/ReviewStep.svelte"
+<script lang="ts">
+  import { checkout } from "#lib/checkout.js";
+
+  const stepper = checkout.useStepperContext();
+  let error = $state("");
+
+  async function placeOrder() {
+    error = "";
+    try {
+      // On the last step, next() runs onFinish and waits for it.
+      await stepper.next();
+    } catch {
+      error = "Could not place the order. Try again.";
+    }
+  }
+</script>
+
+<dl>
+  <dt>Personal</dt>
+  <dd>{stepper.data.personal?.name} · {stepper.data.personal?.email}</dd>
+  <dt>Shipping</dt>
+  <dd>{stepper.data.shipping?.address}, {stepper.data.shipping?.zip}</dd>
+</dl>
+{#if error}<p role="alert">{error}</p>{/if}
+
+<button type="button" disabled={stepper.isPending} onclick={() => stepper.goTo("personal")}>
+  Edit details
+</button>
+<button type="button" disabled={stepper.isPending} onclick={() => stepper.prev()}>Back</button>
+<button type="button" disabled={stepper.isPending} onclick={placeOrder}>
+  {stepper.isPending ? "Placing order…" : "Place order"}
+</button>
+```
+
+## Why this works
+
+- **Three checks, one schema.** `zod4Client(personalSchema)` checks the fields
+  before anything is sent. The `personal` action checks them again with
+  `zod4(personalSchema)`, plus what only the server knows. The step's schema
+  checks them a last time inside `next()`.
+- **The server's answer decides the move.** `onUpdate` runs with the form the
+  action returned. Only a valid one is handed to the step; an invalid one is
+  already in `$errors`, next to its field.
+- **Each form has its own id.** All step forms post to the same page. With
+  `id`, Superforms only applies the answer of the `personal` action to the
+  personal form, and the server reads that id from the post.
+- **Back fills the form.** `defaults(...)` builds each form from what the step
+  saved, so going back, or resuming a draft, shows it.
+- **The order is part of the last move.** `onFinish` returns the promise of the
+  request, so `stepper.isPending` is `true` while it runs and a second press is
+  refused. A failed action leaves the flow open for another try.
+
+## Which side validates
+
+| | Runs | When it fails |
+| --- | --- | --- |
+| **Superforms, in the browser** | On submit, then as fields change | Nothing is posted; `$errors` shows why |
+| **The step's action** | On every post | `fail(400, { form })` or `setError`; `$errors` shows why |
+| **The step's `schema`** | Inside every `next()` | `next()` returns `issues` |
+| **The `order` action** | Once, from `onFinish` | `next()` rejects; the flow is not finished |
+
+The browser checks are for speed. The actions are the ones you trust: the
+server never accepts data only because the browser said it passed.
+
+## Errors that come from the step
+
+Here the server-only rule lives in the action, where Superforms already
+reports it: `setError(form, "email", ...)` puts the message under the email
+field, and `onUpdate` sees an invalid form and does not move. That is usually
+the right place in SvelteKit.
+
+A rule on the step's schema instead (one that reads another step, for example)
+comes back from `next()`. Put its issues into the form's errors:
+
+```ts
+onUpdate: async ({ form }) => {
+  if (!form.valid) return;
+  const result = await stepper.next(form.data);
+  if (result.accepted || !result.issues) return;
+  for (const issue of result.issues) {
+    const field = issue.path?.[0];
+    if (field === "name" || field === "email") form.errors[field] = [issue.message];
+  }
+},
+```
+
+`onUpdate` hands you the form before Superforms applies it, so the errors you
+add are shown.
+
+## Drafts and Back
+
+- **Back keeps what was typed, without validating it.** `setData` stores a
+  draft. Only write it when `isTainted()` is `true`: a complete step whose data
+  changes is no longer complete, and in a `linear` flow neither are the steps
+  after it.
+- **`resetForm: false`.** Superforms clears a form after a successful post by
+  default. The step is about to unmount anyway, but a reset would flash empty
+  fields first.
+- **`invalidateAll: false`.** A successful post runs every `load` of the page
+  again by default. Nothing here needs it.
+- **Across a reload,** save the snapshot from `onChange` in a cookie and pass
+  it to the provider's `snapshot` from `load`. See
+  [Server rendering](/docs/v9/svelte/guides/ssr#resuming-from-a-cookie-or-the-database).
+
+## On SvelteKit 2
+
+The code is the same, except for the imports: SvelteKit 3 replaced `$lib` with
+the `#lib` subpath import from your `package.json`. On SvelteKit 2, import
+`$lib/checkout` instead of `#lib/checkout.js`.
+
+## Pitfalls
+
+- **Forms without an `id`.** Every step posts to the same page, and SvelteKit
+  keeps the last answer in `page.form`. Without ids, a form that mounts could
+  take the answer meant for another step.
+- **Trusting the steps in the last request.** The `order` action receives JSON
+  from the browser. Parse it with `orderSchema`, as above, before you use it.
+- **One Superforms form for the whole flow.** Superforms validates the whole
+  schema on every post, including steps not shown yet. One form per step, each
+  with its schema and its action, keeps the checks to the fields on screen.
+
+## Links
+
+- [Superforms](https://superforms.rocks/)
+- [Superforms: multiple forms on one page](https://superforms.rocks/concepts/multiple-forms)
+- [Superforms: client-side validation](https://superforms.rocks/concepts/client-validation)
+- [SvelteKit: form actions](https://svelte.dev/docs/kit/form-actions)
+- The same flow with [TanStack Form](/docs/v9/svelte/forms/tanstack-form), or
+  without a library: [Forms](/docs/v9/svelte/guides/forms).
