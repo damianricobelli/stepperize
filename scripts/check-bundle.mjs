@@ -89,6 +89,49 @@ const bindings = [
 		},
 	},
 	{
+		name: "solid",
+		external: ["solid-js", "solid-js/*"],
+		// The package has no JSX, so the same built files render on the server.
+		async verify({ definition, full }) {
+			// Imported from inside the package, so Node picks the same ES module build of Solid the entry does.
+			const dir = `${root}/packages/solid/node_modules/.cache/check-bundle`;
+			mkdirSync(dir, { recursive: true });
+			writeFileSync(
+				`${dir}/solid.mjs`,
+				'export { createComponent } from "solid-js";\nexport { renderToString } from "solid-js/web";\n',
+			);
+			const { createComponent, renderToString } = await import(pathToFileURL(`${dir}/solid.mjs`));
+			const Shared = () => definition.useStepperContext().current.id;
+			assert.match(
+				renderToString(() =>
+					createComponent(definition.Provider, {
+						get children() {
+							return createComponent(Shared, {});
+						},
+					}),
+				),
+				/start/,
+			);
+			if (!full) return;
+			const { Stepper } = definition;
+			assert.match(
+				renderToString(() =>
+					createComponent(Stepper.Root, {
+						get children() {
+							return createComponent(Stepper.Item, {
+								step: "start",
+								get children() {
+									return createComponent(Stepper.Trigger, { children: "Start" });
+								},
+							});
+						},
+					}),
+				),
+				/stepper-trigger/,
+			);
+		},
+	},
+	{
 		name: "svelte",
 		external: ["svelte", "svelte/*"],
 		conditions: ["svelte", "browser", "production"],
