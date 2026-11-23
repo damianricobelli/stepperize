@@ -42,6 +42,12 @@ export const FRAMEWORKS = [
 		description: "A reactive stepper and accessible primitives",
 	},
 	{
+		id: "html",
+		title: "HTML",
+		package: "@stepperize/core/dom",
+		description: "No framework: server-rendered markup, Alpine, htmx",
+	},
+	{
 		id: "core",
 		title: "Core",
 		package: "@stepperize/core",

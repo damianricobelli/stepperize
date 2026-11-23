@@ -683,6 +683,33 @@ export const DOC_KEYWORDS: Record<string, readonly string[]> = {
 		"Stepper as prop",
 		"polymorphic stepper Solid",
 	],
+	"current/html": [
+		"vanilla JavaScript stepper",
+		"stepper without framework",
+		"server-rendered wizard",
+		"progressive enhancement stepper",
+	],
+	"current/html/markup": [
+		"stepper HTML markup",
+		"data attributes stepper",
+		"bindStepper",
+	],
+	"current/html/guides/server-rendered": [
+		"Rails stepper",
+		"Laravel multi-step form",
+		"Django wizard",
+		"Astro stepper",
+	],
+	"current/html/guides/alpine": [
+		"Alpine.js stepper",
+		"Alpine multi-step form",
+		"Alpine wizard",
+	],
+	"current/html/guides/htmx": [
+		"htmx stepper",
+		"htmx multi-step form",
+		"htmx wizard",
+	],
 	"current/core": [
 		"@stepperize/core",
 		"framework-agnostic stepper",
