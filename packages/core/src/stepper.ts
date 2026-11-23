@@ -332,6 +332,7 @@ export function createStepper<const S extends readonly Step[]>(steps: S, options
 			current,
 			index,
 			isFirst: !index,
+			isLinear: !!options.linear,
 			isLast:
 				options.next?.[current.id as I] === null || (index === steps.length - 1 && !options.next?.[current.id as I]),
 			progress: steps.length > 1 ? index / (steps.length - 1) : 1,

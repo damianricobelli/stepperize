@@ -59,11 +59,38 @@ type Missing = Exclude<keyof Options<readonly Step[]>, (typeof OPTION_KEYS)[numb
 const _exhaustive: [Missing] extends [never] ? true : { missing: Missing } = true;
 void _exhaustive;
 
-export const triggerId = (ui: Ui, step: string) => `${ui.id}trigger-${step}`;
-export const panelId = (ui: Ui, step: string) => `${ui.id}panel-${step}`;
+/**
+ * A step id as it can appear inside an id. `aria-controls` and `aria-labelledby`
+ * are lists split on whitespace, so a space in a step id would break them:
+ * whitespace (and `%`, so two ids never collide) is percent-encoded.
+ */
+const token = (step: string) =>
+	step.replace(/[\s%]/g, (char) => `%${char.charCodeAt(0).toString(16).padStart(2, "0")}`);
+
+export const triggerId = (ui: Ui, step: string) => `${ui.id}trigger-${token(step)}`;
+export const panelId = (ui: Ui, step: string) => `${ui.id}panel-${token(step)}`;
 
 /** Inline style for text meant for screen readers only. */
 export const HIDDEN = "position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap";
+
+/**
+ * The polite live region that announces a new step. Its style is set property
+ * by property: a page whose Content Security Policy forbids inline styles still
+ * allows that, while it would block a `style` attribute.
+ */
+export function liveRegion(doc: Document): HTMLSpanElement {
+	const region = doc.createElement("span");
+	region.setAttribute("aria-live", "polite");
+	Object.assign(region.style, {
+		position: "absolute",
+		width: "1px",
+		height: "1px",
+		overflow: "hidden",
+		clipPath: "inset(50%)",
+		whiteSpace: "nowrap",
+	});
+	return region;
+}
 
 const flag = (on: boolean) => (on ? "" : undefined);
 const aria = (on: boolean) => (on ? "true" : undefined);
@@ -283,8 +310,17 @@ export function stepChanged(
 	const doc = scopeOf(root) as Document;
 	let active = doc.activeElement as HTMLButtonElement | null;
 	// Hidden counts as gone: a panel kept in the page (`forceMount`, server-rendered markup) hides
-	// its fields without blurring them.
-	if (inside && (!active || active === doc.body || active.disabled || active.closest("[hidden]"))) {
+	// its fields without blurring them. So does a panel of another step that is still on its way
+	// out, during a leave transition: it is removed later, and nothing would move focus then.
+	const leaving = active?.closest('[data-component="stepper-content"]');
+	if (
+		inside &&
+		(!active ||
+			active === doc.body ||
+			active.disabled ||
+			active.closest("[hidden]") ||
+			(leaving?.id.startsWith(ui.id) && leaving.getAttribute("data-step") !== step.id))
+	) {
 		active = doc.getElementById(panelId(ui, step.id)) as HTMLButtonElement | null;
 		active?.focus();
 	}

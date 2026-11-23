@@ -92,6 +92,7 @@ const STATE: ReadonlySet<PropertyKey> = new Set([
 	"current",
 	"index",
 	"isFirst",
+	"isLinear",
 	"isLast",
 	"progress",
 	"data",

@@ -54,6 +54,7 @@ export function useFlow<S extends readonly Step[]>(
 	const current = $derived(view().current);
 	const index = $derived(view().index);
 	const isFirst = $derived(view().isFirst);
+	const isLinear = $derived(view().isLinear);
 	const isLast = $derived(view().isLast);
 	const progress = $derived(view().progress);
 	const data = $derived(view().data);
@@ -65,6 +66,7 @@ export function useFlow<S extends readonly Step[]>(
 		current: () => current,
 		index: () => index,
 		isFirst: () => isFirst,
+		isLinear: () => isLinear,
 		isLast: () => isLast,
 		progress: () => progress,
 		data: () => data,

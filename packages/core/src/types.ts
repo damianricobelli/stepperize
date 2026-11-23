@@ -156,6 +156,12 @@ export type Stepper<S extends readonly Step[]> = {
 	index: number;
 	/** `current` is the first of `steps`. */
 	isFirst: boolean;
+	/**
+	 * The flow is `linear`: only `next()` moves forward. The primitives render a
+	 * list of steps instead of tabs, so a binding that follows a flow owned
+	 * elsewhere reads it here.
+	 */
+	isLinear: boolean;
 	/** `next()` finishes the flow: a step whose `next` entry is `null`, or the last of `steps` without a branch. */
 	isLast: boolean;
 	/** Position of `current` in `steps`, from `0` (first) to `1` (last). */

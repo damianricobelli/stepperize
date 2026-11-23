@@ -219,6 +219,10 @@ describe("guard and policy", () => {
 
 	it("linear only moves forward through next(); completed steps can be revisited", async () => {
 		const flow = createStepper([{ id: "a" }, { id: "b" }, { id: "c" }], { linear: true });
+		expect(flow.isLinear).toBe(true);
+		flow.setOptions({});
+		expect(flow.isLinear).toBe(false);
+		flow.setOptions({ linear: true });
 		expect([flow.canGoTo("a"), flow.canGoTo("b"), flow.canGoTo("c")]).toEqual([true, false, false]);
 		expect(await flow.goTo("b")).toEqual({ accepted: false, reason: "policy" });
 		await flow.next();

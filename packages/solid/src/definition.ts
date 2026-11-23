@@ -60,6 +60,7 @@ const STATE_KEYS = [
 	"current",
 	"index",
 	"isFirst",
+	"isLinear",
 	"isLast",
 	"progress",
 	"data",

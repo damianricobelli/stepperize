@@ -20,6 +20,15 @@ const steps = [{ id: "a", title: "A" }, { id: "b", title: "B" }, { id: "c" }] as
 const tabs: Ui = { id: "x-", orientation: "horizontal", tabs: true };
 const list: Ui = { ...tabs, tabs: false };
 
+describe("ids", () => {
+	it("keep whitespace out of ids, so aria-controls stays one reference", () => {
+		const ui = { id: "x-", orientation: "horizontal" as const, tabs: true };
+		expect(panelId(ui, "my step")).toBe("x-panel-my%20step");
+		expect(triggerId(ui, "my%20step")).not.toBe(triggerId(ui, "my step"));
+		expect(panelId(ui, "plain")).toBe("x-panel-plain");
+	});
+});
+
 describe("primitives", () => {
 	it("packs what an item shows into one comparable number", async () => {
 		const flow = createStepper(steps, { linear: true });
