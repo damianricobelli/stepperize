@@ -24,6 +24,13 @@ catalogs:
 
 minimumReleaseAge: 0
 
+# The Angular Vite plugin imports `typescript` without declaring it, so it would
+# resolve to the hoisted TypeScript 7, whose JavaScript entry has no compiler API.
+packageExtensions:
+  '@analogjs/vite-plugin-angular':
+    dependencies:
+      typescript: npm:@typescript/typescript6@6.0.2
+
 onlyBuiltDependencies:
   - esbuild
   - msw

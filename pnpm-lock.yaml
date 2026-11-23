@@ -50,6 +50,8 @@ catalogs:
       specifier: npm:@typescript/typescript6@6.0.2
       version: 6.0.2
 
+packageExtensionsChecksum: sha256-2wrttg+0Z01yVOuPavvCXVKD2wtPUS+k6674M1e27FQ=
+
 importers:
 
   .:
@@ -7253,6 +7255,7 @@ snapshots:
       obug: 2.2.1
       oxc-parser: 0.121.0(@emnapi/core@2.0.0-beta.2)(@emnapi/runtime@2.0.0-beta.2)
       tinyglobby: 0.2.17
+      typescript: '@typescript/typescript6@6.0.2'
     optionalDependencies:
       '@angular/build': 22.3.0(80ba504a5d0cd22e26775aac4afc4ed9)
       vite: 8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(less@4.9.1)(sass-embedded@1.108.2)(sass@1.108.2)(terser@5.48.0)(yaml@2.9.1)
