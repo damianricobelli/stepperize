@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
-import { ArrowRight, Sparkles } from "lucide-react";
+import { ArrowRight } from "lucide-react";
+import { FrameworkIcon } from "@/components/framework-icon";
 import { GITHUB_URL } from "@/components/site/brand";
 import { cta } from "@/components/site/cta";
 import { SiteFooter } from "@/components/site/site-footer";
@@ -60,9 +61,13 @@ function Hero() {
 						to="/studio"
 						className="lp-rise pressable hit-44 group inline-flex items-center gap-2 rounded-full border bg-card/70 py-1 pr-2.5 pl-1 text-[13px] text-muted-foreground shadow-xs outline-none backdrop-blur hover:border-foreground/15 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
 					>
+						{/* Studio writes React code: say so, now that the library is not React only. */}
 						<span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-							<Sparkles className="size-3" aria-hidden />
-							New
+							<FrameworkIcon
+								id="react"
+								className="size-3 text-primary dark:text-primary"
+							/>
+							React
 						</span>
 						<span>
 							Stepper Studio
