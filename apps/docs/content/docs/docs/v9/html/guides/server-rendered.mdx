@@ -28,6 +28,7 @@ import { bindStepper } from "@stepperize/core/dom";
 
 for (const root of document.querySelectorAll<HTMLElement>('[data-component="stepper"][data-steps]')) {
   const flow = createStepper(JSON.parse(root.dataset.steps ?? "[]"), {
+    // `data-linear` is this page's own convention: bindStepper reads `isLinear` from the flow.
     linear: root.hasAttribute("data-linear"),
   });
   bindStepper(root, flow);
@@ -35,7 +36,8 @@ for (const root of document.querySelectorAll<HTMLElement>('[data-component="step
 ```
 
 Without a bundler, import both modules in a `<script type="module">` from a
-CDN that prepares packages for the browser, such as [esm.sh](https://esm.sh):
+CDN. [esm.sh](https://esm.sh) prepares packages for the browser; it builds them
+for production, and `?dev` keeps the development warnings:
 
 ```html
 <script type="module">
@@ -44,9 +46,19 @@ CDN that prepares packages for the browser, such as [esm.sh](https://esm.sh):
 </script>
 ```
 
-A CDN that only serves the published files as they are (unpkg, for example)
-does not work: like most libraries, the files read `process.env.NODE_ENV` to
-drop development warnings, and a browser has no `process`.
+A CDN that serves the published files untouched, such as jsDelivr or unpkg,
+works too. Point at the files in `dist`, and pin the version you tested:
+
+```html
+<script type="module">
+  import { createStepper } from "https://cdn.jsdelivr.net/npm/@stepperize/core/dist/index.js";
+  import { bindStepper } from "https://cdn.jsdelivr.net/npm/@stepperize/core/dist/dom.js";
+</script>
+```
+
+Those files leave out development warnings by reading `process.env.NODE_ENV`,
+which bundlers replace. A browser has no `process`, so there they run as in
+production: no warnings, and nothing breaks.
 
 ## Templates
 
@@ -141,6 +153,8 @@ const steps = [
   { id: "shipping", title: "Shipping" },
   { id: "payment", title: "Payment" },
 ];
+// Each step's fields come from the slot named after it: <Fragment slot="shipping">…</Fragment>
+const panels = await Promise.all(steps.map((step) => Astro.slots.render(step.id)));
 ---
 
 <div data-component="stepper" id="checkout" data-linear data-steps={JSON.stringify(steps)}>
@@ -154,7 +168,7 @@ const steps = [
 
   {steps.map((step, index) => (
     <div data-component="stepper-content" data-step={step.id} hidden={index > 0}>
-      <slot name={step.id} />
+      <Fragment set:html={panels[index]} />
     </div>
   ))}
 
@@ -167,7 +181,9 @@ const steps = [
 </script>
 ```
 
-No client directive and no framework integration are needed.
+`hidden={index > 0}` writes a bare `hidden` and leaves it out on the first
+panel. No client directive and no framework integration are needed: Astro
+bundles the `<script>` and loads it as a module.
 
 </Tab>
 </Tabs>

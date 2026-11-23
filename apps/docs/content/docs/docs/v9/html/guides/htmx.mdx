@@ -10,7 +10,7 @@ step was accepted.
 ## The page
 
 ```html
-<div data-component="stepper" id="signup" data-linear>
+<div data-component="stepper" id="signup">
   <ol data-component="stepper-list">
     <li data-component="stepper-item" data-step="account">
       <button data-component="stepper-trigger">Account</button>
@@ -42,6 +42,7 @@ const flow = createStepper([{ id: "account", title: "Account" }, { id: "plan", t
   linear: true,
 });
 
+// Linear: an ordered list of steps, where only `next()` moves forward.
 bindStepper(root, flow);
 // The server triggers this event when it accepts a step.
 root.addEventListener("stepper:next", () => flow.next());
@@ -50,10 +51,12 @@ root.addEventListener("stepper:next", () => flow.next());
 ## The server
 
 - **Invalid**: respond `200` with the form re-rendered, errors included. htmx
-  swaps it in and the flow stays where it is.
+  swaps it in and the flow stays where it is. (htmx 2 does not swap `4xx`
+  responses unless you configure `responseHandling`.)
 - **Valid**: respond with the header `HX-Trigger: stepper:next` (and the form,
-  or its saved state, as the body). htmx fires `stepper:next` on the form, it
-  bubbles to the root, and the flow moves on.
+  or its saved state, as the body). As soon as the response arrives, htmx fires
+  `stepper:next` on the form that made the request; it bubbles to the root, and
+  the flow moves on.
 
 ```http
 HTTP/1.1 200 OK
@@ -64,13 +67,14 @@ Content-Type: text/html
 ```
 
 Because the flow is `linear`, the next step's trigger stays disabled until the
-server has accepted the current one. The markup htmx swaps in is part of the
-stepper as soon as it lands; there is nothing to re-bind.
+server has accepted the current one. Swapping a form costs the stepper nothing,
+and any stepper part htmx swaps in is part of the stepper as soon as it lands;
+there is nothing to re-bind.
 
 ## Loading panels on demand
 
-A panel can fetch its content the first time its step is shown. Tell htmx when
-the step changes, and let the panel listen for it once:
+A panel can fetch its content the first time its step is shown. Fire an event
+on the panel when its step becomes current, and let htmx listen for it once:
 
 ```html
 <div
@@ -78,16 +82,20 @@ the step changes, and let the panel listen for it once:
   data-step="plan"
   hidden
   hx-get="/signup/plan"
-  hx-trigger="step:shown once"
+  hx-trigger="step-shown once"
 ></div>
 ```
 
 ```ts
 flow.subscribe(() => {
   const panel = root.querySelector(`[data-component="stepper-content"][data-step="${flow.current.id}"]`);
-  if (panel) htmx.trigger(panel, "step:shown");
+  // htmx listens with addEventListener: a plain DOM event is enough.
+  panel?.dispatchEvent(new Event("step-shown"));
 });
 ```
+
+`bindStepper` subscribed first, so the panel is no longer `hidden` when the
+event fires.
 
 ## Finishing
 

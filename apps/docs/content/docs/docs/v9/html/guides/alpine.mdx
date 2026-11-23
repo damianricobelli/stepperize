@@ -73,7 +73,10 @@ after every change, with the actions on it.
   them.
 - Use a `stepper-next` button when the step has no data to pass, and your own
   `@click="view.next(values)"` when it does.
-- Alpine calls `destroy()` when the element is removed, which unbinds and
-  destroys the flow.
+- Alpine calls `destroy()` before it cleans up the component, which unbinds
+  (putting the markup back as it was) and destroys the flow.
 - Elements Alpine adds later (`x-if`, `x-for`) that are stepper parts are
-  picked up automatically.
+  picked up automatically. Everything else Alpine renders, such as the issues
+  and the step count above, does not make the stepper render again.
+- Register the component before `Alpine.start()`, or inside an `alpine:init`
+  listener when Alpine is loaded from a `<script>` tag.

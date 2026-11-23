@@ -13,7 +13,8 @@ const indicator =
 	"flex size-6 shrink-0 items-center justify-center rounded-full border text-xs data-[state=complete]:bg-fd-primary data-[state=complete]:text-fd-primary-foreground";
 const panel = "rounded-md bg-fd-muted p-3";
 
-// What a server template would have rendered. Nothing below this string creates markup.
+// What a server template would have rendered: `hidden` on the panels and `disabled` on Back
+// avoid a flash before the script runs. Nothing below this string creates markup.
 const html = `
 <div data-component="stepper" data-demo="html" class="not-prose my-4 flex flex-col gap-4 rounded-lg border p-4 text-sm">
 	<ol data-component="stepper-list" class="flex gap-2">
@@ -36,7 +37,7 @@ const html = `
 	<div data-component="stepper-content" data-step="plan" class="${panel}" hidden>Pick the plan that fits.</div>
 	<div data-component="stepper-content" data-step="done" class="${panel}" hidden data-done>Press Finish to complete the flow.</div>
 	<div class="flex items-center gap-2">
-		<button data-component="stepper-prev" class="rounded-md border px-3 py-1 disabled:opacity-40">Back</button>
+		<button data-component="stepper-prev" class="rounded-md border px-3 py-1 disabled:opacity-40" disabled>Back</button>
 		<button data-component="stepper-next" class="rounded-md border px-3 py-1 aria-disabled:opacity-40">Continue</button>
 		<span data-step-count class="ml-auto text-xs text-fd-muted-foreground"></span>
 	</div>
@@ -46,6 +47,7 @@ export function mount(el: HTMLElement) {
 	el.innerHTML = html;
 	const root = el.firstElementChild as HTMLElement;
 	const flow = createStepper(steps);
+	// Tabs, because the flow is not linear. `unbind` puts the markup back as it was.
 	const unbind = bindStepper(root, flow);
 	// The parts are bound; anything else on the page reads the flow.
 	const paint = () => {

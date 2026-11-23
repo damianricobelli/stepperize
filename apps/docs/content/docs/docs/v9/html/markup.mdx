@@ -13,12 +13,20 @@ const unbind = bindStepper(root, flow, options?);
 | --- | --- |
 | `root` | The element with `data-component="stepper"`. |
 | `flow` | A flow from [`createStepper`](/docs/v9/core/create-stepper), or `definition.create()` from a binding. |
-| `options.linear` | Render an ordered list of steps instead of tabs. Pass what you passed to `createStepper`. Defaults to the root's `data-linear` attribute. |
 | `options.orientation` | `"horizontal"` or `"vertical"`. Defaults to the root's `data-orientation` attribute, then `"horizontal"`. |
 
-It returns a function that removes the listeners and the live region and stops
-following the flow. It does not destroy the flow: call `flow.destroy()` if you
-are done with it.
+Whether the flow is `linear` comes from the flow itself
+([`isLinear`](/docs/v9/core/create-stepper)): a linear flow is an ordered list
+of steps, any other a set of tabs. Change it with
+[`flow.setOptions`](/docs/v9/core/create-stepper#options-that-change) and the
+markup follows.
+
+It returns a function that undoes the binding: it removes the listeners and
+the live region, stops following the flow, and puts back every attribute and
+text it changed, so the markup is what the server sent. An attribute someone
+else changed since is left as it is. It does not destroy the flow: call
+`flow.destroy()` if you are done with it. Binding the same root again undoes
+the previous binding first.
 
 ## Parts
 
@@ -30,7 +38,7 @@ names the framework primitives render, so one stylesheet fits both.
 | `stepper` | Any, usually `div` | | The root: `role="group"`, `aria-busy`, `data-pending`, `data-finished`. |
 | `stepper-list` | `ol` | | The list of steps. A `tablist` when the flow is not linear and has triggers. Handles arrow keys. |
 | `stepper-item` | `li` | Yes | One step: `data-state`, `data-invalid`, `data-disabled`. |
-| `stepper-trigger` | `button` | On it or on its item | Goes to its step. A `tab`, or a button with `aria-current="step"`. |
+| `stepper-trigger` | `button` | On it or on its item | Goes to its step. A `tab`, or a button with `aria-current="step"`. Any other element gets a development warning ([SZ002](/docs/v9/core/errors#sz002)): Enter and Space would not press it and it could not be disabled. |
 | `stepper-indicator` | `span` | On it or on its item | A decorative mark: `aria-hidden`, `data-state`. |
 | `stepper-title`, `stepper-description` | `span` | On it or on its item | Left as written. When empty, filled with the step's `title` or `description`. |
 | `stepper-content` | `div` | Yes | The panel of a step: `hidden` unless its step is current. A `tabpanel`, or a `group` named by the step's `title`. |
@@ -42,11 +50,32 @@ names the framework primitives render, so one stylesheet fits both.
 
 ## What you control
 
-- **The name.** The root is named "Stepper" unless it has `aria-label` or
-  `aria-labelledby`.
-- **Ids.** Ids are built from the root's `id` (`signup-trigger-account`), so
-  they are the same on every page load. Without an `id` one is made up.
+What you write on a part wins over what the binding would add, as props do in
+the framework primitives:
+
+- **Names, roles and tab stops.** On the root, lists, items, panels and
+  indicators, your `role`, `aria-label`, `aria-labelledby` and `tabindex` are
+  kept. The root is named "Stepper" unless it has `aria-label` or
+  `aria-labelledby`; a panel you named gets no name from the binding.
+- **Ids.** A trigger or panel keeps the `id` you wrote, and `aria-controls` and
+  `aria-labelledby` point at it. Ids the binding makes up are built from the
+  root's `id` (`signup-trigger-account`), so they are the same on every page
+  load; without an `id` on the root one is made up.
 - **Button types.** Buttons get `type="button"` unless you wrote a `type`.
+- **Next.** `disabled` on a `stepper-next` button is yours: the binding never
+  disables Next itself, reads it on every change, and follows you when you
+  toggle it (`next.disabled = !terms.checked`). `aria-disabled="true"` written
+  on Prev or Next keeps the button focusable but does nothing when pressed.
+- **Everything else.** Your classes, `aria-describedby`, `data-*` attributes
+  and any attribute the binding does not set are never touched.
+
+The binding owns the state it keeps in sync: `hidden` on panels, `disabled` on
+triggers and Prev, `data-state` and the other `data-*` state, and the ARIA of
+triggers (`role`, `tabindex`, `aria-selected`, `aria-current`, `aria-controls`).
+Write them on the server to avoid a flash, as below; the binding takes them over
+from there. To keep a step out of reach, use the flow's
+[`guard`](/docs/v9/core/create-stepper) or `linear`, not `disabled` on its
+trigger.
 - **Your own handlers.** A listener you add to a button runs first. Call
   `event.preventDefault()` in it to handle the move yourself, for example to
   pass form values to `flow.next(values)`.
@@ -88,13 +117,22 @@ flow.subscribe(() => {
 See [Styling](/docs/v9/react/guides/styling) for every attribute; they are the
 same here.
 
+## Markup that changes
+
+Elements added or removed later (an htmx swap, an Alpine `x-if`, Turbo) are
+followed without another call, but only when they are, or contain, parts of
+this stepper. Text, form fields, messages and the parts of a stepper nested in
+a panel do not make it render again, and several changes in a row render once.
+
 ## Avoiding a flash before the script runs
 
 Every panel is in the HTML, so all of them show until `bindStepper` runs. Have
-the server write `hidden` on the panels that are not current; `bindStepper`
-takes it from there.
+the server write `hidden` on the panels that are not current, and `disabled` on
+Prev on the first step; `bindStepper` takes them from there.
 
 ```html
 <div data-component="stepper-content" data-step="account">…</div>
 <div data-component="stepper-content" data-step="plan" hidden>…</div>
+
+<button data-component="stepper-prev" disabled>Back</button>
 ```

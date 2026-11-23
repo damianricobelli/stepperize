@@ -53,7 +53,8 @@ and keeps them in sync with the flow:
 
 - **Roles and ids.** A tablist with tabs and tab panels, or an ordered list of
   steps with `aria-current`, or named groups: the same three patterns as the
-  [framework primitives](/docs/v9/react/guides/accessibility).
+  [framework primitives](/docs/v9/react/guides/accessibility). A linear flow is
+  the list, any other the tabs. Ids, names and roles you wrote are kept.
 - **State for your CSS.** `data-state` and `data-invalid` on items, triggers
   and indicators; `data-disabled` on items, triggers, Prev and Next; `data-pending`
   on the root, Prev and Next.
@@ -72,13 +73,18 @@ branching, guards and snapshots all work as documented there.
 
 - **No templating.** It never creates your content. The only element it adds
   is a visually hidden live region for announcements.
+- **Undoable.** The function it returns puts the markup back as the server
+  sent it, so binding again (Turbo, htmx, hot reload) starts clean.
 - **Several steppers.** Call it once per stepper. Each one only touches its own
   parts, including when one stepper is nested in another's panel.
-- **Markup that arrives later.** Elements swapped in by htmx, Alpine or Turbo
-  become part of the stepper on their own.
+- **Markup that arrives later.** Parts swapped in by htmx, Alpine or Turbo
+  become part of the stepper on their own; other changes on the page cost
+  nothing.
+- **Shadow DOM.** A stepper inside a web component's shadow root works the
+  same: ids, focus and keys stay in that shadow root.
 - **Server safe.** Importing the module touches nothing; only `bindStepper`
   needs a DOM. The main `@stepperize/core` entry has no DOM code at all.
-- **Small.** About 2.6 kB min + gzip on top of the 2.2 kB state machine.
+- **Small.** About 3.8 kB min + gzip on top of the 2.2 kB state machine.
 
 ## Next
 
