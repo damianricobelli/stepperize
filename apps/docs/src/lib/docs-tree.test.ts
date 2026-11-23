@@ -12,7 +12,8 @@ import {
 	hasDocsVersion,
 } from "./docs-tree";
 import { FRAMEWORKS } from "./frameworks";
-import { docsBreadcrumb } from "./seo";
+import { RETIRED_REACT_TARGETS, retiredReactPage } from "./legacy-redirects";
+import { docKeywords, docsBreadcrumb, faqFromMarkdown } from "./seo";
 import { docRouteForSlugs } from "./sitemap-urls";
 
 const content = fileURLToPath(
@@ -130,18 +131,99 @@ describe("versioned documentation", () => {
 		expect(getDocsTree(tree, "v7").$id).toBe(getDocsTree(tree, "v7").$id);
 	});
 
-	it("uses versioned canonical URLs in sitemap and breadcrumbs", () => {
+	it("uses versioned canonical URLs in the sitemap", () => {
 		expect(docRouteForSlugs(["docs", "latest", "forms"])).toBe(
 			"/docs/v9/react/forms",
 		);
 		expect(docRouteForSlugs(["docs", "v7", "forms"])).toBe("/docs/v7/forms");
-		const trail = docsBreadcrumb("v7/api/react/use-stepper", "useStepper");
-		expect(trail.map((t) => t.url)).toEqual([
+	});
+
+	it("lists in a breadcrumb only the levels that have a page", () => {
+		const urls = (splat: string, pages: string[]) =>
+			docsBreadcrumb(splat, "Title", (path) => pages.includes(path)).map(
+				(crumb) => crumb.url,
+			);
+		// `api` is a folder, not a page.
+		expect(urls("v7/api/react/use-stepper", ["/docs/v7"])).toEqual([
 			"/",
 			"/docs/v7",
-			"/docs/v7/api",
 			"/docs/v7/api/react/use-stepper",
 		]);
+		expect(urls("v8/forms/conform", ["/docs/v8", "/docs/v8/forms"])).toEqual([
+			"/",
+			"/docs/v8",
+			"/docs/v8/forms",
+			"/docs/v8/forms/conform",
+		]);
+		// v6 only has its migration page.
+		expect(urls("v6/migration", [])).toEqual(["/", "/docs/v6/migration"]);
+	});
+
+	it("puts the framework, not a folder, above a v9 page", () => {
+		const trail = docsBreadcrumb(
+			"v9/react/guides/url",
+			"The step in the URL",
+			(path) => path === "/docs/v9/react",
+		);
+		expect(trail).toEqual([
+			{ name: "Stepperize", url: "/" },
+			{ name: "React v9", url: "/docs/v9/react" },
+			{ name: "The step in the URL", url: "/docs/v9/react/guides/url" },
+		]);
+		// The framework's own page is not listed twice.
+		expect(
+			docsBreadcrumb("v9/core", "Introduction", () => true).map(
+				(crumb) => crumb.url,
+			),
+		).toEqual(["/", "/docs/v9/core"]);
+	});
+
+	it("gives every current page its keywords", () => {
+		for (const file of readdirSync(`${content}/v9`, { recursive: true })) {
+			if (!String(file).endsWith(".mdx")) continue;
+			const splat = `v9/${String(file).replace(/(\/index)?\.mdx$/, "")}`;
+			expect(docKeywords(splat), splat).toBeDefined();
+		}
+	});
+
+	it("reads the questions of a FAQ page from its markdown", () => {
+		const faq = faqFromMarkdown(read("v9", "react/faq.mdx"));
+		expect(faq.length).toBeGreaterThan(10);
+		expect(faq[0]).toEqual({
+			question: "Is Stepperize a form library?",
+			answer: expect.stringMatching(/^No\. It manages the flow: which step/),
+		});
+		for (const { question, answer } of faq) {
+			expect(question).toMatch(/\?$/);
+			expect(answer).not.toMatch(/```|\]\(|defineStepper\(\[/);
+		}
+	});
+
+	it("reads processed markdown: heading ids and tables", () => {
+		expect(
+			faqFromMarkdown(
+				"## Which one? [#which-one]\n\n| Use | When |\n| --- | --- |\n| `a()` | Always. |\n",
+			),
+		).toEqual([{ question: "Which one?", answer: "Use When a() Always." }]);
+	});
+
+	it("sends the pages retired from /docs/react to pages that exist", () => {
+		expect(retiredReactPage("react/installation")).toBeUndefined();
+		expect(retiredReactPage("react/my-first-stepper")).toBe(
+			"/docs/v9/react/first-stepper",
+		);
+		expect(retiredReactPage("react/migration/legacy/migrating-to-v5")).toBe(
+			"/docs/v5/migration",
+		);
+		for (const target of RETIRED_REACT_TARGETS) {
+			if (target.startsWith("/")) continue;
+			const path = target.split("#")[0];
+			expect(
+				existsSync(`${content}/v9/${path}.mdx`) ||
+					existsSync(`${content}/v9/${path}/index.mdx`),
+				target,
+			).toBe(true);
+		}
 	});
 
 	describe("documentation split by framework", () => {

@@ -14,13 +14,14 @@ import {
 	hasDocsVersion,
 	LEGACY_DOCS_VERSION,
 } from "@/lib/docs-tree";
-import { FAQ_ITEMS } from "@/lib/faq-data";
-import { FAQ_ITEMS_V7 } from "@/lib/faq-data-v7";
+import { isDocsFramework } from "@/lib/frameworks";
 import { baseOptions } from "@/lib/layout.shared";
+import { retiredReactPage } from "@/lib/legacy-redirects";
 import {
 	breadcrumbLd,
 	docKeywords,
 	docsBreadcrumb,
+	faqFromMarkdown,
 	faqPageLd,
 	jsonLdScript,
 	seo,
@@ -51,6 +52,10 @@ export const Route = createFileRoute("/docs/$")({
 				to: "/blocks",
 				search: category ? { category } : {},
 			});
+		}
+		const retired = retiredReactPage(splat);
+		if (retired) {
+			throw redirect({ href: retired, replace: true });
 		}
 		const slugs = splat.split("/").filter(Boolean);
 		const canonical = getCanonicalDocsPath(slugs);
@@ -89,15 +94,12 @@ export const Route = createFileRoute("/docs/$")({
 			jsonLdScript(
 				techArticleLd({ title, description, url: canonical, lastModified }),
 			),
-			jsonLdScript(breadcrumbLd(docsBreadcrumb(splat, title))),
 		];
-
-		if (/^v[78]\/getting-started\/faq$/.test(splat)) {
-			scripts.push(
-				jsonLdScript(
-					faqPageLd(splat.startsWith("v7/") ? FAQ_ITEMS_V7 : FAQ_ITEMS),
-				),
-			);
+		if (loaderData?.breadcrumb) {
+			scripts.push(jsonLdScript(breadcrumbLd(loaderData.breadcrumb)));
+		}
+		if (loaderData?.faq?.length) {
+			scripts.push(jsonLdScript(faqPageLd(loaderData.faq)));
 		}
 
 		const head = seo({
@@ -141,6 +143,14 @@ const loadDocsPage = createServerFn({ method: "GET" })
 			if (target) {
 				throw redirect({ href: getCanonicalDocsPath(target), replace: true });
 			}
+			// A framework URL without a version that names no page, such as a link to
+			// the site before v7: open that framework rather than a dead end.
+			if (isDocsFramework(data.slugs[0])) {
+				throw redirect({
+					href: getCanonicalDocsPath([data.slugs[0]]),
+					replace: true,
+				});
+			}
 		}
 
 		if (!page) {
@@ -153,9 +163,22 @@ const loadDocsPage = createServerFn({ method: "GET" })
 			getDocsFramework(data.slugs),
 		);
 
+		const hasPage = (path: string) =>
+			!!source.getPage(path.split("/").filter(Boolean));
+
 		return serializeLoaderData({
+			breadcrumb: docsBreadcrumb(
+				data.slugs.join("/"),
+				page.data.title,
+				hasPage,
+			),
 			description: page.data.description,
 			editPath: `apps/docs/content/docs/${page.path}`,
+			// Every version names its FAQ page `faq`.
+			faq:
+				pageSlugs.at(-1) === "faq"
+					? faqFromMarkdown(await page.data.getText("processed"))
+					: undefined,
 			full: page.data.full,
 			lastModified: page.data.lastModified?.toISOString(),
 			pageTree: await source.serializePageTree(pageTree),
@@ -164,6 +187,8 @@ const loadDocsPage = createServerFn({ method: "GET" })
 			title: page.data.title,
 			toc: [],
 		} satisfies DocsPageProps & {
+			breadcrumb: ReturnType<typeof docsBreadcrumb>;
+			faq: ReturnType<typeof faqFromMarkdown> | undefined;
 			pageTree: Awaited<ReturnType<typeof source.serializePageTree>>;
 			path: string;
 			version: string;

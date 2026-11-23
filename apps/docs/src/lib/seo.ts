@@ -1,4 +1,10 @@
-import { getCanonicalDocsPath, getDocsVersion } from "./docs-tree";
+import {
+	CURRENT_DOCS_VERSION,
+	getCanonicalDocsPath,
+	getDocsFramework,
+	getDocsVersion,
+} from "./docs-tree";
+import { FRAMEWORKS } from "./frameworks";
 /**
  * Centralized SEO helpers for the docs site.
  *
@@ -349,12 +355,196 @@ export function blockSourceCodeLd(block: BlockMeta) {
 }
 
 /**
- * Per-route secondary keyword targets, keyed by the docs splat
- * (the part after `/docs/`). Used to enrich `<meta name="keywords">`
- * and align each page with a specific search intent. Keep these aligned with
- * the search-intent map in SEO-AUDIT.md.
+ * Per-route secondary keyword targets, keyed by the docs splat (the part after
+ * `/docs/`). Used to enrich `<meta name="keywords">` and align each page with a
+ * specific search intent.
+ *
+ * `current/...` keys describe the current version, whatever its number is.
+ * `latest/...` keys are the v7 and v8 pages, which shared one structure.
  */
 export const DOC_KEYWORDS: Record<string, readonly string[]> = {
+	"current/react": [
+		"React stepper",
+		"multi-step flow",
+		"headless stepper",
+		"React wizard",
+	],
+	"current/react/installation": [
+		"install React stepper",
+		"@stepperize/react",
+		"npm React wizard",
+	],
+	"current/react/first-stepper": [
+		"React stepper tutorial",
+		"build a multi-step form",
+		"React wizard example",
+	],
+	"current/react/migration": [
+		"Stepperize v9 migration",
+		"upgrade Stepperize",
+		"Stepperize codemod",
+	],
+	"current/react/migration-agent": [
+		"Stepperize v9 migration",
+		"AI agent migration",
+		"coding agent upgrade prompt",
+	],
+	"current/react/concepts/steps": [
+		"stepper steps",
+		"typed steps React",
+		"step ids",
+	],
+	"current/react/concepts/stepper": [
+		"useStepper",
+		"stepper state React",
+		"flow state",
+	],
+	"current/react/concepts/moves": [
+		"stepper navigation lifecycle",
+		"next prev goTo",
+		"navigation guard React",
+	],
+	"current/react/concepts/step-state": [
+		"step state",
+		"step completion",
+		"current step React",
+	],
+	"current/react/guides/navigation": [
+		"stepper navigation",
+		"linear stepper",
+		"next prev step React",
+	],
+	"current/react/guides/branching": [
+		"branching flow React",
+		"conditional steps",
+		"skip steps wizard",
+	],
+	"current/react/guides/persistence": [
+		"save and resume form",
+		"persist multi-step form",
+		"stepper snapshot",
+	],
+	"current/react/guides/url": [
+		"stepper URL sync",
+		"step in the URL",
+		"router multi-step form",
+	],
+	"current/react/guides/shared-state": [
+		"share stepper state",
+		"stepper Provider",
+		"useStepperContext",
+	],
+	"current/react/guides/activity": [
+		"React Activity",
+		"keep form state between steps",
+		"hidden step state",
+	],
+	"current/react/guides/validation": [
+		"stepper schema validation",
+		"Zod multi-step form",
+		"Standard Schema",
+	],
+	"current/react/guides/primitives": [
+		"headless stepper primitives",
+		"accessible stepper",
+		"custom stepper UI",
+	],
+	"current/react/guides/styling": [
+		"style stepper",
+		"stepper data attributes",
+		"Tailwind stepper",
+	],
+	"current/react/guides/accessibility": [
+		"accessible stepper",
+		"stepper ARIA",
+		"keyboard navigation stepper",
+	],
+	"current/react/guides/testing": [
+		"test multi-step form",
+		"stepper unit test",
+		"Vitest wizard",
+	],
+	"current/react/forms": [
+		"multi-step form React",
+		"React form wizard",
+		"multi-step form validation",
+	],
+	"current/react/forms/patterns": [
+		"multi-step form pattern",
+		"wizard form state",
+		"step validation",
+	],
+	"current/react/forms/common-problems": [
+		"multi-step form problems",
+		"wizard form bugs",
+		"lost form state",
+	],
+	"current/react/forms/react-hook-form": [
+		"React Hook Form multi-step",
+		"React Hook Form wizard",
+		"multi-step form RHF",
+	],
+	"current/react/forms/tanstack-form": [
+		"TanStack Form multi-step",
+		"TanStack Form wizard",
+		"multi-step form",
+	],
+	"current/react/forms/conform": [
+		"Conform multi-step form",
+		"Conform wizard",
+		"server-side form validation",
+	],
+	"current/react/api/define-stepper": [
+		"defineStepper",
+		"useStepper hook",
+		"React stepper API",
+	],
+	"current/react/api/options": [
+		"stepper options",
+		"linear stepper",
+		"onFinish guard",
+	],
+	"current/react/api/stepper": [
+		"stepper API",
+		"useStepper return",
+		"stepper methods",
+	],
+	"current/react/api/primitives": [
+		"Stepper primitives",
+		"headless stepper components",
+		"accessible stepper",
+	],
+	"current/react/faq": [
+		"React stepper FAQ",
+		"multi-step form questions",
+		"headless stepper",
+	],
+	"current/react/troubleshooting": [
+		"React stepper errors",
+		"multi-step form bugs",
+		"stepper not working",
+	],
+	"current/react/changelog": ["Stepperize changelog", "Stepperize v9"],
+	"current/react/checklist": [
+		"production stepper",
+		"accessible multi-step form",
+		"SSR stepper",
+	],
+	"current/core": [
+		"@stepperize/core",
+		"framework-agnostic stepper",
+		"stepper state machine",
+	],
+	"current/core/create-stepper": [
+		"createStepper",
+		"framework-agnostic stepper",
+		"stepper store subscribe",
+	],
+	"current/core/errors": [
+		"Stepperize errors",
+		"Stepperize warnings",
+		"stepper error codes",
+	],
 	latest: ["React stepper", "multi-step flow", "headless stepper", "wizard"],
 	"latest/getting-started/installation": [
 		"install React stepper",
@@ -557,13 +747,15 @@ export const DOC_KEYWORDS: Record<string, readonly string[]> = {
 	],
 };
 
+const CURRENT_VERSION_PREFIX = new RegExp(`^${CURRENT_DOCS_VERSION}(?=/|$)`);
+
 /** Resolve the keyword set for a docs splat. */
 export function docKeywords(splat: string): readonly string[] | undefined {
-	const normalized = splat.replace(/^(v8|v7)(?=\/|$)/, "latest");
+	const normalized = splat
+		.replace(CURRENT_VERSION_PREFIX, "current")
+		.replace(/^(v8|v7)(?=\/|$)/, "latest");
 	return DOC_KEYWORDS[normalized];
 }
-
-const BREADCRUMB_LABELS = { docs: "Docs" } as const;
 
 const SECTION_LABELS: Record<string, string> = {
 	"getting-started": "Getting started",
@@ -576,31 +768,42 @@ const SECTION_LABELS: Record<string, string> = {
 	production: "Production",
 };
 
-/** Build a breadcrumb trail (Home → Docs → … → page) from a docs splat. */
+type Crumb = { name: string; url: string };
+
+/**
+ * Build a breadcrumb trail (Home → version or framework → section → page) from
+ * a docs splat. Search engines follow every crumb, so a level is only listed
+ * when `hasPage` says its URL exists: `api` in `/docs/v7/api/react/x` is a
+ * folder, not a page.
+ */
 export function docsBreadcrumb(
 	splat: string,
 	pageTitle: string,
-): { name: string; url: string }[] {
+	hasPage: (path: string) => boolean,
+): Crumb[] {
 	const segments = splat.split("/").filter(Boolean);
 	const version = getDocsVersion(segments);
-	const trail: { name: string; url: string }[] = [
-		{ name: "Stepperize", url: "/" },
-		{ name: `${BREADCRUMB_LABELS.docs} ${version}`, url: `/docs/${version}` },
+	const framework = getDocsFramework(segments);
+	const page = getCanonicalDocsPath(segments);
+	// The canonical path always carries the version, and the framework when the version has them.
+	const home = `/docs/${[version, framework].filter(Boolean).join("/")}`;
+	const rest = page.slice(home.length).split("/").filter(Boolean);
+	const title = FRAMEWORKS.find((entry) => entry.id === framework)?.title;
+
+	const levels: Crumb[] = [
+		{ name: title ? `${title} ${version}` : `Docs ${version}`, url: home },
 	];
-	const visible =
-		segments[0] === "latest" || /^v\d+$/.test(segments[0] ?? "")
-			? segments.slice(1)
-			: segments;
-	if (visible.length > 1) {
-		// Section label (e.g. "getting-started" -> "Getting started").
-		const section = visible[0];
-		trail.push({
-			name: SECTION_LABELS[section] ?? humanize(section),
-			url: `/docs/${version}/${section}`,
+	if (rest.length > 1) {
+		levels.push({
+			name: SECTION_LABELS[rest[0]] ?? humanize(rest[0]),
+			url: `${home}/${rest[0]}`,
 		});
 	}
-	trail.push({ name: pageTitle, url: getCanonicalDocsPath(segments) });
-	return trail;
+	return [
+		{ name: "Stepperize", url: "/" },
+		...levels.filter((level) => level.url !== page && hasPage(level.url)),
+		{ name: pageTitle, url: page },
+	];
 }
 
 function humanize(slug: string): string {
@@ -608,4 +811,39 @@ function humanize(slug: string): string {
 		.split("-")
 		.map((w) => w.charAt(0).toUpperCase() + w.slice(1))
 		.join(" ");
+}
+
+/**
+ * The question and answer pairs of a FAQ page, read from its markdown: every
+ * `##` heading is a question and the prose below it the answer. `FAQPage`
+ * JSON-LD must say what the page says, so it is derived rather than copied.
+ */
+export function faqFromMarkdown(
+	markdown: string,
+): { question: string; answer: string }[] {
+	const plain = (text: string) =>
+		text
+			.replace(/!?\[([^\]]*)\]\([^)]*\)/g, "$1")
+			.replace(/<[^>]+>/g, "")
+			// The id Fumadocs appends to a processed heading.
+			.replace(/\s*\[#[^\]]*\]\s*$/gm, "")
+			// Tables: drop the separator row, read the cells as a sentence.
+			.replace(/^\s*\|[\s:|-]+\|\s*$/gm, "")
+			.replace(/\s*\|\s*/g, " ")
+			.replace(/(\*\*|__|`)/g, "")
+			.replace(/^\s*[-*]\s+/gm, "")
+			.replace(/\s+/g, " ")
+			.trim();
+	return markdown
+		.replace(/^\s*```[\s\S]*?^\s*```\s*$/gm, "")
+		.split(/^## /m)
+		.slice(1)
+		.map((block) => {
+			const end = block.indexOf("\n");
+			return {
+				question: plain(end === -1 ? block : block.slice(0, end)),
+				answer: plain(end === -1 ? "" : block.slice(end)),
+			};
+		})
+		.filter((item) => item.question && item.answer);
 }

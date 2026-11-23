@@ -10,7 +10,11 @@
  *    and its pages.
  * 3. List the folder in `content/docs/docs/{version}/meta.json`.
  *
- * The sidebar switcher, canonical URLs, the sitemap and `llms.txt` follow.
+ * 4. Give its pages keywords in `DOC_KEYWORDS` (`seo.ts`); a test asks for them.
+ *
+ * The sidebar switcher, canonical URLs, breadcrumbs, the sitemap and `llms.txt`
+ * follow. The landing page, the blocks, Studio and the search filter do not:
+ * they only know React.
  */
 export const FRAMEWORKS = [
 	{
