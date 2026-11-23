@@ -1,0 +1,79 @@
+---
+title: Alpine
+description: Bind the primitives once, and read the flow in x-text, x-show and @click.
+---
+
+`bindStepper` takes care of the parts; Alpine renders everything else from the
+flow. Register a component that creates the flow, binds it to its own element
+and keeps the latest view in its data.
+
+```ts title="signup.ts"
+import Alpine from "alpinejs";
+import { createStepper } from "@stepperize/core";
+import { bindStepper } from "@stepperize/core/dom";
+
+const steps = [
+  { id: "account", title: "Account" },
+  { id: "plan", title: "Plan" },
+] as const;
+
+Alpine.data("signup", () => {
+  // Kept out of Alpine's reactive data: the flow is its own source of truth.
+  const flow = createStepper(steps, { onFinish: (output) => createAccount(output) });
+  let stop = () => {};
+
+  return {
+    view: flow.get(),
+    init() {
+      const unbind = bindStepper(this.$el, flow);
+      const unsubscribe = flow.subscribe(() => {
+        this.view = flow.get();
+      });
+      stop = () => {
+        unsubscribe();
+        unbind();
+        flow.destroy();
+      };
+    },
+    destroy() {
+      stop();
+    },
+  };
+});
+
+Alpine.start();
+```
+
+`view` is the [stepper](/docs/v9/react/api/stepper): a new immutable object
+after every change, with the actions on it.
+
+```html
+<div data-component="stepper" x-data="signup">
+  <p x-text="`Step ${view.index + 1} of ${view.steps.length}`"></p>
+
+  <div data-component="stepper-content" data-step="account">
+    <input x-ref="email" type="email" />
+  </div>
+  <div data-component="stepper-content" data-step="plan">…</div>
+
+  <template x-for="issue in view.issues() ?? []" :key="issue.message">
+    <p role="alert" x-text="issue.message"></p>
+  </template>
+
+  <button data-component="stepper-prev">Back</button>
+  <button @click="view.next({ email: $refs.email.value })" x-text="view.isLast ? 'Create account' : 'Continue'"></button>
+
+  <template x-if="view.isFinished">
+    <p>Welcome aboard.</p>
+  </template>
+</div>
+```
+
+- Panels are shown and hidden by `bindStepper`; you do not need `x-show` on
+  them.
+- Use a `stepper-next` button when the step has no data to pass, and your own
+  `@click="view.next(values)"` when it does.
+- Alpine calls `destroy()` when the element is removed, which unbinds and
+  destroys the flow.
+- Elements Alpine adds later (`x-if`, `x-for`) that are stepper parts are
+  picked up automatically.

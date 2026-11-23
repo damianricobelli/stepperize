@@ -29,7 +29,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        binding: [vue, svelte, solid, angular]
+        binding: [vue, svelte, solid, angular, lit]
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4

@@ -1,0 +1,43 @@
+---
+title: Server rendering
+description: What renders on the server with @lit-labs/ssr, and what waits for the browser.
+---
+
+With [`@lit-labs/ssr`](https://lit.dev/docs/ssr/overview/) the controller works
+on the server: the flow is created, the step in `snapshot` or `step` is the
+current one, and your template renders for it. No callback runs on the server.
+
+## What waits for the browser
+
+Lit's server renderer does not run element directives. The primitives are
+element directives, so on the server your elements render without the roles,
+ids, `data-state` and `hidden` that the directives add. They appear when the
+element hydrates.
+
+That matters for two things:
+
+- **Panels.** `content()` hides the panels that are not current. Until
+  hydration nothing does, so render only the current panel, or write `hidden`
+  yourself:
+
+```ts
+html`<div ${s.content("payment")} ?hidden=${s.value.current.id !== "payment"}>…</div>`;
+```
+
+- **Styling by state.** Rules such as `[data-state="current"]` do not match
+  before hydration. If the first paint must be styled, add your own class from
+  `s.at(step.id).state`, which does run on the server:
+
+```ts
+html`<li ${s.item(step.id)} class=${s.at(step.id).state}>…</li>`;
+```
+
+If the stepper must be fully formed in the server HTML, with no client step,
+write the roles and states as ordinary attributes from `s.at(id)` and
+`s.value`, using the [headless](/docs/v9/lit/installation#the-controller-without-the-primitives)
+controller, instead of the directives.
+
+## Without server rendering
+
+Nothing to do. The controller creates the flow on the element's first update
+and the directives apply everything in the same render.

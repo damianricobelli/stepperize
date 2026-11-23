@@ -6,6 +6,8 @@ const loaders = {
 	svelte: () => import("@/components/framework-demos/mount/svelte"),
 	solid: () => import("@/components/framework-demos/mount/solid"),
 	angular: () => import("@/components/framework-demos/mount/angular"),
+	lit: () => import("@/components/framework-demos/mount/lit"),
+	html: () => import("@/components/framework-demos/mount/html"),
 };
 
 export function FrameworkDemo({

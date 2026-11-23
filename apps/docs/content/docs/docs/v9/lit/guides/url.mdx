@@ -1,0 +1,59 @@
+---
+title: The URL as the current step
+description: Keep the step in the URL, in both directions.
+---
+
+The `step` option makes the flow follow a value that lives somewhere else. Pass
+the options as a function: it is read again on every update of the element, so
+it always sees the element's latest properties.
+
+```ts
+import { html, LitElement } from "lit";
+import { checkout } from "./checkout";
+
+class CheckoutPage extends LitElement {
+  static properties = { step: {} };
+  /** Set by your router from the URL, for example `/checkout/:step`. */
+  declare step: string;
+
+  stepper = checkout.controller(this, () => ({
+    linear: true,
+    // The URL moves (a link, the back button): the flow follows.
+    step: this.step,
+    // The flow moves: push the new step.
+    onChange: (snapshot) => {
+      if (snapshot.step !== this.step) history.pushState(null, "", `/checkout/${snapshot.step}`);
+    },
+    // The URL asks for a step the flow cannot be on: correct it without a history entry.
+    onInvalidStep: (current) => history.replaceState(null, "", `/checkout/${current}`),
+  }));
+}
+```
+
+Replace `history.pushState` with your router's navigation call
+(`Router.go`, `router.navigate`...). With no router, read the step from
+`location` and update the property on `popstate`:
+
+```ts
+connectedCallback() {
+  super.connectedCallback();
+  this.step = location.pathname.split("/").at(-1) ?? "";
+  addEventListener("popstate", this.#read);
+}
+
+disconnectedCallback() {
+  super.disconnectedCallback();
+  removeEventListener("popstate", this.#read);
+}
+
+#read = () => {
+  this.step = location.pathname.split("/").at(-1) ?? "";
+};
+```
+
+- Following the URL is a `goTo`: `linear` and the `guard` still apply, so a
+  deep link cannot skip validation.
+- `onInvalidStep` is called for unknown ids, for steps `linear` does not allow
+  yet and for moves the guard refused.
+- The flow is created on the element's first update, so a `step` or `snapshot`
+  that arrives as a property is used from the start.

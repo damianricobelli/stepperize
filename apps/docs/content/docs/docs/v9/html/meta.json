@@ -1,0 +1,14 @@
+{
+	"title": "HTML",
+	"description": "Stepperize v9 without a framework",
+	"root": true,
+	"pages": [
+		"---Start---",
+		"index",
+		"markup",
+		"---Recipes---",
+		"guides/server-rendered",
+		"guides/alpine",
+		"guides/htmx"
+	]
+}
