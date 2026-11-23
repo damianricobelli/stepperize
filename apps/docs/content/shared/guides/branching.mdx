@@ -1,0 +1,317 @@
+By default `next()` goes to the following step in the list. The `next` option
+changes that per step.
+
+<FrameworkOnly is="angular">
+On this page, `stepper` is the value of the signal `injectStepper()` returns:
+`this.stepper()` in a class, `stepper()` in a template.
+</FrameworkOnly>
+
+<FrameworkOnly is="lit">
+On this page, `stepper` is the controller's `value`: `this.stepper.value`.
+</FrameworkOnly>
+
+```ts title="signup.ts"
+export const signup = defineStepper([
+  { id: "account", schema: z.object({ type: z.enum(["personal", "team"]) }) },
+  { id: "team" },
+  { id: "payment" },
+]);
+```
+
+<FrameworkCode>
+
+```ts framework="react vue svelte solid"
+const stepper = signup.useStepper({
+  next: {
+    account: (data) => (data.type === "team" ? "team" : "payment"),
+  },
+});
+```
+
+```ts framework="angular" title="signup.component.ts"
+export class Signup {
+  readonly stepper = signup.injectStepper({
+    next: {
+      account: (data) => (data.type === "team" ? "team" : "payment"),
+    },
+  });
+}
+```
+
+```ts framework="lit" title="signup-steps.ts"
+class SignupSteps extends LitElement {
+  stepper = signup.controller(this, {
+    next: {
+      account: (data) => (data.type === "team" ? "team" : "payment"),
+    },
+  });
+}
+```
+
+</FrameworkCode>
+
+`data` is the validated output of that step's schema, and the function must
+return a known step id: a typo is a type error. Steps without an entry keep
+going to the following one.
+
+| Entry for a step | `next()` from that step goes to |
+| --- | --- |
+| None | The following step in the list, or the end after the last one. |
+| A function | The id it returns, or the end if it returns `null`. |
+| `null` | The end of the flow. |
+
+A branch runs after the step was validated and before the
+[guard](/docs/v9/:framework/guides/navigation#guard-a-move), which receives the
+step the branch chose as `to`. Like every callback, it is read when it runs,
+so it sees your latest state and can also depend on something outside the
+flow.
+
+<FrameworkOnly is="vue">
+Read a `ref` or a prop inside the function and it has its current value. When
+the whole `next` map depends on reactive state, pass the options as a getter:
+`useStepper(() => ({ next: ... }))`.
+</FrameworkOnly>
+
+<FrameworkOnly is="svelte">
+Read `$state` or a prop inside the function and it has its current value. When
+the whole `next` map depends on state, pass the options as a function:
+`useStepper(() => ({ next: ... }))`.
+</FrameworkOnly>
+
+<FrameworkOnly is="solid">
+Read a signal or a prop inside the function and it has its current value. When
+the whole `next` map depends on state, pass the options as an accessor:
+`useStepper(() => ({ next: ... }))`.
+</FrameworkOnly>
+
+<FrameworkOnly is="angular">
+Read a signal or an input inside the function and it has its current value.
+When the whole `next` map depends on signals, pass the options as a function:
+`injectStepper(() => ({ next: ... }))`.
+</FrameworkOnly>
+
+<FrameworkOnly is="lit">
+Read a property of the element inside the function and it has its current
+value. Pass the options as a function, `controller(this, () => ({ next: ... }))`,
+and they are read again before every render.
+</FrameworkOnly>
+
+## Depending on an earlier step
+
+The second argument is the data of every step, so a branch can look at an
+answer given earlier in the flow.
+
+```ts title="signup.ts"
+export const signup = defineStepper([
+  { id: "account", schema: z.object({ type: z.enum(["personal", "team"]) }) },
+  { id: "profile" },
+  { id: "team" },
+  { id: "payment" },
+]);
+```
+
+<FrameworkCode>
+
+```ts framework="react vue svelte solid"
+const stepper = signup.useStepper({
+  next: {
+    // The account type was answered two steps ago.
+    profile: (_data, flow) => (flow.account?.type === "team" ? "team" : "payment"),
+  },
+});
+```
+
+```ts framework="angular"
+readonly stepper = signup.injectStepper({
+  next: {
+    // The account type was answered two steps ago.
+    profile: (_data, flow) => (flow.account?.type === "team" ? "team" : "payment"),
+  },
+});
+```
+
+```ts framework="lit"
+stepper = signup.controller(this, {
+  next: {
+    // The account type was answered two steps ago.
+    profile: (_data, flow) => (flow.account?.type === "team" ? "team" : "payment"),
+  },
+});
+```
+
+</FrameworkCode>
+
+`flow` already includes the data being saved by this `next()` call.
+
+<FrameworkOnly is="react">
+Try it: pick "Just me" and the team step is skipped; Back returns the way you
+came.
+
+<Preview>
+	<ConditionalOnboardingBlock />
+</Preview>
+</FrameworkOnly>
+
+## Going back
+
+`prev()` returns to the step the person came from, not to the previous one in
+the list. In the example above, going back from `payment` lands on `profile`
+for a personal account and on `team` for a team.
+
+A skipped step is never entered, so it stays
+[`pending`](/docs/v9/:framework/concepts/step-state) and stores no data.
+
+## More than one ending
+
+Without an entry, a step leads to the one after it in the list, so only the
+last step ends the flow. Set an entry to `null` to end the flow at that step.
+A branch may also return `null`.
+
+```ts title="application.ts"
+export const application = defineStepper([
+  { id: "form", schema: applicationSchema },
+  { id: "approved" },
+  { id: "rejected" },
+]);
+```
+
+<FrameworkCode>
+
+```ts framework="react vue svelte solid"
+const stepper = application.useStepper({
+  next: {
+    form: (data) => (data.score >= 50 ? "approved" : "rejected"),
+    approved: null,
+    rejected: null,
+  },
+  onFinish: (output) => submit(output),
+});
+```
+
+```ts framework="angular"
+readonly stepper = application.injectStepper({
+  next: {
+    form: (data) => (data.score >= 50 ? "approved" : "rejected"),
+    approved: null,
+    rejected: null,
+  },
+  onFinish: (output) => submit(output),
+});
+```
+
+```ts framework="lit"
+stepper = application.controller(this, {
+  next: {
+    form: (data) => (data.score >= 50 ? "approved" : "rejected"),
+    approved: null,
+    rejected: null,
+  },
+  onFinish: (output) => submit(output),
+});
+```
+
+</FrameworkCode>
+
+Here `approved` would otherwise lead to `rejected`, the next step in the list.
+
+The same branches can be given once, to the definition, when every flow made
+from it shares them: `defineStepper(steps, { next: { ... } })`. An option
+given to a flow replaces the definition's option of the same name, as a whole:
+a `next` map on the flow replaces the definition's map, it is not merged into
+it.
+
+## isLast
+
+`stepper.isLast` is `true` when `next()` is certain to finish the flow: the
+step's entry is `null`, or it is the last step of the list and has no branch.
+Use it for the label of your button.
+
+<FrameworkCode>
+
+```tsx framework="react solid"
+<button type="button" onClick={() => stepper.next()}>
+  {stepper.isLast ? "Submit" : "Continue"}
+</button>
+```
+
+```vue framework="vue"
+<template>
+  <button type="button" @click="stepper.next()">
+    {{ stepper.isLast ? "Submit" : "Continue" }}
+  </button>
+</template>
+```
+
+```svelte framework="svelte"
+<button type="button" onclick={() => stepper.next()}>
+  {stepper.isLast ? "Submit" : "Continue"}
+</button>
+```
+
+```ts framework="angular"
+template: `
+  <button type="button" (click)="stepper().next()">
+    {{ stepper().isLast ? "Submit" : "Continue" }}
+  </button>
+`,
+```
+
+```ts framework="lit"
+html`
+  <button type="button" @click=${() => stepper.next()}>
+    ${stepper.isLast ? "Submit" : "Continue"}
+  </button>
+`;
+```
+
+</FrameworkCode>
+
+## Progress
+
+`stepper.progress` is the position of the current step in the list, from `0` to
+`1`. With branches that skip steps it jumps accordingly. If you need progress
+along the path actually taken, count the completed steps instead:
+
+<FrameworkCode>
+
+```ts framework="react lit"
+const done = stepper.steps.filter((step) => stepper.state(step.id) === "complete").length;
+```
+
+```ts framework="vue"
+const done = computed(
+  () => stepper.steps.filter((step) => stepper.state(step.id) === "complete").length,
+);
+```
+
+```ts framework="svelte"
+const done = $derived(stepper.steps.filter((step) => stepper.state(step.id) === "complete").length);
+```
+
+```ts framework="solid"
+const done = createMemo(
+  () => stepper.steps.filter((step) => stepper.state(step.id) === "complete").length,
+);
+```
+
+```ts framework="angular"
+readonly done = computed(() => {
+  const stepper = this.stepper();
+  return stepper.steps.filter((step) => stepper.state(step.id) === "complete").length;
+});
+```
+
+</FrameworkCode>
+
+<FrameworkOnly is="react">
+It is computed on every render, which is when the flow changes.
+</FrameworkOnly>
+
+<FrameworkOnly is="lit">
+Compute it in `render()`, which runs whenever the flow changes.
+</FrameworkOnly>
+
+<FrameworkOnly is="solid">
+A memo, not a plain `const`: a component runs once, and the memo is what
+follows the flow.
+</FrameworkOnly>

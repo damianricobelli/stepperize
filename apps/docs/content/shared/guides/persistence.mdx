@@ -1,0 +1,627 @@
+The flow always holds its own state. You do not pass the current step or the
+data on every render and wait for callbacks to apply them; you give the flow a
+starting point, and it tells you about every change.
+
+That exchange uses one object, the **snapshot**: everything a flow needs to
+continue later.
+
+```ts
+type Snapshot = {
+  step: string; // the current step
+  history: string[]; // the path taken, which prev() walks back
+  data: object; // the data of every step, by id
+  complete: string[]; // the steps next() has validated, in that order
+};
+```
+
+It is plain JSON when your data is. Each binding exports it typed for your
+steps, as `Snapshot<typeof checkout.steps>`.
+
+<FrameworkOnly is="angular">
+On this page, `stepper` is the value of the signal `injectStepper()` returns:
+`this.stepper()` in a class, `stepper()` in a template.
+</FrameworkOnly>
+
+<FrameworkOnly is="lit">
+On this page, `stepper` is the controller's `value`: `this.stepper.value`.
+</FrameworkOnly>
+
+## Save and resume
+
+<FrameworkCode>
+
+```ts framework="react vue svelte solid"
+const stepper = checkout.useStepper({
+  snapshot: saved,
+  onChange: (snapshot) => save(snapshot),
+});
+```
+
+```ts framework="angular"
+readonly stepper = checkout.injectStepper({
+  snapshot: saved,
+  onChange: (snapshot) => save(snapshot),
+});
+```
+
+```ts framework="lit"
+stepper = checkout.controller(this, {
+  snapshot: saved,
+  onChange: (snapshot) => save(snapshot),
+});
+```
+
+</FrameworkCode>
+
+- `snapshot` is where the flow starts. Pass any part of it, for example only
+  `{ step: "payment" }` or only `{ data }`.
+- `onChange` is called with the whole snapshot after the step, the data or
+  the completion changes.
+
+`snapshot` is read **once**, when the flow is created. Passing a different
+object later does nothing; that is what [`restore`](#loading-a-draft-later) is
+for.
+
+<FrameworkOnly is="react">
+Try it: type something, move forward, then reload the page.
+
+<Preview>
+	<SaveResumeBlock />
+</Preview>
+</FrameworkOnly>
+
+## What onChange reports
+
+| Change | `onChange` |
+| --- | --- |
+| An accepted `next`, `prev` or `goTo` | Yes |
+| A `next()` the schema rejected | Yes: the data that was passed is kept |
+| `setData` with a new value | Yes |
+| `setData` with the value the step already has | No: nothing changed |
+| `validate()` | No |
+| `reset`, `restore` | Yes |
+| `isPending` or `isFinished` changing | No |
+| A move the guard refused | No |
+
+## In the browser, without a mismatch
+
+A server cannot read `localStorage`, so a flow that starts from it would
+render differently on the server and in the browser. Start from what both
+know, and apply the saved snapshot after mounting.
+
+<FrameworkCode>
+
+```tsx framework="react" title="Checkout.tsx"
+function Checkout() {
+  const stepper = checkout.useStepper({
+    onChange: (snapshot) => localStorage.setItem("checkout", JSON.stringify(snapshot)),
+  });
+
+  useEffect(() => {
+    const saved = localStorage.getItem("checkout");
+    if (saved) stepper.restore(JSON.parse(saved));
+  }, []);
+}
+```
+
+```vue framework="vue" title="Checkout.vue"
+<script setup lang="ts">
+import { onMounted } from "vue";
+import { checkout } from "./checkout";
+
+const stepper = checkout.useStepper({
+  onChange: (snapshot) => localStorage.setItem("checkout", JSON.stringify(snapshot)),
+});
+
+onMounted(() => {
+  const saved = localStorage.getItem("checkout");
+  if (saved) stepper.restore(JSON.parse(saved));
+});
+</script>
+```
+
+```svelte framework="svelte" title="Checkout.svelte"
+<script lang="ts">
+  import { onMount } from "svelte";
+  import { checkout } from "./checkout";
+
+  const stepper = checkout.useStepper({
+    onChange: (snapshot) => localStorage.setItem("checkout", JSON.stringify(snapshot)),
+  });
+
+  onMount(() => {
+    const saved = localStorage.getItem("checkout");
+    if (saved) stepper.restore(JSON.parse(saved));
+  });
+</script>
+```
+
+```tsx framework="solid" title="Checkout.tsx"
+import { onMount } from "solid-js";
+import { checkout } from "./checkout";
+
+export function Checkout() {
+  const stepper = checkout.useStepper({
+    onChange: (snapshot) => localStorage.setItem("checkout", JSON.stringify(snapshot)),
+  });
+
+  onMount(() => {
+    const saved = localStorage.getItem("checkout");
+    if (saved) stepper.restore(JSON.parse(saved));
+  });
+
+  return <CheckoutSteps stepper={stepper} />;
+}
+```
+
+```ts framework="angular" title="checkout.component.ts"
+import { afterNextRender, Component } from "@angular/core";
+import { checkout } from "./checkout";
+
+@Component({ selector: "app-checkout", template: `…` })
+export class Checkout {
+  readonly stepper = checkout.injectStepper({
+    onChange: (snapshot) => localStorage.setItem("checkout", JSON.stringify(snapshot)),
+  });
+
+  constructor() {
+    // Runs in the browser only, once the page has rendered (and hydrated).
+    afterNextRender(() => {
+      const saved = localStorage.getItem("checkout");
+      if (saved) this.stepper().restore(JSON.parse(saved));
+    });
+  }
+}
+```
+
+```ts framework="lit" title="checkout-steps.ts"
+import { html, LitElement } from "lit";
+import { checkout } from "./checkout";
+
+export class CheckoutSteps extends LitElement {
+  stepper = checkout.controller(this, {
+    onChange: (snapshot) => localStorage.setItem("checkout", JSON.stringify(snapshot)),
+  });
+
+  // After the first update, which is the one that hydrates the server HTML.
+  firstUpdated() {
+    const saved = localStorage.getItem("checkout");
+    if (saved) this.stepper.value.restore(JSON.parse(saved));
+  }
+
+  render() {
+    return html`<h2>${this.stepper.value.current.title}</h2>`;
+  }
+}
+customElements.define("checkout-steps", CheckoutSteps);
+```
+
+</FrameworkCode>
+
+<FrameworkOnly is="lit">
+This only matters with [server rendering](/docs/v9/lit/guides/ssr). An
+element that is only rendered in the browser can read the storage directly,
+as below.
+</FrameworkOnly>
+
+<FrameworkOnly is="vue">
+In Nuxt, a cookie avoids the second render: `useCookie` reads it on the
+server too, so the first HTML is already on the saved step. Keep it for small
+snapshots, as a cookie travels with every request. See
+[Server rendering](/docs/v9/vue/guides/ssr#resuming-from-a-cookie-or-the-database).
+</FrameworkOnly>
+
+<FrameworkOnly is="svelte">
+In SvelteKit, a cookie avoids the second render: a `load` function reads it on
+the server, so the first HTML is already on the saved step. Keep it for small
+snapshots, as a cookie travels with every request. See
+[Server rendering](/docs/v9/svelte/guides/ssr#resuming-from-a-cookie-or-the-database).
+</FrameworkOnly>
+
+<FrameworkOnly is="solid">
+In SolidStart, a snapshot loaded by a server `query` avoids the second render:
+see [saving to a server](#saving-to-a-server).
+</FrameworkOnly>
+
+<FrameworkOnly is="angular">
+`afterNextRender` never runs on the server, so `localStorage` is only read in
+the browser. To have the first HTML on the saved step, resolve the snapshot on
+the server: see [saving to a server](#saving-to-a-server).
+</FrameworkOnly>
+
+In an app that only renders in the browser, reading it directly is fine:
+
+<FrameworkCode>
+
+```ts framework="react vue svelte solid"
+const stepper = checkout.useStepper({
+  snapshot: JSON.parse(localStorage.getItem("checkout") ?? "{}"),
+  onChange: (snapshot) => localStorage.setItem("checkout", JSON.stringify(snapshot)),
+});
+```
+
+```ts framework="angular"
+readonly stepper = checkout.injectStepper({
+  snapshot: JSON.parse(localStorage.getItem("checkout") ?? "{}"),
+  onChange: (snapshot) => localStorage.setItem("checkout", JSON.stringify(snapshot)),
+});
+```
+
+```ts framework="lit"
+stepper = checkout.controller(this, {
+  snapshot: JSON.parse(localStorage.getItem("checkout") ?? "{}"),
+  onChange: (snapshot) => localStorage.setItem("checkout", JSON.stringify(snapshot)),
+});
+```
+
+</FrameworkCode>
+
+<FrameworkOnly is="react">
+`snapshot` is read once, so parsing it again on later renders changes nothing;
+it only costs the parse.
+</FrameworkOnly>
+
+## Saving to a server
+
+`onChange` is also called by `setData`. If you write drafts on every
+keystroke, debounce the request.
+
+A draft loaded on the server is the best starting point: the first render
+already shows the right step.
+
+<FrameworkCode>
+
+```tsx framework="react" title="Checkout.tsx"
+import type { Snapshot } from "@stepperize/react";
+import { useDebouncedCallback } from "use-debounce";
+
+type CheckoutSnapshot = Snapshot<typeof checkout.steps>;
+
+// `draft` was loaded on the server and passed as a prop.
+function Checkout({ draft }: { draft: CheckoutSnapshot }) {
+  const save = useDebouncedCallback((snapshot: CheckoutSnapshot) => api.saveDraft(snapshot), 500);
+  const stepper = checkout.useStepper({ snapshot: draft, onChange: save });
+}
+```
+
+```vue framework="vue" title="pages/checkout.vue"
+<script setup lang="ts">
+import type { Snapshot } from "@stepperize/vue";
+import { useDebounceFn } from "@vueuse/core";
+import { checkout } from "~/flows/checkout";
+
+type CheckoutSnapshot = Snapshot<typeof checkout.steps>;
+
+// Fetched on the server and handed to the browser with the page.
+const { data: draft } = await useFetch<CheckoutSnapshot | null>("/api/checkout/draft");
+
+const save = useDebounceFn(
+  (snapshot: CheckoutSnapshot) => $fetch("/api/checkout/draft", { method: "PUT", body: snapshot }),
+  500,
+);
+
+const stepper = checkout.useStepper({
+  snapshot: draft.value ?? undefined,
+  onChange: save,
+});
+</script>
+```
+
+```ts framework="svelte" title="src/routes/checkout/+page.server.ts"
+import { loadDraft } from "$lib/server/drafts";
+import type { PageServerLoad } from "./$types";
+
+export const load: PageServerLoad = async ({ cookies }) => ({
+  draft: await loadDraft(cookies.get("session")),
+});
+```
+
+```svelte framework="svelte" title="src/routes/checkout/+page.svelte"
+<script lang="ts">
+  import { checkout } from "$lib/checkout";
+  import type { PageProps } from "./$types";
+
+  let { data }: PageProps = $props();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+
+  const stepper = checkout.useStepper(() => ({
+    snapshot: data.draft ?? undefined,
+    onChange: (snapshot) => {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        fetch("/api/checkout/draft", { method: "PUT", body: JSON.stringify(snapshot) });
+      }, 500);
+    },
+  }));
+</script>
+```
+
+```tsx framework="solid" title="src/routes/checkout.tsx"
+import { debounce } from "@solid-primitives/scheduled";
+import { createAsync, query, type RouteDefinition } from "@solidjs/router";
+import { Show } from "solid-js";
+import type { Snapshot } from "@stepperize/solid";
+import { checkout } from "~/checkout";
+import { loadDraft, saveDraft } from "~/lib/drafts";
+
+type CheckoutSnapshot = Snapshot<typeof checkout.steps>;
+
+const getDraft = query(async () => {
+  "use server";
+  // `null` means nothing was saved; `undefined` means it has not loaded yet.
+  return (await loadDraft()) ?? null;
+}, "checkout-draft");
+
+export const route = { preload: () => getDraft() } satisfies RouteDefinition;
+
+export default function CheckoutPage() {
+  const draft = createAsync(() => getDraft());
+  return (
+    <Show when={draft() !== undefined}>
+      <Checkout draft={draft() ?? undefined} />
+    </Show>
+  );
+}
+
+function Checkout(props: { draft?: CheckoutSnapshot }) {
+  // `saveDraft` is a "use server" function: calling it from the browser is a request.
+  const save = debounce((snapshot: CheckoutSnapshot) => saveDraft(snapshot), 500);
+  const stepper = checkout.useStepper(() => ({ snapshot: props.draft, onChange: save }));
+
+  return <CheckoutSteps stepper={stepper} />;
+}
+```
+
+```ts framework="angular" title="app.routes.ts"
+import { inject } from "@angular/core";
+import type { Routes } from "@angular/router";
+import { CheckoutPage } from "./checkout.page";
+import { DraftApi } from "./draft-api";
+
+// With provideRouter(routes, withComponentInputBinding()) in app.config.ts.
+export const routes: Routes = [
+  {
+    path: "checkout",
+    component: CheckoutPage,
+    resolve: { draft: () => inject(DraftApi).load() },
+  },
+];
+```
+
+```ts framework="angular" title="checkout.page.ts"
+import { Component, inject, input } from "@angular/core";
+import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
+import { debounceTime, Subject, switchMap } from "rxjs";
+import type { Snapshot } from "@stepperize/angular";
+import { checkout } from "./checkout";
+import { DraftApi } from "./draft-api";
+
+type CheckoutSnapshot = Snapshot<typeof checkout.steps>;
+
+@Component({ selector: "app-checkout-page", template: `…` })
+export class CheckoutPage {
+  readonly #api = inject(DraftApi);
+  readonly #changes = new Subject<CheckoutSnapshot>();
+  /** Bound from the route's resolver. */
+  readonly draft = input<CheckoutSnapshot | null>();
+
+  readonly stepper = checkout.injectStepper(() => ({
+    snapshot: this.draft() ?? undefined,
+    onChange: (snapshot) => this.#changes.next(snapshot),
+  }));
+
+  constructor() {
+    this.#changes
+      .pipe(
+        debounceTime(500),
+        switchMap((snapshot) => this.#api.save(snapshot)),
+        takeUntilDestroyed(),
+      )
+      .subscribe();
+  }
+}
+```
+
+```ts framework="lit" title="checkout-steps.ts"
+import { html, LitElement } from "lit";
+import type { Snapshot } from "@stepperize/lit";
+import { checkout } from "./checkout";
+
+type CheckoutSnapshot = Snapshot<typeof checkout.steps>;
+
+/** `<checkout-steps draft='{"step":"payment",...}'>`: the server writes the draft as JSON. */
+export class CheckoutSteps extends LitElement {
+  static properties = { draft: { type: Object } };
+  declare draft?: CheckoutSnapshot;
+  #timer?: ReturnType<typeof setTimeout>;
+
+  stepper = checkout.controller(this, () => ({
+    snapshot: this.draft,
+    onChange: (snapshot) => {
+      clearTimeout(this.#timer);
+      this.#timer = setTimeout(() => api.saveDraft(snapshot), 500);
+    },
+  }));
+
+  render() {
+    return html`<h2>${this.stepper.value.current.title}</h2>`;
+  }
+}
+customElements.define("checkout-steps", CheckoutSteps);
+```
+
+</FrameworkCode>
+
+<FrameworkOnly is="vue">
+`useFetch` runs on the server and hands its result to the browser in the page
+payload, so the browser starts the flow from the same draft without fetching it
+again. The top-level `await` comes before `useStepper()`, which is fine in
+`<script setup>`; see [Server rendering](/docs/v9/vue/guides/ssr#awaiting-data-first).
+</FrameworkOnly>
+
+<FrameworkOnly is="svelte">
+`load` runs on the server for the first request, and its result is serialized
+into the page, so the browser starts the flow from the same draft. Create the
+flow in the page, not in a module: a module is shared by every request on the
+server.
+</FrameworkOnly>
+
+<FrameworkOnly is="solid">
+The `query` runs on the server, and its result is serialized into the page, so
+the browser starts the flow from the same draft. `Show` waits for it: the flow
+reads `snapshot` once, when it is created, so it must not be created before
+the draft has loaded.
+</FrameworkOnly>
+
+<FrameworkOnly is="angular">
+The resolver runs before the component is created, so the input is set when
+the flow reads `snapshot`. Resolved data only reaches inputs with
+`withComponentInputBinding()`; without it the input stays `undefined` and the
+flow starts on the first step, with no error. With `provideClientHydration()`,
+`HttpClient` hands the server's response to the browser, so the resolver does
+not fetch the draft twice.
+</FrameworkOnly>
+
+<FrameworkOnly is="lit">
+A property with `type: Object` is parsed from its attribute as JSON, and the
+attribute is in the HTML on the server and in the browser alike. The flow is
+created no later than the first update, after the attribute has been read.
+</FrameworkOnly>
+
+## Loading a draft later
+
+When the draft arrives after the first render, apply it with `restore`. It
+replaces the state without validation or guards, and cancels a move that is
+running.
+
+<FrameworkCode>
+
+```tsx framework="react"
+useEffect(() => {
+  api.loadDraft().then((draft) => {
+    if (draft) stepper.restore(draft);
+  });
+}, []);
+```
+
+```ts framework="vue"
+onMounted(async () => {
+  const draft = await api.loadDraft();
+  if (draft) stepper.restore(draft);
+});
+```
+
+```ts framework="svelte solid"
+onMount(async () => {
+  const draft = await api.loadDraft();
+  if (draft) stepper.restore(draft);
+});
+```
+
+```ts framework="angular"
+readonly #api = inject(DraftApi);
+readonly #destroyRef = inject(DestroyRef);
+
+constructor() {
+  afterNextRender(() => {
+    this.#api
+      .load()
+      .pipe(takeUntilDestroyed(this.#destroyRef))
+      .subscribe((draft) => {
+        if (draft) this.stepper().restore(draft);
+      });
+  });
+}
+```
+
+```ts framework="lit"
+async firstUpdated() {
+  const draft = await api.loadDraft();
+  if (draft) this.stepper.value.restore(draft);
+}
+```
+
+</FrameworkCode>
+
+`restore` replaces the parts you pass and keeps the others:
+
+| Call | Effect |
+| --- | --- |
+| `restore(snapshot)` | Replace everything. |
+| `restore({ data })` | Replace the data of every step; stay on the current step. |
+| `restore({ step: "review" })` | Go to a step without validation or guards. |
+| `restore({ complete: [] })` | Clear the completion. |
+
+Each part is replaced as a whole: `restore({ data: { shipping } })` leaves the
+other steps without data. To change one step, use `setData`.
+
+## Old snapshots
+
+Flows change. When a saved snapshot names a step that no longer exists, it is
+dropped from `step`, `history` and `complete`, and the flow starts on the
+first step if `step` was the one that disappeared. A snapshot from an older
+version of your flow never throws.
+
+The data of each step is not checked when it is loaded. It is validated like
+any other data, the next time `next()` runs on that step.
+
+A snapshot holds what was typed, not the schemas' output, so a step loaded as
+complete has no entry in `stepper.output` yet. The `next()` that finishes the
+flow validates those steps once more before calling `onFinish`. If the saved
+data no longer passes, because the schema changed since, the flow does not
+finish: `next()` resolves with `reason: "invalid"`, the step stops being
+complete and `stepper.issues(id)` says why. To find out earlier, call
+`stepper.validate(id)` after loading the draft.
+
+`restore` keeps the output of every complete step whose data it did not
+replace, so `restore({ step: "review" })` loses nothing.
+
+## Starting over
+
+`reset()` goes back to the snapshot the flow started with, and cancels a move
+that is still running. Remember to delete your saved copy: `reset()` reports
+the fresh snapshot through `onChange` like any other change.
+
+<FrameworkCode>
+
+```ts framework="react vue svelte solid"
+function startOver() {
+  stepper.reset();
+  localStorage.removeItem("checkout");
+}
+```
+
+```ts framework="angular"
+startOver() {
+  this.stepper().reset();
+  localStorage.removeItem("checkout");
+}
+```
+
+```ts framework="lit"
+#startOver() {
+  this.stepper.value.reset();
+  localStorage.removeItem("checkout");
+}
+```
+
+</FrameworkCode>
+
+## Reading the snapshot
+
+`stepper.snapshot()` returns the current one at any time, for example to send
+it with a support request, or to read the completed steps.
+
+## What not to save
+
+A snapshot contains everything the steps stored. Remove what should not be
+written to storage before saving it.
+
+```ts
+onChange: (snapshot) => {
+  const { payment: _payment, ...data } = snapshot.data;
+  localStorage.setItem("checkout", JSON.stringify({ ...snapshot, data }));
+},
+```
+
+Next: [the step in the URL](/docs/v9/:framework/guides/url).

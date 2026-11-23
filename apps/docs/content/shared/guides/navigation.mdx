@@ -1,0 +1,826 @@
+Three methods move the flow. Each returns a promise that resolves with what
+happened, and none of them throws for an expected outcome.
+
+| Method | Behavior |
+| --- | --- |
+| `next(data?)` | Saves `data` for the current step, validates the step, and moves forward. On a final step it finishes the flow. |
+| `prev()` | Goes back to the step the person came from. Never validates. |
+| `goTo(id)` | Jumps to a step. Never validates. |
+
+<FrameworkCode>
+
+```tsx framework="react solid"
+<button type="button" disabled={stepper.isFirst} onClick={() => stepper.prev()}>
+  Back
+</button>
+<button type="button" onClick={() => stepper.next()}>
+  {stepper.isLast ? "Finish" : "Continue"}
+</button>
+```
+
+```vue framework="vue"
+<template>
+  <button type="button" :disabled="stepper.isFirst" @click="stepper.prev()">Back</button>
+  <button type="button" @click="stepper.next()">
+    {{ stepper.isLast ? "Finish" : "Continue" }}
+  </button>
+</template>
+```
+
+```svelte framework="svelte"
+<button type="button" disabled={stepper.isFirst} onclick={() => stepper.prev()}>Back</button>
+<button type="button" onclick={() => stepper.next()}>
+  {stepper.isLast ? "Finish" : "Continue"}
+</button>
+```
+
+```html framework="angular"
+<button type="button" [disabled]="stepper().isFirst" (click)="stepper().prev()">Back</button>
+<button type="button" (click)="stepper().next()">
+  {{ stepper().isLast ? "Finish" : "Continue" }}
+</button>
+```
+
+```ts framework="lit"
+const stepper = this.stepper.value;
+
+return html`
+  <button type="button" ?disabled=${stepper.isFirst} @click=${() => stepper.prev()}>Back</button>
+  <button type="button" @click=${() => stepper.next()}>
+    ${stepper.isLast ? "Finish" : "Continue"}
+  </button>
+`;
+```
+
+</FrameworkCode>
+
+[The lifecycle of a move](/docs/v9/:framework/concepts/moves) describes each stage.
+This page is about using them.
+
+<FrameworkOnly is="angular">
+On this page, `stepper` is the value of the signal `injectStepper()` returns:
+`this.stepper()` in a class, `stepper()` in a template.
+</FrameworkOnly>
+
+<FrameworkOnly is="lit">
+On this page, `stepper` is the controller's `value`: `this.stepper.value`.
+</FrameworkOnly>
+
+## Read the result
+
+Await the call when what you do next depends on it.
+
+<FrameworkCode>
+
+```ts framework="react vue svelte solid"
+async function onContinue() {
+  const result = await stepper.next(values);
+
+  if (result.accepted) {
+    if (result.to === null) toast("Order placed");
+    return;
+  }
+  if (result.reason === "invalid") focusFirstError(result.issues);
+}
+```
+
+```ts framework="angular"
+async onContinue() {
+  const result = await this.stepper().next(this.values());
+
+  if (result.accepted) {
+    if (result.to === null) toast("Order placed");
+    return;
+  }
+  if (result.reason === "invalid") focusFirstError(result.issues);
+}
+```
+
+```ts framework="lit"
+async onContinue() {
+  const result = await this.stepper.value.next(this.values);
+
+  if (result.accepted) {
+    if (result.to === null) toast("Order placed");
+    return;
+  }
+  if (result.reason === "invalid") focusFirstError(result.issues);
+}
+```
+
+</FrameworkCode>
+
+| Reason | Meaning |
+| --- | --- |
+| `invalid` | The step's schema rejected its data. `issues` says why. |
+| `guard` | Your guard returned `false`. |
+| `policy` | The flow is linear and the step is not reachable yet. |
+| `pending` | Another move is still running. |
+| `boundary` | `prev()` was called with nowhere to go back to. |
+| `finished` | `next()` was called after the flow finished. |
+| `cancelled` | `reset()`, `restore()` or destroying the flow interrupted the move. |
+
+<FrameworkOnly is="react vue svelte solid">
+The flow is destroyed when the component that owns it unmounts.
+</FrameworkOnly>
+
+<FrameworkOnly is="angular">
+The flow is destroyed with the component, directive or service that owns it.
+</FrameworkOnly>
+
+<FrameworkOnly is="lit">
+A flow the controller owns is destroyed by `this.stepper.destroy()`.
+Disconnecting the element does not destroy it, because an element can be
+moved and connected again.
+</FrameworkOnly>
+
+## Linear flows
+
+By default any step can be opened at any time, which suits settings pages and
+tabs. Pass `linear` for a flow that has to be done in order.
+
+<FrameworkCode>
+
+```ts framework="react vue svelte solid"
+const stepper = checkout.useStepper({ linear: true });
+```
+
+```ts framework="angular"
+readonly stepper = checkout.injectStepper({ linear: true });
+```
+
+```ts framework="lit"
+stepper = checkout.controller(this, { linear: true });
+```
+
+</FrameworkCode>
+
+In a linear flow:
+
+- `next()` is the only way forward, and it validates.
+- `goTo(id)` reaches the current step and the steps that are
+  [complete](/docs/v9/:framework/concepts/step-state). Anything else resolves with
+  `reason: "policy"`, without calling the guard.
+- `prev()` always works.
+- `canGoTo(id)` tells you in advance, which is what disables the triggers of
+  the primitives.
+
+```ts
+const flow = checkout.create({ linear: true });
+
+flow.canGoTo("review"); // false
+(await flow.goTo("review")).accepted; // false, reason "policy"
+
+await flow.next(); // shipping is complete
+await flow.next(); // payment is complete
+await flow.goTo("shipping"); // allowed: it is complete
+await flow.goTo("payment"); // allowed
+```
+
+`linear` decides which steps can be opened. It does not validate anything by
+itself: validation comes from each step's [schema](/docs/v9/:framework/guides/validation).
+
+### Editing a step that was already complete
+
+A step is complete while its data is what `next()` validated. When `setData`
+writes something different to a complete step, or a `next(data)` on it is
+rejected, the step is no longer complete. In a linear flow the steps that were
+completed after it are no longer complete either, so nothing past an edited
+step can be opened without validating it again. Their data is kept.
+
+```ts
+const flow = checkout.create({ linear: true });
+await flow.next({ address: "12 Analytical Ave" });
+await flow.next({ card: "4242424242424242" }); // now on review
+
+await flow.goTo("shipping");
+flow.setData("shipping", { address: "" });
+
+flow.state("payment"); // "pending": it comes after an edited step
+flow.canGoTo("payment"); // false
+flow.data.payment; // still there
+```
+
+Without `linear`, only the edited step stops being complete.
+
+### Edit from the review and come back
+
+A review step usually links back to the earlier steps. After the edit, walk
+forward with `next()` until the review is reached again. Each call validates
+the data that is already stored, so the steps in between pass without the
+person seeing them, and the walk stops at the first one that is no longer
+valid.
+
+<FrameworkCode>
+
+```ts framework="react vue svelte solid"
+async function saveAndReturn(values: unknown) {
+  let result = await stepper.next(values);
+  while (result.accepted && result.to !== "review") {
+    result = await stepper.next();
+  }
+}
+```
+
+```ts framework="angular"
+async saveAndReturn(values: unknown) {
+  let result = await this.stepper().next(values);
+  while (result.accepted && result.to !== "review") {
+    result = await this.stepper().next();
+  }
+}
+```
+
+```ts framework="lit"
+async saveAndReturn(values: unknown) {
+  let result = await this.stepper.value.next(values);
+  while (result.accepted && result.to !== "review") {
+    result = await this.stepper.value.next();
+  }
+}
+```
+
+</FrameworkCode>
+
+<FrameworkOnly is="react">
+Use the `result`, not `stepper`, inside the loop: the stepper you hold is the
+flow as it was when your component rendered.
+</FrameworkOnly>
+
+<FrameworkOnly not="react">
+Loop on the `result`: it says whether each move was accepted and where it
+went, which the stepper alone cannot tell you.
+</FrameworkOnly>
+
+The same option changes the markup of the primitives, from tabs to an ordered
+list of steps. See [Accessibility](/docs/v9/:framework/guides/accessibility).
+
+## Guard a move
+
+A guard runs before every `next`, `prev` and `goTo`, after validation. Return
+`false` to refuse the move (`reason: "guard"`); anything else allows it.
+
+<FrameworkCode>
+
+```ts framework="react vue svelte solid"
+const stepper = checkout.useStepper({
+  guard: ({ from, direction }) => {
+    if (direction === "prev" && from.id === "payment") {
+      return window.confirm("Discard the card details?");
+    }
+  },
+});
+```
+
+```ts framework="angular"
+readonly stepper = checkout.injectStepper({
+  guard: ({ from, direction }) => {
+    if (direction === "prev" && from.id === "payment") {
+      return window.confirm("Discard the card details?");
+    }
+  },
+});
+```
+
+```ts framework="lit"
+stepper = checkout.controller(this, {
+  guard: ({ from, direction }) => {
+    if (direction === "prev" && from.id === "payment") {
+      return window.confirm("Discard the card details?");
+    }
+  },
+});
+```
+
+</FrameworkCode>
+
+| Field | Description |
+| --- | --- |
+| `from` | The step being left. |
+| `to` | The step being entered, or `null` when the flow is finishing. |
+| `direction` | `"next"`, `"prev"` or `"goTo"`. |
+| `data` | The data of every step as it will be if the move is accepted. |
+| `signal` | Aborted if the move is cancelled. Pass it to `fetch`. |
+
+Use the schema to say whether a step's data is valid, and the guard for
+everything else: asking the server, confirming a destructive move, blocking
+the exit from a step.
+
+A guard is called for moves only. `setData`, `reset` and `restore` do not run
+it.
+
+## Async work
+
+A guard, schema or `onFinish` that returns a promise makes the move
+asynchronous. While it runs, `isPending` is `true` and other moves are refused, so you do not need to
+protect against double clicks yourself.
+
+<FrameworkCode>
+
+```tsx framework="react solid"
+<button type="button" disabled={stepper.isPending} onClick={() => stepper.next()}>
+  {stepper.isPending ? "Checking…" : "Continue"}
+</button>
+```
+
+```vue framework="vue"
+<template>
+  <button type="button" :disabled="stepper.isPending" @click="stepper.next()">
+    {{ stepper.isPending ? "Checking…" : "Continue" }}
+  </button>
+</template>
+```
+
+```svelte framework="svelte"
+<button type="button" disabled={stepper.isPending} onclick={() => stepper.next()}>
+  {stepper.isPending ? "Checking…" : "Continue"}
+</button>
+```
+
+```html framework="angular"
+<button type="button" [disabled]="stepper().isPending" (click)="stepper().next()">
+  {{ stepper().isPending ? "Checking…" : "Continue" }}
+</button>
+```
+
+```ts framework="lit"
+html`
+  <button type="button" ?disabled=${stepper.isPending} @click=${() => stepper.next()}>
+    ${stepper.isPending ? "Checking…" : "Continue"}
+  </button>
+`;
+```
+
+</FrameworkCode>
+
+<FrameworkOnly is="react vue svelte solid">
+`Stepper.Prev`, `Stepper.Next` and the triggers already do this.
+</FrameworkOnly>
+
+<FrameworkOnly is="angular">
+`stepperPrev`, `stepperNext` and `stepperTrigger` already do this.
+</FrameworkOnly>
+
+<FrameworkOnly is="lit">
+The `prev()`, `next()` and `trigger(id)` directives already do this.
+</FrameworkOnly>
+
+They use `aria-disabled` rather than `disabled` while pending, so the button
+that was pressed keeps keyboard focus.
+
+Cancelling a move does not undo what your guard already did on the server. Use
+the `signal` to stop the request, and make the endpoint safe to call twice.
+
+## Jump to a step
+
+<FrameworkCode>
+
+```tsx framework="react solid"
+<button type="button" onClick={() => stepper.goTo("shipping")}>
+  Edit address
+</button>
+```
+
+```vue framework="vue"
+<template>
+  <button type="button" @click="stepper.goTo('shipping')">Edit address</button>
+</template>
+```
+
+```svelte framework="svelte"
+<button type="button" onclick={() => stepper.goTo("shipping")}>Edit address</button>
+```
+
+```html framework="angular"
+<button type="button" (click)="stepper().goTo('shipping')">Edit address</button>
+```
+
+```ts framework="lit"
+html`<button type="button" @click=${() => stepper.goTo("shipping")}>Edit address</button>`;
+```
+
+</FrameworkCode>
+
+`goTo` takes ids of the definition only: a typo is a type error. For a value
+that comes from outside, such as the URL, use the
+[`step` option](/docs/v9/:framework/guides/url), which ignores what it does not
+know.
+
+## Finish the flow
+
+`next()` on the last step validates it and ends the flow: the result has
+`to: null` and `onFinish` is called once.
+
+<FrameworkCode>
+
+```tsx framework="react"
+const stepper = checkout.useStepper({
+  onFinish: (output) => api.createOrder(output),
+});
+
+if (stepper.isFinished) return <p role="status">Order placed.</p>;
+```
+
+```vue framework="vue"
+<script setup lang="ts">
+const stepper = checkout.useStepper({
+  onFinish: (output) => api.createOrder(output),
+});
+</script>
+
+<template>
+  <p v-if="stepper.isFinished" role="status">Order placed.</p>
+  <CheckoutSteps v-else />
+</template>
+```
+
+```svelte framework="svelte"
+<script lang="ts">
+  const stepper = checkout.useStepper({
+    onFinish: (output) => api.createOrder(output),
+  });
+</script>
+
+{#if stepper.isFinished}
+  <p role="status">Order placed.</p>
+{:else}
+  <CheckoutSteps />
+{/if}
+```
+
+```tsx framework="solid"
+const stepper = checkout.useStepper({
+  onFinish: (output) => api.createOrder(output),
+});
+
+return (
+  <Show when={!stepper.isFinished} fallback={<p role="status">Order placed.</p>}>
+    <CheckoutSteps />
+  </Show>
+);
+```
+
+```ts framework="angular"
+@Component({
+  selector: "app-checkout",
+  imports: [CheckoutSteps],
+  template: `
+    @if (stepper().isFinished) {
+      <p role="status">Order placed.</p>
+    } @else {
+      <app-checkout-steps />
+    }
+  `,
+})
+export class Checkout {
+  readonly stepper = checkout.injectStepper({
+    onFinish: (output) => api.createOrder(output),
+  });
+}
+```
+
+```ts framework="lit"
+class CheckoutSteps extends LitElement {
+  stepper = checkout.controller(this, {
+    onFinish: (output) => api.createOrder(output),
+  });
+
+  render() {
+    if (this.stepper.value.isFinished) return html`<p role="status">Order placed.</p>`;
+    return html`…`;
+  }
+}
+```
+
+</FrameworkCode>
+
+<FrameworkOnly is="solid">
+A component body runs once, so an early `return` would never change: show
+the confirmation with `<Show>`, which follows `stepper.isFinished`.
+</FrameworkOnly>
+
+`onFinish` receives two arguments:
+
+- `output`: what the schema of every complete step produced, with transforms,
+  coercions and defaults applied. This is what you send.
+- `data`: every step as it was typed, including drafts of steps that were
+  never completed.
+
+`stepper.isLast` is `true` when `next()` is certain to finish, which is what
+the label of your button needs. `stepper.isFinished` is `true` once it has, so
+you do not need a state of your own to show the confirmation.
+
+The flow stays on its last step afterwards, and another `next()` is refused
+with the reason `finished`: a second press does not submit twice. The flow
+opens again as soon as it changes: any move to another step, a `setData` with a new value,
+`reset()` or `restore()`.
+
+<FrameworkOnly is="react vue svelte solid">
+`Stepper.Root` has `data-finished` meanwhile, and `Stepper.Next` is
+`aria-disabled`.
+</FrameworkOnly>
+
+<FrameworkOnly is="angular">
+The `[stepperRoot]` element has `data-finished` meanwhile, and `stepperNext`
+is `aria-disabled`.
+</FrameworkOnly>
+
+<FrameworkOnly is="lit">
+The `root()` element has `data-finished` meanwhile, and the `next()` button is
+`aria-disabled`.
+</FrameworkOnly>
+
+### When submitting can fail
+
+Return the promise of your request from `onFinish`. The flow stays pending
+while it runs and only becomes finished when it resolves.
+
+<FrameworkCode>
+
+```tsx framework="react"
+const stepper = checkout.useStepper({
+  onFinish: async (output) => {
+    const response = await fetch("/api/orders", {
+      method: "POST",
+      body: JSON.stringify(output),
+    });
+    if (!response.ok) throw new Error("Could not place the order.");
+  },
+});
+
+async function placeOrder() {
+  try {
+    await stepper.next();
+  } catch {
+    setError("Could not place the order. Try again.");
+  }
+}
+```
+
+```vue framework="vue"
+<script setup lang="ts">
+import { ref } from "vue";
+
+const error = ref<string>();
+
+const stepper = checkout.useStepper({
+  onFinish: async (output) => {
+    const response = await fetch("/api/orders", {
+      method: "POST",
+      body: JSON.stringify(output),
+    });
+    if (!response.ok) throw new Error("Could not place the order.");
+  },
+});
+
+async function placeOrder() {
+  try {
+    await stepper.next();
+  } catch {
+    error.value = "Could not place the order. Try again.";
+  }
+}
+</script>
+```
+
+```svelte framework="svelte"
+<script lang="ts">
+  let error = $state<string>();
+
+  const stepper = checkout.useStepper({
+    onFinish: async (output) => {
+      const response = await fetch("/api/orders", {
+        method: "POST",
+        body: JSON.stringify(output),
+      });
+      if (!response.ok) throw new Error("Could not place the order.");
+    },
+  });
+
+  async function placeOrder() {
+    try {
+      await stepper.next();
+    } catch {
+      error = "Could not place the order. Try again.";
+    }
+  }
+</script>
+```
+
+```tsx framework="solid"
+const [error, setError] = createSignal<string>();
+
+const stepper = checkout.useStepper({
+  onFinish: async (output) => {
+    const response = await fetch("/api/orders", {
+      method: "POST",
+      body: JSON.stringify(output),
+    });
+    if (!response.ok) throw new Error("Could not place the order.");
+  },
+});
+
+async function placeOrder() {
+  try {
+    await stepper.next();
+  } catch {
+    setError("Could not place the order. Try again.");
+  }
+}
+```
+
+```ts framework="angular"
+export class Checkout {
+  readonly error = signal<string | undefined>(undefined);
+
+  readonly stepper = checkout.injectStepper({
+    onFinish: async (output) => {
+      const response = await fetch("/api/orders", {
+        method: "POST",
+        body: JSON.stringify(output),
+      });
+      if (!response.ok) throw new Error("Could not place the order.");
+    },
+  });
+
+  async placeOrder() {
+    try {
+      await this.stepper().next();
+    } catch {
+      this.error.set("Could not place the order. Try again.");
+    }
+  }
+}
+```
+
+```ts framework="lit"
+class CheckoutSteps extends LitElement {
+  static properties = { error: { state: true } };
+  declare error?: string;
+
+  stepper = checkout.controller(this, {
+    onFinish: async (output) => {
+      const response = await fetch("/api/orders", {
+        method: "POST",
+        body: JSON.stringify(output),
+      });
+      if (!response.ok) throw new Error("Could not place the order.");
+    },
+  });
+
+  async placeOrder() {
+    try {
+      await this.stepper.value.next();
+    } catch {
+      this.error = "Could not place the order. Try again.";
+    }
+  }
+}
+```
+
+</FrameworkCode>
+
+While the request runs `isPending` is `true` and other moves are refused. If it
+rejects, `next()` rejects with the same error and `isFinished` stays `false`,
+so the person can press the button again. Catch the error where you call
+`next()`, or inside `onFinish` if you would rather not throw; in that case
+remember that returning normally finishes the flow.
+
+A request that has to be cancellable can still go in the
+[guard](#guard-a-move), which receives an abort `signal`; `to` is `null` on the
+finishing move.
+
+## React to a step change
+
+`onChange` is called after every change with the new
+[snapshot](/docs/v9/:framework/guides/persistence). To act on the step only,
+compare it:
+
+<FrameworkCode>
+
+```tsx framework="react"
+const last = useRef<string | null>(null);
+
+const stepper = checkout.useStepper({
+  onChange: (snapshot) => {
+    if (snapshot.step !== last.current) analytics.track("step_viewed", { step: snapshot.step });
+    last.current = snapshot.step;
+  },
+});
+```
+
+```ts framework="vue svelte solid"
+// The component's setup runs once: a plain variable keeps its value.
+let last: string | null = null;
+
+const stepper = checkout.useStepper({
+  onChange: (snapshot) => {
+    if (snapshot.step !== last) analytics.track("step_viewed", { step: snapshot.step });
+    last = snapshot.step;
+  },
+});
+```
+
+```ts framework="angular"
+export class Checkout {
+  #last: string | null = null;
+
+  readonly stepper = checkout.injectStepper({
+    onChange: (snapshot) => {
+      if (snapshot.step !== this.#last) analytics.track("step_viewed", { step: snapshot.step });
+      this.#last = snapshot.step;
+    },
+  });
+}
+```
+
+```ts framework="lit"
+class CheckoutSteps extends LitElement {
+  #last: string | null = null;
+
+  stepper = checkout.controller(this, {
+    onChange: (snapshot) => {
+      if (snapshot.step !== this.#last) analytics.track("step_viewed", { step: snapshot.step });
+      this.#last = snapshot.step;
+    },
+  });
+}
+```
+
+</FrameworkCode>
+
+In a component that only needs to react to what is rendered, an effect on the
+id works as well:
+
+<FrameworkCode>
+
+```tsx framework="react"
+useEffect(() => {
+  window.scrollTo({ top: 0 });
+}, [stepper.current.id]);
+```
+
+```ts framework="vue"
+watch(
+  () => stepper.current.id,
+  () => window.scrollTo({ top: 0 }),
+);
+```
+
+```ts framework="svelte"
+$effect(() => {
+  void stepper.current.id; // runs again when the step changes, not on every draft
+  window.scrollTo({ top: 0 });
+});
+```
+
+```ts framework="solid"
+createEffect(
+  on(
+    () => stepper.current.id,
+    () => window.scrollTo({ top: 0 }),
+  ),
+);
+```
+
+```ts framework="angular"
+export class Checkout {
+  readonly stepper = checkout.injectStepper();
+  readonly #stepId = computed(() => this.stepper().current.id);
+
+  constructor() {
+    effect(() => {
+      this.#stepId(); // runs again when the step changes, not on every draft
+      window.scrollTo({ top: 0 });
+    });
+  }
+}
+```
+
+```ts framework="lit"
+class CheckoutSteps extends LitElement {
+  stepper = checkout.controller(this);
+  #shown?: string;
+
+  updated() {
+    const id = this.stepper.value.current.id;
+    if (id === this.#shown) return;
+    this.#shown = id;
+    window.scrollTo({ top: 0 });
+  }
+}
+```
+
+</FrameworkCode>
+
+## Start over
+
+| Call | Result |
+| --- | --- |
+| `reset()` | Back to the snapshot the flow started with: its first step and no data, unless you passed a `snapshot`. |
+| `restore({ step: "shipping", history: [] })` | Go to a step and keep the data and the completed steps. |
+| `restore({ data: {}, complete: [] })` | Clear the data and the completion and stay on the current step. |
+
+Both are immediate, cancel a move that is running, and skip the guard.
+
+Next: [validation](/docs/v9/:framework/guides/validation).
