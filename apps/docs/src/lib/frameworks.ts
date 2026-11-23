@@ -46,6 +46,10 @@ export const FRAMEWORKS = [
 		title: "HTML",
 		package: "@stepperize/core/dom",
 		description: "No framework: server-rendered markup, Alpine, htmx",
+		id: "lit",
+		title: "Lit",
+		package: "@stepperize/lit",
+		description: "A reactive controller and accessible directives",
 	},
 	{
 		id: "core",

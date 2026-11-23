@@ -1,0 +1,154 @@
+---
+title: Primitives
+description: Element directives that handle roles, keyboard, focus and announcements.
+---
+
+The controller carries a set of element directives, bound to your steps. Each
+one goes on an element of your own template and takes care of the parts that
+are easy to get wrong: roles, ids, keyboard navigation, focus and
+announcements. The markup, the tag names and the styles stay yours.
+
+For a simple flow, your own buttons and `stepper.match` are enough.
+
+## Basic structure
+
+```ts
+import { html, LitElement } from "lit";
+import { checkout } from "./checkout";
+
+class CheckoutSteps extends LitElement {
+  stepper = checkout.controller(this, { linear: true, onFinish: placeOrder });
+
+  render() {
+    const s = this.stepper;
+
+    return html`
+      <div ${s.root()}>
+        <ol ${s.list()}>
+          ${s.steps.map(
+            (step) => html`
+              <li ${s.item(step.id)}>
+                <button ${s.trigger(step.id)}>
+                  <span ${s.indicator(step.id)}></span>
+                  ${step.title}
+                </button>
+              </li>
+            `,
+          )}
+        </ol>
+
+        <div ${s.content("shipping")}><shipping-form></shipping-form></div>
+        <div ${s.content("payment")}><payment-form></payment-form></div>
+        <div ${s.content("review")}><order-review></order-review></div>
+
+        <button ${s.prev()}>Back</button>
+        <button ${s.next()}>Continue</button>
+      </div>
+    `;
+  }
+}
+```
+
+<FrameworkDemo framework="lit" />
+
+## How the pieces connect
+
+1. `root()` marks the element that contains the stepper. Every other part must
+   be inside it; clicks and keys are handled there.
+2. `list()` marks the list of steps and gives it arrow-key navigation.
+3. `item(id)` is one step.
+4. `trigger(id)` goes to that step when pressed.
+5. `indicator(id)` is a decorative mark, hidden from assistive technology.
+6. `content(id)` is the panel of a step: `hidden` unless its step is current.
+7. `prev()` and `next()` call `prev()` and `next()` on the flow.
+
+Step ids are typed: `s.content("shiping")` does not compile.
+
+A directive is written inside the opening tag, next to the attributes. It adds
+to what you wrote: `class`, `style`, your own attributes and your own
+`@click` stay.
+
+## Why directives and not custom elements
+
+A `<stepper-trigger>` element would put its button in a shadow root of its own.
+`aria-controls` and `aria-labelledby` cannot point across shadow roots, so a
+tab could not name its panel, and your styles could not reach the button.
+Directives leave every element in your template, in one root, and keep step ids
+typed by your definition.
+
+They work the same in shadow DOM and in light DOM (`createRenderRoot()`
+returning `this`).
+
+## Three patterns, chosen for you
+
+| The flow | What is rendered |
+| --- | --- |
+| Not `linear`, with triggers | A `tablist`: triggers are tabs with roving focus and arrow keys, panels are `tabpanel`s. |
+| `linear` | An ordered list of buttons with `aria-current="step"`. Steps that cannot be reached yet are disabled. |
+| No triggers | Panels are `group`s named by the step's `title`. |
+
+On every step change the new step is announced to screen readers by its
+`title`, and if the focused element was hidden or removed, focus moves to the
+new panel instead of being lost.
+
+## Styling
+
+Nothing is styled. Every element has a `data-component` and the state it shows:
+
+| Attribute | On | Values |
+| --- | --- | --- |
+| `data-state` | item, trigger, indicator | `pending`, `current`, `complete` |
+| `data-invalid` | item, trigger, indicator | Present after a failed validation. |
+| `data-disabled` | item, trigger, prev, next | Present when it cannot be used. |
+| `data-pending` | root, prev, next | Present while an async check or `onFinish` runs. |
+| `data-finished` | root | Present once the flow has finished. |
+| `data-orientation` | root, list | `horizontal`, `vertical` |
+
+```ts
+static styles = css`
+  [data-component="stepper-trigger"][data-state="current"] { font-weight: 600; }
+  [data-component="stepper-indicator"][data-state="complete"] { background: green; }
+`;
+```
+
+## Reading a step's state
+
+`s.at(id)` returns what an item knows about its step, for your own markup:
+
+```ts
+${s.steps.map((step, index) => {
+  const item = s.at(step.id);
+  return html`<li ${s.item(step.id)}>
+    <button ${s.trigger(step.id)}>${item.state === "complete" ? "✓" : index + 1} ${step.title}</button>
+  </li>`;
+})}
+```
+
+## Handling the move yourself
+
+Your own `@click` runs first. Call `preventDefault()` in it to take over, for
+example to pass form values:
+
+```ts
+html`<button
+  ${s.next()}
+  @click=${(event: Event) => {
+    event.preventDefault();
+    s.value.next(this.values);
+  }}
+>
+  Continue
+</button>`;
+```
+
+## Panels in or out of the template
+
+`content(id)` hides its element while the step is not current, so the fields
+inside keep their state. To drop a panel from the DOM instead, leave it out of
+the template:
+
+```ts
+${s.value.current.id === "review" ? html`<div ${s.content("review")}>…</div>` : nothing}
+```
+
+See the [primitives reference](/docs/v9/lit/api/primitives) for every option.

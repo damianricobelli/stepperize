@@ -1,0 +1,99 @@
+---
+title: Forms
+description: Collect each step's data, validate it with a schema, and submit at the end.
+---
+
+Stepperize owns the flow; your template owns the fields. The two meet in one
+call: `next(data)`.
+
+## A schema per step
+
+Give a step a `schema` and its data is typed and validated. Any
+[Standard Schema](https://standardschema.dev) library works.
+
+```ts title="signup.ts"
+import { defineStepper } from "@stepperize/lit";
+import { z } from "zod";
+
+export const signup = defineStepper([
+  { id: "account", title: "Account", schema: z.object({ email: z.email() }) },
+  { id: "profile", title: "Profile", schema: z.object({ name: z.string().min(1) }) },
+  { id: "done", title: "Done" },
+]);
+```
+
+## Validate on Continue
+
+A `<form>` per step and `FormData` are enough. `next(data)` saves the data for
+the current step, validates it and only moves when it is valid;
+`stepper.issues()` holds the reasons until the data changes.
+
+```ts title="signup-steps.ts"
+import { html, LitElement } from "lit";
+import { signup } from "./signup";
+
+export class SignupSteps extends LitElement {
+  stepper = signup.controller(this, {
+    onFinish: (output) => createAccount(output),
+  });
+
+  #submit(event: SubmitEvent) {
+    event.preventDefault();
+    const values = Object.fromEntries(new FormData(event.target as HTMLFormElement));
+    void this.stepper.value.next(this.stepper.value.isLast ? undefined : values);
+  }
+
+  render() {
+    const stepper = this.stepper.value;
+
+    return html`
+      <form @submit=${this.#submit}>
+        ${stepper.match({
+          account: (_step, data) => html`
+            <label>Email <input name="email" type="email" .value=${data?.email ?? ""} /></label>
+          `,
+          profile: (_step, data) => html`
+            <label>Name <input name="name" .value=${data?.name ?? ""} /></label>
+          `,
+          done: () => html`<p>All set, ${stepper.output.profile?.name}.</p>`,
+        })}
+
+        ${stepper.issues()?.map((issue) => html`<p role="alert">${issue.message}</p>`)}
+
+        <button type="button" ?disabled=${stepper.isFirst} @click=${() => stepper.prev()}>Back</button>
+        <button ?disabled=${stepper.isPending}>${stepper.isLast ? "Create account" : "Continue"}</button>
+      </form>
+    `;
+  }
+}
+customElements.define("signup-steps", SignupSteps);
+```
+
+- `match` hands each handler the data that step already holds, typed by its
+  schema, so going back shows what was typed.
+- `stepper.data` is what each step holds as it was typed; `stepper.output` is
+  what each schema produced, with transforms and defaults applied.
+- `onFinish(output, data)` runs once, when `next()` completes the last step.
+  Return a promise and `stepper.isPending` stays `true` until it settles.
+
+## Keeping drafts
+
+To persist what is being typed, write the draft as it changes:
+
+```ts
+html`<input name="email" @input=${(event: InputEvent) =>
+  stepper.setData("account", { email: (event.target as HTMLInputElement).value })} />`;
+```
+
+`setData` does not validate. A step that was complete stops being complete when
+its data changes.
+
+## Checking one step without moving
+
+`stepper.validate()` checks the current step and resolves with its issues, or
+`undefined` when it is valid. Use it for "validate on blur".
+
+## More
+
+[Schemas and validation](/docs/v9/react/guides/validation) covers async
+schemas, guards and cross-step rules. The options are the same here.
