@@ -1,11 +1,11 @@
 import type * as PageTree from "fumadocs-core/page-tree";
-import type { LayoutTab } from "fumadocs-ui/layouts/shared";
 import {
 	DEFAULT_FRAMEWORK,
 	type DocsFramework,
 	FRAMEWORKS,
 	hasFrameworks,
 	isDocsFramework,
+	LEGACY_FRAMEWORK,
 } from "./frameworks";
 
 export const CURRENT_DOCS_VERSION = "v9";
@@ -68,72 +68,86 @@ export function getCanonicalDocsPath(slugs: string[]): string {
 	return `/${getDocsPageSlugs(slugs).join("/")}`;
 }
 
-const DOCS_TAB_LABELS = {
-	migration: "Migration notes",
+/** Versions that only kept their migration guide. */
+const MIGRATION_ONLY: readonly string[] = ["v6", "v5", "v4", "v3", "v2"];
+
+/** One entry of the framework or the version switcher. */
+export type DocsOption = {
+	id: string;
+	title: string;
+	description: string;
+	url: string;
+	active: boolean;
 };
 
 /**
- * The sidebar switcher. Inside a version split by framework it lists that
- * version's frameworks first, then the other versions.
+ * The framework a docs URL is about, for the switchers. Versions that are not
+ * split by framework document React.
  */
-export function getDocsTabs(
-	version: string = CURRENT_DOCS_VERSION,
-): LayoutTab[] {
-	const versions = getDocsVersionTabs();
-	if (!hasFrameworks(version)) return versions;
-	return [
-		...FRAMEWORKS.map((framework) => ({
-			title: `${framework.title} · ${version}`,
-			description: framework.description,
-			url: `/docs/${version}/${framework.id}`,
-		})),
-		...versions.filter((tab) => tab.url !== `/docs/${version}`),
-	];
+export function getSwitcherFramework(slugs: string[]): DocsFramework {
+	return getDocsFramework(slugs) ?? LEGACY_FRAMEWORK;
 }
 
-export function getDocsVersionTabs(): LayoutTab[] {
-	return [
-		{
-			title: CURRENT_DOCS_VERSION,
-			description: "Version 9 documentation",
-			url: `/docs/${CURRENT_DOCS_VERSION}`,
-		},
-		{
-			title: "v8",
-			description: "Version 8 documentation",
-			url: "/docs/v8",
-		},
-		{
-			title: "v7",
-			description: "Version 7 documentation",
-			url: "/docs/v7",
-		},
-		{
-			title: "v6",
-			description: DOCS_TAB_LABELS.migration,
-			url: "/docs/v6/migration",
-		},
-		{
-			title: "v5",
-			description: DOCS_TAB_LABELS.migration,
-			url: "/docs/v5/migration",
-		},
-		{
-			title: "v4",
-			description: DOCS_TAB_LABELS.migration,
-			url: "/docs/v4/migration",
-		},
-		{
-			title: "v3",
-			description: DOCS_TAB_LABELS.migration,
-			url: "/docs/v3/migration",
-		},
-		{
-			title: "v2",
-			description: DOCS_TAB_LABELS.migration,
-			url: "/docs/v2/migration",
-		},
-	];
+/** The versions a framework has documentation for, newest first. */
+export function getFrameworkVersions(framework: DocsFramework): DocsVersion[] {
+	return DOCS_VERSIONS.filter(
+		(version) => hasFrameworks(version) || framework === LEGACY_FRAMEWORK,
+	);
+}
+
+function versionHome(version: string, framework: DocsFramework): string {
+	if (hasFrameworks(version)) return `/docs/${version}/${framework}`;
+	return MIGRATION_ONLY.includes(version)
+		? `/docs/${version}/migration`
+		: `/docs/${version}`;
+}
+
+/**
+ * The framework switcher. Each framework opens the page being read when it has
+ * one at the same path (`guides/url` exists for most of them), and its
+ * introduction otherwise. From a version a framework does not have, it opens
+ * that framework's newest version.
+ */
+export function getFrameworkOptions(
+	slugs: string[],
+	hasPage: (path: string) => boolean,
+): DocsOption[] {
+	const version = getDocsVersion(slugs);
+	const current = getSwitcherFramework(slugs);
+	// `["docs", version, framework, ...page]` in a version split by framework.
+	const page = hasFrameworks(version) ? getDocsPageSlugs(slugs).slice(3) : [];
+	return FRAMEWORKS.map((framework) => {
+		const target = getFrameworkVersions(framework.id).includes(version)
+			? version
+			: getFrameworkVersions(framework.id)[0];
+		const home = versionHome(target, framework.id);
+		const same = [home, ...page].join("/");
+		return {
+			id: framework.id,
+			title: framework.title,
+			description: framework.description,
+			url: page.length && hasPage(same) ? same : home,
+			active: framework.id === current,
+		};
+	});
+}
+
+/** The version switcher: the versions of the framework being read. */
+export function getVersionOptions(slugs: string[]): DocsOption[] {
+	const current = getDocsVersion(slugs);
+	const framework = getSwitcherFramework(slugs);
+	return getFrameworkVersions(framework).map((version) => ({
+		id: version,
+		title: version,
+		description:
+			version === CURRENT_DOCS_VERSION
+				? "Latest"
+				: MIGRATION_ONLY.includes(version)
+					? "Migration notes"
+					: "Previous version",
+		url: versionHome(version, framework),
+		active: version === current,
+	}));
 }
 
 function findDocsFolder(

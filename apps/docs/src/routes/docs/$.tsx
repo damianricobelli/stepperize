@@ -4,13 +4,15 @@ import browserCollections from "collections/browser";
 import { useFumadocsLoader } from "fumadocs-core/source/client";
 import { DocsLayout } from "fumadocs-ui/layouts/docs";
 import { type DocsPageProps, renderDocsPage } from "@/components/docs-page";
+import { DocsSwitcher } from "@/components/docs-switcher";
 import {
 	getCanonicalDocsPath,
 	getDocsFramework,
 	getDocsPageSlugs,
-	getDocsTabs,
 	getDocsTree,
 	getDocsVersion,
+	getFrameworkOptions,
+	getVersionOptions,
 	hasDocsVersion,
 	LEGACY_DOCS_VERSION,
 } from "@/lib/docs-tree";
@@ -184,6 +186,10 @@ const loadDocsPage = createServerFn({ method: "GET" })
 			pageTree: await source.serializePageTree(pageTree),
 			version: getDocsVersion(data.slugs),
 			path: page.path,
+			switcher: {
+				frameworks: getFrameworkOptions(data.slugs, hasPage),
+				versions: getVersionOptions(data.slugs),
+			},
 			title: page.data.title,
 			toc: [],
 		} satisfies DocsPageProps & {
@@ -191,6 +197,10 @@ const loadDocsPage = createServerFn({ method: "GET" })
 			faq: ReturnType<typeof faqFromMarkdown> | undefined;
 			pageTree: Awaited<ReturnType<typeof source.serializePageTree>>;
 			path: string;
+			switcher: {
+				frameworks: ReturnType<typeof getFrameworkOptions>;
+				versions: ReturnType<typeof getVersionOptions>;
+			};
 			version: string;
 		});
 	});
@@ -205,8 +215,8 @@ function Page() {
 	return (
 		<DocsLayout
 			{...baseOptions()}
-			tabMode="auto"
-			tabs={getDocsTabs(data.version)}
+			sidebar={{ banner: <DocsSwitcher {...data.switcher} /> }}
+			tabs={false}
 			tree={data.pageTree}
 		>
 			{clientLoader.useContent(data.path, data)}

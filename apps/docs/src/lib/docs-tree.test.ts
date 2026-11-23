@@ -6,9 +6,10 @@ import {
 	getCanonicalDocsPath,
 	getDocsFramework,
 	getDocsPageSlugs,
-	getDocsTabs,
 	getDocsTree,
-	getDocsVersionTabs,
+	getFrameworkOptions,
+	getFrameworkVersions,
+	getVersionOptions,
 	hasDocsVersion,
 } from "./docs-tree";
 import { FRAMEWORKS } from "./frameworks";
@@ -49,9 +50,9 @@ describe("versioned documentation", () => {
 	});
 
 	it("offers real v7/v8 roots in the version selector", () => {
-		const tabs = getDocsVersionTabs();
-		expect(tabs.map((t) => t.url)).toContain("/docs/v7");
-		expect(tabs.map((t) => t.url)).toContain("/docs/v8");
+		const urls = getVersionOptions(["v9", "react"]).map((v) => v.url);
+		expect(urls).toContain("/docs/v7");
+		expect(urls).toContain("/docs/v8");
 		for (const version of ["v7", "v8"]) {
 			expect(existsSync(`${content}/${version}/index.mdx`)).toBe(true);
 			const meta = JSON.parse(read(version, "meta.json"));
@@ -242,7 +243,9 @@ describe("versioned documentation", () => {
 
 		it("has content, a root sidebar and a switcher entry for every framework", () => {
 			const listed = JSON.parse(read("v9", "meta.json")).pages;
-			const tabs = getDocsTabs("v9").map((tab) => tab.url);
+			const tabs = getFrameworkOptions(["v9", "react"], () => false).map(
+				(option) => option.url,
+			);
 			for (const framework of FRAMEWORKS) {
 				expect(listed).toContain(framework.id);
 				expect(existsSync(`${content}/v9/${framework.id}/index.mdx`)).toBe(
@@ -253,10 +256,68 @@ describe("versioned documentation", () => {
 				);
 				expect(tabs).toContain(`/docs/v9/${framework.id}`);
 			}
-			// The version itself is not offered next to its own frameworks.
-			expect(tabs).not.toContain("/docs/v9");
-			expect(tabs).toContain("/docs/v8");
-			expect(getDocsTabs("v8")).toEqual(getDocsVersionTabs());
+		});
+
+		it("lists frameworks and versions separately", () => {
+			const frameworks = getFrameworkOptions(
+				["v9", "vue", "guides"],
+				() => false,
+			);
+			expect(frameworks.map((option) => option.id)).toEqual(
+				FRAMEWORKS.map((framework) => framework.id),
+			);
+			expect(frameworks.filter((option) => option.active)).toEqual([
+				expect.objectContaining({ id: "vue" }),
+			]);
+			// No version among the frameworks, no framework among the versions.
+			for (const option of frameworks) expect(option.title).not.toMatch(/v\d/);
+			expect(getVersionOptions(["v9", "react"]).map((v) => v.id)).toEqual([
+				"v9",
+				"v8",
+				"v7",
+				"v6",
+				"v5",
+				"v4",
+				"v3",
+				"v2",
+			]);
+		});
+
+		it("offers only the versions the framework has", () => {
+			// Everything before the split documents React.
+			expect(getFrameworkVersions("vue")).toEqual(["v9"]);
+			expect(getVersionOptions(["v9", "core", "errors"])).toEqual([
+				expect.objectContaining({
+					id: "v9",
+					url: "/docs/v9/core",
+					active: true,
+				}),
+			]);
+			const react = getVersionOptions(["v8", "forms"]);
+			expect(react.find((option) => option.active)?.id).toBe("v8");
+			expect(react.find((option) => option.id === "v9")?.url).toBe(
+				"/docs/v9/react",
+			);
+			// Versions that only kept their migration guide open it.
+			expect(react.find((option) => option.id === "v6")?.url).toBe(
+				"/docs/v6/migration",
+			);
+		});
+
+		it("keeps the page when the other framework has it", () => {
+			const pages = ["/docs/v9/vue/guides/url"];
+			const options = getFrameworkOptions(
+				["v9", "react", "guides", "url"],
+				(path) => pages.includes(path),
+			);
+			const url = (id: string) => options.find((o) => o.id === id)?.url;
+			expect(url("vue")).toBe("/docs/v9/vue/guides/url");
+			expect(url("svelte")).toBe("/docs/v9/svelte");
+			// An older version is React: other frameworks open their newest one.
+			const legacy = getFrameworkOptions(["v8", "forms"], () => true);
+			expect(legacy.find((o) => o.active)?.id).toBe("react");
+			expect(legacy.find((o) => o.id === "vue")?.url).toBe("/docs/v9/vue");
+			expect(legacy.find((o) => o.id === "react")?.url).toBe("/docs/v8");
 		});
 
 		it("gives each framework its own sidebar", () => {

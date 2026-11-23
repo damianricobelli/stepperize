@@ -12,9 +12,9 @@
  *
  * 4. Give its pages keywords in `DOC_KEYWORDS` (`seo.ts`); a test asks for them.
  *
- * The sidebar switcher, canonical URLs, breadcrumbs, the sitemap and `llms.txt`
- * follow. The landing page, the blocks, Studio and the search filter do not:
- * they only know React.
+ * The framework and version switchers, the landing page's framework list,
+ * canonical URLs, breadcrumbs, the sitemap and `llms.txt` follow. The blocks,
+ * Studio and the search filter do not: they only know React.
  */
 export const FRAMEWORKS = [
 	{
@@ -51,11 +51,17 @@ export const FRAMEWORKS = [
 
 export type DocsFramework = (typeof FRAMEWORKS)[number]["id"];
 
+/** The state machine every binding is built on. It is listed last and is not a UI framework. */
+export const CORE_FRAMEWORK = "core" satisfies DocsFramework;
+
 /** Where `/docs/{version}` and framework-less URLs land. */
 export const DEFAULT_FRAMEWORK: DocsFramework = "react";
 
 /** Versions whose documentation is split by framework. Older ones are React only. */
 const FRAMEWORK_VERSIONS: readonly string[] = ["v9"];
+
+/** What the versions that are not split by framework document. */
+export const LEGACY_FRAMEWORK: DocsFramework = "react";
 
 export const hasFrameworks = (version: string) =>
 	FRAMEWORK_VERSIONS.includes(version);
@@ -63,3 +69,20 @@ export const hasFrameworks = (version: string) =>
 export const isDocsFramework = (
 	value: string | undefined,
 ): value is DocsFramework => FRAMEWORKS.some((entry) => entry.id === value);
+
+/** The UI bindings, the main one first. Everything but the core. */
+export const BINDINGS = FRAMEWORKS.filter(
+	(entry) => entry.id !== CORE_FRAMEWORK,
+).sort(
+	(a, b) =>
+		Number(b.id === DEFAULT_FRAMEWORK) - Number(a.id === DEFAULT_FRAMEWORK),
+);
+
+/** "Vue, Svelte and Solid": the bindings other than the main one, as prose. */
+export const OTHER_BINDINGS = new Intl.ListFormat("en", {
+	type: "conjunction",
+}).format(
+	BINDINGS.filter((entry) => entry.id !== DEFAULT_FRAMEWORK).map(
+		(entry) => entry.title,
+	),
+);
