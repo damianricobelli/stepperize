@@ -1,0 +1,158 @@
+---
+title: Primitives
+description: Standalone directives that handle roles, keyboard, focus and announcements.
+---
+
+The primitives are attribute directives for your own elements. They render
+nothing and style nothing; they take care of the parts that are easy to get
+wrong: roles, ids, keyboard navigation, focus and announcements.
+
+For a simple flow, your own buttons and an `@switch` are enough.
+
+## Basic structure
+
+```ts
+import { Component } from "@angular/core";
+import { STEPPER_PRIMITIVES } from "@stepperize/angular";
+import { checkout } from "./checkout";
+
+@Component({
+  selector: "app-checkout-steps",
+  imports: [STEPPER_PRIMITIVES],
+  template: `
+    <div [stepperRoot]="stepper">
+      <ol stepperList>
+        @for (step of stepper.steps; track step.id) {
+          <li [stepperItem]="step.id">
+            <button stepperTrigger>
+              <span stepperIndicator></span>
+              {{ step.title }}
+            </button>
+          </li>
+        }
+      </ol>
+
+      <div stepperContent="shipping"><app-shipping-form /></div>
+      <div stepperContent="payment"><app-payment-form /></div>
+      <div stepperContent="review"><app-review /></div>
+
+      <button stepperPrev>Back</button>
+      <button stepperNext>Continue</button>
+    </div>
+  `,
+})
+export class CheckoutSteps {
+  readonly stepper = checkout.injectStepper({ linear: true, onFinish: placeOrder });
+}
+```
+
+<FrameworkDemo framework="angular" />
+
+## How the pieces connect
+
+1. `[stepperRoot]` takes the stepper your component created and marks the
+   element that contains everything else. Clicks and keys are handled there.
+2. `stepperList` marks the list of steps and gives it arrow-key navigation.
+3. `[stepperItem]` is one step. What is inside it knows which one.
+4. `stepperTrigger` goes to that step when pressed.
+5. `stepperIndicator` is a decorative mark, hidden from assistive technology.
+6. `stepperContent` is the panel of a step: `hidden` unless its step is
+   current.
+7. `stepperPrev` and `stepperNext` call `prev()` and `next()`.
+
+Import them one by one, or all at once with `STEPPER_PRIMITIVES`.
+
+## What is typed, and what is not
+
+The stepper is fully typed: `stepper().current.id`, `stepper().goTo("…")` and
+`@case ("…")` on a step id are checked against your steps, in TypeScript and
+by the template type-checker.
+
+The step ids you give to the directives are **not**. The directives are shared
+by every flow, and Angular cannot generate a typed set per definition, so
+`stepperContent`, `stepperItem`, `stepperTrigger` and `stepperIndicator` accept
+any string. A wrong id is reported when the template runs, with
+[SZ102](/docs/v9/core/errors#sz102) and the id in the message.
+
+To keep the ids checked, take them from the steps instead of writing them:
+
+```html
+@for (step of stepper.steps; track step.id) {
+  <div [stepperContent]="step.id">
+    @switch (step.id) {
+      @case ("shipping") { <app-shipping-form /> }
+      @case ("payment") { <app-payment-form /> }
+      @case ("review") { <app-review /> }
+    }
+  </div>
+}
+```
+
+## Three patterns, chosen for you
+
+| The flow | What is rendered |
+| --- | --- |
+| Not `linear`, with triggers | A `tablist`: triggers are tabs with roving focus and arrow keys, panels are `tabpanel`s. |
+| `linear` | An ordered list of buttons with `aria-current="step"`. Steps that cannot be reached yet are disabled. |
+| No triggers | Panels are `group`s named by the step's `title`. |
+
+On every step change the new step is announced to screen readers by its
+`title`, and if the focused element was hidden or removed, focus moves to the
+new panel instead of being lost.
+
+## Styling
+
+Nothing is styled. Every element has a `data-component` and the state it shows:
+
+| Attribute | On | Values |
+| --- | --- | --- |
+| `data-state` | item, trigger, indicator | `pending`, `current`, `complete` |
+| `data-invalid` | item, trigger, indicator | Present after a failed validation. |
+| `data-disabled` | item, trigger, prev, next | Present when it cannot be used. |
+| `data-pending` | root, prev, next | Present while an async check or `onFinish` runs. |
+| `data-finished` | root | Present once the flow has finished. |
+| `data-orientation` | root, list | `horizontal`, `vertical` |
+
+```css
+[data-component="stepper-trigger"][data-state="current"] { font-weight: 600; }
+[data-component="stepper-indicator"][data-state="complete"] { background: green; }
+```
+
+The elements are in your template, so your component's styles apply to them.
+
+## Reading a step's state
+
+`stepperItem` exports itself. `value()` is what the item knows about its step:
+
+```html
+<li [stepperItem]="step.id" #item="stepperItem">
+  <button stepperTrigger>
+    {{ item.value().state === "complete" ? "✓" : item.value().index + 1 }} {{ step.title }}
+  </button>
+</li>
+```
+
+## Handling the move yourself
+
+Your own `(click)` runs first. Call `preventDefault()` in it to take over, for
+example to pass form values:
+
+```html
+<button stepperNext (click)="$event.preventDefault(); stepper().next(form.getRawValue())">
+  Continue
+</button>
+```
+
+## Panels in or out of the DOM
+
+`stepperContent` hides its element while the step is not current, so the
+components inside keep their state. To destroy them instead, wrap the panel:
+
+```html
+@if (stepper().current.id === "review") {
+  <div stepperContent="review"><app-review /></div>
+}
+```
+
+See the [primitives reference](/docs/v9/angular/api/primitives) for every
+input.

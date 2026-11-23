@@ -1,0 +1,153 @@
+---
+title: Primitives
+description: Inputs of every stepper directive.
+---
+
+Standalone attribute directives. Import the ones you use, or all of them with
+`STEPPER_PRIMITIVES`. They add host attributes and leave your own in place.
+
+Every directive except `stepperRoot` must be inside an element that has it;
+otherwise it throws [SZ100](/docs/v9/core/errors#sz100).
+
+## stepperRoot
+
+```html
+<div [stepperRoot]="stepper" orientation="vertical" aria-label="Checkout">…</div>
+```
+
+| Input | Type | Description |
+| --- | --- | --- |
+| `stepperRoot` | `StepperRef` | Required. What `injectStepper()` or `injectStepperContext()` returned. |
+| `orientation` | `"horizontal" \| "vertical"` | Default `"horizontal"`. |
+| `aria-label` | `string` | The name of the stepper. Default "Stepper". |
+
+The element gets `role="group"`. While an async check or `onFinish` runs it has
+`aria-busy` and `data-pending`; once the flow has finished it has
+`data-finished`. In the browser, a visually hidden live region is appended to
+it for announcements.
+
+The flow's options (`linear`, `guard`, `onFinish`...) go to
+[`injectStepper`](/docs/v9/angular/api/define-stepper#injectstepper), not here.
+Exported as `stepperRoot`.
+
+## stepperList
+
+```html
+<ol stepperList>…</ol>
+```
+
+| Input | Type | Description |
+| --- | --- | --- |
+| `orientation` | `"horizontal" \| "vertical"` | Defaults to the root's. |
+
+A `tablist` when the flow is not linear and the template has triggers. Handles
+the arrow keys, Home and End, mirrored in right-to-left layouts.
+
+## stepperItem
+
+```html
+<li [stepperItem]="step.id" #item="stepperItem">…</li>
+```
+
+| Input | Type | Description |
+| --- | --- | --- |
+| `stepperItem` | `string` | Required. A step id. |
+
+One step: `data-state`, `data-invalid`, `data-disabled`. Exported as
+`stepperItem`; its `value()` signal has the fields below.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `step` | `Step` | The step, with all its fields. |
+| `index` | `number` | Its position. |
+| `state` | `"pending" \| "current" \| "complete"` | |
+| `invalid` | `boolean` | Its last validation failed and its data has not changed since. |
+| `disabled` | `boolean` | `goTo` would be refused right now. |
+| `pending` | `boolean` | A move is running. Every step is `disabled` meanwhile. |
+
+## stepperTrigger
+
+```html
+<button stepperTrigger>{{ step.title }}</button>
+<button stepperTrigger="review">Review</button>
+```
+
+| Input | Type | Description |
+| --- | --- | --- |
+| `stepperTrigger` | `string` | A step id. Optional inside a `stepperItem`. |
+| `disabled` | `boolean` | Disable it on top of what the flow decides. |
+
+Goes to its step when pressed. It is disabled when `linear` does not allow
+reaching the step. In a flow that is not linear it is a `tab`; in a linear flow
+it is a plain button, with `aria-current="step"` on the current one. A `button`
+gets `type="button"` unless you wrote a `type`.
+
+Without an id and outside an item it throws
+[SZ101](/docs/v9/core/errors#sz101).
+
+## stepperIndicator
+
+```html
+<span stepperIndicator></span>
+```
+
+| Input | Type | Description |
+| --- | --- | --- |
+| `stepperIndicator` | `string` | A step id. Optional inside a `stepperItem`. |
+
+A decorative mark: `aria-hidden`, `data-state`, `data-invalid`.
+
+## stepperContent
+
+```html
+<div stepperContent="payment">…</div>
+```
+
+| Input | Type | Description |
+| --- | --- | --- |
+| `stepperContent` | `string` | Required. A step id. |
+
+The panel of a step: `hidden` unless its step is current. It is the `tabpanel`
+of its trigger in a flow rendered as tabs, and otherwise a `group` named after
+the step's `title`.
+
+## stepperPrev and stepperNext
+
+```html
+<button stepperPrev>Back</button>
+<button stepperNext>Continue</button>
+```
+
+| Input | Type | Description |
+| --- | --- | --- |
+| `disabled` | `boolean` | Disable it on top of what the flow decides. |
+
+- `stepperNext` calls `next()` with no argument, which validates the data
+  stored for the current step. On the last step it finishes the flow; it is
+  never disabled for being at the end.
+- `stepperPrev` calls `prev()`, and is disabled when there is nowhere to go
+  back to.
+
+While an async check or `onFinish` runs, both are `aria-disabled` and ignore
+clicks, and have `data-pending`. Once the flow has finished, the next button is
+`aria-disabled` and ignores clicks, so the flow is not submitted twice.
+
+Your own `(click)` runs first. Call `$event.preventDefault()` in it to handle
+the move yourself.
+
+## Step ids are strings
+
+The directives are shared by every flow, so their step id inputs are typed
+`string` and checked when the template runs
+([SZ102](/docs/v9/core/errors#sz102)). See
+[what is typed](/docs/v9/angular/guides/primitives#what-is-typed-and-what-is-not).
+
+## Titles and descriptions
+
+There are no title or description directives: write `{{ step.title }}`.
+
+## Diagnostics
+
+In development the trigger warns when it has no accessible name
+([SZ002](/docs/v9/core/errors#sz002)) or is outside a list
+([SZ003](/docs/v9/core/errors#sz003)).

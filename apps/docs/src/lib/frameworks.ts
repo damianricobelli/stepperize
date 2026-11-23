@@ -42,6 +42,12 @@ export const FRAMEWORKS = [
 		description: "A reactive stepper and accessible primitives",
 	},
 	{
+		id: "angular",
+		title: "Angular",
+		package: "@stepperize/angular",
+		description: "Signals and accessible directives",
+	},
+	{
 		id: "core",
 		title: "Core",
 		package: "@stepperize/core",

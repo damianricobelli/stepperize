@@ -683,6 +683,57 @@ export const DOC_KEYWORDS: Record<string, readonly string[]> = {
 		"Stepper as prop",
 		"polymorphic stepper Solid",
 	],
+	"current/angular": [
+		"Angular stepper",
+		"Angular wizard",
+		"multi-step flow Angular",
+		"headless stepper Angular",
+	],
+	"current/angular/installation": [
+		"install Angular stepper",
+		"@stepperize/angular",
+		"Angular 22 wizard package",
+	],
+	"current/angular/first-stepper": [
+		"Angular stepper tutorial",
+		"Angular signals stepper",
+		"injectStepper",
+	],
+	"current/angular/guides/forms": [
+		"Angular multi-step form",
+		"reactive forms wizard",
+		"Angular form stepper validation",
+	],
+	"current/angular/guides/shared-state": [
+		"Angular stepper dependency injection",
+		"provideStepper",
+		"shared stepper state",
+	],
+	"current/angular/guides/url": [
+		"Angular router stepper",
+		"step in URL Angular",
+		"wizard route sync",
+	],
+	"current/angular/guides/ssr": [
+		"Angular SSR stepper",
+		"Angular hydration wizard",
+		"zoneless stepper",
+	],
+	"current/angular/guides/primitives": [
+		"Angular stepper directives",
+		"accessible stepper Angular",
+		"unstyled stepper Angular",
+	],
+	"current/angular/api/define-stepper": [
+		"defineStepper Angular",
+		"injectStepper API",
+		"Stepperize Angular API",
+	],
+	"current/angular/api/primitives": [
+		"Angular stepper directive inputs",
+		"stepperRoot",
+		"stepperContent",
+	],
 	"current/core": [
 		"@stepperize/core",
 		"framework-agnostic stepper",
