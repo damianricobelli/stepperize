@@ -12,3 +12,4 @@ export {
 	type StepperSource,
 	StepperTrigger,
 } from "./lib/primitives";
+export type { RegisteredStep, StepFor, StepId, StepperRegistry } from "./lib/registry";

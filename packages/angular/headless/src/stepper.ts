@@ -1,11 +1,12 @@
 import {
-	afterRenderEffect,
 	assertInInjectionContext,
 	computed,
 	DestroyRef,
+	effect,
 	InjectionToken,
 	Injector,
 	inject,
+	PLATFORM_ID,
 	type Provider,
 	runInInjectionContext,
 	type Signal,
@@ -33,8 +34,6 @@ export type StepperRef<S extends readonly Step[]> = Signal<Stepper<S>> & {
 	 */
 	readonly flow: Flow<S>;
 	readonly steps: S;
-	/** Whether the flow is linear right now. The primitives render a list of steps instead of tabs. */
-	readonly linear: Signal<boolean>;
 };
 
 /** What the headless `defineStepper` returns: one typed flow, usable with or without Angular. */
@@ -54,58 +53,179 @@ export type Definition<S extends readonly Step[]> = {
 	 * Put it in `providers` and read it with `injectStepperContext()`.
 	 */
 	provideStepper: (options?: MaybeGetter<Options<S> | undefined>) => Provider;
-	/** The flow provided by the nearest `provideStepper()` of this definition. */
+	/** The flow of the nearest `provideStepper()` or `stepperRoot` of this definition. */
 	injectStepperContext: () => StepperRef<S>;
 };
 
+/**
+ * Private API shared with the primary entry point, not covered by semver: what
+ * `provideStepper()` and `[stepperRoot]` put in the injector tree. `ref` is set
+ * when the stepper is known up front; a root's stepper is an input, read through
+ * `source` when the stepper is first read.
+ */
+export type ɵStepperContext = {
+	readonly ref?: unknown;
+	readonly source: () => unknown;
+	readonly parent: ɵStepperContext | null;
+};
+/** Private API, see `ɵStepperContext`. */
+export const ɵSTEPPER_CONTEXT = new InjectionToken<ɵStepperContext>("stepperize");
+
+/** Which definition a stepper belongs to, so a context lookup can skip the flows of others. */
+const OWNER = Symbol("stepperize.owner");
+type Owned = { [OWNER]?: object };
+
+// `ngDevMode` is a global Angular defines; production builds replace it with `false`.
+declare const ngDevMode: unknown;
+
 export function defineStepper<const S extends readonly Step[]>(steps: S, defaults: Options<S> = {}): Definition<S> {
-	const token = new InjectionToken<StepperRef<S>>("stepperize");
+	const owner = {};
+
+	function stamp(ref: Signal<Stepper<S>>, flow: () => Flow<S>): StepperRef<S> {
+		return Object.defineProperties(ref, {
+			flow: { get: flow },
+			steps: { value: steps },
+			[OWNER]: { value: owner },
+		}) as StepperRef<S>;
+	}
 
 	function connect(options?: MaybeGetter<Options<S> | undefined>): StepperRef<S> {
-		// The options function is read again later (the first render, every change of a signal it
-		// reads): run it where `inject()` works, as the code around the call suggests it does.
+		// An options function runs where `inject()` works, as the code around the call suggests it does.
 		const injector = inject(Injector);
-		const merged = (): Options<S> => ({
+		const browser = inject(PLATFORM_ID) === "browser";
+		const read = (): Options<S> => ({
 			...defaults,
 			...(typeof options === "function" ? runInInjectionContext(injector, options) : options),
 		});
-		// Created the first time the stepper is read, which is when the template first renders:
-		// by then inputs are set, so `snapshot` and `step` can come from them.
-		let state: { flow: Flow<S>; view: WritableSignal<Stepper<S>> } | undefined;
-		const ensure = () => {
-			state ??= untracked(() => {
-				const flow = createStepper(steps, merged());
+		const latest = computed(read);
+		/**
+		 * The options the flow is given. Callbacks are getters that read the latest options when
+		 * the flow calls them, so a callback changed and used in the same tick is never stale.
+		 * `linear` and `step` are values: the flow reacts to their change in `setOptions`.
+		 */
+		const live = (linear: boolean | undefined, step: Options<S>["step"], snapshot?: Options<S>["snapshot"]) =>
+			({
+				linear,
+				step,
+				snapshot,
+				get next() {
+					return untracked(latest).next;
+				},
+				get guard() {
+					return untracked(latest).guard;
+				},
+				get onChange() {
+					return untracked(latest).onChange;
+				},
+				get onFinish() {
+					return untracked(latest).onFinish;
+				},
+				get onInvalidStep() {
+					return untracked(latest).onInvalidStep;
+				},
+			}) satisfies Options<S>;
+
+		let state:
+			| { flow: Flow<S>; view: WritableSignal<Stepper<S>>; linear: boolean; step: Options<S>["step"] }
+			| undefined;
+		/** Bumped when the flow is created outside the stepper signal, which may hold an earlier failure. */
+		const created = signal(0);
+		let reading = false;
+		function ensure() {
+			if (state) return state;
+			// Read where the caller reads: inside the stepper signal, a failure (an input read before it is set)
+			// is tried again when the signals it read change. Only the creation itself is untracked.
+			const initial = read();
+			state = untracked(() => {
+				const flow = createStepper(steps, live(initial.linear, initial.step, initial.snapshot));
 				const view = signal(flow.get());
 				flow.subscribe(() => view.set(flow.get()));
-				return { flow, view };
+				return { flow, view, linear: !!initial.linear, step: flow.current.id };
 			});
+			if (!reading) untracked(() => created.update((count) => count + 1));
 			return state;
-		};
-		// After a render, and only in the browser: options are applied once the view exists and after
-		// every later change, never while rendering on the server. Following `step` calls back into the owner.
-		afterRenderEffect(() => {
-			const next = merged();
-			untracked(() => ensure().flow.setOptions(next));
+		}
+		function apply(linear: boolean, step: Options<S>["step"]) {
+			const current = ensure();
+			if (linear === current.linear && step === current.step) return;
+			current.linear = linear;
+			current.step = step;
+			current.flow.setOptions(live(linear, step));
+		}
+
+		// Before every render, on the server too: the flow exists before the first one, and `linear`
+		// changes are applied. Following `step` moves the flow and calls back into the owner, so the
+		// server leaves it alone: it renders the step the flow was created on.
+		effect(() => {
+			const next = latest();
+			const linear = !!next.linear;
+			const step = browser ? next.step : untracked(() => ensure().step);
+			untracked(() => apply(linear, step));
 		});
 		inject(DestroyRef).onDestroy(() => state?.flow.destroy());
-		const ref = computed(() => ensure().view());
-		return Object.defineProperties(ref, {
-			flow: { get: () => ensure().flow },
-			steps: { value: steps },
-			linear: { value: computed(() => !!merged().linear) },
-		}) as StepperRef<S>;
+
+		const ref = computed(() => {
+			created();
+			reading = true;
+			try {
+				const current = ensure();
+				// Read the stepper right after changing `linear` and it already applies: `canGoTo` and
+				// `isLinear` are part of the view. Changing it publishes a view, never calls back.
+				const linear = !!latest().linear;
+				if (linear !== current.linear) untracked(() => apply(linear, current.step));
+				return current.view();
+			} finally {
+				reading = false;
+			}
+		});
+		return stamp(ref, () => ensure().flow);
+	}
+
+	function injectStepper(options?: MaybeGetter<Options<S> | undefined>): StepperRef<S> {
+		if (typeof ngDevMode === "undefined" || ngDevMode) assertInInjectionContext(injectStepper);
+		return connect(options);
+	}
+
+	function injectStepperContext(): StepperRef<S> {
+		const missing = () =>
+			fail(
+				"SZ100",
+				"Missing provider. Add this flow's provideStepper() to the providers of a component above, or render inside a root primitive bound to one of its steppers.",
+			);
+		let context = inject(ɵSTEPPER_CONTEXT, { optional: true });
+		// Providers are known now: the nearest of this definition is returned as it is.
+		while (context?.ref) {
+			if ((context.ref as Owned)[OWNER] === owner) return context.ref as StepperRef<S>;
+			context = context.parent;
+		}
+		if (!context) return missing();
+		// A root's stepper is an input, set after this runs: look it up when the stepper is read, and again
+		// whenever a root is bound to another stepper.
+		const from = context;
+		const source = computed(() => {
+			for (let at: ɵStepperContext | null = from; at; at = at.parent) {
+				const ref = (at.ref ?? at.source()) as StepperRef<S> & Owned;
+				if (ref[OWNER] === owner) return ref;
+			}
+			return missing();
+		});
+		return stamp(
+			computed(() => source()()),
+			() => untracked(source).flow,
+		);
 	}
 
 	return {
 		steps,
 		create: (options) => createStepper(steps, { ...defaults, ...options }),
-		injectStepper(options) {
-			assertInInjectionContext(this?.injectStepper ?? connect);
-			return connect(options);
-		},
-		provideStepper: (options) => ({ provide: token, useFactory: () => connect(options) }),
-		injectStepperContext: () =>
-			inject(token, { optional: true }) ??
-			fail("SZ100", "Missing provider. Add this flow's provideStepper() to the providers of a component above."),
+		injectStepper,
+		provideStepper: (options) => ({
+			provide: ɵSTEPPER_CONTEXT,
+			useFactory: (): ɵStepperContext => {
+				const ref = connect(options);
+				return { ref, source: () => ref, parent: inject(ɵSTEPPER_CONTEXT, { skipSelf: true, optional: true }) };
+			},
+		}),
+		injectStepperContext,
 	};
 }

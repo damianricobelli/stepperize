@@ -21,7 +21,7 @@ It returns:
 | `steps` | The array you passed. |
 | `injectStepper(options?)` | A flow owned by the caller. |
 | `provideStepper(options?)` | A provider that shares one flow. |
-| `injectStepperContext()` | The flow of the nearest `provideStepper()`. |
+| `injectStepperContext()` | The flow of the nearest `provideStepper()` or `stepperRoot`. |
 | `create(options?)` | A flow without Angular. See [Core](/docs/v9/core). |
 
 ## injectStepper
@@ -33,7 +33,7 @@ readonly stepper = checkout.injectStepper(() => ({ step: this.step() }));
 ```
 
 Call it in an injection context: a field initialiser, a constructor or a
-factory. Outside one, Angular throws `NG0203`.
+factory. Outside one it throws `NG0203`, naming `injectStepper()`.
 
 It returns a `StepperRef`: a signal of the
 [stepper](/docs/v9/react/api/stepper), which is a new immutable view after
@@ -43,18 +43,28 @@ every change, with these properties:
 | --- | --- |
 | `steps` | The steps of the definition, for `@for`. |
 | `flow` | The flow itself, to hand to code outside the component. |
-| `linear` | A signal: whether the flow is linear right now. |
 
-- Options can be an object or a function. A function is read again when the
-  signals it uses change, and the flow gets the new options.
-- The flow is created the first time the stepper is read, which is when the
-  template first renders. `snapshot` is read at that moment, so it can come
-  from an input.
-- Later option changes are applied after a render, in the browser only.
-  Nothing moves the flow while it renders on the server, so the current step
-  renders and no callback runs.
+Whether the flow is linear right now is `stepper().isLinear`.
+
+### When options apply
+
+- Options can be an object or a function. A function runs in the caller's
+  injection context, so it can `inject()`, and is read again when the signals
+  it uses change.
+- Callbacks (`onChange`, `onFinish`, `onInvalidStep`, `guard`) and `next` are
+  read when the flow calls them, so the latest ones always run, even when you
+  change them and move in the same tick.
+- `linear` applies before the next render, and as soon as you read the
+  stepper: `stepper().canGoTo(…)` right after changing it already uses it.
+- The flow is created before the owner's first render, or the first time it is
+  read if that is earlier. `snapshot` is read at that moment, so it can come
+  from an input. Read too early (in a constructor, before a required input is
+  set), creation throws Angular's error; it is tried again once that input is
+  set, and the stepper recovers.
+- Following `step` happens before each render, in the browser only. On the
+  server the flow renders the step it was created on and no callback runs.
 - The flow is destroyed with the injector it was created in: the component,
-  directive or service.
+  directive or service. A move still running is cancelled.
 
 ## provideStepper
 
@@ -72,11 +82,15 @@ it can call `inject()`.
 readonly stepper = checkout.injectStepperContext();
 ```
 
-Returns the `StepperRef` of the nearest `provideStepper()` of this definition.
-Without one it throws [SZ100](/docs/v9/core/errors#sz100).
+Returns the `StepperRef` of the nearest `provideStepper()` of this definition,
+or of the nearest `[stepperRoot]` bound to one of its steppers. Providers and
+roots of other definitions are skipped. Without either it throws
+[SZ100](/docs/v9/core/errors#sz100).
 
 ## Types
 
 Everything `@stepperize/core` exports as a type is re-exported:
 `Stepper<S>`, `Flow<S>`, `Options<S>`, `Snapshot<S>`, `Result<S>`, `Id<S>` and
-the rest, plus `StepperRef<S>` and `Definition<S>`.
+the rest, plus `StepperRef<S>` and `Definition<S>`. The full entry adds
+`StepperRegistry`, `StepId` and `StepFor` for
+[typed step ids in templates](/docs/v9/angular/guides/primitives#typed-step-ids).

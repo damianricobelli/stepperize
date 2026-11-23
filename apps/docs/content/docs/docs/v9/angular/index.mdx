@@ -62,7 +62,8 @@ fields. See [Forms](/docs/v9/angular/guides/forms).
   follow it, with no subscription to manage.
 - **Typed.** Step ids, each step's data and your own fields (`title`, `icon`,
   anything) are inferred from the definition, in TypeScript and in template
-  expressions.
+  expressions. Register a definition and the step ids you give the directives
+  are checked too.
 - **Branching as data.** A `next` map decides where each step leads from its
   validated data, and a flow can have more than one ending.
 - **Resumable.** One `snapshot` goes in, one `onChange` comes out. The current
@@ -71,7 +72,7 @@ fields. See [Forms](/docs/v9/angular/guides/forms).
   navigation, focus and announcements.
 - **Zoneless and server rendered.** No zone.js needed; the server HTML already
   has the roles, and hydration adopts it.
-- **Small.** About 2.6 kB for the signals API, min + gzip, with no runtime
+- **Small.** About 3 kB for the signals API, min + gzip, with no runtime
   dependencies besides the core.
 
 ## The same flow as every other binding

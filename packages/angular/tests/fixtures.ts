@@ -167,3 +167,27 @@ export class Scenario {
 	readonly stepper = flow.injectStepper(() => this.options());
 	readonly checked = checked.injectStepper();
 }
+
+/** Triggers in a block that never hydrates: the browser has their server HTML, not their directives. */
+@Component({
+	selector: "sz-deferred",
+	imports: [STEPPER_PRIMITIVES],
+	template: `
+		<div [stepperRoot]="stepper">
+			<ol stepperList>
+				@defer (hydrate never) {
+					@for (step of stepper.steps; track step.id) {
+						<li [stepperItem]="step.id"><button stepperTrigger>{{ step.title }}</button></li>
+					}
+				}
+			</ol>
+			@for (step of stepper.steps; track step.id) {
+				<div [stepperContent]="step.id">{{ step.title }}</div>
+			}
+			<button stepperNext>Continue</button>
+		</div>
+	`,
+})
+export class Deferred {
+	readonly stepper = flow.injectStepper();
+}

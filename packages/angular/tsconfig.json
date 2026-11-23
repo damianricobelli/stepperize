@@ -9,7 +9,7 @@
 		"noUnusedParameters": true,
 		"skipLibCheck": true,
 		"experimentalDecorators": true,
-		"importHelpers": true,
+		"importHelpers": false,
 		"declaration": true,
 		"isolatedModules": true,
 		"paths": {

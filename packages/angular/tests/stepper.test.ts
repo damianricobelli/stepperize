@@ -6,6 +6,7 @@ import {
 	effect,
 	InjectionToken,
 	inject,
+	input,
 	runInInjectionContext,
 	signal,
 } from "@angular/core";
@@ -120,10 +121,10 @@ describe("injectStepper", () => {
 		const { stepper, options } = fixture.componentInstance;
 		options.set({ linear: true });
 		await fixture.whenStable();
-		expect([stepper().canGoTo("c"), stepper.linear()]).toEqual([false, true]);
+		expect([stepper().canGoTo("c"), stepper().isLinear]).toEqual([false, true]);
 		options.set({ linear: false });
 		await fixture.whenStable();
-		expect([stepper().canGoTo("c"), stepper.linear()]).toEqual([true, false]);
+		expect([stepper().canGoTo("c"), stepper().isLinear]).toEqual([true, false]);
 	});
 
 	it("stops updating once its owner is destroyed", async () => {
@@ -159,8 +160,116 @@ describe("injectStepper", () => {
 		expect(changes).not.toHaveBeenCalled();
 	});
 
-	it("needs an injection context", () => {
-		expect(() => flow.injectStepper()).toThrow(/NG0203|injection context/);
+	it("needs an injection context, and says which call needs it", () => {
+		expect(() => flow.injectStepper()).toThrow(/injectStepper\(\).*injection context/);
+		const { injectStepper } = flow;
+		expect(() => injectStepper()).toThrow(/injectStepper\(\)/);
+	});
+
+	it("calls the callbacks and guard of the latest options, changed in the same tick", async () => {
+		const seen: string[] = [];
+		const options = signal<Options<typeof steps>>({ onChange: () => seen.push("old") });
+		@Component({ template: "" })
+		class Host {
+			readonly stepper = flow.injectStepper(() => options());
+		}
+		const fixture = TestBed.createComponent(Host);
+		await fixture.whenStable();
+		const { stepper } = fixture.componentInstance;
+		// No render, no effect in between.
+		options.set({ onChange: () => seen.push("new"), guard: () => false });
+		expect(await stepper().next()).toMatchObject({ accepted: false, reason: "guard" });
+		options.set({ onChange: () => seen.push("newer") });
+		await stepper().next();
+		expect(seen).toEqual(["newer"]);
+	});
+
+	it("applies linear as soon as the stepper is read, and before the first render", async () => {
+		const rendered: boolean[] = [];
+		@Component({ template: "{{ log(stepper().canGoTo('c')) }}" })
+		class Host {
+			readonly linear = input(false);
+			readonly stepper = flow.injectStepper(() => ({ linear: this.linear() }));
+			log(reachable: boolean) {
+				rendered.push(reachable);
+				return reachable;
+			}
+		}
+		const fixture = TestBed.createComponent(Host);
+		fixture.componentRef.setInput("linear", true);
+		await fixture.whenStable();
+		// One render, already linear: options are not applied after it.
+		expect(rendered).toEqual([false]);
+		const { stepper } = fixture.componentInstance;
+		fixture.componentRef.setInput("linear", false);
+		expect([stepper().canGoTo("c"), stepper().isLinear]).toEqual([true, false]);
+		expect((await stepper.flow.goTo("c")).accepted).toBe(true);
+	});
+
+	it("can be read before its inputs are set, and recovers once they are", async () => {
+		const failures: unknown[] = [];
+		@Component({ template: "<output>{{ stepper().current.id }}</output>" })
+		class Host {
+			readonly start = input.required<"a" | "b" | "c">();
+			readonly stepper = flow.injectStepper(() => ({ snapshot: { step: this.start() } }));
+			constructor() {
+				// Too early: a required input throws until it is set (NG0950).
+				try {
+					this.stepper();
+				} catch (error) {
+					failures.push(error);
+				}
+			}
+		}
+		const fixture = TestBed.createComponent(Host);
+		fixture.componentRef.setInput("start", "b");
+		await fixture.whenStable();
+		expect(String(failures[0])).toMatch(/NG0950/);
+		expect(fixture.componentInstance.stepper().current.id).toBe("b");
+		expect(fixture.nativeElement.querySelector("output").textContent).toBe("b");
+	});
+
+	it("tries again after creating the flow threw", () => {
+		let calls = 0;
+		const injector = TestBed.inject(EnvironmentInjector);
+		const stepper = runInInjectionContext(injector, () =>
+			flow.injectStepper(() => {
+				if (!calls++) throw new Error("not ready");
+				return { snapshot: { step: "c" } };
+			}),
+		);
+		expect(() => stepper()).toThrow("not ready");
+		// Not through the signal, which is where the failure would otherwise stick.
+		expect(stepper.flow.current.id).toBe("c");
+		expect(stepper().current.id).toBe("c");
+	});
+
+	it("cancels a running move when its owner is destroyed, without calling back", async () => {
+		let aborted = false;
+		const onChange = vi.fn();
+		@Component({ template: "" })
+		class Host {
+			readonly stepper = flow.injectStepper({
+				onChange,
+				guard: ({ signal }) =>
+					new Promise<boolean>((resolve) => {
+						signal.addEventListener("abort", () => {
+							aborted = true;
+							resolve(true);
+						});
+					}),
+			});
+		}
+		const fixture = TestBed.createComponent(Host);
+		await fixture.whenStable();
+		const { stepper } = fixture.componentInstance;
+		const move = stepper().next();
+		await fixture.whenStable();
+		expect(stepper().isPending).toBe(true);
+		fixture.destroy();
+		expect(await move).toEqual({ accepted: false, reason: "cancelled" });
+		expect(aborted).toBe(true);
+		expect(onChange).not.toHaveBeenCalled();
 	});
 });
 
@@ -183,6 +292,25 @@ describe("provideStepper and injectStepperContext", () => {
 
 	it("reads its options where inject() works", async () => {
 		const fixture = TestBed.createComponent(Injecting);
+		await fixture.whenStable();
+		expect(fixture.nativeElement.querySelector("output").textContent).toBe("c");
+	});
+
+	it("skips the providers of other definitions", async () => {
+		@Component({
+			selector: "sz-mixed",
+			imports: [Reader],
+			providers: [linear.provideStepper()],
+			template: "<sz-reader />",
+		})
+		class Mixed {}
+		@Component({
+			imports: [Mixed],
+			providers: [flow.provideStepper({ snapshot: { step: "c" } })],
+			template: "<sz-mixed />",
+		})
+		class Outer {}
+		const fixture = TestBed.createComponent(Outer);
 		await fixture.whenStable();
 		expect(fixture.nativeElement.querySelector("output").textContent).toBe("c");
 	});

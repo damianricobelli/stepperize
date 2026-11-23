@@ -55,6 +55,38 @@ It returns the same signal as `injectStepper()`. The providing component can
 inject it too. Without a `provideStepper()` of the same definition above, it
 throws [SZ100](/docs/v9/core/errors#sz100).
 
+## Inside the primitives
+
+`[stepperRoot]` shares its stepper the same way. A component rendered inside it
+reads that stepper with `injectStepperContext()`, with no provider to add:
+
+```ts
+@Component({
+  selector: "app-checkout",
+  imports: [STEPPER_PRIMITIVES, CheckoutSummary],
+  template: `
+    <div [stepperRoot]="stepper">
+      <app-checkout-summary />
+      …
+    </div>
+  `,
+})
+export class Checkout {
+  readonly stepper = checkout.injectStepper({ linear: true });
+}
+
+@Component({
+  selector: "app-checkout-summary",
+  template: `<p>{{ stepper().current.title }}</p>`,
+})
+export class CheckoutSummary {
+  readonly stepper = checkout.injectStepperContext();
+}
+```
+
+The nearest provider or root of the same definition wins; those of other
+definitions, such as a nested stepper, are skipped.
+
 ## Reading only what you need
 
 Wrap what you need in `computed`. It only notifies when its result changes:
@@ -62,6 +94,10 @@ Wrap what you need in `computed`. It only notifies when its result changes:
 ```ts
 readonly isLast = computed(() => this.stepper().isLast);
 ```
+
+Components that use the stepper in their template re-render when it changes.
+Mark them `ChangeDetectionStrategy.OnPush` and read what they need through
+`computed`, and they render only when that changes.
 
 ## In a service
 

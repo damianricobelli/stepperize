@@ -6,22 +6,27 @@ description: Angular SSR and hydration, with the roles already in the server HTM
 The signals API and the directives render on the server and hydrate in place,
 with nothing to configure.
 
-- **The right step.** The flow is created when the stepper is first read, so
-  the server renders the first step, the one in `snapshot`, or the one in
-  `step`.
+- **The right step.** The flow is created before the first render, so the
+  server renders the first step, the one in `snapshot`, or the one in `step`.
+  Options such as `linear` apply on the server as in the browser.
 - **Complete HTML.** The directives are host bindings, so roles, ids,
-  `data-state` and `hidden` are in the server HTML. The tablist is decided on
-  the server too, from the triggers in the template.
+  `data-state` and the hidden panels are in the server HTML. The tablist is
+  decided on the server too, from the triggers in the template.
 - **Stable ids.** Ids are built from `APP_ID` and a per-application counter, so
   `aria-controls` and `aria-labelledby` match between the server and the
   client.
 - **No callbacks on the server.** Nothing moves the flow while it renders on
   the server, so `onChange`, `onFinish`, `onInvalidStep` and the `guard` do
-  not run there. Following the `step` option happens in an after-render
-  effect, in the browser.
+  not run there. The `step` option is followed in the browser only.
 - **Hydration.** With `provideClientHydration()`, Angular adopts the server
   elements unchanged. The only node added in the browser is the visually
   hidden live region for announcements, appended after hydration.
+- **Event replay.** A click on a trigger, Back or Next before the page has
+  hydrated is replayed once it has, with the event replay that
+  `provideClientHydration()` enables.
+- **Incremental hydration.** Triggers inside an `@defer (hydrate …)` block that
+  has not hydrated yet still count: the list stays a `tablist` and the panels
+  stay `tabpanel`s, as the server rendered them.
 
 ## Resuming from a cookie or the database
 
@@ -60,4 +65,6 @@ export class OnboardingPage {
 ## DOM access
 
 The directives only touch the DOM in the browser: the focus hand-off and the
-live region run in after-render callbacks, which Angular skips on the server.
+live region run in the `write` phase of after-render callbacks, which Angular
+skips on the server. The live region is styled through the DOM, not a `style`
+attribute, so a strict Content Security Policy allows it.

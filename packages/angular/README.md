@@ -78,7 +78,7 @@ import { STEPPER_PRIMITIVES } from "@stepperize/angular";
     <div [stepperRoot]="stepper">
       <ol stepperList>
         @for (step of stepper.steps; track step.id) {
-          <li [stepperItem]="step.id">
+          <li [stepperItem]="step">
             <button stepperTrigger>
               <span stepperIndicator></span>
               {{ step.title }}
@@ -103,20 +103,31 @@ export class CheckoutSteps {
 
 They handle roles, ids, keyboard navigation, focus and screen reader
 announcements, and expose their state through `data-*` attributes for styling.
+Static attributes you write win over theirs, and `[stepperRoot]` shares its
+stepper with the components inside through `injectStepperContext()`.
 
 Step ids are typed in TypeScript and in template expressions
-(`stepper().goTo('shiping')` does not compile). The ids given to the
-directives are strings: the directives are shared by every flow, so an unknown
-id is reported when the template runs, with
-[SZ102](https://stepperize.com/docs/v9/core/errors#sz102).
+(`stepper().goTo('shiping')` does not compile). Register a definition and the
+ids given to the directives are checked by the template type-checker too:
+
+```ts
+declare module "@stepperize/angular" {
+  interface StepperRegistry {
+    checkout: typeof checkout;
+  }
+}
+```
+
+Without a registry they are strings, and an unknown id is reported when the
+template runs, with [SZ102](https://stepperize.com/docs/v9/core/errors#sz102).
 
 If you only want the signals API, import from `@stepperize/angular/headless`.
 
 ## Zoneless and server rendering
 
 Everything is signal based, so it works without zone.js. On the server the
-roles, ids and `hidden` panels are in the HTML, no callback runs, and hydration
-adopts the same elements.
+roles, ids and hidden panels are in the HTML, no callback runs, and hydration
+adopts the same elements, with event replay and incremental hydration.
 
 ## License
 

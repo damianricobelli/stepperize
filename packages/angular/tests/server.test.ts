@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { Component } from "@angular/core";
+import { Component, effect, signal } from "@angular/core";
 import { defineStepper, STEPPER_PRIMITIVES } from "@stepperize/angular";
 import { expect, it, vi } from "vitest";
 import { renderOnServer } from "./render-on-server";
@@ -50,4 +50,47 @@ it("renders the stepper and the primitives on the server without browser globals
 	expect(onChange).not.toHaveBeenCalled();
 	expect(onInvalidStep).not.toHaveBeenCalled();
 	errors.mockRestore();
+});
+
+it("applies options on the server, and children of the root read its stepper", async () => {
+	const flow = defineStepper([
+		{ id: "cart", title: "Cart" },
+		{ id: "review", title: "Review" },
+	]);
+
+	@Component({ selector: "sz-current", template: "<em>{{ stepper().current.id }}</em>" })
+	class Current {
+		readonly stepper = flow.injectStepperContext();
+	}
+
+	@Component({
+		selector: "sz-page",
+		imports: [STEPPER_PRIMITIVES, Current],
+		template: `
+			<div [stepperRoot]="stepper">
+				<sz-current />
+				<ol stepperList>
+					@for (step of stepper.steps; track step.id) {
+						<li [stepperItem]="step.id"><button stepperTrigger>{{ step.title }}</button></li>
+					}
+				</ol>
+			</div>
+		`,
+	})
+	class Page {
+		readonly linear = signal(false);
+		readonly stepper = flow.injectStepper(() => ({ linear: this.linear() }));
+		constructor() {
+			// Changed after the flow exists: the server renders it anyway.
+			effect(() => {
+				this.stepper();
+				this.linear.set(true);
+			});
+		}
+	}
+
+	const html = await renderOnServer(Page, "sz-page");
+	expect(html).toContain("<em>cart</em>");
+	expect(html).not.toContain('role="tablist"');
+	expect(html).toMatch(/<button[^>]*data-step="review"[^>]*disabled=""/);
 });

@@ -21,7 +21,7 @@ export default defineConfig({
 				test: {
 					name: "server",
 					environment: "node",
-					include: ["tests/server.test.ts"],
+					include: ["tests/server.test.ts", "tests/templates.test.ts"],
 					setupFiles: ["tests/compiler.ts"],
 				},
 			},
@@ -30,7 +30,7 @@ export default defineConfig({
 				test: {
 					name: "browser",
 					include: ["tests/**/*.test.ts"],
-					exclude: ["tests/server.test.ts"],
+					exclude: ["tests/server.test.ts", "tests/templates.test.ts"],
 					setupFiles: ["tests/setup.ts"],
 					browser: {
 						enabled: true,

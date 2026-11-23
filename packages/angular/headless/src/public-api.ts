@@ -20,4 +20,11 @@ export type {
 	Stepper,
 	StepState,
 } from "@stepperize/core";
-export { type Definition, defineStepper, type MaybeGetter, type StepperRef } from "./stepper";
+export {
+	type Definition,
+	defineStepper,
+	type MaybeGetter,
+	type StepperRef,
+	ɵSTEPPER_CONTEXT,
+	type ɵStepperContext,
+} from "./stepper";

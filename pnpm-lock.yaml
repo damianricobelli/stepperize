@@ -291,9 +291,6 @@ importers:
       '@stepperize/core':
         specifier: workspace:*
         version: link:../core
-      tslib:
-        specifier: ^2.9.1
-        version: 2.9.1
     devDependencies:
       '@analogjs/vite-plugin-angular':
         specifier: ^2.9.7

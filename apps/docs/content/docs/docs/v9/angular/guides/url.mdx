@@ -44,8 +44,9 @@ Without input binding, turn the parameter into a signal with
   the step the page first loads on.
 - `onInvalidStep` is called for unknown ids, for steps `linear` does not allow
   yet and for route changes the guard refused.
-- The flow is created when the stepper is first read, which is when the
-  template first renders. By then inputs are set, so the flow starts on the
-  route's step, on the server too.
-- The route is followed after a render and only in the browser. Nothing moves
-  the flow on the server, so no callback runs there.
+- The flow is created before the component first renders, when its inputs are
+  already set, so the flow starts on the route's step, on the server too.
+- A route change is followed before the next render, in the browser only.
+  Nothing moves the flow on the server, so no callback runs there.
+- `onChange` and `onInvalidStep` are read when they are called, so the arrow
+  functions above always see the current `step()`.

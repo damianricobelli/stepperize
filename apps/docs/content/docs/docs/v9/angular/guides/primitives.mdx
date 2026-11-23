@@ -12,18 +12,19 @@ For a simple flow, your own buttons and an `@switch` are enough.
 ## Basic structure
 
 ```ts
-import { Component } from "@angular/core";
+import { ChangeDetectionStrategy, Component } from "@angular/core";
 import { STEPPER_PRIMITIVES } from "@stepperize/angular";
 import { checkout } from "./checkout";
 
 @Component({
   selector: "app-checkout-steps",
   imports: [STEPPER_PRIMITIVES],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div [stepperRoot]="stepper">
       <ol stepperList>
         @for (step of stepper.steps; track step.id) {
-          <li [stepperItem]="step.id">
+          <li [stepperItem]="step">
             <button stepperTrigger>
               <span stepperIndicator></span>
               {{ step.title }}
@@ -51,42 +52,62 @@ export class CheckoutSteps {
 ## How the pieces connect
 
 1. `[stepperRoot]` takes the stepper your component created and marks the
-   element that contains everything else. Clicks and keys are handled there.
+   element that contains everything else. Components inside it can read that
+   stepper with `injectStepperContext()`.
 2. `stepperList` marks the list of steps and gives it arrow-key navigation.
-3. `[stepperItem]` is one step. What is inside it knows which one.
+3. `[stepperItem]` is one step, bound to the step or to its id. What is inside
+   it knows which one.
 4. `stepperTrigger` goes to that step when pressed.
 5. `stepperIndicator` is a decorative mark, hidden from assistive technology.
-6. `stepperContent` is the panel of a step: `hidden` unless its step is
-   current.
+6. `stepperContent` is the panel of a step, hidden unless its step is current.
 7. `stepperPrev` and `stepperNext` call `prev()` and `next()`.
 
 Import them one by one, or all at once with `STEPPER_PRIMITIVES`.
 
-## What is typed, and what is not
+## Typed step ids
 
-The stepper is fully typed: `stepper().current.id`, `stepper().goTo("…")` and
-`@case ("…")` on a step id are checked against your steps, in TypeScript and
-by the template type-checker.
+The stepper is always typed: `stepper().current.id`, `stepper().goTo("…")` and
+`@case ("…")` on a step id are checked against your steps, in TypeScript and by
+the template type-checker.
 
-The step ids you give to the directives are **not**. The directives are shared
-by every flow, and Angular cannot generate a typed set per definition, so
-`stepperContent`, `stepperItem`, `stepperTrigger` and `stepperIndicator` accept
-any string. A wrong id is reported when the template runs, with
-[SZ102](/docs/v9/core/errors#sz102) and the id in the message.
+The directives are shared by every flow, so on their own they cannot know your
+ids. Register your definitions once and they do:
 
-To keep the ids checked, take them from the steps instead of writing them:
+```ts title="checkout.ts"
+export const checkout = defineStepper([
+  { id: "shipping", title: "Shipping", icon: "truck" },
+  { id: "payment", title: "Payment", icon: "card" },
+  { id: "review", title: "Review", icon: "list" },
+]);
 
-```html
-@for (step of stepper.steps; track step.id) {
-  <div [stepperContent]="step.id">
-    @switch (step.id) {
-      @case ("shipping") { <app-shipping-form /> }
-      @case ("payment") { <app-payment-form /> }
-      @case ("review") { <app-review /> }
-    }
-  </div>
+declare module "@stepperize/angular" {
+  interface StepperRegistry {
+    checkout: typeof checkout;
+  }
 }
 ```
+
+With `strictTemplates` (the default in new Angular projects), a typo now fails
+the build:
+
+```text
+<div stepperContent="shiping"> → Type '"shiping"' is not assignable to type
+'"shipping" | "payment" | "review"'. Did you mean '"shipping"'?
+```
+
+What is checked:
+
+| Where | Checked against |
+| --- | --- |
+| `stepperContent`, `stepperItem` with an id, `stepperTrigger`, `stepperIndicator` | The ids of every registered definition. |
+| `[stepperItem]="step"` | Any step. `item.value().step` is that step, with its own fields typed. |
+| `stepperItem="payment"` with a registry | `item.value().step` is the registered `payment` step. |
+
+Register every definition whose ids you write in templates. The ids are checked
+against all of them together, so an id of another registered flow is accepted.
+Without a registry the ids are plain strings, and a wrong one is reported when
+the template runs, with [SZ102](/docs/v9/core/errors#sz102) and the id in the
+message.
 
 ## Three patterns, chosen for you
 
@@ -120,22 +141,39 @@ Nothing is styled. Every element has a `data-component` and the state it shows:
 
 The elements are in your template, so your component's styles apply to them.
 
+## Your attributes stay
+
+A static attribute you write on the root, the list, an item, a panel or an
+indicator wins over the one the directive would set: `role="list"` on the list,
+`tabindex` or `aria-labelledby` on a panel. On triggers and the prev and next
+buttons the flow decides everything but `type`: a `<button>` gets
+`type="button"` unless you wrote one, and `<input type="button" stepperNext>`
+keeps its own.
+
 ## Reading a step's state
 
-`stepperItem` exports itself. `value()` is what the item knows about its step:
+`stepperItem` exports itself. `value()` is what the item knows about its step;
+bind the step itself and `value().step` has its fields, typed:
 
 ```html
-<li [stepperItem]="step.id" #item="stepperItem">
-  <button stepperTrigger>
-    {{ item.value().state === "complete" ? "✓" : item.value().index + 1 }} {{ step.title }}
-  </button>
-</li>
+@for (step of stepper.steps; track step.id) {
+  <li [stepperItem]="step" #item="stepperItem">
+    <button stepperTrigger>
+      <app-icon [name]="item.value().step.icon" />
+      {{ item.value().state === "complete" ? "✓" : item.value().index + 1 }} {{ step.title }}
+    </button>
+  </li>
+}
 ```
+
+Each item follows only its own step. A change that does not touch a step, such
+as a draft saved for another one, does not re-render it.
 
 ## Handling the move yourself
 
-Your own `(click)` runs first. Call `preventDefault()` in it to take over, for
-example to pass form values:
+A part acts after every `(click)` on its element has run. Call
+`$event.preventDefault()` in yours to take over, for example to pass form
+values:
 
 ```html
 <button stepperNext (click)="$event.preventDefault(); stepper().next(form.getRawValue())">
@@ -143,15 +181,32 @@ example to pass form values:
 </button>
 ```
 
+`$event.stopPropagation()` does not stop the part: a button inside a clickable
+card still moves the flow. The same goes for `(keydown)` on the list and the
+arrow keys.
+
 ## Panels in or out of the DOM
 
-`stepperContent` hides its element while the step is not current, so the
-components inside keep their state. To destroy them instead, wrap the panel:
+`stepperContent` keeps its element in the page while its step is not current,
+with `hidden` and `display: none`, so the components inside keep their state,
+tabs always have the panel they point to, and no `display` rule of yours can
+show it by mistake.
+
+To leave the content out instead, export the panel and use control flow.
+`@defer` also loads the panel's code when its step is first shown:
 
 ```html
-@if (stepper().current.id === "review") {
-  <div stepperContent="review"><app-review /></div>
-}
+<div stepperContent="review" #review="stepperContent">
+  @if (review.active()) {
+    <app-review />
+  }
+</div>
+
+<div stepperContent="payment" #payment="stepperContent">
+  @defer (when payment.active()) {
+    <app-payment-form />
+  }
+</div>
 ```
 
 See the [primitives reference](/docs/v9/angular/api/primitives) for every
