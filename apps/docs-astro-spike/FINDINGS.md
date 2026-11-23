@@ -145,7 +145,38 @@ If server rendering of non-React demos ever becomes a requirement (SEO on demo c
 shift), approach (a) is proven to work and this spike is the starting point. A cheaper middle step
 for (c) is to reserve the demo's height in the wrapper to avoid the shift.
 
-For (c) in `apps/docs`, Vite needs `@vitejs/plugin-vue`, `@sveltejs/vite-plugin-svelte` and
-`vite-plugin-solid` (with `include` limited to the Solid demos, as here) next to the React plugin.
-That was not tried inside TanStack Start in this spike; the wrapper itself
-(`src/components/framework-demo.tsx`, `src/demos/mount/*`) is framework-host agnostic.
+## Approach (c) inside `apps/docs` (tried, works)
+
+Done on this branch after the Astro spike. Test page: `/docs/v9/core/framework-demos`
+(`content/docs/docs/v9/core/framework-demos.mdx`), a throwaway page to delete before merging anything.
+
+What it took:
+
+- `vite.config.ts`: `vue()`, `svelte()` and `solid({ include: /\/framework-demos\/solid\// })` next
+  to the React plugin. The same pattern is passed as `exclude` to **both** `viteReact()` and the
+  `babel()` plugin that runs the React Compiler, otherwise the compiler would rewrite the Solid
+  component.
+- `src/components/interactive/framework-demo.tsx` (the wrapper, registered in `mdx.tsx`) and
+  `src/components/framework-demos/` (the demos, one `mount/*.ts` per framework, `shims.d.ts` for
+  `*.vue` / `*.svelte` imports).
+- Dependencies: `vue`, `svelte`, `solid-js@^1.9`, `@stepperize/core`, and dev
+  `@vitejs/plugin-vue`, `@sveltejs/vite-plugin-svelte`, `vite-plugin-solid`.
+
+Checked in a browser, in dev and against the production build (`vite build` + `vite preview`):
+
+- Vue, Svelte and Solid mount and respond to clicks, top level and inside Fumadocs `<Tabs>`
+  (each tab mounts its framework on first open).
+- They survive TanStack Router navigation away and back (same document), with no console errors.
+- SSR renders the "Loading" placeholder; the demos are client only, as expected.
+- Lazy chunks, loaded only on a page that shows the framework: Vue 63 KB (25 KB gzip),
+  Svelte 36 KB (14 KB gzip), Solid 12 KB (5 KB gzip).
+- `tsc --noEmit` passes, the 109 docs tests pass, `vite build` passes.
+
+Rough edges:
+
+- Biome reports false "unused import/variable" warnings in `.vue` and `.svelte` files, because it
+  does not see their use in the template. Three warnings, no errors; an override would silence them.
+- `seo.test.ts` requires keywords for every docs page, so the test page has an entry in
+  `DOC_KEYWORDS`.
+- `vite-plugin-svelte` logs "no Svelte config found" on start. Harmless.
+- A demo's state resets when its tab is closed and reopened (it is unmounted), same as on Astro.

@@ -1,12 +1,19 @@
 import { fileURLToPath } from "node:url";
 import babel from "@rolldown/plugin-babel";
+import { svelte } from "@sveltejs/vite-plugin-svelte";
 import tailwindcss from "@tailwindcss/vite";
 import { devtools } from "@tanstack/devtools-vite";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import viteReact, { reactCompilerPreset } from "@vitejs/plugin-react";
+import vue from "@vitejs/plugin-vue";
 import mdx from "fumadocs-mdx/vite";
 import { nitro } from "nitro/vite";
 import { defineConfig } from "vite";
+import solid from "vite-plugin-solid";
+
+// React and Solid both compile .tsx: Solid only owns the Solid demos, and the
+// React plugin and the React Compiler must stay out of them.
+const solidFiles = /\/framework-demos\/solid\//;
 
 const config = defineConfig({
 	resolve: {
@@ -37,8 +44,11 @@ const config = defineConfig({
 		nitro(),
 		tailwindcss(),
 		tanstackStart(),
-		viteReact(),
-		babel({ presets: [reactCompilerPreset()] }),
+		vue(),
+		svelte(),
+		solid({ include: solidFiles }),
+		viteReact({ exclude: solidFiles }),
+		babel({ presets: [reactCompilerPreset()], exclude: solidFiles }),
 	],
 });
 

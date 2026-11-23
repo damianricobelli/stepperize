@@ -39,6 +39,7 @@ import { TypedWizardBlock } from "./blocks/typed-wizard";
 import { UserOnboardingBlock } from "./blocks/user-onboarding";
 import { ValidatedCheckoutBlock } from "./blocks/validated-checkout";
 import { VerticalStepperBlock } from "./blocks/vertical-stepper";
+import { FrameworkDemo } from "./interactive/framework-demo";
 import { InteractiveExample } from "./interactive/interactive-example";
 import { LifecycleViz } from "./interactive/lifecycle-viz";
 import { OwnershipDemo } from "./interactive/ownership-demo";
@@ -81,6 +82,7 @@ export function getMDXComponents(components?: MDXComponents) {
 		StatusCompletionViz,
 		LifecycleViz,
 		InteractiveExample,
+		FrameworkDemo,
 		OwnershipDemo,
 		UserOnboardingBlock,
 		KycVerificationBlock,
