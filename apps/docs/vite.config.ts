@@ -16,7 +16,7 @@ import solid from "vite-plugin-solid";
 const solidFiles = /\/framework-demos\/solid\//;
 // The other bindings are linked from the workspace, so Vite sees their built
 // files as source. They are not React: keep the React plugins away from them too.
-const notReact = [solidFiles, /\/packages\/(vue|svelte|solid)\//];
+const notReact = [solidFiles, /\/packages\/(vue|svelte|solid|angular)\//];
 
 const config = defineConfig({
 	resolve: {

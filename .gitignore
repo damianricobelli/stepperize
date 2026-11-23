@@ -49,3 +49,6 @@ scripts/benchmarks/results.json
 
 # Svelte packaging
 .svelte-kit
+
+# Angular compiler output
+out-tsc

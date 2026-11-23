@@ -1,0 +1,81 @@
+---
+title: defineStepper
+description: The definition and the signals API it returns.
+---
+
+```ts
+import { defineStepper } from "@stepperize/angular";
+
+const checkout = defineStepper(steps, options?);
+```
+
+| Argument | Description |
+| --- | --- |
+| `steps` | An array of steps. Each needs a unique `id`; `schema` types and validates its data; every other field is yours. |
+| `options` | Defaults for every flow created from this definition. See [Options](/docs/v9/react/api/options). |
+
+It returns:
+
+| | |
+| --- | --- |
+| `steps` | The array you passed. |
+| `injectStepper(options?)` | A flow owned by the caller. |
+| `provideStepper(options?)` | A provider that shares one flow. |
+| `injectStepperContext()` | The flow of the nearest `provideStepper()`. |
+| `create(options?)` | A flow without Angular. See [Core](/docs/v9/core). |
+
+## injectStepper
+
+```ts
+readonly stepper = checkout.injectStepper();
+readonly stepper = checkout.injectStepper({ linear: true, onFinish });
+readonly stepper = checkout.injectStepper(() => ({ step: this.step() }));
+```
+
+Call it in an injection context: a field initialiser, a constructor or a
+factory. Outside one, Angular throws `NG0203`.
+
+It returns a `StepperRef`: a signal of the
+[stepper](/docs/v9/react/api/stepper), which is a new immutable view after
+every change, with these properties:
+
+| Property | Description |
+| --- | --- |
+| `steps` | The steps of the definition, for `@for`. |
+| `flow` | The flow itself, to hand to code outside the component. |
+| `linear` | A signal: whether the flow is linear right now. |
+
+- Options can be an object or a function. A function is read again when the
+  signals it uses change, and the flow gets the new options.
+- The flow is created the first time the stepper is read, which is when the
+  template first renders. `snapshot` is read at that moment, so it can come
+  from an input.
+- Options are applied after a render, in the browser only. On the server the
+  current step renders and no callback runs.
+- The flow is destroyed with the injector it was created in: the component,
+  directive or service.
+
+## provideStepper
+
+```ts
+@Component({ providers: [checkout.provideStepper({ linear: true })] })
+```
+
+A provider for a component, a route or the application. Each injector that has
+it gets its own flow. The options function runs in that injector's context, so
+it can call `inject()`.
+
+## injectStepperContext
+
+```ts
+readonly stepper = checkout.injectStepperContext();
+```
+
+Returns the `StepperRef` of the nearest `provideStepper()` of this definition.
+Without one it throws [SZ100](/docs/v9/core/errors#sz100).
+
+## Types
+
+Everything `@stepperize/core` exports as a type is re-exported:
+`Stepper<S>`, `Flow<S>`, `Options<S>`, `Snapshot<S>`, `Result<S>`, `Id<S>` and
+the rest, plus `StepperRef<S>` and `Definition<S>`.

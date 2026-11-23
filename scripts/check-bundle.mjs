@@ -149,6 +149,24 @@ const bindings = [
 		},
 	},
 	{
+		name: "angular",
+		external: ["@angular/*", "rxjs", "rxjs/*"],
+		// Built in Angular Package Format: the entries are in `dist`, and the primary one imports the secondary by name.
+		entry: (name) =>
+			`${root}/packages/angular/dist/fesm2022/stepperize-angular${name.endsWith("/headless") ? "-headless" : ""}.mjs`,
+		alias: {
+			"@stepperize/angular/headless": `${root}/packages/angular/dist/fesm2022/stepperize-angular-headless.mjs`,
+		},
+		// Partially compiled, as Angular libraries are published: it needs an application's compiler to run.
+		// Rendering on the server and hydration are covered by the package's own tests.
+		importable: false,
+		async verify({ full, code }) {
+			assert(code.includes("injectStepper"), "Both entries have the signals API");
+			assert.equal(code.includes("stepperRoot"), full, "Only the full entry has the directives");
+			assert(code.includes("ngDeclareDirective") || !full, "The directives are published partially compiled");
+		},
+	},
+	{
 		name: "svelte",
 		external: ["svelte", "svelte/*"],
 		conditions: ["svelte", "browser", "production"],
@@ -200,7 +218,7 @@ for (const binding of bindings) {
 	for (const name of [`@stepperize/${binding.name}`, `@stepperize/${binding.name}/headless`]) {
 		const full = !name.endsWith("/headless");
 		// Resolve the public exports to built files, including their shared chunks.
-		const entry = require.resolve(name);
+		const entry = binding.entry?.(name) ?? require.resolve(name);
 		const result = await esbuild.build({
 			entryPoints: [entry],
 			bundle: true,
@@ -212,6 +230,7 @@ for (const binding of bindings) {
 			jsx: "automatic",
 			external: binding.external,
 			conditions: binding.conditions,
+			alias: binding.alias,
 			plugins: binding.plugins?.(require),
 			legalComments: "none",
 			logLevel: "error",
@@ -223,7 +242,7 @@ for (const binding of bindings) {
 		if (!full)
 			assert(!result.outputFiles[0].text.includes("stepper-trigger"), "Visual primitives leaked into headless");
 		let definition;
-		if (!binding.plugins) {
+		if (!binding.plugins && binding.importable !== false) {
 			const { defineStepper } = await import(pathToFileURL(entry));
 			definition = defineStepper([{ id: "start", title: "Start" }, { id: "finish" }]);
 			if (binding.shape !== false) {
@@ -237,6 +256,7 @@ for (const binding of bindings) {
 			definition,
 			full,
 			output: Object.values(result.metafile.outputs)[0],
+			code: result.outputFiles[0].text,
 		});
 	}
 	assert(

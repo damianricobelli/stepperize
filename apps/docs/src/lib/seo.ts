@@ -687,32 +687,57 @@ export const DOC_KEYWORDS: Record<string, readonly string[]> = {
 		"Stepper as prop",
 		"polymorphic stepper Solid",
 	],
-	"current/html": [
-		"vanilla JavaScript stepper",
-		"stepper without framework",
-		"server-rendered wizard",
-		"progressive enhancement stepper",
+	"current/angular": [
+		"Angular stepper",
+		"Angular wizard",
+		"multi-step flow Angular",
+		"headless stepper Angular",
 	],
-	"current/html/markup": [
-		"stepper HTML markup",
-		"data attributes stepper",
-		"bindStepper",
+	"current/angular/installation": [
+		"install Angular stepper",
+		"@stepperize/angular",
+		"Angular 22 wizard package",
 	],
-	"current/html/guides/server-rendered": [
-		"Rails stepper",
-		"Laravel multi-step form",
-		"Django wizard",
-		"Astro stepper",
+	"current/angular/first-stepper": [
+		"Angular stepper tutorial",
+		"Angular signals stepper",
+		"injectStepper",
 	],
-	"current/html/guides/alpine": [
-		"Alpine.js stepper",
-		"Alpine multi-step form",
-		"Alpine wizard",
+	"current/angular/guides/forms": [
+		"Angular multi-step form",
+		"reactive forms wizard",
+		"Angular form stepper validation",
 	],
-	"current/html/guides/htmx": [
-		"htmx stepper",
-		"htmx multi-step form",
-		"htmx wizard",
+	"current/angular/guides/shared-state": [
+		"Angular stepper dependency injection",
+		"provideStepper",
+		"shared stepper state",
+	],
+	"current/angular/guides/url": [
+		"Angular router stepper",
+		"step in URL Angular",
+		"wizard route sync",
+	],
+	"current/angular/guides/ssr": [
+		"Angular SSR stepper",
+		"Angular hydration wizard",
+		"zoneless stepper",
+	],
+	"current/angular/guides/primitives": [
+		"Angular stepper directives",
+		"accessible stepper Angular",
+		"unstyled stepper Angular",
+	],
+	"current/angular/api/define-stepper": [
+		"defineStepper Angular",
+		"injectStepper API",
+		"Stepperize Angular API",
+	],
+	"current/angular/api/primitives": [
+		"Angular stepper directive inputs",
+		"stepperRoot",
+		"stepperContent",
+	],
 	"current/lit": [
 		"Lit stepper",
 		"web component wizard",
@@ -763,6 +788,33 @@ export const DOC_KEYWORDS: Record<string, readonly string[]> = {
 		"Lit element directives stepper",
 		"stepper directive options",
 		"Lit tablist directive",
+	],
+	"current/html": [
+		"vanilla JavaScript stepper",
+		"stepper without framework",
+		"server-rendered wizard",
+		"progressive enhancement stepper",
+	],
+	"current/html/markup": [
+		"stepper HTML markup",
+		"data attributes stepper",
+		"bindStepper",
+	],
+	"current/html/guides/server-rendered": [
+		"Rails stepper",
+		"Laravel multi-step form",
+		"Django wizard",
+		"Astro stepper",
+	],
+	"current/html/guides/alpine": [
+		"Alpine.js stepper",
+		"Alpine multi-step form",
+		"Alpine wizard",
+	],
+	"current/html/guides/htmx": [
+		"htmx stepper",
+		"htmx multi-step form",
+		"htmx wizard",
 	],
 	"current/core": [
 		"@stepperize/core",

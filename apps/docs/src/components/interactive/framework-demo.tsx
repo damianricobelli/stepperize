@@ -7,6 +7,7 @@ const loaders = {
 	solid: () => import("@/components/framework-demos/mount/solid"),
 	html: () => import("@/components/framework-demos/mount/html"),
 	lit: () => import("@/components/framework-demos/mount/lit"),
+	angular: () => import("@/components/framework-demos/mount/angular"),
 };
 
 export function FrameworkDemo({
