@@ -27,10 +27,18 @@
 			"types": "./dist/index.d.ts",
 			"import": "./dist/index.js",
 			"default": "./dist/index.js"
+		},
+		"./primitives": {
+			"types": "./dist/primitives.d.ts",
+			"import": "./dist/primitives.js",
+			"default": "./dist/primitives.js"
 		}
 	},
 	"typesVersions": {
 		"*": {
+			"primitives": [
+				"./dist/primitives.d.ts"
+			],
 			"*": [
 				"./dist/index.d.ts"
 			]
