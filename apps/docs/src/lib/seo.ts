@@ -1194,6 +1194,391 @@ export const DOC_KEYWORDS: Record<string, readonly string[]> = {
 		"htmx multi-step form",
 		"htmx wizard",
 	],
+	"current/angular/api/options": [
+		"Angular stepper options",
+		"injectStepper options",
+		"onFinish guard Angular",
+	],
+	"current/angular/api/stepper": [
+		"Angular stepper API",
+		"StepperRef Angular",
+		"stepper methods Angular",
+	],
+	"current/angular/concepts/step-state": [
+		"Angular stepper step state",
+		"step completion Angular",
+		"completed steps Angular",
+	],
+	"current/angular/concepts/stepper": [
+		"injectStepper Angular",
+		"reactive stepper Angular",
+		"Angular stepper state",
+	],
+	"current/angular/faq": [
+		"Angular stepper FAQ",
+		"Angular SSR multi-step form questions",
+		"Angular wizard library",
+	],
+	"current/angular/forms/reactive-forms": [
+		"Angular Reactive Forms multi-step",
+		"Angular form wizard",
+		"typed reactive forms stepper",
+	],
+	"current/angular/forms/signal-forms": [
+		"Angular Signal Forms multi-step",
+		"Angular signal forms wizard",
+		"Standard Schema Angular forms",
+	],
+	"current/angular/guides/accessibility": [
+		"accessible Angular stepper",
+		"Angular stepper ARIA",
+		"keyboard navigation Angular wizard",
+	],
+	"current/angular/guides/branching": [
+		"branching flow Angular",
+		"conditional steps Angular",
+		"skip steps Angular wizard",
+	],
+	"current/angular/guides/navigation": [
+		"linear stepper Angular",
+		"Angular wizard navigation",
+		"finish multi-step form Angular",
+	],
+	"current/angular/guides/persistence": [
+		"save and resume form Angular",
+		"Angular SSR persist multi-step form",
+		"Angular stepper snapshot",
+	],
+	"current/angular/guides/styling": [
+		"style Angular stepper",
+		"Tailwind Angular stepper",
+		"Angular stepper data attributes",
+	],
+	"current/angular/guides/testing": [
+		"test Angular stepper",
+		"Angular multi-step form tests",
+		"Vitest Angular wizard",
+	],
+	"current/angular/guides/validation": [
+		"Angular stepper validation",
+		"Zod multi-step form Angular",
+		"Standard Schema Angular",
+	],
+	"current/angular/troubleshooting": [
+		"Angular stepper errors",
+		"Angular multi-step form bugs",
+		"Angular stepper not working",
+	],
+	"current/html/faq": [
+		"vanilla JavaScript stepper FAQ",
+		"htmx multi-step form questions",
+		"progressive enhancement wizard",
+	],
+	"current/html/troubleshooting": [
+		"bindStepper errors",
+		"vanilla JavaScript stepper not working",
+		"htmx wizard bugs",
+	],
+	"current/lit/api/options": [
+		"Lit stepper options",
+		"controller options Lit",
+		"onFinish guard Lit",
+	],
+	"current/lit/api/stepper": [
+		"Lit stepper API",
+		"controller value Lit",
+		"stepper methods Lit",
+	],
+	"current/lit/concepts/step-state": [
+		"Lit stepper step state",
+		"step completion Lit",
+		"completed steps Lit",
+	],
+	"current/lit/concepts/stepper": [
+		"Lit stepper controller",
+		"reactive stepper Lit",
+		"Lit stepper state",
+	],
+	"current/lit/faq": [
+		"Lit stepper FAQ",
+		"web components multi-step form questions",
+		"Lit wizard library",
+	],
+	"current/lit/forms/custom-elements": [
+		"form-associated custom elements",
+		"ElementInternals form wizard",
+		"Lit multi-step form",
+	],
+	"current/lit/guides/accessibility": [
+		"accessible Lit stepper",
+		"Lit stepper ARIA",
+		"keyboard navigation Lit wizard",
+	],
+	"current/lit/guides/branching": [
+		"branching flow Lit",
+		"conditional steps Lit",
+		"skip steps Lit wizard",
+	],
+	"current/lit/guides/navigation": [
+		"linear stepper Lit",
+		"Lit wizard navigation",
+		"finish multi-step form Lit",
+	],
+	"current/lit/guides/persistence": [
+		"save and resume form Lit",
+		"web components persist multi-step form",
+		"Lit stepper snapshot",
+	],
+	"current/lit/guides/styling": [
+		"style Lit stepper",
+		"Tailwind Lit stepper",
+		"Lit stepper data attributes",
+	],
+	"current/lit/guides/testing": [
+		"test Lit stepper",
+		"Lit multi-step form tests",
+		"Vitest Lit wizard",
+	],
+	"current/lit/guides/validation": [
+		"Lit stepper validation",
+		"Zod multi-step form Lit",
+		"Standard Schema Lit",
+	],
+	"current/lit/troubleshooting": [
+		"Lit stepper errors",
+		"Lit multi-step form bugs",
+		"Lit stepper not working",
+	],
+	"current/solid/api/options": [
+		"Solid stepper options",
+		"useStepper options",
+		"onFinish guard Solid",
+	],
+	"current/solid/api/stepper": [
+		"Solid stepper API",
+		"useStepper return Solid",
+		"stepper methods Solid",
+	],
+	"current/solid/concepts/step-state": [
+		"Solid stepper step state",
+		"step completion Solid",
+		"completed steps Solid",
+	],
+	"current/solid/concepts/stepper": [
+		"useStepper Solid",
+		"reactive stepper Solid",
+		"Solid stepper state",
+	],
+	"current/solid/faq": [
+		"Solid stepper FAQ",
+		"SolidStart multi-step form questions",
+		"Solid wizard library",
+	],
+	"current/solid/forms/formisch": [
+		"Formisch multi-step form",
+		"Modular Forms Solid wizard",
+		"Valibot Solid form",
+	],
+	"current/solid/forms/tanstack-form": [
+		"TanStack Form Solid",
+		"TanStack Form Solid multi-step",
+		"Solid form wizard",
+	],
+	"current/solid/guides/accessibility": [
+		"accessible Solid stepper",
+		"Solid stepper ARIA",
+		"keyboard navigation Solid wizard",
+	],
+	"current/solid/guides/branching": [
+		"branching flow Solid",
+		"conditional steps Solid",
+		"skip steps Solid wizard",
+	],
+	"current/solid/guides/navigation": [
+		"linear stepper Solid",
+		"Solid wizard navigation",
+		"finish multi-step form Solid",
+	],
+	"current/solid/guides/persistence": [
+		"save and resume form Solid",
+		"SolidStart persist multi-step form",
+		"Solid stepper snapshot",
+	],
+	"current/solid/guides/styling": [
+		"style Solid stepper",
+		"Tailwind Solid stepper",
+		"Solid stepper data attributes",
+	],
+	"current/solid/guides/testing": [
+		"test Solid stepper",
+		"Solid multi-step form tests",
+		"Vitest Solid wizard",
+	],
+	"current/solid/guides/validation": [
+		"Solid stepper validation",
+		"Zod multi-step form Solid",
+		"Standard Schema Solid",
+	],
+	"current/solid/troubleshooting": [
+		"Solid stepper errors",
+		"Solid multi-step form bugs",
+		"Solid stepper not working",
+	],
+	"current/svelte/api/options": [
+		"Svelte stepper options",
+		"useStepper options",
+		"onFinish guard Svelte",
+	],
+	"current/svelte/api/stepper": [
+		"Svelte stepper API",
+		"useStepper return Svelte",
+		"stepper methods Svelte",
+	],
+	"current/svelte/concepts/step-state": [
+		"Svelte stepper step state",
+		"step completion Svelte",
+		"completed steps Svelte",
+	],
+	"current/svelte/concepts/stepper": [
+		"useStepper Svelte",
+		"reactive stepper Svelte",
+		"Svelte stepper state",
+	],
+	"current/svelte/faq": [
+		"Svelte stepper FAQ",
+		"SvelteKit multi-step form questions",
+		"Svelte wizard library",
+	],
+	"current/svelte/forms/superforms": [
+		"Superforms multi-step form",
+		"SvelteKit form actions wizard",
+		"Superforms wizard",
+	],
+	"current/svelte/forms/tanstack-form": [
+		"TanStack Form Svelte",
+		"TanStack Form Svelte multi-step",
+		"Svelte form wizard",
+	],
+	"current/svelte/guides/accessibility": [
+		"accessible Svelte stepper",
+		"Svelte stepper ARIA",
+		"keyboard navigation Svelte wizard",
+	],
+	"current/svelte/guides/branching": [
+		"branching flow Svelte",
+		"conditional steps Svelte",
+		"skip steps Svelte wizard",
+	],
+	"current/svelte/guides/navigation": [
+		"linear stepper Svelte",
+		"Svelte wizard navigation",
+		"finish multi-step form Svelte",
+	],
+	"current/svelte/guides/persistence": [
+		"save and resume form Svelte",
+		"SvelteKit persist multi-step form",
+		"Svelte stepper snapshot",
+	],
+	"current/svelte/guides/styling": [
+		"style Svelte stepper",
+		"Tailwind Svelte stepper",
+		"Svelte stepper data attributes",
+	],
+	"current/svelte/guides/testing": [
+		"test Svelte stepper",
+		"Svelte multi-step form tests",
+		"Vitest Svelte wizard",
+	],
+	"current/svelte/guides/validation": [
+		"Svelte stepper validation",
+		"Zod multi-step form Svelte",
+		"Standard Schema Svelte",
+	],
+	"current/svelte/troubleshooting": [
+		"Svelte stepper errors",
+		"Svelte multi-step form bugs",
+		"Svelte stepper not working",
+	],
+	"current/vue/api/options": [
+		"Vue stepper options",
+		"useStepper options",
+		"onFinish guard Vue",
+	],
+	"current/vue/api/stepper": [
+		"Vue stepper API",
+		"useStepper return Vue",
+		"stepper methods Vue",
+	],
+	"current/vue/concepts/step-state": [
+		"Vue stepper step state",
+		"step completion Vue",
+		"completed steps Vue",
+	],
+	"current/vue/concepts/stepper": [
+		"useStepper Vue",
+		"reactive stepper Vue",
+		"Vue stepper state",
+	],
+	"current/vue/faq": [
+		"Vue stepper FAQ",
+		"Nuxt multi-step form questions",
+		"Vue wizard library",
+	],
+	"current/vue/forms/formkit": [
+		"FormKit multi-step form",
+		"FormKit wizard",
+		"Vue form wizard",
+	],
+	"current/vue/forms/tanstack-form": [
+		"TanStack Form Vue",
+		"TanStack Form Vue multi-step",
+		"Vue form wizard",
+	],
+	"current/vue/forms/vee-validate": [
+		"VeeValidate multi-step form",
+		"VeeValidate wizard",
+		"Vue form wizard validation",
+	],
+	"current/vue/guides/accessibility": [
+		"accessible Vue stepper",
+		"Vue stepper ARIA",
+		"keyboard navigation Vue wizard",
+	],
+	"current/vue/guides/branching": [
+		"branching flow Vue",
+		"conditional steps Vue",
+		"skip steps Vue wizard",
+	],
+	"current/vue/guides/navigation": [
+		"linear stepper Vue",
+		"Vue wizard navigation",
+		"finish multi-step form Vue",
+	],
+	"current/vue/guides/persistence": [
+		"save and resume form Vue",
+		"Nuxt persist multi-step form",
+		"Vue stepper snapshot",
+	],
+	"current/vue/guides/styling": [
+		"style Vue stepper",
+		"Tailwind Vue stepper",
+		"Vue stepper data attributes",
+	],
+	"current/vue/guides/testing": [
+		"test Vue stepper",
+		"Vue multi-step form tests",
+		"Vitest Vue wizard",
+	],
+	"current/vue/guides/validation": [
+		"Vue stepper validation",
+		"Zod multi-step form Vue",
+		"Standard Schema Vue",
+	],
+	"current/vue/troubleshooting": [
+		"Vue stepper errors",
+		"Vue multi-step form bugs",
+		"Vue stepper not working",
+	],
 	"current/core": [
 		"@stepperize/core",
 		"framework-agnostic stepper",

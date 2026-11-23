@@ -9,6 +9,9 @@
 		"---Recipes---",
 		"guides/server-rendered",
 		"guides/alpine",
-		"guides/htmx"
+		"guides/htmx",
+		"---Help---",
+		"faq",
+		"troubleshooting"
 	]
 }
