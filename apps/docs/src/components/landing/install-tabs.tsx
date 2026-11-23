@@ -1,29 +1,43 @@
 "use client";
 
 import { Check, Copy } from "lucide-react";
-import { useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
+import { BINDINGS, CORE_FRAMEWORK, FRAMEWORKS } from "@/lib/frameworks";
 import { cn } from "@/lib/utils";
 
 const MANAGERS = {
-	npm: "npm i @stepperize/react",
-	pnpm: "pnpm add @stepperize/react",
-	yarn: "yarn add @stepperize/react",
-	bun: "bun add @stepperize/react",
+	npm: "npm i",
+	pnpm: "pnpm add",
+	yarn: "yarn add",
+	bun: "bun add",
 } as const;
+
+/** One package per framework, React first, then the core for everything else. */
+const PACKAGES = [
+	...BINDINGS,
+	...FRAMEWORKS.filter((entry) => entry.id === CORE_FRAMEWORK),
+].map((entry) => ({
+	...entry,
+	label: entry.id === CORE_FRAMEWORK ? "No framework" : entry.title,
+}));
 
 type Manager = keyof typeof MANAGERS;
 const MANAGER_IDS = Object.keys(MANAGERS) as Manager[];
 
 /**
- * Copy-ready install command with a switch per package manager. Meeting the
- * developer at whichever tool they already use removes a tiny but real
- * friction point on the path to a first install.
+ * Copy-ready install command with a switch per package manager and a choice
+ * of framework, which starts on React. Meeting the developer at whichever
+ * tools they already use removes a tiny but real friction point on the path
+ * to a first install.
  */
 export function InstallTabs({ className }: { className?: string }) {
 	const [manager, setManager] = useState<Manager>("npm");
+	const [framework, setFramework] = useState<string>(PACKAGES[0].id);
 	const [copied, setCopied] = useState(false);
+	const frameworkId = useId();
 	const resetTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
-	const cmd = MANAGERS[manager];
+	const pkg = PACKAGES.find((entry) => entry.id === framework) ?? PACKAGES[0];
+	const cmd = `${MANAGERS[manager]} ${pkg.package}`;
 	const activeIndex = MANAGER_IDS.indexOf(manager);
 
 	const copy = async () => {
@@ -70,6 +84,21 @@ export function InstallTabs({ className }: { className?: string }) {
 						</button>
 					))}
 				</fieldset>
+				<label htmlFor={frameworkId} className="sr-only">
+					Framework
+				</label>
+				<select
+					id={frameworkId}
+					value={framework}
+					onChange={(event) => setFramework(event.target.value)}
+					className="hit-44 h-7 max-w-[9.5rem] cursor-pointer rounded-md bg-transparent px-1.5 text-xs font-medium text-muted-foreground outline-none transition-colors duration-150 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+				>
+					{PACKAGES.map((entry) => (
+						<option key={entry.id} value={entry.id}>
+							{entry.label}
+						</option>
+					))}
+				</select>
 			</div>
 			<div className="flex items-center gap-3 py-1.5 pr-1.5 pl-4">
 				<code className="min-w-0 flex-1 truncate font-mono text-[13px]">

@@ -263,6 +263,10 @@ export const HOME_KEYWORDS = [
 	"React wizard library",
 	"type-safe multi-step form",
 	"stepper component React",
+	"framework-agnostic stepper",
+	"Vue stepper",
+	"Svelte stepper",
+	"Solid stepper",
 ] as const;
 
 /** Resolve the home keyword set. */

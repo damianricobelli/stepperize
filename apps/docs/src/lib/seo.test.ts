@@ -77,7 +77,7 @@ describe("SEO and OG image boundary", () => {
 
 		expect(meta.title).toBe("Stepperize");
 		expect(meta.description).toBe(
-			"Build type-safe wizards, forms, and onboarding flows in React.",
+			"Build type-safe wizards, forms, and onboarding flows in React or any framework.",
 		);
 		expect(ogTitle).toBe(meta.socialTitle);
 		expect(ogDescription).toBe(meta.socialDescription);

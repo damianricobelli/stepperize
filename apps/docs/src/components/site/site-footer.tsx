@@ -57,8 +57,8 @@ export function SiteFooter() {
 						<Wordmark />
 					</Link>
 					<p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-						Type-safe, headless multi-step flows for React. Your UI, your forms,
-						your flow.
+						Type-safe, headless multi-step flows for React and any framework.
+						Your UI, your forms, your flow.
 					</p>
 					<p className="mt-6 text-xs text-muted-foreground/80">
 						MIT licensed · Built in the open on GitHub

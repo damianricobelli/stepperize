@@ -8,6 +8,7 @@ import { BeforeAfter } from "./before-after";
 import { BlocksRail } from "./blocks-rail";
 import { Features } from "./features";
 import { FlowLogic } from "./flow-logic";
+import { FrameworkStrip, Frameworks } from "./frameworks";
 import { HeroPlayground } from "./hero-playground";
 import { InstallTabs } from "./install-tabs";
 import { GitHubMark } from "./shared";
@@ -24,8 +25,9 @@ const DOCS = {
 /**
  * The homepage, in the order a visitor's questions arrive: what is it (hero),
  * can I see it work (playground), can I trust it (stats), why not hand-roll it
- * (before/after), what can it do (flow logic + capabilities), how fast can I
- * ship (blocks), and how do I start (final CTA).
+ * (before/after), what can it do (flow logic + capabilities), does it fit my
+ * stack (frameworks), how fast can I ship (blocks), and how do I start (final
+ * CTA). React is the main binding: it leads the hero and every example.
  */
 export function LandingPage() {
 	return (
@@ -36,6 +38,7 @@ export function LandingPage() {
 				<BeforeAfter />
 				<FlowLogic />
 				<Features />
+				<Frameworks />
 				<BlocksRail />
 				<FinalCta />
 			</main>
@@ -78,9 +81,13 @@ function Hero() {
 						style={{ animationDelay: "60ms" }}
 					>
 						The <span className="text-primary">type-safe</span> way to build{" "}
-						<span className="whitespace-nowrap">multi-step</span> flows in
-						React.
+						<span className="whitespace-nowrap">multi-step</span> flows.
 					</h1>
+
+					<FrameworkStrip
+						className="lp-rise mt-5"
+						style={{ animationDelay: "90ms" }}
+					/>
 
 					<p
 						className="lp-rise mt-6 max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg"

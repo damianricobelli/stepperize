@@ -6,10 +6,10 @@ export const SITE = {
 	/** Used as the home/landing title and the fallback for routes with no title. */
 	defaultTitle: "Stepperize",
 	defaultDescription:
-		"Build type-safe wizards, forms, and onboarding flows in React.",
-	homeOgTitle: "Type-safe multi-step flows for React",
+		"Build type-safe wizards, forms, and onboarding flows in React or any framework.",
+	homeOgTitle: "Type-safe multi-step flows for React and any framework",
 	homeOgDescription:
-		"Validation built into next(), declarative branching, resumable snapshots, and accessible primitives for React flows.",
+		"Validation in next(), declarative branching, resumable snapshots and accessible primitives. React first.",
 	twitterCard: "summary_large_image",
 } as const;
 
