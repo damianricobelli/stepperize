@@ -39,7 +39,9 @@ bun add @stepperize/vue
 - Vue 3.5 or newer. The primitives use `useId` for ids that match between the
   server and the client.
 - TypeScript 5.0 or newer for the typed ids. Nothing needs to be configured;
-  `vue-tsc` and the Vue language tools check step ids in templates.
+  `vue-tsc` and the Vue language tools check step ids and slot props in
+  templates. In TSX (`@vitejs/plugin-vue-jsx`), pass slots with `v-slots` to
+  have them typed too.
 
 `@stepperize/core` is installed with it. You only import from it directly to
 run a flow [without Vue](/docs/v9/core).

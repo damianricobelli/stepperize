@@ -16,18 +16,27 @@ type DefaultSlot<Props = never> = {
 	default?: [Props] extends [never] ? () => VNodeChild : (props: Props) => VNodeChild;
 };
 
-/** A component as templates and TSX see it: typed props and slots. `$el` is the element it renders. */
-export type Component<Props, Slots = DefaultSlot, E extends Element = HTMLElement> = new () => {
-	$props: Props & AllowedComponentProps & VNodeProps;
+/**
+ * A Stepperize component as templates and TSX see it: typed props, typed slots
+ * and the node it renders as `$el`.
+ *
+ * In TSX, pass slots through `v-slots` to have their parameters inferred and
+ * their names checked: `<Stepper.Root v-slots={{ default: (stepper) => ... }} />`.
+ * Children written as an object (`{{ default: ... }}`) are not type-checked by
+ * TypeScript in Vue's JSX.
+ */
+export type StepperComponent<Props, Slots = DefaultSlot, El extends Node = HTMLElement> = new () => {
+	$props: Props & AllowedComponentProps & VNodeProps & { "v-slots"?: Slots };
 	$slots: Slots;
-	$el: E;
+	/** The node it renders. With `as-child`, the element your child renders. */
+	$el: El;
 };
 
 export type PrimitiveProps<Attributes = HTMLAttributes> = Attributes & {
 	/**
 	 * Render your own element or component instead of the default tag: the
 	 * single child in the default slot receives the ARIA attributes, ids and
-	 * handlers.
+	 * handlers. An empty child is filled with what the primitive would show.
 	 */
 	asChild?: boolean;
 };
@@ -47,7 +56,9 @@ export type ContentProps<S extends readonly Step[]> = PrimitiveProps & {
 	forceMount?: boolean;
 };
 
-export type RootSlots<S extends readonly Step[]> = DefaultSlot<Stepper<S>>;
+export type ProviderSlots = DefaultSlot;
+
+export type RootSlots<S extends readonly Step[]> = DefaultSlot<Readonly<Stepper<S>>>;
 
 export type ListSlots<S extends readonly Step[]> = DefaultSlot & {
 	/** Rendered once per step. Items inside it know their step. */

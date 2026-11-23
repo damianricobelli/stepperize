@@ -82,6 +82,23 @@ In a child component, `checkout.useStepperContext()` returns the same stepper,
 and `Stepper.useItem()` returns the same item as a `ComputedRef`: read
 `.value` in `<script>`.
 
+### In TSX
+
+Pass slots through `v-slots` (from `@vitejs/plugin-vue-jsx`): their
+parameters are inferred and a slot name that does not exist is a type error.
+Vue's JSX types do not check children written as an object, so there the
+parameters would be `any`.
+
+```tsx
+<Stepper.Root
+  v-slots={{
+    default: (stepper) => (
+      <Stepper.List v-slots={{ item: ({ step }) => <Stepper.Item>{step.title}</Stepper.Item> }} />
+    ),
+  }}
+/>
+```
+
 ## Three patterns, chosen for you
 
 | The flow | What is rendered |
@@ -125,6 +142,30 @@ ARIA attributes, ids and handlers instead of the default tag:
 </Stepper.Next>
 ```
 
+- **One child.** Only the first node of the slot is rendered. Wrap several in
+  one element.
+- **A component must pass its attributes on.** Vue does that for a single-root
+  component. One with `inheritAttrs: false` has to bind `v-bind="$attrs"` on
+  the element it renders, or the ARIA attributes and handlers are lost.
+- **An empty child is filled.** `Title` and `Description` put the step's text
+  in it, and a `List` with an `#item` slot puts the items in it:
+
+```vue
+<Stepper.Title as-child>
+  <h3 class="step-heading" />
+</Stepper.Title>
+
+<Stepper.List as-child>
+  <nav class="steps" />
+  <template #item>
+    <Stepper.Item>...</Stepper.Item>
+  </template>
+</Stepper.List>
+```
+
+In development, each of these mistakes is reported as
+[SZ001](/docs/v9/core/errors#sz001).
+
 ## Handling the move yourself
 
 Call `preventDefault()` in your own listener to take over, for example to pass
@@ -140,5 +181,37 @@ form values:
 
 `<Stepper.Content step="payment" force-mount>` stays in the DOM, `hidden`,
 while its step is not current, so the state of the fields inside survives.
+
+## Animating panels
+
+Wrap the panels in Vue's
+[`<Transition>`](https://vuejs.org/guide/built-ins/transition.html). Either
+one keyed panel for the current step:
+
+```vue
+<Stepper.Root v-slot="stepper">
+  <Transition name="fade" mode="out-in">
+    <Stepper.Content :key="stepper.current.id" :step="stepper.current.id">
+      <component :is="panels[stepper.current.id]" />
+    </Stepper.Content>
+  </Transition>
+</Stepper.Root>
+```
+
+or one `<Transition>` per panel, which animates both at once:
+
+```vue
+<Transition name="fade">
+  <Stepper.Content step="shipping"><ShippingForm /></Stepper.Content>
+</Transition>
+<Transition name="fade">
+  <Stepper.Content step="payment"><PaymentForm /></Stepper.Content>
+</Transition>
+```
+
+Focus is handled in every mode. When it was in the panel that is leaving, it
+moves to the new panel. With `mode="out-in"` the new panel only mounts once
+the old one has left: focus and the announcement wait for it, so the step is
+not read twice. Focus that you moved elsewhere in the meantime stays there.
 
 See the [primitives reference](/docs/v9/vue/api/primitives) for every prop.

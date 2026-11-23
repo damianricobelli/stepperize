@@ -37,6 +37,24 @@ const stepper = onboarding.useStepper({
 `snapshot` is read once, when the flow is created. To replace the state later,
 call `stepper.restore(snapshot)`.
 
+## Awaiting data first
+
+A top-level `await` in `<script setup>` (`await useFetch(...)` in Nuxt) can
+come before `useStepper()`: Vue restores the component after it, so the flow
+is still owned by the page and destroyed with it.
+
+```vue title="pages/onboarding.vue"
+<script setup lang="ts">
+import { onboarding } from "~/flows/onboarding";
+
+const { data: saved } = await useFetch("/api/onboarding");
+const stepper = onboarding.useStepper({ snapshot: saved.value ?? undefined });
+</script>
+```
+
+In a hand-written `async setup()` there is no component after an `await`:
+call `useStepper()` before it.
+
 ## Tabs without triggers
 
 A `Stepper.Root` assumes it will have triggers and renders its panels as tab

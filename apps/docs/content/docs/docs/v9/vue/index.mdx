@@ -10,16 +10,20 @@ You describe the steps once. The definition gives you a typed composable, a
 provider and a set of accessible, unstyled components that all share the same
 step ids.
 
-```vue
-<script setup lang="ts">
+```ts title="checkout.ts"
 import { defineStepper } from "@stepperize/vue";
 import { z } from "zod";
 
-const checkout = defineStepper([
+export const checkout = defineStepper([
   { id: "shipping", title: "Shipping", schema: z.object({ address: z.string().min(1) }) },
   { id: "payment", title: "Payment", schema: z.object({ card: z.string().length(16) }) },
   { id: "review", title: "Review" },
 ]);
+```
+
+```vue title="Checkout.vue"
+<script setup lang="ts">
+import { checkout } from "./checkout";
 
 const stepper = checkout.useStepper({ onFinish: (output) => placeOrder(output) });
 </script>
@@ -58,8 +62,9 @@ library, owns the fields. See [Forms](/docs/v9/vue/guides/forms).
 - **Typed everywhere.** Step ids, each step's data and your own fields
   (`title`, `icon`, anything) are inferred from the definition, in `<script>`
   and in templates.
-- **Reactive without ceremony.** The stepper is a reactive object: templates,
-  `computed` and `watch(() => stepper.index, ...)` follow it, with no `.value`.
+- **Reactive without ceremony.** The stepper is a reactive, read-only object:
+  templates, `computed` and `watch(() => stepper.index, ...)` follow it, with
+  no `.value`.
 - **Branching as data.** A `next` map decides where each step leads from its
   validated data, and a flow can have more than one ending.
 - **Resumable.** One `snapshot` goes in, one `onChange` comes out. The current
@@ -68,7 +73,7 @@ library, owns the fields. See [Forms](/docs/v9/vue/guides/forms).
   announcements are handled for you.
 - **Server rendering.** It renders in Nuxt and hydrates without changing the
   HTML.
-- **Small.** About 2.9 kB for the composables and 5.7 kB with the primitives,
+- **Small.** About 3.3 kB for the composables and 6.9 kB with the primitives,
   min + gzip, with no third-party dependencies.
 
 ## The same flow as every other binding

@@ -33,15 +33,37 @@ const stepper = checkout.useStepper({ linear: true, onFinish });
 const stepper = checkout.useStepper(() => ({ step: route.params.step }));
 ```
 
-Call it in `setup`. It returns the [stepper](/docs/v9/react/api/stepper) as a
-reactive object: reads are tracked, so templates, `computed` and `watch`
+Call it in `setup` (or `<script setup>`). It returns the
+[stepper](/docs/v9/react/api/stepper) as a reactive, read-only object
+(`Readonly<Stepper<S>>`): reads are tracked, so templates and `computed`
 follow the flow. Do not destructure its state.
 
 - Options can be an object, a ref or a getter. A getter or a ref is read again
-  when what it depends on changes, and the flow gets the new options.
+  when what it depends on changes, and the flow gets the new options before
+  the component renders. An action called right after the change already sees
+  it.
 - `snapshot` is read once, when the flow is created.
-- The flow is destroyed when the component unmounts. Called inside an
-  `effectScope()` outside a component, it is destroyed when the scope stops.
+- It is not a [watch source](https://vuejs.org/guide/essentials/watchers.html#watch-source-types):
+  watch a getter, `watch(() => stepper.current.id, ...)`. `watch(stepper, ...)`
+  never fires, and Vue warns about it.
+- `toRef(stepper, "index")`, `toRef(() => stepper.index)` and a `computed`
+  give refs that follow the flow.
+- It keeps its identity inside `reactive()`, `ref()` and stores such as Pinia:
+  they do not wrap it, so `store.stepper === stepper` and its data is yours,
+  not a reactive copy.
+
+### Ownership
+
+The flow belongs to the component, or to the `effectScope()` it was created in,
+and is destroyed with it.
+
+- After a top-level `await` in `<script setup>`, Vue restores the component,
+  so the flow is still owned. In a hand-written `async setup()` it is not:
+  call `useStepper()` before the first `await`. In development, a flow with
+  no component and no effect scope warns, because nothing would destroy it.
+- Under `<KeepAlive>`, a component that is not on screen stops following
+  `step`: the route it would follow belongs to another page. When it is
+  activated again it follows the current value.
 - On the server it renders the current step and runs no callback.
 
 ## useStepperContext
@@ -51,9 +73,11 @@ const stepper = checkout.useStepperContext();
 const index = checkout.useStepperContext((stepper) => stepper.index); // ComputedRef<number>
 ```
 
-Without arguments it returns the shared reactive stepper. With a selector it
-returns a `computed` of its result; the selector receives an immutable view of
-the flow. Outside the flow's `Provider` or `Stepper.Root` it throws
+Without arguments it returns the shared reactive stepper, read-only like the
+one from `useStepper()`. With a selector it returns a `computed` of its result;
+the selector receives an immutable view of the flow. The nearest `Provider` of
+this definition wins, so Providers of the same or different definitions can be
+nested. Outside the flow's `Provider` or `Stepper.Root` it throws
 [SZ100](/docs/v9/core/errors#sz100).
 
 ## Provider
@@ -65,10 +89,33 @@ the flow. Outside the flow's `Provider` or `Stepper.Root` it throws
 ```
 
 Every [option](/docs/v9/react/api/options) is a prop. `@change`, `@finish` and
-`@invalid-step` are the `onChange`, `onFinish` and `onInvalidStep` options. It
-renders its default slot and no element.
+`@invalid-step` are the `onChange`, `onFinish` and `onInvalidStep` options;
+several listeners for one of them all run. It renders its default slot and no
+element.
 
 ## Types
 
 Everything `@stepperize/core` exports as a type is re-exported:
-`Stepper<S>`, `Options<S>`, `Snapshot<S>`, `Result<S>`, `Id<S>` and the rest.
+`Stepper<S>`, `Options<S>`, `Snapshot<S>`, `Result<S>`, `Id<S>`, `Input<S, I>`,
+`Output<S, I>` and the rest.
+
+The package adds:
+
+| Type | |
+| --- | --- |
+| `Definition<S>` | What `defineStepper` returns, without `Stepper`. |
+| `Primitives<S>` | The `Stepper` object: every primitive, typed with your step ids. |
+| `StepperComponent<Props, Slots, El>` | A primitive or `Provider` as templates and TSX see it: `$props`, `$slots` and `$el`. |
+| `RootProps<S>`, `ListProps`, `ItemProps<S>`, `ContentProps<S>`, `ButtonProps`, `PrimitiveProps` | Props of the primitives. |
+| `RootSlots<S>`, `ListSlots<S>`, `ItemSlots<S>`, `ProviderSlots` | Their slots. |
+| `ItemValue<S>`, `Orientation` | What `useItem()` returns; `"horizontal" \| "vertical"`. |
+
+```ts
+import type { Primitives, Stepper } from "@stepperize/vue";
+import { checkout } from "./checkout";
+
+type Steps = typeof checkout.steps;
+// The type of a prop that receives the stepper, or the primitives.
+type CheckoutStepper = Readonly<Stepper<Steps>>;
+type CheckoutUi = Primitives<Steps>;
+```

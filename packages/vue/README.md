@@ -13,16 +13,21 @@ Requires Vue 3.5 or newer. The documentation is at
 
 ## Quick start
 
-```vue
-<script setup lang="ts">
+```ts
+// checkout.ts: define the flow once, outside your components.
 import { defineStepper } from "@stepperize/vue";
 import { z } from "zod";
 
-const checkout = defineStepper([
+export const checkout = defineStepper([
   { id: "shipping", title: "Shipping", schema: z.object({ address: z.string().min(1) }) },
   { id: "payment", title: "Payment", schema: z.object({ card: z.string().length(16) }) },
   { id: "review", title: "Review" },
 ]);
+```
+
+```vue
+<script setup lang="ts">
+import { checkout } from "./checkout";
 
 const stepper = checkout.useStepper({ onFinish: (output) => placeOrder(output) });
 </script>
@@ -45,8 +50,9 @@ const stepper = checkout.useStepper({ onFinish: (output) => placeOrder(output) }
 </template>
 ```
 
-`useStepper()` returns a reactive object: templates, `computed` and `watch`
-follow it, with no `.value`. Do not destructure its state.
+`useStepper()` returns a reactive, read-only object: templates and `computed`
+follow it, with no `.value`. Do not destructure its state, and watch a getter
+(`watch(() => stepper.current.id, ...)`), not the object.
 
 `next(data)` saves the data of the current step, validates it against the
 step's `schema` (any [Standard Schema](https://standardschema.dev)) and moves
@@ -98,8 +104,9 @@ const { Stepper } = checkout;
 
 They handle roles, ids, keyboard navigation, focus and screen reader
 announcements, expose their state through `data-*` attributes for styling, and
-take `as-child` to render your own element. `step` props are typed with your
-step ids, in templates too.
+take `as-child` to render your own element. They work inside `<Transition>`,
+focus included. `step` props are typed with your step ids, in templates and in
+TSX (`v-slots` types the slots too).
 
 If you only want the composables, import from `@stepperize/vue/headless`.
 

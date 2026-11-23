@@ -1,6 +1,26 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render } from "vitest-browser-vue";
-import { computed, defineComponent, effectScope, nextTick, onMounted, reactive, ref, watch } from "vue";
+import {
+	computed,
+	createApp,
+	defineComponent,
+	effectScope,
+	h,
+	KeepAlive,
+	markRaw,
+	nextTick,
+	onMounted,
+	onUpdated,
+	reactive,
+	readonly,
+	ref,
+	Suspense,
+	shallowRef,
+	toRaw,
+	toRef,
+	toRefs,
+	watch,
+} from "vue";
 import { defineStepper } from "../headless";
 
 afterEach(cleanup);
@@ -69,16 +89,106 @@ describe("useStepper", () => {
 	it("refuses an assignment instead of breaking later reads", async () => {
 		const { result: stepper } = await mount(() => flow.useStepper());
 		expect(Reflect.set(stepper, "index", 2)).toBe(false);
+		expect(Reflect.deleteProperty(stepper, "current")).toBe(false);
+		// Modules are strict: a plain assignment throws, and the stepper is unchanged.
+		expect(() => {
+			(stepper as { index: number }).index = 2;
+		}).toThrow(TypeError);
 		expect(stepper.index).toBe(0);
+		expect(stepper.current.id).toBe("a");
 	});
 
-	it("is not wrapped by reactive(), so data keeps its identity", async () => {
+	it("is not wrapped by reactive(), ref() or a store, so data keeps its identity and the flow its state", async () => {
 		const { result: stepper } = await mount(() => flow.useStepper());
-		const state = reactive({ stepper });
+		// A setup store (Pinia's shape): the stepper next to its own state, all made reactive.
+		const store = reactive({ stepper, count: ref(0) });
 		const draft = { name: "Ada" };
-		state.stepper.setData("a", draft);
-		expect(state.stepper).toBe(stepper);
-		expect(state.stepper.data.a).toBe(draft);
+		store.stepper.setData("a", draft);
+		expect(store.stepper).toBe(stepper);
+		expect(toRaw(store).stepper).toBe(stepper);
+		expect(store.stepper.data.a).toBe(draft);
+		expect(ref(stepper).value).toBe(stepper);
+		expect(shallowRef(stepper).value).toBe(stepper);
+		expect(readonly({ stepper }).stepper).toBe(stepper);
+		expect(markRaw(stepper)).toBe(stepper);
+		const late = reactive({ stepper: null as typeof stepper | null });
+		late.stepper = stepper;
+		expect(late.stepper).toBe(stepper);
+		// Completion survives the wrapping: the store's stepper is the flow's.
+		const id = computed(() => store.stepper.current.id);
+		await store.stepper.next(draft);
+		expect([id.value, store.stepper.state("a"), stepper.state("a")]).toEqual(["b", "complete", "complete"]);
+		expect(store.stepper.data.a).toBe(draft);
+	});
+
+	it("is not a watch source: Vue warns and the callback never runs; a getter is followed", async () => {
+		const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+		const whole = vi.fn();
+		const index = vi.fn();
+		const { result: stepper } = await mount(() => {
+			const stepper = flow.useStepper();
+			watch(stepper, whole, { flush: "sync" });
+			watch(() => stepper.index, index, { flush: "sync" });
+			return stepper;
+		});
+		expect(warn.mock.calls.some((call) => String(call[0]).includes("Invalid watch source"))).toBe(true);
+		await stepper.next();
+		expect(whole).not.toHaveBeenCalled();
+		expect(index).toHaveBeenCalledWith(1, 0, expect.anything());
+		warn.mockRestore();
+	});
+
+	it("toRef and toRefs give refs that follow the flow", async () => {
+		const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+		const { result: stepper } = await mount(() => flow.useStepper());
+		const { index, current } = toRefs(stepper);
+		const last = toRef(() => stepper.isLast);
+		const isFirst = toRef(stepper, "isFirst");
+		await stepper.goTo("c");
+		expect([index.value, current.value.id, last.value, isFirst.value]).toEqual([2, "c", true, false]);
+		warn.mockRestore();
+	});
+
+	it("sees an option changed in the same tick as an action", async () => {
+		const linear = ref(true);
+		const { result: stepper } = await mount(() => flow.useStepper(() => ({ linear: linear.value })));
+		expect(stepper.canGoTo("c")).toBe(false);
+		linear.value = false;
+		expect(await stepper.goTo("c")).toMatchObject({ accepted: true });
+		// And a step that changed is followed before the action runs.
+		const step = ref<string>("c");
+		const followed = await mount(() => flow.useStepper(() => ({ step: step.value })));
+		await nextTick();
+		step.value = "a";
+		await followed.result.next();
+		expect(followed.result.current.id).toBe("b");
+	});
+
+	it("renders a reader once per step change", async () => {
+		let renders = 0;
+		let api!: Api;
+		await render(
+			defineComponent({
+				setup() {
+					api = flow.useStepper();
+					onUpdated(() => renders++);
+					return () => (
+						<output>
+							{api.current.title} {api.index}
+						</output>
+					);
+				},
+			}),
+		);
+		await api.next();
+		await nextTick();
+		expect(renders).toBe(1);
+		api.setData("b", "draft");
+		await nextTick();
+		expect(renders).toBe(1);
+		await api.goTo("a");
+		await nextTick();
+		expect(renders).toBe(2);
 	});
 
 	it("renders the flow in a template and updates the DOM", async () => {
@@ -182,6 +292,72 @@ describe("useStepper", () => {
 	});
 });
 
+describe("ownership", () => {
+	const ownerless = (message: unknown) => String(message).includes("without a component instance or an effect scope");
+
+	it("warns when nothing owns the flow: after an `await` in a hand-written async setup", async () => {
+		const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+		const Async = defineComponent({
+			async setup() {
+				// Fine before the await.
+				flow.useStepper();
+				await Promise.resolve();
+				const late = flow.useStepper();
+				return () => <output>{late.current.id}</output>;
+			},
+		});
+		// Mounted with `createApp`: Vue Test Utils' wrapper never resolves a Suspense it did not create.
+		const container = document.body.appendChild(document.createElement("div"));
+		const app = createApp(() => h(Suspense, null, { default: () => h(Async) }));
+		app.mount(container);
+		await expect.poll(() => container.textContent).toBe("a");
+		expect(warn.mock.calls.filter((call) => ownerless(call[0]))).toHaveLength(1);
+		app.unmount();
+		container.remove();
+		warn.mockRestore();
+	});
+
+	it("does not warn in a component or an effect scope", async () => {
+		const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+		await mount(() => flow.useStepper());
+		const scope = effectScope();
+		scope.run(() => flow.useStepper());
+		scope.stop();
+		expect(warn.mock.calls.some((call) => ownerless(call[0]))).toBe(false);
+		warn.mockRestore();
+	});
+
+	it("under KeepAlive, stops following `step` while deactivated and catches up when activated", async () => {
+		const step = ref("b");
+		const onInvalidStep = vi.fn();
+		let api!: Api;
+		const Page = defineComponent({
+			name: "CheckoutPage",
+			setup() {
+				api = flow.useStepper(() => ({ step: step.value, onInvalidStep }));
+				return () => <output>{api.current.id}</output>;
+			},
+		});
+		const shown = ref(true);
+		await render(() => h(KeepAlive, null, shown.value ? h(Page) : h("p", "elsewhere")));
+		await nextTick();
+		expect(api.current.id).toBe("b");
+		shown.value = false;
+		await nextTick();
+		// Another page's route: the kept-alive flow neither follows it nor corrects it.
+		step.value = "nope";
+		await nextTick();
+		step.value = "c";
+		await nextTick();
+		expect(api.current.id).toBe("b");
+		expect(onInvalidStep).not.toHaveBeenCalled();
+		shown.value = true;
+		await nextTick();
+		await nextTick();
+		expect(api.current.id).toBe("c");
+	});
+});
+
 describe("Provider and useStepperContext", () => {
 	it("shares one flow, and a selector only changes when its result does", async () => {
 		const changes = { step: 0, data: 0 };
@@ -250,6 +426,48 @@ describe("Provider and useStepperContext", () => {
 		));
 		await api.next();
 		expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ step: "b" }));
+	});
+
+	it("merges listeners handed over as an array", async () => {
+		const first = vi.fn();
+		const second = vi.fn();
+		let api!: Api;
+		const Probe = defineComponent({
+			setup() {
+				api = flow.useStepperContext();
+				return () => null;
+			},
+		});
+		await render(() => h(flow.Provider, { onChange: [first, second] } as never, () => h(Probe)));
+		await api.next();
+		expect([first.mock.calls.length, second.mock.calls.length]).toEqual([1, 1]);
+	});
+
+	it("nested Providers: each composable reads the nearest Provider of its own definition", async () => {
+		const other = defineStepper([{ id: "x" }, { id: "y" }]);
+		const seen: string[] = [];
+		const Probe = defineComponent({
+			props: { name: { type: String, required: true } },
+			setup(props) {
+				const mine = flow.useStepperContext();
+				const theirs = other.useStepperContext();
+				return () => {
+					seen.push(`${props.name}:${mine.current.id}${theirs.current.id}`);
+					return null;
+				};
+			},
+		});
+		await render(() => (
+			<flow.Provider snapshot={{ step: "b" }}>
+				<other.Provider snapshot={{ step: "y" }}>
+					<Probe name="outer" />
+					<flow.Provider snapshot={{ step: "c" }}>
+						<Probe name="inner" />
+					</flow.Provider>
+				</other.Provider>
+			</flow.Provider>
+		));
+		expect(seen).toEqual(["outer:by", "inner:cy"]);
 	});
 
 	it("throws a coded error outside its own Provider", async () => {

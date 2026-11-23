@@ -25,6 +25,7 @@ export type {
 	StepState,
 } from "@stepperize/core";
 export type { Definition, ProviderProps } from "./definition";
+export type { Primitives } from "./primitives";
 export type * from "./types";
 
 /** Define a typed flow: composables, a Provider and accessible, unstyled UI primitives. */

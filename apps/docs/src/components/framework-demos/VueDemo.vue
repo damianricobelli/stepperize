@@ -1,12 +1,18 @@
-<script setup lang="ts">
+<script lang="ts">
 import { defineStepper } from "@stepperize/vue";
-import { ref } from "vue";
 
-const { Stepper } = defineStepper([
+// Module scope: one definition, shared by every instance of this component.
+const onboarding = defineStepper([
 	{ id: "account", title: "Account", description: "Who you are" },
 	{ id: "plan", title: "Plan", description: "What you need" },
 	{ id: "done", title: "Done", description: "All set" },
 ]);
+</script>
+
+<script setup lang="ts">
+import { ref } from "vue";
+
+const { Stepper } = onboarding;
 const finished = ref(false);
 </script>
 

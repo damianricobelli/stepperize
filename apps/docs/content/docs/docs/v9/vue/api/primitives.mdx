@@ -5,9 +5,16 @@ description: Props and slots of every Stepper component.
 
 All primitives pass `class`, `style` and every other attribute to the element
 they render. All except `Root` accept `as-child` to
-[use your own element](/docs/v9/vue/guides/primitives#rendering-your-own-element).
+[use your own element](/docs/v9/vue/guides/primitives#rendering-your-own-element):
+one child, which receives the props, and is filled with the primitive's
+default content when it is empty.
+
 A template `ref` on a primitive is its component instance; the element is
-`ref.value.$el`.
+`ref.value.$el`. With `as-child` it is the element your child rendered. A
+`Content` whose step is not current renders nothing, so its `$el` is then a
+placeholder comment.
+
+In TSX, pass slots with `v-slots` to have their parameters typed.
 
 ## Root
 
@@ -20,7 +27,7 @@ Renders a `div`. Creates the flow and provides it.
 
 | Slot | Props | Description |
 | --- | --- | --- |
-| `default` | The stepper | `v-slot="stepper"`. Reactive: it only re-renders for what it reads. |
+| `default` | The stepper | `v-slot="stepper"`. Reactive and read-only: it only re-renders for what it reads. |
 
 `@change` is the flow's callback, not the DOM event.
 
@@ -40,7 +47,7 @@ Renders an `ol`.
 | Slot | Props | Description |
 | --- | --- | --- |
 | `item` | `{ step, index }` | Rendered once per step; items inside it need no `step` prop. |
-| `default` | | Used when there is no `item` slot: write the items yourself. |
+| `default` | | Used when there is no `item` slot: write the items yourself. With `as-child`, your element, which the `item` slot fills. |
 
 ## Item
 
@@ -66,7 +73,7 @@ a plain button, with `aria-current="step"` on the current one.
 ## Title and Description
 
 Render a `span` with the step's `title` or `description` field. Slot content
-replaces it.
+replaces it. With `as-child`, an empty child (`<h3 />`) shows the field.
 
 ## Indicator
 
@@ -83,6 +90,9 @@ in a flow rendered as tabs, and otherwise a `group` named after the step's
 | --- | --- | --- |
 | `step` | Step id | Required. |
 | `force-mount` | `boolean` | Keep it mounted and `hidden` while its step is not current. |
+
+It works inside `<Transition>`, in every mode: see
+[Animating panels](/docs/v9/vue/guides/primitives#animating-panels).
 
 ## Prev and Next
 
@@ -120,7 +130,9 @@ Outside an `Item` it throws [SZ101](/docs/v9/core/errors#sz101).
 
 ## Diagnostics
 
-In development the primitives warn about `as-child` without an element
-([SZ001](/docs/v9/core/errors#sz001)), a trigger without an accessible name
-([SZ002](/docs/v9/core/errors#sz002)) and a trigger outside a `List`
-([SZ003](/docs/v9/core/errors#sz003)).
+In development the primitives warn about `as-child` that loses its props
+([SZ001](/docs/v9/core/errors#sz001)): no element in the slot, more than one
+node, a component that does not pass its attributes on, or a `List` element
+that is not empty while the `item` slot should fill it. They also warn about a
+trigger without an accessible name ([SZ002](/docs/v9/core/errors#sz002)) and a
+trigger outside a `List` ([SZ003](/docs/v9/core/errors#sz003)).

@@ -9,6 +9,8 @@ import {
 	type InjectionKey,
 	inject,
 	type MaybeRefOrGetter,
+	onActivated,
+	onDeactivated,
 	onMounted,
 	onScopeDispose,
 	type PropType,
@@ -16,9 +18,10 @@ import {
 	type ShallowRef,
 	shallowRef,
 	toValue,
+	warn as vueWarn,
 	watch,
 } from "vue";
-import type { Component } from "./types";
+import type { ProviderSlots, StepperComponent } from "./types";
 
 export type ProviderProps<S extends readonly Step[]> = Options<S>;
 
@@ -29,21 +32,24 @@ export type Definition<S extends readonly Step[]> = {
 	create: (options?: Options<S>) => Flow<S>;
 	/**
 	 * A flow owned by this component. The result is reactive: read it in the
-	 * template or in a `computed`, and do not destructure its state. To watch
-	 * it, watch a getter (`watch(() => stepper.index, ...)`), not the object.
-	 * Pass a getter or a ref when an option depends on reactive state.
+	 * template or in a `computed`, and do not destructure its state. Pass a
+	 * getter or a ref when an option depends on reactive state.
+	 *
+	 * It is not a watch source: `watch(stepper, ...)` never fires. Watch a
+	 * getter of what you need, `watch(() => stepper.current.id, ...)`, or use
+	 * `onChange` to see every change.
 	 */
-	useStepper: (options?: MaybeRefOrGetter<Options<S> | undefined>) => Stepper<S>;
+	useStepper: (options?: MaybeRefOrGetter<Options<S> | undefined>) => Readonly<Stepper<S>>;
 	/**
 	 * The flow of the nearest `Provider` or `Stepper.Root`. Pass a selector to
 	 * get a `computed` that only changes when its result does.
 	 */
 	useStepperContext: {
-		(): Stepper<S>;
-		<T>(selector: (stepper: Stepper<S>) => T): ComputedRef<T>;
+		(): Readonly<Stepper<S>>;
+		<T>(selector: (stepper: Readonly<Stepper<S>>) => T): ComputedRef<T>;
 	};
-	/** Share one flow with every component below. */
-	Provider: Component<ProviderProps<S>>;
+	/** Share one flow with every component below. It renders no element: `$el` is a placeholder node. */
+	Provider: StepperComponent<ProviderProps<S>, ProviderSlots, Text | Comment>;
 };
 
 /** One flow as Vue sees it. */
@@ -52,7 +58,7 @@ export type Shared<S extends readonly Step[]> = {
 	/** The current immutable view. A new object after every change. */
 	view: ShallowRef<Stepper<S>>;
 	/** Reads fall through to the latest view and are tracked, so templates and computeds follow the flow. */
-	stepper: Stepper<S>;
+	stepper: Readonly<Stepper<S>>;
 };
 
 /** Every flow option as a prop. `@change`, `@finish` and `@invalid-step` reach the `on*` ones. */
@@ -144,23 +150,72 @@ export function createDefinition<const S extends readonly Step[]>(steps: S, defa
 		});
 		const apply = (now: Options<S> = current.value) => flow.setOptions(lazy(now));
 		const browser = typeof window !== "undefined";
-		if (getCurrentInstance()) onMounted(() => apply());
-		else if (browser) apply();
-		// Before the owner renders, so a `step` that changed is followed in the same render.
-		if (browser) watch(current, (now) => apply(now));
+		const instance = getCurrentInstance();
+		// A kept-alive owner that is not on screen stops following `step`: the route it would follow
+		// now belongs to another page, and its `onInvalidStep` would rewrite that page's URL.
+		let paused = false;
+		/** Options that changed since they were applied: the next flush or action applies them. */
+		let pending: Options<S> | undefined;
+		const flush = () => {
+			if (!pending || paused) return;
+			const now = pending;
+			pending = undefined;
+			apply(now);
+		};
+		if (instance) {
+			onMounted(() => apply());
+			onDeactivated(() => {
+				paused = true;
+			});
+			onActivated(() => {
+				if (!paused) return;
+				paused = false;
+				pending = undefined;
+				apply();
+			});
+		} else if (browser) apply();
+		if (browser) {
+			// Noted at once, so an action called in the same tick as the change sees it.
+			watch(
+				current,
+				(now) => {
+					pending = now;
+				},
+				{ flush: "sync" },
+			);
+			// Before the owner renders, so a `step` that changed is followed in the same render.
+			watch(current, flush);
+		}
 		if (getCurrentScope()) onScopeDispose(() => flow.destroy());
+		else if (process.env.NODE_ENV !== "production") {
+			vueWarn(
+				"[stepperize] useStepper() ran without a component instance or an effect scope (after an `await` in an async setup?), so its flow is never destroyed. Call it before the first `await`, or inside an effectScope() that you stop.",
+			);
+		}
 		const read = () => view.value as Record<PropertyKey, unknown>;
 		// One computed per piece of state, as `useRoute()` does: a reader of `current` is not
 		// rendered again for a draft, because a computed only notifies when its value changed.
 		const fields = new Map<PropertyKey, ComputedRef<unknown>>();
-		const live = flow as unknown as Record<PropertyKey, unknown>;
+		const live = flow as unknown as Record<PropertyKey, (...args: unknown[]) => unknown>;
+		// Actions keep their identity and read nothing, so calling one inside an effect tracks nothing.
+		const actions = new Map<PropertyKey, (...args: unknown[]) => unknown>();
 		const refuse = () => false;
 		const stepper = new Proxy({} as Stepper<S>, {
 			get: (_, key) => {
 				// Never wrapped by `reactive()`, `ref()` or a store: it would hand deep proxies of the data back.
 				if (key === "__v_skip") return true;
-				// Actions never change and read nothing.
-				if (ACTIONS.has(key)) return live[key];
+				if (ACTIONS.has(key)) {
+					let action = actions.get(key);
+					if (!action) {
+						const run = live[key];
+						action = (...args) => {
+							flush();
+							return run(...args);
+						};
+						actions.set(key, action);
+					}
+					return action;
+				}
 				if (!STATE.has(key)) return read()[key];
 				let field = fields.get(key);
 				if (!field) {
@@ -177,6 +232,8 @@ export function createDefinition<const S extends readonly Step[]>(steps: S, defa
 			has: (_, key) => key in read(),
 			ownKeys: () => Reflect.ownKeys(read()),
 			getOwnPropertyDescriptor: (_, key) => {
+				// `markRaw()` sees the flag as its own and does not try to define it.
+				if (key === "__v_skip") return { value: true, configurable: true };
 				const descriptor = Reflect.getOwnPropertyDescriptor(read(), key);
 				return descriptor && { ...descriptor, configurable: true };
 			},
@@ -199,6 +256,7 @@ export function createDefinition<const S extends readonly Step[]>(steps: S, defa
 			// Views are immutable: a selector sees one of them, and `computed` drops results that did not change.
 			return (selector ? computed(() => selector(shared.view.value)) : shared.stepper) as never;
 		},
+		// The public type adds the generic step ids, the listeners and `v-slots`, which runtime props cannot express.
 		Provider: defineComponent({
 			name: "StepperProvider",
 			inheritAttrs: false,

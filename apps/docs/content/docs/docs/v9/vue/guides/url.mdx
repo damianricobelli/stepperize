@@ -40,6 +40,10 @@ const stepper = checkout.useStepper(() => ({
   yet and for route changes the guard refused.
 - On the server the flow starts on the route's step when that is allowed, and
   no callback runs until the page is mounted.
+- Under `<KeepAlive>` (`<RouterView v-slot="{ Component }"><KeepAlive>` or
+  Nuxt's `keepalive`), a cached page stops following the route while another
+  page is shown, so it never rewrites that page's URL. When it is shown again
+  it follows the route as it is then.
 
 A query parameter works the same way: read `route.query.step` and write it with
 `router.push({ query: { step } })`.

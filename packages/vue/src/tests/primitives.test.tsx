@@ -2,7 +2,7 @@ import axe from "axe-core";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { page as screen, userEvent } from "vitest/browser";
 import { cleanup, render } from "vitest-browser-vue";
-import { createSSRApp, defineComponent, h, nextTick, ref, type VNode } from "vue";
+import { createSSRApp, defineComponent, h, mergeProps, nextTick, ref, type VNode } from "vue";
 import { renderToString } from "vue/server-renderer";
 import { defineStepper } from "../index";
 
@@ -491,6 +491,150 @@ describe("elements and as-child", () => {
 		await userEvent.click(button);
 		expect(container.querySelector("output")?.textContent).toBe("second");
 	});
+
+	it("as-child on an element that is not a button: `disabled` only when it is", async () => {
+		const { container } = await render(() => (
+			<Stepper.Root linear>
+				<Stepper.List>
+					{{
+						item: ({ step }: { step: (typeof steps)[number] }) => (
+							<Stepper.Item>
+								<Stepper.Trigger asChild>
+									<a href={`#${step.id}`}>{step.title}</a>
+								</Stepper.Trigger>
+							</Stepper.Item>
+						),
+					}}
+				</Stepper.List>
+				<Stepper.Prev asChild>
+					<a href="#back">Back</a>
+				</Stepper.Prev>
+				<Stepper.Next asChild>
+					<a href="#next">Continue</a>
+				</Stepper.Next>
+			</Stepper.Root>
+		));
+		const links = Array.from(container.querySelectorAll("a"), (link) => [
+			link.getAttribute("href"),
+			link.getAttribute("disabled"),
+			link.getAttribute("type"),
+		]);
+		// Absent while it can be used. On an element without a `disabled` property Vue writes "true".
+		expect(links).toEqual([
+			["#first", null, null],
+			["#second", "true", null],
+			["#third", "true", null],
+			["#back", "true", null],
+			["#next", null, null],
+		]);
+	});
+
+	it("as-child fills an empty child with the title, and keeps a child's own content", async () => {
+		const { container } = await render(() => (
+			<Stepper.Root>
+				<Stepper.Item step="second">
+					<Stepper.Title asChild>
+						{/* biome-ignore lint/a11y/useHeadingContent: as-child fills it with the title */}
+						<h3 class="title" />
+					</Stepper.Title>
+					<Stepper.Description asChild>
+						<p>Your own words</p>
+					</Stepper.Description>
+					<Stepper.Description asChild>
+						<em />
+					</Stepper.Description>
+				</Stepper.Item>
+			</Stepper.Root>
+		));
+		const title = container.querySelector("h3");
+		expect([title?.textContent, title?.className, title?.dataset.component]).toEqual([
+			"Second",
+			"title",
+			"stepper-title",
+		]);
+		expect(container.querySelector("p")?.textContent).toBe("Your own words");
+		expect(container.querySelector("em")?.textContent).toBe("Then this");
+	});
+
+	it("as-child on a List with an `item` slot: the items fill your element", async () => {
+		const nav = ref<HTMLElement>();
+		const { container } = await render(() => (
+			<Stepper.Root>
+				<Stepper.List asChild>
+					{{
+						default: () => <nav ref={nav} class="steps" />,
+						item: ({ step }: { step: (typeof steps)[number] }) => (
+							<Stepper.Item>
+								<Stepper.Trigger>{step.title}</Stepper.Trigger>
+							</Stepper.Item>
+						),
+					}}
+				</Stepper.List>
+			</Stepper.Root>
+		));
+		expect(nav.value).toBe(container.querySelector("nav"));
+		expect([nav.value?.className, nav.value?.getAttribute("role")]).toEqual(["steps", "tablist"]);
+		expect(Array.from(nav.value?.children ?? [], (item) => item.getAttribute("data-step"))).toEqual([
+			"first",
+			"second",
+			"third",
+		]);
+		screen.getByRole("tab", { name: "First" }).element().focus();
+		await userEvent.keyboard("{ArrowRight}");
+		expect(document.activeElement?.textContent).toBe("Second");
+	});
+
+	it("takes slots through `v-slots` in TSX", async () => {
+		const { container } = await render(() => (
+			<Stepper.Root
+				v-slots={{
+					default: (stepper) => [
+						<output>{stepper.current.id}</output>,
+						<Stepper.List v-slots={{ item: ({ step }) => <Stepper.Item>{step.title}</Stepper.Item> }} />,
+					],
+				}}
+			/>
+		));
+		expect(container.querySelector("output")?.textContent).toBe("first");
+		expect(container.querySelectorAll("li").length).toBe(3);
+	});
+
+	it("merges listeners handed over as an array, as a wrapper passing $attrs does", async () => {
+		const mine = vi.fn();
+		const theirs = vi.fn();
+		await render(() =>
+			h(Stepper.Root, mergeProps({ onFinish: mine }, { onFinish: theirs }, { snapshot: { step: "third" } }), () =>
+				h(Stepper.Next, null, () => "Continue"),
+			),
+		);
+		await userEvent.click(next());
+		expect([mine.mock.calls.length, theirs.mock.calls.length]).toEqual([1, 1]);
+	});
+});
+
+describe("live region", () => {
+	it("is hidden even when a strict Content Security Policy blocked the server's style attribute", async () => {
+		const frame = document.createElement("iframe");
+		frame.srcdoc = `<meta http-equiv="Content-Security-Policy" content="style-src 'none'"><div id="app"></div>`;
+		document.body.appendChild(frame);
+		await new Promise((resolve) => frame.addEventListener("load", resolve, { once: true }));
+		const doc = frame.contentDocument as Document;
+		const container = doc.getElementById("app") as HTMLElement;
+		const App = () => h(Full);
+		container.innerHTML = await renderToString(createSSRApp(App));
+		const span = container.querySelector<HTMLElement>('[aria-live="polite"]');
+		// The policy dropped the declarations: the region would show what it announces.
+		expect(span?.style.position).toBe("");
+		const original = container.innerHTML;
+		const app = createSSRApp(App);
+		app.mount(container);
+		await nextTick();
+		expect(frame.contentWindow?.getComputedStyle(span as Element).position).toBe("absolute");
+		expect(span?.style.clipPath).toBe("inset(50%)");
+		app.unmount();
+		frame.remove();
+		expect(original).toContain("aria-live");
+	});
 });
 
 describe("development diagnostics", () => {
@@ -509,6 +653,77 @@ describe("development diagnostics", () => {
 			</Stepper.Root>
 		));
 		expect(seen.some((message) => message.includes("SZ001"))).toBe(true);
+	});
+
+	it("warns when as-child has more than one node, and renders the first", async () => {
+		let container!: HTMLElement;
+		const seen = await warnings(() => (
+			<div ref={(el) => (container = el as HTMLElement)}>
+				<Stepper.Root>
+					<Stepper.Next asChild>
+						<button type="button">Continue</button>
+						<span>dropped</span>
+					</Stepper.Next>
+				</Stepper.Root>
+			</div>
+		));
+		expect(seen.some((message) => message.includes("SZ001") && message.includes("more than one node"))).toBe(true);
+		expect(container.querySelector("button")?.dataset.component).toBe("stepper-next");
+		expect(container.textContent).not.toContain("dropped");
+	});
+
+	it("warns when as-child on a List with items gets an element that is not empty", async () => {
+		const seen = await warnings(() => (
+			<Stepper.Root>
+				<Stepper.List asChild>
+					{{
+						default: () => (
+							<nav>
+								<h2>Steps</h2>
+							</nav>
+						),
+						item: () => <Stepper.Item />,
+					}}
+				</Stepper.List>
+			</Stepper.Root>
+		));
+		expect(seen.some((message) => message.includes("SZ001") && message.includes("items are not rendered"))).toBe(true);
+	});
+
+	it("warns when the child of as-child drops the props it received, and not when it passes them on", async () => {
+		const Swallows = defineComponent({
+			inheritAttrs: false,
+			setup: (_, { slots }) => () => <button type="button">{slots.default?.()}</button>,
+		});
+		const Passes = defineComponent({
+			inheritAttrs: false,
+			setup:
+				(_, { attrs, slots }) =>
+				() => (
+					<button type="button" {...attrs}>
+						{slots.default?.()}
+					</button>
+				),
+		});
+		const bad = await warnings(() => (
+			<Stepper.Root>
+				<Stepper.Next asChild>
+					<Swallows>Continue</Swallows>
+				</Stepper.Next>
+			</Stepper.Root>
+		));
+		expect(bad.some((message) => message.includes("SZ001") && message.includes("did not receive its props"))).toBe(
+			true,
+		);
+		cleanup();
+		const good = await warnings(() => (
+			<Stepper.Root>
+				<Stepper.Prev asChild>
+					<Passes>Back</Passes>
+				</Stepper.Prev>
+			</Stepper.Root>
+		));
+		expect(good).toEqual([]);
 	});
 
 	it("warns about a trigger without a name or outside a list, with a link", async () => {
