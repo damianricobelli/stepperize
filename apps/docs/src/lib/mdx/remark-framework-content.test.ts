@@ -4,7 +4,11 @@ import { dynamic } from "fumadocs-mdx/runtime/dynamic";
 import { describe, expect, it } from "vitest";
 import * as config from "../../../source.config";
 import { toPlainMarkdown } from "../llms-markdown";
-import { editableSource } from "./editable-source";
+import {
+	compiledEditSource,
+	editableSource,
+	remarkEditSource,
+} from "./editable-source";
 import {
 	codeFrameworks,
 	frameworkOnlyApplies,
@@ -73,6 +77,27 @@ describe("framework content", () => {
 		expect(editableSource("docs/v9/vue/index.mdx", "# Vue")).toBe(
 			"content/docs/docs/v9/vue/index.mdx",
 		);
+	});
+
+	it("exports the editable source at compile time, without reading the disk later", () => {
+		const file = {
+			path: "/repo/apps/docs/content/docs/docs/v9/vue/concepts/moves.mdx",
+			value: "<include cwd>content/shared/concepts/moves.mdx</include>\n",
+			data: {} as Record<string, unknown>,
+		};
+		remarkEditSource()(undefined, file);
+		expect(
+			compiledEditSource({
+				path: "docs/v9/vue/concepts/moves.mdx",
+				data: { _exports: file.data },
+			}),
+		).toBe("content/shared/concepts/moves.mdx");
+		expect(
+			compiledEditSource({
+				path: "docs/v9/vue/index.mdx",
+				data: { _exports: {} },
+			}),
+		).toBe("content/docs/docs/v9/vue/index.mdx");
 	});
 
 	it("keeps or drops prose for a framework", () => {

@@ -27,7 +27,7 @@ import {
 	TEXT_HEADERS,
 } from "@/lib/llms";
 import { docsTextRequest } from "@/lib/llms-index";
-import { editableSource } from "@/lib/mdx/editable-source";
+import { compiledEditSource } from "@/lib/mdx/editable-source";
 import { ogImageUrl } from "@/lib/og";
 import {
 	breadcrumbLd,
@@ -256,7 +256,7 @@ const loadDocsPage = createServerFn({ method: "GET" })
 				})),
 			),
 			// A page that includes a shared concept is edited there.
-			editPath: `apps/docs/${editableSource(page.path, await page.data.getText("raw"))}`,
+			editPath: `apps/docs/${compiledEditSource(page)}`,
 			// Every version names its FAQ page `faq`.
 			faq:
 				pageSlugs.at(-1) === "faq"
