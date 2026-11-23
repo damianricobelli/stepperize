@@ -1,6 +1,8 @@
 # Findings: live multi-framework examples in Fumadocs on Astro
 
-Throwaway spike. Question: can a Fumadocs docs page running on Astro show live examples written in
+Record of a throwaway spike (`apps/docs-astro-spike`). Its code is not in the tree: it was removed
+after the findings were written and lives in the history of the branch that added this file
+(commit `4bc1ef5`). Question: can a Fumadocs docs page running on Astro show live examples written in
 several UI frameworks, and is that worth migrating `apps/docs` for?
 
 **Short answer: yes, every approach tried works.** Importing a Vue, Svelte or Solid component
@@ -19,8 +21,9 @@ the demos, it is in what the Astro integration does to the existing React-heavy 
 - The same demo four times in `src/demos/`, each driving `createStepper` from `@stepperize/core`
   through `get()` / `subscribe()`: React (`useSyncExternalStore`), Vue (`shallowRef`),
   Svelte 5 (`$state.raw` + `$effect`), Solid (`createSignal`).
-- Run it: `pnpm --filter @stepperize/core build`, then `pnpm --filter docs-astro-spike dev`.
-  Pages: `/docs/approach-a`, `/docs/approach-b`, `/docs/approach-c`.
+- Test pages were `/docs/approach-a`, `/docs/approach-b`, `/docs/approach-c`. Paths below such as
+  `src/demos/` and `src/components/mdx.tsx` are relative to the removed spike unless they say
+  `apps/docs`.
 
 ## How `@fumadocs/astro` renders MDX (read from its source)
 
