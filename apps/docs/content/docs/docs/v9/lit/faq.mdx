@@ -1,0 +1,244 @@
+---
+title: FAQ
+description: Short answers to what comes up when you use Stepperize in Lit elements and web components.
+---
+
+## Is Stepperize a form library?
+
+No. It manages the **flow**: which step is current, moving between steps, what
+each step saved and which steps are complete. Field state (values while
+typing, touched, field errors) belongs to your elements, a form library or a
+few lines of your own. See [Forms](/docs/v9/lit/guides/forms).
+
+## Does it ship any styles or custom elements?
+
+No. The controller gives you state and you write the template. The optional
+[primitives](/docs/v9/lit/guides/primitives) are element directives that add
+roles, ids and `data-*` attributes to elements of your own template. No custom
+element is registered and nothing is styled: you style the parts through their
+[data attributes](/docs/v9/lit/guides/primitives#styling).
+
+## Do I need @stepperize/core?
+
+Not in a Lit app: `@stepperize/lit` installs it and re-exports its types.
+Import from it directly to run a flow [without Lit](/docs/v9/core), for
+example in a test or on a server. `checkout.create()` gives you the same
+state machine without importing it, which is also the way to use a flow in a
+plain custom element with no library.
+
+## Do I need decorators or special TypeScript settings?
+
+No. The controller is a class field, and `controller(this)` needs nothing from
+your compiler. Lit's own reactive properties are a separate matter: without
+decorators, declare them in `static properties` and with `declare`, so a class
+field does not hide Lit's accessor. With Lit's standard decorators, use the
+`accessor` keyword. With `experimentalDecorators`, set
+`useDefineForClassFields` to `false`, as Lit requires.
+
+```ts
+import { html, LitElement } from "lit";
+import { customElement, property } from "lit/decorators.js";
+
+@customElement("checkout-page")
+export class CheckoutPage extends LitElement {
+  @property() accessor step = "shipping";
+
+  stepper = checkout.controller(this, () => ({ step: this.step }));
+
+  render() {
+    return html`<h2>${this.stepper.value.current.title}</h2>`;
+  }
+}
+```
+
+## Why read this.stepper.value inside render()?
+
+`value` is an immutable view, and a new object after every change. Read it in
+`render()`, or in a method `render()` calls, and every update sees the latest
+one. A view kept in a field, or captured before an `await`, keeps showing the
+moment it was read.
+
+```ts
+render() {
+  const stepper = this.stepper.value;
+  return html`<h2>${stepper.current.title}</h2>`;
+}
+```
+
+## When does the element re-render?
+
+On every change of the flow while the element is connected: a move, `setData`,
+a validation that finds or clears issues, and the start and end of an async
+check. The controller calls
+`requestUpdate()` and Lit batches it with your own property changes. Lit only
+touches the DOM that changed, so there is no selector to narrow it down.
+
+## What happens when the element is removed from the page?
+
+The controller stops listening, and the flow is kept. If the element is
+connected again (moved, reordered by `repeat`, put back by `cache`), it
+listens again and renders whatever the flow did meanwhile. Nothing needs to be
+cleaned up: an element that is never connected again is garbage collected with
+its flow. To end a flow for good, for example to cancel a running move, call
+`this.stepper.destroy()`. See [Ending a flow](/docs/v9/lit/guides/shared-state#ending-a-flow).
+
+## How do several elements share one flow?
+
+One element, or a module, creates the flow, and the others follow it. Pass
+`controller` a flow instead of options, or a function that returns one: a
+property set by a parent, or the value of an `@lit/context` consumer. A
+follower updates its host like an owner does, but never changes the flow's
+options or destroys it. See [Shared state](/docs/v9/lit/guides/shared-state).
+
+```ts
+stepper = checkout.controller(this, () => this.flow);
+```
+
+## What does a follower show before its flow arrives?
+
+Until the function returns a flow, the controller gives the host a flow of its
+own, on the first step, so `render()` never has to check. When the flow
+arrives, from a property or a context provider, the controller switches to it
+and destroys the stand-in. To render nothing until then, check the property
+yourself and return `nothing`. A provider whose element is defined after its
+consumers connected is Lit's case of a late-upgraded provider: `@lit/context`
+only answers those consumers if a `ContextRoot` is attached to the document.
+
+## How do I validate a step before moving on?
+
+Put a `schema` on the step. `next(data)` saves the data, validates it, and
+stays on the step when it fails; `stepper.issues()` says why. See
+[Forms](/docs/v9/lit/guides/forms).
+
+```ts
+const signup = defineStepper([
+  { id: "account", title: "Account", schema: z.object({ email: z.email() }) },
+  { id: "done", title: "Done" },
+]);
+```
+
+## What do next, prev and goTo return?
+
+A promise of a result: `{ accepted: true, to, data }` or
+`{ accepted: false, reason, issues? }`. They do not throw for an expected
+outcome. See [Moving between steps](/docs/v9/react/guides/navigation#read-the-result);
+the flow is the same in every binding.
+
+## How do I handle the final submit?
+
+Call `next()` on the last step. It finishes the flow and calls `onFinish` once
+with the validated output of every complete step. `stepper.isLast` tells you
+when to change the button's label, and `stepper.isFinished` when to show the
+confirmation. If the request can fail, return its promise from `onFinish`; see
+[When submitting can fail](/docs/v9/react/guides/navigation#when-submitting-can-fail).
+
+```ts
+stepper = checkout.controller(this, {
+  onFinish: (output) => this.placeOrder(output),
+});
+```
+
+## Where are the values my schema transformed?
+
+In `stepper.output`, and in the first argument of `onFinish`. `stepper.data`
+keeps what was typed. See
+[Draft data and validated output](/docs/v9/react/guides/validation#draft-data-and-validated-output).
+
+## How do I keep the current step in the URL?
+
+Pass the options as a function with `step` read from a property, update the
+URL from `onChange`, and correct it from `onInvalidStep`. Your router, or a
+`popstate` listener, sets the property. See
+[The URL as the current step](/docs/v9/lit/guides/url).
+
+## How do I save progress and resume later?
+
+Save the snapshot `onChange` gives you, and pass it back as `snapshot`. The
+flow reads `snapshot` once, when it is created, no later than the element's
+first update; after that, call `stepper.restore(saved)`. See
+[Saving and resuming](/docs/v9/react/guides/persistence).
+
+```ts
+stepper = checkout.controller(this, {
+  snapshot: JSON.parse(localStorage.getItem("checkout") ?? "{}"),
+  onChange: (snapshot) => localStorage.setItem("checkout", JSON.stringify(snapshot)),
+});
+```
+
+## Can I run side effects when the step changes?
+
+Yes. Use `onChange` and compare `snapshot.step`, or compare
+`this.stepper.value.current.id` in `updated()` with the id you saw last time.
+Only read the flow there: a move in `updated()` schedules another update,
+which Lit warns about.
+
+```ts
+#shown?: string;
+
+updated() {
+  const id = this.stepper.value.current.id;
+  if (id !== this.#shown) {
+    this.#shown = id;
+    track("step_viewed", id);
+  }
+}
+```
+
+## Can a flow skip steps or have more than one ending?
+
+Yes. The `next` option decides where each step leads from its data, and a
+`null` entry ends the flow at that step. See
+[Branching](/docs/v9/react/guides/branching); the options are the same here.
+
+## Can the same step appear twice?
+
+No. Ids are unique: they are the key for the data, the completion and the
+primitives. A repeated id throws [SZ103](/docs/v9/core/errors#sz103) when the
+first flow is created from the definition. To revisit a step, go back to it.
+
+## How do I reset the whole flow?
+
+`stepper.reset()` returns to the snapshot the flow started with and clears
+everything else. To keep the data and only go back to the start, use
+`stepper.restore({ step: "shipping", history: [] })`.
+
+## Can the parts live in a child component?
+
+Yes. Pass the controller to the child as a property, typed
+`StepperPrimitives<typeof checkout.steps>`, and use its directives in the
+child's template. Ids do not cross shadow roots, so keep `root()`, the panels
+and the triggers of a flow shown as tabs in the host's own template. See
+[Parts in a child component](/docs/v9/lit/guides/primitives#parts-in-a-child-component).
+
+## Shadow DOM or light DOM?
+
+Both work the same. In shadow DOM, style the parts from the `static styles` of
+the element whose template renders them; page styles do not reach them. With
+`createRenderRoot()` returning `this`, the parts are in the page, so page
+styles apply and `static styles` do not. Each controller makes its own ids, so
+several steppers on one page never clash.
+
+## Does it work with server rendering?
+
+Yes, with [`@lit-labs/ssr`](https://lit.dev/docs/ssr/overview/). The server
+renders your template for the starting step, without running any callback.
+Element directives do not run on the server, so the primitives' roles, ids and
+`hidden` arrive when the element hydrates. Write what the first paint needs as
+bindings. See [Server rendering](/docs/v9/lit/guides/ssr).
+
+## Which Lit versions are supported?
+
+Lit 3: `lit` 3.0 or newer is a peer dependency, and Lit 2 is not supported.
+For the typed ids, TypeScript 5.0 or newer.
+
+## What is @stepperize/lit/headless for?
+
+It is the controller without the primitives, for when you write all the markup
+and ARIA yourself and want the directives out of your bundle. The definition is
+the same; its controller has `flow`, `steps`, `value` and `destroy()`. See
+[Installation](/docs/v9/lit/installation#the-controller-without-the-primitives).
+
+## Does it work without TypeScript?
+
+Yes, but the typed ids, the typed data, the exhaustive `match` and the ids
+checked in every directive are most of what you gain.

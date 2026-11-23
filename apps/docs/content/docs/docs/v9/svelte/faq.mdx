@@ -1,0 +1,263 @@
+---
+title: FAQ
+description: Short answers to what Svelte and SvelteKit developers ask most about Stepperize.
+---
+
+## Is Stepperize a form library?
+
+No. It manages the **flow**: which step is current, moving between steps, what
+each step saved and which steps are complete. Field state stays in `$state`
+with `bind:value`, or in your form library. See
+[Forms](/docs/v9/svelte/guides/forms).
+
+## Does it ship any styles or markup?
+
+No styles. `useStepper()` gives you a reactive stepper and you write all the
+markup. The optional [`Stepper` primitives](/docs/v9/svelte/guides/primitives)
+add accessible, unstyled elements that you style with `class` and data
+attributes.
+
+## Do I need @stepperize/core?
+
+Not in a Svelte app: `@stepperize/svelte` installs it and re-exports its types.
+`definition.create()` already gives you a flow without Svelte, for a test or a
+server. Import from the core directly only where no definition is at hand; see
+[Core](/docs/v9/core).
+
+## Which Svelte versions are supported?
+
+Svelte 5.33.5 or newer, with runes. Svelte 4 is not supported. Any SvelteKit
+version on Svelte 5 works; the examples read the URL from `$app/state`, which
+needs SvelteKit 2.12 or newer.
+
+## Does it use stores or runes?
+
+Runes. The stepper is a reactive object, not a store: read `stepper.current` in
+markup, `$derived` or `$effect`, with no `$` prefix. Where an API expects a
+store, wrap what you read with `toStore` from `svelte/store`. Use it from
+components in runes mode: in a legacy component, `$:` statements do not follow
+the stepper, and markup that only reads the stepper is not updated.
+
+```ts
+import { toStore } from "svelte/store";
+
+const current = toStore(() => stepper.current);
+```
+
+## When should I use useStepper, Provider or Stepper.Root?
+
+- **`useStepper()`** when one component renders the whole flow.
+- **`Provider`** when several components need the same flow.
+- **`Stepper.Root`** when you use the primitives. It is a provider too.
+
+Components below a `Provider` or a `Stepper.Root` read the flow with
+`useStepperContext()`. A flow that belongs to the app rather than to one
+component lives in a `.svelte.ts` module, read with `fromFlow()`. See
+[Shared state](/docs/v9/svelte/guides/shared-state).
+
+## Can I destructure the stepper?
+
+Not its state. `const { current } = stepper` copies the value once, while the
+component initialises, and never changes. Read `stepper.current` where you need
+it, or give it a local name with `$derived`. The actions (`next`, `prev`,
+`goTo`, `setData` and the others) never change, so they are safe to
+destructure.
+
+```svelte
+<script lang="ts">
+  import { checkout } from "./checkout";
+
+  const stepper = checkout.useStepper();
+  const { next, prev } = stepper;
+  const current = $derived(stepper.current);
+</script>
+
+<h2>{current.title}</h2>
+<button type="button" onclick={() => prev()}>Back</button>
+<button type="button" onclick={() => next()}>Continue</button>
+```
+
+## Can I create a flow in a .svelte.ts module or a class?
+
+Yes. In a module, create the flow with `create()` and read it with `fromFlow()`:
+`useStepper()` owns its flow, so at module scope it throws
+[SZ104](/docs/v9/core/errors#sz104). A class can call `useStepper()` in a field
+or its constructor, as long as the class is created while a component
+initialises. On the server a module is shared by every request; see
+[Outside a component](/docs/v9/svelte/guides/shared-state#outside-a-component).
+
+```ts title="checkout-flow.svelte.ts"
+import { fromFlow } from "@stepperize/svelte";
+import { checkout } from "./checkout";
+
+export const flow = checkout.create({ linear: true });
+export const stepper = fromFlow(flow);
+```
+
+## Is the stepper up to date after await stepper.next()?
+
+Yes. Outside an effect, as in an event handler, every read returns the latest
+state, so after `await stepper.next()` the stepper is already on the new step.
+There is no stale copy to work around. The result still tells you whether the
+move happened.
+
+```ts
+async function submit() {
+  const result = await stepper.next($state.snapshot(values));
+  if (result.accepted) console.log(`Now on ${stepper.current.id}`);
+}
+```
+
+## How do I validate a step before moving on?
+
+Put a `schema` on the step. `next(data)` stores the data, validates it, and
+stays on the step when it fails; `stepper.issues()` holds the reasons. See
+[Validate on Continue](/docs/v9/svelte/guides/forms#validate-on-continue).
+
+```ts
+const signup = defineStepper([
+  { id: "account", schema: z.object({ email: z.email() }) },
+  { id: "done" },
+]);
+```
+
+## What do next, prev and goTo return?
+
+A promise of a result: `{ accepted: true, to, data }` or
+`{ accepted: false, reason, issues? }`. They do not throw for an expected
+outcome. See [Moving between steps](/docs/v9/react/guides/navigation#read-the-result).
+
+## How do I handle the final submit?
+
+Call `next()` on the last step. It finishes the flow and calls `onFinish` once
+with the validated output of every complete step. `stepper.isLast` tells you
+when to change the button's label, and `stepper.isFinished` when to show the
+confirmation. If the request can fail, return its promise from `onFinish`; see
+[When submitting can fail](/docs/v9/react/guides/navigation#when-submitting-can-fail).
+
+## Where are the values my schema transformed?
+
+In `stepper.output`, and in the first argument of `onFinish`. `stepper.data`
+keeps what was typed. See
+[Draft data and validated output](/docs/v9/react/guides/validation#draft-data-and-validated-output).
+
+## How do I keep what was typed when the user goes back?
+
+Write the draft with `setData` from the input's event, and start the fields
+from `stepper.data` when the step mounts. Do not write it from an `$effect`: an
+effect also runs on mount, and that first write makes a complete step
+incomplete. With the primitives, `forceMount` on `Stepper.Content` keeps a
+panel and its fields mounted instead. See
+[Keeping drafts](/docs/v9/svelte/guides/forms#keeping-drafts).
+
+## How do I keep the current step in the URL?
+
+Pass the route parameter as the `step` option, inside a function so it is read
+again when the URL changes, and call `goto` from `onChange`. In SvelteKit,
+`page` from `$app/state` is reactive. See
+[The URL as the current step](/docs/v9/svelte/guides/url).
+
+```ts
+const stepper = checkout.useStepper(() => ({
+  step: page.params.step,
+  onChange: (snapshot) => {
+    if (snapshot.step !== page.params.step) goto(`/checkout/${snapshot.step}`);
+  },
+}));
+```
+
+## How do I save progress and resume later?
+
+Save the snapshot `onChange` gives you, and pass it back as `snapshot`. In
+SvelteKit, read it in `load`, from a cookie or your database, so the server
+already renders the right step. A snapshot kept in `localStorage` can only be
+applied after mounting, with `stepper.restore()`. See
+[Resuming from a cookie or the database](/docs/v9/svelte/guides/ssr#resuming-from-a-cookie-or-the-database)
+and [Saving and resuming](/docs/v9/react/guides/persistence).
+
+## Can I run side effects when the step changes?
+
+Yes. An `$effect` that reads `stepper.current.id` runs on mount and again when
+the step changes, and not when a draft is saved. `onChange` runs after every
+change, drafts included, so compare `snapshot.step` there.
+
+```ts
+$effect(() => {
+  void stepper.current.id;
+  window.scrollTo({ top: 0 });
+});
+```
+
+## How do I animate the change between steps?
+
+Wrap the step's markup in `{#key stepper.current.id}`: the block is recreated
+when the step changes, so the transitions on its elements play. Inside
+`Stepper.Content`, a transition only plays with the `|global` modifier, because
+the block that adds and removes the panel belongs to the primitive. With an
+`out` transition, the old and the new step are both in the page while it runs;
+an `in:` transition alone avoids that.
+
+```svelte
+{#key stepper.current.id}
+  <section in:fade>
+    <h2>{stepper.current.title}</h2>
+  </section>
+{/key}
+```
+
+## How do I get the DOM element of a primitive?
+
+With `bind:ref`. It gives you the element the primitive rendered, the default
+tag or the one in your `child` snippet, and goes back to `null` when that
+element unmounts. `bind:this` gives you the component instead. See
+[Reaching the element](/docs/v9/svelte/guides/primitives#reaching-the-element).
+
+## Can a flow skip steps or have more than one ending?
+
+Yes. The `next` option decides where each step leads from its data, and a
+`null` entry ends the flow at that step. See
+[Branching](/docs/v9/react/guides/branching).
+
+## Can the same step appear twice?
+
+No. Ids are unique: they are the key for the data, the completion and the
+primitives. A repeated id throws [SZ103](/docs/v9/core/errors#sz103) when the
+first flow is created. To revisit a step, go back to it.
+
+## How do I reset the whole flow?
+
+`stepper.reset()` returns to the snapshot the flow started with and clears
+everything else. To keep the data and only go back to the start, use
+`stepper.restore({ step: "shipping", history: [] })`.
+
+## Does it work with SvelteKit and server rendering?
+
+Yes, with no configuration. The server renders the current step, ids match on
+hydration, and no callback runs on the server. Create flows in components
+(`useStepper()`, `Provider` or `Stepper.Root`), not at module scope, so each
+request gets its own. In a `load` function or a form action, `create()` gives
+you the same flow without a component: create one per request, for example to
+send a deep link to a step the flow does not allow yet back to one it does. See
+[Server rendering](/docs/v9/svelte/guides/ssr).
+
+```ts title="src/routes/checkout/[step]/+page.server.ts"
+import { redirect } from "@sveltejs/kit";
+import { checkout } from "$lib/checkout";
+
+export function load({ params, cookies }) {
+  const saved = cookies.get("checkout");
+  const flow = checkout.create({
+    linear: true,
+    snapshot: saved ? JSON.parse(saved) : undefined,
+    step: params.step,
+  });
+  if (flow.current.id !== params.step) redirect(307, `/checkout/${flow.current.id}`);
+  return { snapshot: flow.snapshot() };
+}
+```
+
+## Does it work without TypeScript?
+
+Yes, but the typed ids, the typed data and the exhaustive `match` are most of
+what you gain. With TypeScript, `svelte-check` also checks the step ids you
+write in markup.

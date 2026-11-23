@@ -1,0 +1,296 @@
+---
+title: FAQ
+description: Short answers to the questions Angular developers ask most about Stepperize.
+---
+
+## Is Stepperize a form library?
+
+No. It manages the **flow**: which step is current, moving between steps, what
+each step saved and which steps are complete. Field state (values while
+typing, touched, field errors) belongs to Reactive Forms, Signal Forms or
+template-driven forms. See [Forms](/docs/v9/angular/guides/forms).
+
+## Does it ship any styles or markup?
+
+No. `injectStepper()` gives you a signal and you write the template. The
+optional [primitives](/docs/v9/angular/guides/primitives) are attribute
+directives for your own elements: they add roles, ids, keyboard handling and
+`data-*` attributes, and render and style nothing.
+
+## Do I need @stepperize/core?
+
+Not in an Angular app: `@stepperize/angular` installs it and re-exports its
+types, such as `Snapshot`, `Options` and `Flow`. Import from it directly only
+to run a flow [without Angular](/docs/v9/core). For tests and servers,
+`checkout.create()` gives you the same state machine from your definition.
+
+## When should I use injectStepper, provideStepper or stepperRoot?
+
+- **`injectStepper()`** when one component, directive or service owns the flow.
+- **`provideStepper()`** in `providers` when several components below need the
+  same flow.
+- **`[stepperRoot]`** when you use the primitives. It shares the stepper bound
+  to it too.
+
+Components below a `provideStepper()` or a `[stepperRoot]` read the flow with
+`injectStepperContext()`. See [Shared state](/docs/v9/angular/guides/shared-state).
+
+## Where can I call injectStepper?
+
+In an injection context: a field initialiser, a constructor, a provider
+factory, or a function passed to `runInInjectionContext`. In `ngOnInit`, an
+event handler or the code after an `await` it throws `NG0203`. To create a
+flow later, keep the component's `Injector` and run the call inside it; the
+flow is still destroyed with the component.
+
+```ts
+export class Checkout {
+  readonly #injector = inject(Injector);
+  stepper?: StepperRef<typeof checkout.steps>;
+
+  start() {
+    this.stepper = runInInjectionContext(this.#injector, () => checkout.injectStepper());
+  }
+}
+```
+
+## Do I call the stepper in templates?
+
+Yes. `stepper` is a signal, so `stepper()` returns the current view:
+`stepper().current.title`, `stepper().isLast`, `stepper().next()`.
+`stepper.steps` and `stepper.flow` are plain properties and are not called.
+`issues` and `state` are functions of the view, so they are called too.
+
+```html
+@for (step of stepper.steps; track step.id) {
+  <li [attr.data-state]="stepper().state(step.id)">{{ step.title }}</li>
+}
+
+@for (issue of stepper().issues(); track $index) {
+  <p role="alert">{{ issue.message }}</p>
+}
+```
+
+## Does it work with OnPush and zoneless change detection?
+
+Yes, with nothing to configure. The stepper is a signal, so a template that
+reads it is refreshed when the flow changes, with or without zone.js, and a
+move that settles after an `await` updates the view like any other. To have a
+component checked only when one value changes, read that value through
+`computed`. See
+[Reading only what you need](/docs/v9/angular/guides/shared-state#reading-only-what-you-need).
+
+## Can options depend on inputs or other signals?
+
+Yes. Pass a function instead of an object. It runs in the caller's injection
+context, so it can `inject()`, and it is read again when the signals it uses
+change. `linear` and `step` follow those changes, callbacks are read when the
+flow calls them, and `snapshot` is read once, when the flow is created. See
+[When options apply](/docs/v9/angular/api/define-stepper#when-options-apply).
+
+```ts
+readonly linear = input(false);
+readonly stepper = checkout.injectStepper(() => ({ linear: this.linear() }));
+```
+
+## How do I validate a step before moving on?
+
+Put a `schema` on the step. `next(data)` saves the data, validates it, and
+stays on the step when it fails; `stepper().issues()` holds the reasons. Any
+[Standard Schema](https://standardschema.dev) library works. Angular
+validators on your controls can still show field errors while typing; the
+schema decides whether the flow moves. See
+[Validate on Continue](/docs/v9/angular/guides/forms#validate-on-continue).
+
+```ts
+export const signup = defineStepper([
+  { id: "account", title: "Account", schema: z.object({ email: z.email() }) },
+  { id: "done", title: "Done" },
+]);
+```
+
+## How do I use it with Reactive Forms or Signal Forms?
+
+The form keeps the field values and hands them to the flow when the user
+continues. With Reactive Forms, keep a group per step and pass its
+`getRawValue()` to `next()`. Signal Forms are built on a signal you own
+(`form(model)`), so pass that signal's value for the step. When a step's
+component is created again, inside `@switch` after going back, fill its fields
+from `stepper().data`. See [Forms](/docs/v9/angular/guides/forms).
+
+```ts
+readonly model = signal({ account: { email: "" }, profile: { name: "" } });
+readonly stepper = signup.injectStepper();
+
+submit() {
+  const stepper = this.stepper();
+  return stepper.match({
+    account: () => stepper.next(this.model().account),
+    profile: () => stepper.next(this.model().profile),
+    done: () => stepper.next(),
+  });
+}
+```
+
+## What do next, prev and goTo return?
+
+A promise of a result: `{ accepted: true, to, data }` or
+`{ accepted: false, reason, issues? }`. They do not throw for an expected
+outcome, so `(click)="stepper().next()"` in a template is fine. Await it in
+the component when you need to know what happened. See
+[Moving between steps](/docs/v9/react/guides/navigation#read-the-result).
+
+## How do I handle the final submit?
+
+Call `next()` on the last step. It finishes the flow and calls `onFinish`
+once, with the validated output of every complete step. Return a promise and
+`stepper().isPending` stays `true` until it settles; if it rejects, the flow is
+not finished and the user can try again. `HttpClient` returns an Observable,
+which the flow never subscribes to, so convert it with `firstValueFrom`.
+
+```ts
+readonly #http = inject(HttpClient);
+readonly stepper = checkout.injectStepper({
+  onFinish: (output) => firstValueFrom(this.#http.post("/api/orders", output)),
+});
+```
+
+## Where are the values my schema transformed?
+
+In `stepper().output`, and in the first argument of `onFinish`.
+`stepper().data` keeps what was typed. See
+[Draft data and validated output](/docs/v9/react/guides/validation#draft-data-and-validated-output).
+
+## How do I keep the current step in the URL?
+
+Pass the route parameter as the `step` option from an options function, and
+navigate from `onChange`. With `withComponentInputBinding()` the parameter
+arrives as a signal input; without it, read `toSignal(route.paramMap)`. See
+[The route as the current step](/docs/v9/angular/guides/url).
+
+## How do I save progress and resume later?
+
+Save the snapshot `onChange` gives you, and pass it back as `snapshot` when the
+flow is created. A route resolver can load it before the component renders, so
+the server renders the saved step too. See
+[Resuming from a cookie or the database](/docs/v9/angular/guides/ssr#resuming-from-a-cookie-or-the-database)
+and [Saving and resuming](/docs/v9/react/guides/persistence).
+
+## Can I run side effects when the step changes?
+
+Yes. Use `onChange` and compare `snapshot.step`, or an `effect` that reads a
+`computed` of the current step: the `computed` only notifies when the step
+changes, not on every draft saved. `onChange` never runs on the server and an
+`effect` does, so put browser-only work, such as analytics or focus, in
+`afterRenderEffect`.
+
+```ts
+readonly #title = inject(Title);
+readonly step = computed(() => this.stepper().current);
+
+constructor() {
+  effect(() => this.#title.setTitle(`Checkout: ${this.step().title}`));
+  afterRenderEffect(() => analytics.track("step_viewed", { step: this.step().id }));
+}
+```
+
+## Can a flow skip steps or have more than one ending?
+
+Yes. The `next` option decides where each step leads from its data, and a
+`null` entry ends the flow at that step. The options are the same in every
+binding. See [Branching](/docs/v9/react/guides/branching).
+
+## Can the same step appear twice?
+
+No. Ids are unique: they are the key for the data, the completion and the
+directives. A repeated id throws [SZ103](/docs/v9/core/errors#sz103) when the
+first flow is created. To revisit a step, go back to it.
+
+## How do I reset the whole flow?
+
+`stepper().reset()` returns to the snapshot the flow started with and clears
+everything else. To keep the data and only go back to the start, use
+`stepper().restore({ step: "shipping", history: [] })`. Your form's values are
+yours to reset too.
+
+## Can a service own the flow?
+
+Yes. `injectStepper()` works in any injection context, so an `@Injectable` can
+hold the stepper. The flow lives as long as the injector that created it: the
+whole session for a `providedIn: "root"` service, the component's lifetime for
+a service in a component's `providers`. When it is destroyed, a move still
+running is cancelled without calling back. Bind it to the primitives with
+`[stepperRoot]`; they follow the service's `linear`.
+
+```ts
+@Injectable({ providedIn: "root" })
+export class CheckoutFlow {
+  readonly stepper = checkout.injectStepper({ linear: true });
+}
+
+@Component({
+  selector: "app-checkout",
+  imports: [STEPPER_PRIMITIVES],
+  template: `<div [stepperRoot]="flow.stepper">…</div>`,
+})
+export class Checkout {
+  protected readonly flow = inject(CheckoutFlow);
+}
+```
+
+## Does it work with server rendering and hydration?
+
+Yes. The flow is created before the first render, so the server renders the
+right step, and the directives put roles, ids and hidden panels in the HTML.
+With `provideClientHydration()` the browser adopts that HTML, clicks made
+before hydration are replayed, and triggers in an `@defer (hydrate …)` block
+that has not hydrated yet still count. No callback runs on the server. See
+[Server rendering](/docs/v9/angular/guides/ssr).
+
+## Can parts of the stepper live inside @defer blocks?
+
+Yes. Directives inside a `@defer` block find the `[stepperRoot]` around it
+once the block renders. To load a step's code only when it is first shown,
+defer inside its panel:
+
+```html
+<div stepperContent="payment" #payment="stepperContent">
+  @defer (when payment.active()) {
+    <app-payment-form />
+  } @placeholder {
+    <p>Loading…</p>
+  }
+</div>
+```
+
+## How do I get step ids checked in templates?
+
+Ids in expressions, such as `stepper().goTo("payment")` or an `@case` on
+`stepper().current.id`, are always checked. Ids given to the directives
+(`stepperContent`, `stepperItem`, `stepperTrigger`, `stepperIndicator`) are
+checked once you register your definitions in `StepperRegistry` and build with
+`strictTemplates`. Without either, everything works and those ids are checked
+when the template runs. See
+[Typed step ids](/docs/v9/angular/guides/primitives#typed-step-ids).
+
+```ts
+declare module "@stepperize/angular" {
+  interface StepperRegistry {
+    checkout: typeof checkout;
+  }
+}
+```
+
+## What is @stepperize/angular/headless?
+
+The signals API without the directives: the same `defineStepper`, with
+`injectStepper`, `provideStepper` and `injectStepperContext`. Use it when you
+write all the markup and ARIA yourself. Directives you do not import are left
+out of your bundle either way; the headless entry makes that explicit.
+`StepperRegistry` and the directives come from the main entry.
+
+## Which Angular versions are supported?
+
+Angular 22: the peer dependencies are `@angular/core` and `@angular/common`
+`^22.0.0`. Angular 21 and earlier are not supported. It works with and without
+zone.js.

@@ -1,0 +1,305 @@
+---
+title: FAQ
+description: Short answers to the questions Solid developers ask most about Stepperize.
+---
+
+## Is Stepperize a form library?
+
+No. It manages the **flow**: which step is current, moving between steps, what
+each step saved and which steps are complete. Field state belongs to your
+signals, a store or your form library. See [Forms](/docs/v9/solid/guides/forms).
+
+## Does it ship any styles or markup?
+
+No styles. `useStepper()` gives you a reactive stepper and you write all the
+markup. The optional [`Stepper` primitives](/docs/v9/solid/guides/primitives)
+add accessible, unstyled elements that you style through data attributes. If
+you never use them, import from
+[`@stepperize/solid/headless`](/docs/v9/solid/installation#the-stepper-without-the-components)
+to leave them out of your bundle.
+
+## Do I need @stepperize/core?
+
+Not in a Solid app: `@stepperize/solid` installs it and re-exports its types.
+`checkout.create()` already gives you the flow without Solid. Import from core
+directly only to run a flow [without any binding](/docs/v9/core).
+
+## When should I use useStepper, Provider or Stepper.Root?
+
+- **`useStepper()`** when one component renders the whole flow.
+- **`Provider`** when several components need the same flow.
+- **`Stepper.Root`** when you use the primitives. It is a provider too.
+
+Components below a `Provider` or a `Stepper.Root` read the flow with
+`useStepperContext()`. See [Shared state](/docs/v9/solid/guides/shared-state).
+
+## Can I destructure the stepper?
+
+Not its state. The stepper works like props: `stepper.current` is always the
+latest value and is tracked, while `const { current } = stepper` copies the
+value once and never changes. `{ ...stepper }` is a copy too. The actions
+(`next`, `prev`, `goTo`, `setData`, `validate`, `reset`, `restore`) never change
+and are safe to take out. To share the stepper with a child, pass the object
+itself and read its fields where you use them.
+
+```tsx
+const stepper = checkout.useStepper();
+
+const { current } = stepper; // Wrong: a copy that never updates.
+const { next, prev } = stepper; // Fine: actions never change.
+
+<h2>{stepper.current.title}</h2>;
+```
+
+## Why must a function child declare its parameter?
+
+Because that is how the primitives tell a render function from content.
+`Stepper.Root`, `Stepper.List` and `Stepper.Item` call a function child only
+when it declares a parameter, the same rule `<Show>` and `<Match>` follow. A
+function without one is treated as content, which is what lets `<For>` work
+inside a `List`. Write `(_step) =>` even when you do not use the step.
+`(step = fallback) =>` does not count either: JavaScript leaves a parameter
+with a default value out of a function's `length`. See
+[Function or content](/docs/v9/solid/guides/primitives#function-or-content).
+
+```tsx
+<Stepper.List>
+  {(_step) => (
+    <Stepper.Item>
+      <Stepper.Trigger>
+        <Stepper.Title />
+      </Stepper.Trigger>
+    </Stepper.Item>
+  )}
+</Stepper.List>
+```
+
+## How do I validate a step before moving on?
+
+Put a `schema` on the step. `next(data)` saves the data, validates it and stays
+on the step when it fails; `stepper.issues()` holds the reasons until the
+step's data changes. See [Forms](/docs/v9/solid/guides/forms).
+
+```tsx
+const signup = defineStepper([
+  { id: "account", schema: z.object({ email: z.email() }) },
+  { id: "done" },
+]);
+```
+
+## What do next, prev and goTo return?
+
+A promise of a result: `{ accepted: true, to, data }` or
+`{ accepted: false, reason, issues? }`. They do not throw for an expected
+outcome. See [Moving between steps](/docs/v9/react/guides/navigation#read-the-result);
+the API is the same in Solid.
+
+## How do I handle the final submit?
+
+Call `next()` on the last step. It finishes the flow and calls `onFinish` once
+with the validated output of every complete step. `stepper.isLast` tells you
+when to change the button's label, and `stepper.isFinished` when to show the
+confirmation. If the request can fail, return its promise from `onFinish`; see
+[When submitting can fail](/docs/v9/react/guides/navigation#when-submitting-can-fail).
+
+## Where are the values my schema transformed?
+
+In `stepper.output`, and in the first argument of `onFinish`. `stepper.data`
+keeps what was typed. See
+[Draft data and validated output](/docs/v9/react/guides/validation#draft-data-and-validated-output).
+
+## Should I use Switch and Match, or stepper.match?
+
+Either. `<Switch>` with a `<Match>` per step id is the usual Solid way: each
+branch mounts when its step becomes current. `stepper.match()` is exhaustive,
+so a step without a handler does not compile, and each handler gets its own
+step type and data. In JSX it runs again when the step changes, not when a
+draft is saved, so a form it renders keeps its focus.
+
+```tsx
+<Switch>
+  <Match when={stepper.current.id === "shipping"}><ShippingForm /></Match>
+  <Match when={stepper.current.id === "payment"}><PaymentForm /></Match>
+  <Match when={stepper.current.id === "review"}><Review /></Match>
+</Switch>
+
+{stepper.match({
+  shipping: (_step, data) => <ShippingForm initial={data} />,
+  payment: () => <PaymentForm />,
+  review: () => <Review />,
+})}
+```
+
+## How do I render the list of steps with For?
+
+`<For each={stepper.steps}>` works like any list, and `stepper.state(id)` tells
+you whether each step is pending, current or complete. Inside
+`Stepper.List`, put a `step` on each `Stepper.Item`, since only the `List`
+function hands its items their step. `<For>` passes the index as an accessor,
+`index()`; the `List` function passes a plain number.
+
+```tsx
+<ol>
+  <For each={stepper.steps}>
+    {(step, index) => (
+      <li data-state={stepper.state(step.id)}>
+        {index() + 1}. {step.title}
+      </li>
+    )}
+  </For>
+</ol>
+
+<Stepper.List>
+  <For each={checkout.steps}>
+    {(step) => (
+      <Stepper.Item step={step.id}>
+        <Stepper.Trigger>{step.title}</Stepper.Trigger>
+      </Stepper.Item>
+    )}
+  </For>
+</Stepper.List>
+```
+
+## How do I run code when the step changes?
+
+Track the step id with `createEffect` and `on`. `stepper.current` only notifies
+when the step changes, not when a draft is saved, and `defer` skips the run on
+mount. Actions are never tracked, so an effect can also write to the flow
+without depending on it. `onChange` works too: compare `snapshot.step` with
+the last one you saw.
+
+```tsx
+createEffect(
+  on(
+    () => stepper.current.id,
+    (id) => {
+      window.scrollTo({ top: 0 });
+      analytics.track("step_viewed", { step: id });
+    },
+    { defer: true },
+  ),
+);
+```
+
+## Does async validation work with Suspense?
+
+An async schema, guard or `onFinish` does not suspend: the flow is not a
+resource. While it runs, `stepper.isPending` is `true` and other moves are
+refused, so show the pending state from it. Loading the flow's starting data
+with `createAsync` or `createResource` does suspend, as usual; see
+[Server rendering](/docs/v9/solid/guides/ssr#resuming-from-a-cookie-or-the-database).
+
+```tsx
+<button type="button" disabled={stepper.isPending} onClick={() => stepper.next()}>
+  {stepper.isPending ? "Checking…" : "Continue"}
+</button>
+```
+
+## How do I keep the current step in the URL?
+
+Pass the options as a function, with the route param as `step`, and navigate
+from `onChange`. A function is read again when the param changes; a plain
+object is read once. See [The URL as the current step](/docs/v9/solid/guides/url).
+
+```tsx
+const params = useParams();
+const navigate = useNavigate();
+
+const stepper = checkout.useStepper(() => ({
+  step: params.step,
+  onChange: (snapshot) => {
+    if (snapshot.step !== params.step) navigate(`/checkout/${snapshot.step}`);
+  },
+}));
+```
+
+## How do I save progress and resume later?
+
+Save the snapshot `onChange` gives you, and pass it back as `snapshot`. It is
+read once, when the flow is created, so a snapshot that loads asynchronously
+must be ready before the flow renders: wait for it with `<Show>`, or call
+`stepper.restore(snapshot)` once it arrives. See
+[Resuming from a cookie or the database](/docs/v9/solid/guides/ssr#resuming-from-a-cookie-or-the-database)
+and [Saving and resuming](/docs/v9/react/guides/persistence).
+
+```tsx
+const saved = createAsync(() => getSnapshot());
+
+<Show when={saved() !== undefined}>
+  <checkout.Provider snapshot={saved() ?? undefined} onChange={saveSnapshot}>
+    <CheckoutSteps />
+  </checkout.Provider>
+</Show>
+```
+
+## Can a flow skip steps or have more than one ending?
+
+Yes. The `next` option decides where each step leads from its data, and a
+`null` entry ends the flow at that step. See
+[Branching](/docs/v9/react/guides/branching); the options are the same in
+Solid.
+
+## Can the same step appear twice?
+
+No. Ids are unique: they are the key for the data, the completion and the
+primitives. A repeated id throws [SZ103](/docs/v9/core/errors#sz103) when the
+first flow is created. To revisit a step, go back to it.
+
+## How do I reset the whole flow?
+
+`stepper.reset()` returns to the snapshot the flow started with and clears
+everything else. To keep the data and only go back to the start, use
+`stepper.restore({ step: "shipping", history: [] })`.
+
+## Does it work with SolidStart and server rendering?
+
+Yes, with no configuration. The stepper and the primitives render on the
+server and hydrate in place, ids come from `createUniqueId`, and no callback
+runs on the server. `renderToString`, `renderToStringAsync` and
+`renderToStream` all work. See [Server rendering](/docs/v9/solid/guides/ssr).
+
+## Can I create a flow outside a component?
+
+Yes. `checkout.create()` returns the same state machine without Solid, with
+`get()` and `subscribe()`, for stores, tests and servers. `useStepper()` works
+under any owner, such as `createRoot`, and the flow is destroyed when the root
+is disposed. Called with no owner at all, Solid warns in development that the
+computations will never be disposed. On the server, do not keep a flow in module scope:
+every request would share it.
+
+```tsx
+const { stepper, dispose } = createRoot((dispose) => ({
+  stepper: checkout.useStepper(),
+  dispose,
+}));
+```
+
+## How do I render a primitive as my own component?
+
+Pass `as` with a tag name or a component. The component receives the ARIA
+attributes, ids, handlers and `ref` as props and must spread them onto an
+element; its own props are typed. Take your props out with `splitProps`, not
+destructuring. See
+[Rendering your own element](/docs/v9/solid/guides/primitives#rendering-your-own-element).
+
+```tsx
+function MyButton(props: JSX.ButtonHTMLAttributes<HTMLButtonElement> & { tone?: "primary" }) {
+  const [local, rest] = splitProps(props, ["tone"]);
+  return <button class={local.tone === "primary" ? "btn btn-primary" : "btn"} {...rest} />;
+}
+
+<Stepper.Next as={MyButton} tone="primary">Continue</Stepper.Next>
+```
+
+## Which Solid versions are supported?
+
+Solid 1.9: the peer dependency is `solid-js` `^1.9.0`. Solid 2 is not
+supported yet. The router examples use `@solidjs/router` 0.16, the line that
+works with Solid 1.
+
+## Does it work without TypeScript?
+
+Yes, but the typed ids, the typed data and the exhaustive `match` are most of
+what you gain. Without types, an `as` component that cannot take a `ref` is
+only reported in development, by the [SZ001](/docs/v9/core/errors#sz001)
+warning, instead of failing to compile.

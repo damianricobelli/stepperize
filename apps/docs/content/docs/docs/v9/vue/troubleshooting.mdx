@@ -1,0 +1,416 @@
+---
+title: Troubleshooting
+description: Vue errors, warnings and surprises, with the cause and the fix for each.
+---
+
+Most problems come from a few causes. Find your symptom below. Errors and
+warnings from the library carry a code; [Errors and warnings](/docs/v9/core/errors)
+explains each one. Warnings only appear in development.
+
+## Runtime errors
+
+### SZ100: Missing Provider
+
+`useStepperContext()` reads a flow that a component above it provided. Without
+a `Provider` or `Stepper.Root` of the **same definition** above, there is
+nothing to read. Vue only provides to descendants, so a component cannot read
+the `Provider` it renders in its own template:
+
+```vue
+<script setup lang="ts">
+import { checkout } from "./checkout";
+
+const { Provider } = checkout;
+// Wrong: the Provider is in this component's template, not above it.
+const stepper = checkout.useStepperContext();
+</script>
+
+<template>
+  <Provider>
+    <h2>{{ stepper.current.title }}</h2>
+  </Provider>
+</template>
+```
+
+Move the code that reads the flow into a child component, or use
+`Stepper.Root`, whose slot hands you the stepper:
+
+```vue
+<template>
+  <Stepper.Root v-slot="stepper">
+    <h2>{{ stepper.current.title }}</h2>
+  </Stepper.Root>
+</template>
+```
+
+Other causes:
+
+- `inject()` only works while `setup` runs. After an `await` in a
+  hand-written `async setup()`, or in an event handler, it finds nothing and
+  Vue also warns "inject() can only be used inside setup()". Call
+  `useStepperContext()` at the top of `setup`.
+- A provider of another definition does not count, and neither does a second
+  definition created from the same steps. Call `defineStepper` once, in its
+  own module, and import that object everywhere; see
+  [Define once, at module scope](/docs/v9/vue/concepts/steps#define-once-at-module-scope).
+- `Stepper.List`, `Stepper.Trigger` and `Stepper.Content` need a
+  `Stepper.Root`; a `Provider` is not enough for them.
+
+If the component only needs its own flow, call `useStepper()` instead.
+
+### SZ101: Missing Stepper.Item
+
+`Stepper.Trigger`, `Stepper.Indicator` and `Stepper.useItem()` belong to a
+step, which they get from the `Stepper.Item` around them. An item gets its
+step from the `#item` slot of `Stepper.List`, or from its `step` prop. An item
+written in the List's default slot has neither.
+
+```vue
+<Stepper.List>
+  <template #item>
+    <Stepper.Item>
+      <Stepper.Trigger><Stepper.Title /></Stepper.Trigger>
+    </Stepper.Item>
+  </template>
+</Stepper.List>
+
+<Stepper.Item step="payment">…</Stepper.Item>
+```
+
+### SZ102: Step "…" not found
+
+An id that is not in the definition reached `goTo`, `setData`, a `next` branch,
+a `Stepper.Item` or a `Stepper.Content` with `force-mount`. `vue-tsc` rejects
+this at compile time, so it usually means a cast, or a value from outside. For
+route values use the [`step` option](/docs/v9/vue/guides/url), which ignores
+unknown ids.
+
+`Step "[object PointerEvent]" not found` means a click event reached `goTo`:
+see [Continue saves the click event](#continue-saves-the-click-event).
+
+### SZ103: Duplicate step id
+
+The list of steps is empty, or two steps share an `id`. It is thrown when the
+first flow is created (`useStepper()`, a `Provider`, a `Stepper.Root` or
+`create()`), not by `defineStepper`, so it shows up as an error in that
+component's `setup`.
+
+### SZ104: useStepper() ran without a component instance
+
+A warning: nothing owns the flow, so nothing will destroy it. It happens when
+`useStepper()` runs after an `await` in a hand-written `async setup()`, or
+outside `setup` altogether, in an event handler or a plain module.
+
+```ts
+export default defineComponent({
+  async setup() {
+    // Right: before the first await.
+    const stepper = survey.useStepper();
+    const saved = await loadSurvey();
+    stepper.restore(saved);
+    return { stepper };
+  },
+});
+```
+
+A top-level `await` in `<script setup>` is fine: Vue restores the component
+after it. Outside a component, create the flow inside an `effectScope()` that
+you stop. See [Ownership](/docs/v9/vue/api/define-stepper#ownership).
+
+### SZ001: as-child lost the props
+
+A primitive with `as-child` could not hand its ARIA attributes, ids and
+handlers to one element. The slot holds only text, holds more than one node
+(only the first is rendered), or holds a component that does not put its
+attributes on an element.
+
+```vue
+<!-- Wrong: only text in the slot. -->
+<Stepper.Next as-child>Continue</Stepper.Next>
+
+<!-- Right -->
+<Stepper.Next as-child><MyButton>Continue</MyButton></Stepper.Next>
+```
+
+A component with `inheritAttrs: false` must bind `v-bind="$attrs"` on its
+element. A component with several root nodes does not pass them on by
+itself, and Vue warns "Extraneous non-props attributes"; give it one root, or
+bind `$attrs` on the right element. See
+[Rendering your own element](/docs/v9/vue/guides/primitives#rendering-your-own-element).
+
+### SZ002, SZ003 or SZ005: a trigger warning
+
+`Stepper.Trigger` checks the element it rendered once it mounts:
+
+- **SZ002**: it has no accessible name. `Stepper.Indicator` is hidden from
+  screen readers, so a trigger holding only an indicator needs `aria-label`.
+- **SZ003**: it is outside `Stepper.List`, which owns keyboard navigation.
+- **SZ005**: with `as-child`, it rendered something other than a `<button>`
+  or a link with an `href`, which Enter and Space do not press.
+
+```vue
+<Stepper.Trigger :aria-label="step.title">
+  <Stepper.Indicator />
+</Stepper.Trigger>
+```
+
+### Vue warns "Invalid watch source"
+
+`watch(stepper, ...)` was called with the stepper itself. It is not a ref or
+a `reactive()` object, so Vue warns and the callback never runs. Watch a
+getter of what you need, or use `onChange`.
+
+```ts
+// Wrong: never runs.
+watch(stepper, () => save());
+
+// Right
+watch(() => stepper.current.id, (id) => track(id));
+```
+
+### Vue warns "toRefs() expects a reactive object"
+
+`toRefs(stepper)` gives refs that follow the flow, but Vue warns because the
+stepper is not a `reactive()` object. Use `toRef` or a `computed`, which do not
+warn:
+
+```ts
+const index = toRef(stepper, "index");
+const isLast = computed(() => stepper.isLast);
+```
+
+### TypeError: 'set' on proxy: trap returned falsish
+
+Something assigned to the stepper: `stepper.index = 2` in a handler, or a
+`v-model` bound to one of its properties, such as `v-model="stepper.index"`.
+The stepper is a read-only view of the flow, so the assignment is refused.
+`vue-tsc` reports the assignment, but not the `v-model`. Change the flow with
+its actions (`goTo`, `setData`, `restore`); for a field, see
+[Can I bind v-model to a step's data?](/docs/v9/vue/faq#can-i-bind-v-model-to-a-steps-data).
+
+### Vue warns "`<transition>` can only be used on a single element or component"
+
+Several `Stepper.Content` panels are inside one `<Transition>`. It only
+renders the first of them, so the other steps show no panel. Give each panel
+its own `<Transition>`, or render one panel keyed by the current step:
+
+```vue
+<Stepper.Root v-slot="stepper">
+  <Transition name="fade" mode="out-in">
+    <Stepper.Content :key="stepper.current.id" :step="stepper.current.id">
+      <component :is="panels[stepper.current.id]" />
+    </Stepper.Content>
+  </Transition>
+</Stepper.Root>
+```
+
+## Common surprises
+
+### Continue saves the click event
+
+`@click="stepper.next"` passes a method, so Vue calls it with the click event,
+and the event becomes the step's data: validation fails, or the event is
+stored. `@click="stepper.goTo"` throws SZ102 the same way; `vue-tsc` reports
+that one, but not `next`, which accepts any data. Call the action:
+
+```vue
+<!-- Wrong -->
+<button type="button" @click="stepper.next">Continue</button>
+
+<!-- Right -->
+<button type="button" @click="stepper.next()">Continue</button>
+```
+
+### `if (stepper.next())` is always true
+
+Moves return a promise, and a promise is truthy. Await it and read `accepted`.
+
+```ts
+const result = await stepper.next();
+if (result.accepted) track("advanced");
+```
+
+### A destructured value never changes
+
+`const { current } = stepper` copies the value of that moment; so does
+`{ ...stepper }`. Read `stepper.current` where you need it, or make a ref with
+`computed` or `toRef`. The actions (`next`, `prev`, `goTo`...) are safe to
+destructure.
+
+### An option does not follow a prop or a ref
+
+An options object is read once, when the flow is created:
+`useStepper({ linear: props.linear })` keeps the first value. Pass a getter
+(or a ref) and the flow gets the new options before the component renders.
+
+```ts
+const props = defineProps<{ linear: boolean }>();
+
+const stepper = checkout.useStepper(() => ({ linear: props.linear }));
+```
+
+`snapshot` is the exception: it is read once, even from a getter.
+
+### Typing changes stepper.data, but the flow does not notice
+
+The object passed to `next()` or `setData` was the same `reactive()` object
+that `v-model` edits, so the flow holds it and every keystroke changes its
+data in place: `onChange` does not run and a complete step stays complete.
+Pass a copy.
+
+```ts
+const shipping = reactive({ address: "" });
+
+// Wrong: the flow keeps the live object.
+stepper.next(shipping);
+
+// Right
+stepper.next({ ...shipping });
+```
+
+### Two components show different steps
+
+Each `useStepper()` call creates its own flow. Two components that should move
+together need one `Provider` above them and `useStepperContext()` inside. See
+[Shared state](/docs/v9/vue/guides/shared-state).
+
+### The flow is still on the old step when the page comes back
+
+Something kept the flow alive: a `<KeepAlive>` around the page, a layout that
+stays mounted, or a Pinia store that owns it. That is what they are for. Call
+`stepper.reset()` when the flow should start over, or let the page own the
+flow with `useStepper()`.
+
+### The snapshot option is ignored
+
+`snapshot` is where the flow starts and is read once. Changing it later does
+nothing; call `stepper.restore(snapshot)`.
+
+### Stepper.Next does nothing on a form step
+
+`Stepper.Next` calls `next()` without values, so it validates what the step
+already has stored. If the fields live in your own `reactive()`, the step's
+data is empty and validation fails. Prevent the default move and pass the
+values yourself:
+
+```vue
+<Stepper.Root v-slot="stepper">
+  <input v-model="shipping.address" aria-label="Address" />
+  <Stepper.Next @click.prevent="stepper.next({ ...shipping })">Continue</Stepper.Next>
+</Stepper.Root>
+```
+
+### The panel does not animate
+
+A `<Transition>` animates when its child is replaced. One `Stepper.Content`
+whose `step` changes is the same component with a new prop, so nothing enters
+or leaves: add `:key="stepper.current.id"`, as in the example above.
+
+In tests, Vue Test Utils (and `vitest-browser-vue`, which uses it) replaces
+`<Transition>` with a stub. Pass `global: { stubs: { transition: false } }`
+to `render` or `mount` to test the real one.
+
+### onFinish does not run again
+
+`onFinish` runs once. After the flow has finished, `next()` resolves with
+`reason: "finished"` until the flow changes: any move to another step, a
+`setData` with a new value, `reset()` or `restore()`. If a request inside it
+can fail, return its promise: when it rejects the flow is not finished and
+`next()` can be called again. See
+[When submitting can fail](/docs/v9/react/guides/navigation#when-submitting-can-fail).
+
+### Hydration mismatch, or "localStorage is not defined"
+
+`setup` runs on the server too, which cannot read the browser's storage.
+Reading `localStorage` in `setup` throws there, or, behind a check, makes the
+client render a different step than the server did. Start from a value the
+server also knows, and apply the saved snapshot once mounted. In
+Nuxt, a cookie avoids the problem: see
+[Server rendering](/docs/v9/vue/guides/ssr#resuming-from-a-cookie-or-the-database).
+
+```vue
+<script setup lang="ts">
+import { onMounted } from "vue";
+import { onboarding } from "./onboarding";
+
+const stepper = onboarding.useStepper({
+  onChange: (snapshot) => localStorage.setItem("onboarding", JSON.stringify(snapshot)),
+});
+
+onMounted(() => {
+  const saved = localStorage.getItem("onboarding");
+  if (saved) stepper.restore(JSON.parse(saved));
+});
+</script>
+```
+
+## TypeScript
+
+### Step ids are typed as string
+
+The array was created before it reached `defineStepper`, so its ids widened.
+Write it inline or add `as const`. See
+[Keep ids literal](/docs/v9/vue/concepts/steps#keep-ids-literal).
+
+### A field exists on the current step, but the template complains
+
+`stepper.current` is the union of every step. Narrow it in the template by
+comparing `stepper.current.id` in a `v-if`, or in `<script>` with `match`. See
+[Fields that only some steps have](/docs/v9/vue/concepts/steps#fields-that-only-some-steps-have).
+
+```vue
+<p v-if="stepper.current.id === 'payment'">{{ stepper.current.note }}</p>
+```
+
+### A wrong step id in a template is not reported
+
+`tsc` does not read `.vue` files. Run `vue-tsc --noEmit`, or use an editor with
+the Vue language tools: they check `step` props and slot props in templates.
+
+### Slot parameters are `any` in TSX
+
+Vue's JSX types do not check slots written as children. Pass them through
+`v-slots` and their parameters are inferred. See
+[In TSX](/docs/v9/vue/guides/primitives#in-tsx).
+
+### The type of a stepper prop
+
+```ts title="checkout.ts"
+import type { Stepper } from "@stepperize/vue";
+
+type Steps = typeof checkout.steps;
+export type CheckoutStepper = Readonly<Stepper<Steps>>;
+export type CheckoutStepId = Steps[number]["id"];
+```
+
+```vue
+<script setup lang="ts">
+import type { CheckoutStepper } from "./checkout";
+
+defineProps<{ stepper: CheckoutStepper }>();
+</script>
+```
+
+Pass it as `:stepper="stepper"`. A component that works with any flow takes
+the steps as a generic:
+
+```vue
+<script setup lang="ts" generic="S extends readonly Step[]">
+import type { Step, Stepper } from "@stepperize/vue";
+
+defineProps<{ stepper: Readonly<Stepper<S>> }>();
+</script>
+
+<template>
+  <ol>
+    <li v-for="step in stepper.steps" :key="step.id" :data-state="stepper.state(step.id)">
+      {{ step.id }}
+    </li>
+  </ol>
+</template>
+```
+
+<Callout type="info">
+Still stuck? Check the [FAQ](/docs/v9/vue/faq), or open an issue with a
+minimal reproduction.
+</Callout>

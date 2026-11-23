@@ -1,0 +1,374 @@
+---
+title: Troubleshooting
+description: Errors and surprises in Lit elements, with the cause and the fix for each.
+---
+
+Most problems come from a few causes. Find your symptom below. Errors thrown
+by the library carry a code; [Errors and warnings](/docs/v9/core/errors)
+explains each one. Errors thrown while an element renders reach you as a
+rejected `updateComplete`, or as an uncaught error in the console.
+
+## Runtime errors
+
+### SZ001: Stepper parts are element directives
+
+A primitive was written somewhere other than an opening tag: as an attribute
+value, a property binding or a child of an element. In Lit this is an error,
+not a warning. Write the directive inside the opening tag, next to the
+attributes.
+
+```ts
+// Wrong: an attribute value and a child.
+html`<div class=${s.root()}>…</div>`;
+html`<div>${s.next()}</div>`;
+
+// Right
+html`<div ${s.root()} class="stepper">…</div>`;
+html`<button ${s.next()}>Continue</button>`;
+```
+
+### SZ100: Missing root
+
+The host's template has parts (`list()`, `content()`, `next()`...) and no
+element with `root()`. The controller checks this after every update of its host, so
+`root()` must be in the host's own template. A `root()` rendered by a child
+component arrives too late and does not count.
+
+```ts
+// Wrong: the root is in a child component.
+html`
+  <stepper-frame .stepper=${s}>
+    <button ${s.next()}>Continue</button>
+  </stepper-frame>
+`;
+
+// Right
+html`
+  <div ${s.root()}>
+    <stepper-nav .stepper=${s}></stepper-nav>
+  </div>
+`;
+```
+
+### SZ102: Step "…" not found
+
+An id that is not in the definition reached `item()`, `trigger()`,
+`indicator()`, `content()`, `at()`, `goTo`, `setData` or a `next` branch.
+TypeScript rejects this at compile time, so it usually means a cast or a value
+from outside, such as a route parameter or an attribute. For URL values use
+the [`step` option](/docs/v9/lit/guides/url), which ignores unknown ids and
+calls `onInvalidStep`.
+
+### SZ103: Duplicate step id
+
+Two steps share an `id`, or the list is empty. `defineStepper` does not check
+it; the first flow created from the definition throws, so the error appears
+when the first element that uses it connects or renders, or on `create()`.
+Give each step its own id.
+
+### SZ002: A trigger has no accessible name
+
+In development, a trigger whose only content is an indicator, or nothing, is
+reported: the indicator is hidden from screen readers, so the button would be
+announced without a name. Render the title, or give the button an
+`aria-label`, which the directive keeps.
+
+```ts
+html`
+  <button ${s.trigger(step.id)} aria-label=${step.title}>
+    <span ${s.indicator(step.id)}></span>
+  </button>
+`;
+```
+
+### SZ003: A trigger is outside the list
+
+The trigger has no element with `list()` around it in its own tree. The check
+does not look across shadow roots: a trigger rendered by a child component
+inside a list of the parent's template is reported too. Render the list and
+its triggers in the same template.
+
+### SZ004: A part is in another shadow root
+
+A panel, or a trigger that is referred to by id, is rendered in a different
+shadow root than `root()`. Ids do not cross shadow roots, so the tab cannot
+name its panel and focus cannot move to the new panel. Keep the panels and the
+triggers of a flow shown as tabs in the host's own template; a child component
+can render the list, the indicators, Back and Continue. See
+[Parts in a child component](/docs/v9/lit/guides/primitives#parts-in-a-child-component).
+
+### SZ005: A trigger is not a button
+
+A trigger directive is on a `<span>`, a `<div>` or a link without `href`.
+Enter and Space do not press it, and it cannot be disabled. Put it on a
+`<button>`.
+
+```ts
+// Wrong
+html`<span ${s.trigger(step.id)}>${step.title}</span>`;
+
+// Right
+html`<button ${s.trigger(step.id)}>${step.title}</button>`;
+```
+
+### Properties "will not trigger updates as expected because they are set using class fields"
+
+This is Lit's error, thrown in development. A reactive property is also a
+class field, and with `useDefineForClassFields` (TypeScript's default for an
+`ES2022` target or later) the field hides Lit's accessor: setting the property
+no longer updates the element, so the options function never sees the new
+value. Add `declare`. With Lit's standard decorators, use
+`@property() accessor`; with `experimentalDecorators`, set
+`useDefineForClassFields` to `false`.
+
+```ts
+// Wrong
+static properties = { options: { attribute: false } };
+options?: Options<typeof checkout.steps>;
+
+// Right
+static properties = { options: { attribute: false } };
+declare options?: Options<typeof checkout.steps>;
+```
+
+## Common surprises
+
+### `if (stepper.next())` is always true
+
+Moves return a promise, and a promise is truthy. Await it and read `accepted`.
+
+```ts
+const result = await stepper.next();
+if (result.accepted) track("advanced");
+```
+
+### The stepper still shows the old step after an await
+
+`this.stepper.value` returns a view of one moment. A view kept in a variable
+before `await stepper.next()` still describes the step you were on. Read the
+result, or read `this.stepper.value` again.
+
+```ts
+async #continue() {
+  const result = await this.stepper.value.next(this.values);
+  if (result.accepted) this.#focusHeading(this.stepper.value.current.id);
+}
+```
+
+### The snapshot or step from a property is ignored
+
+There are three causes, all about when the options are read.
+
+- The options were passed as an object, so `this.step` was read once, when
+  the element was constructed. Pass a function: it is read again before every
+  render.
+- Something read `this.stepper.value` or `this.stepper.flow` in the
+  constructor or a field initializer. The flow is created the first time it is
+  needed and reads `snapshot` then, before the property was set. Read the
+  controller in `render()` or later.
+- `snapshot` was set after the first update. It is only read when the flow is
+  created, by design. Call `stepper.restore(snapshot)` instead.
+
+```ts
+// Wrong: `this.step` is read once.
+stepper = checkout.controller(this, { step: this.step });
+
+// Wrong: creates the flow before `.options=${…}` is set.
+stepper = checkout.controller(this, () => this.options);
+first = this.stepper.value;
+
+// Right
+stepper = checkout.controller(this, () => ({ step: this.step }));
+```
+
+### `this` is not the element inside onFinish
+
+A method was passed as it is (`onFinish: this.placeOrder`). The flow calls it
+as a member of the options object, so `this` is that object. Pass an arrow
+function, or make the method an arrow function field.
+
+```ts
+stepper = checkout.controller(this, {
+  onFinish: (output) => this.placeOrder(output),
+});
+```
+
+### Continue saved a click event as the step's data
+
+The template passed the action itself: `@click=${stepper.next}`. Lit calls a
+listener with the event, so `next(event)` saved the event as the current
+step's data and validated it. Wrap the call.
+
+```ts
+html`<button @click=${() => stepper.next()}>Continue</button>`;
+```
+
+### Continue moves two steps in a form
+
+The button has `type="submit"` and the `next()` directive, so both run: the
+directive calls `next()` on the click, then your `submit` handler calls
+`next(values)`. A step without a schema moves twice. Use one of the two: a
+plain submit button and `next(values)` in the handler, or the directive with
+`preventDefault()` in your own `@click`, as in
+[Handling the move yourself](/docs/v9/lit/guides/primitives#handling-the-move-yourself).
+
+### A form around the panels does not submit, or sends the wrong fields
+
+`content()` hides panels without removing them, so a `<form>` around every
+panel holds every panel's fields. A `required` field in a hidden panel stops
+the submission, because the browser cannot focus it to report the error, and
+`FormData` includes the fields of the other steps. Fields rendered inside a
+child component's shadow root are not part of a form outside it, so they are
+missing. Give each panel its own `<form>` with `novalidate`, and let the
+step's schema validate. For fields in a child component, render them in the
+same tree as their form, or make the child a form-associated custom element
+that sets its value with `ElementInternals`.
+
+### Text typed on one step shows on the next
+
+Two steps render the same template, so Lit reuses its `<input>` and only
+updates the bindings that changed. A `.value` binding that was `""` and is
+still `""` is not written again, and the text typed by the user stays. Bind
+with `live()`, or key the step's fields with `keyed(stepper.current.id, …)`.
+
+```ts
+import { live } from "lit/directives/live.js";
+
+const field = (name: string, value: string) => html`<input name=${name} .value=${live(value)} />`;
+```
+
+### What was typed is gone after Back
+
+`prev()` never saves: only `next(data)` and `setData` write a step's data. With
+`match`, the fields of the step you leave are removed from the page. Save
+drafts with `setData` as they change, or keep every panel in the page with
+`content()`. See [Keeping drafts](/docs/v9/lit/guides/forms#keeping-drafts).
+
+### Two elements show different steps
+
+Each `controller(this)` call with options creates its own flow. Elements that
+should move together need one flow: create it once and let the others follow
+it. See [Shared state](/docs/v9/lit/guides/shared-state).
+
+```ts
+// Wrong: two independent flows.
+class CheckoutHeader extends LitElement {
+  stepper = checkout.controller(this);
+}
+class CheckoutFooter extends LitElement {
+  stepper = checkout.controller(this);
+}
+```
+
+### The element stops updating after it is moved
+
+`destroy()` was called in `disconnectedCallback`. Moving an element
+disconnects and connects it again, and a destroyed controller does not come
+back. Remove the call: disconnecting already stops the controller from
+listening, and connecting starts it again.
+
+### Lit warns that an update was scheduled after an update completed
+
+A move or `setData` ran in `updated()` or `firstUpdated()`. Every change of the
+flow requests an update, so each one costs a second render. Move from an event
+handler, follow a property with the [`step` option](/docs/v9/lit/guides/url),
+or resume with `snapshot`.
+
+### A button with next() does nothing
+
+The button is outside the element that has `root()`. The directives listen for
+clicks on the root, so a part outside it is painted but never pressed. Put
+everything inside the root, or call `this.stepper.value.next()` from your own
+`@click`.
+
+### Styles do not reach the parts
+
+The parts are in a shadow root, and page styles stop at its boundary. Style
+them from the `static styles` of the element whose template renders them; a
+child component styles its own parts. In light DOM (`createRenderRoot()`
+returning `this`), `static styles` are not applied, and page styles are.
+
+```ts
+static styles = css`
+  [data-component="stepper-trigger"][data-state="current"] { font-weight: 600; }
+`;
+```
+
+### The server-rendered page shows every panel, or another step
+
+Lit's server renderer does not run element directives, so the server HTML has
+no `hidden`, no roles and no `data-*` from the primitives until the element
+hydrates. Bind `?hidden`, `data-state` and `type="button"` yourself; see
+[Make the first paint right](/docs/v9/lit/guides/ssr#make-the-first-paint-right).
+
+If the hydrated page shows another step than the server's, the client started
+from other options. A property bound in the server template is not in the
+HTML, so start from something both can read, such as an attribute or the URL,
+and load `@lit-labs/ssr-client/lit-element-hydrate-support.js` before Lit. See
+[Hydration](/docs/v9/lit/guides/ssr#hydration).
+
+## TypeScript
+
+### Step ids are typed as string
+
+The array was created before it reached `defineStepper`, so its ids widened.
+Write it inline or add `as const`. See
+[Keep ids literal](/docs/v9/lit/concepts/steps#keep-ids-literal).
+
+```ts
+const steps = [
+  { id: "shipping", title: "Shipping" },
+  { id: "payment", title: "Payment" },
+] as const;
+
+export const checkout = defineStepper(steps);
+```
+
+### A field exists on the current step, but TypeScript complains
+
+`stepper.current` is the union of every step. Narrow it with `match` or by
+comparing `stepper.current.id`. See
+[Fields that only some steps have](/docs/v9/lit/concepts/steps#fields-that-only-some-steps-have).
+
+### Property is used before its initialization
+
+Class fields are initialized in order, so options given as an object can only
+use fields declared above the controller. Pass a function, which runs later,
+or call methods from arrow functions. The same error on `{ step: this.step }`
+means the property would be read only once; see
+[The snapshot or step from a property is ignored](#the-snapshot-or-step-from-a-property-is-ignored).
+
+```ts
+// Error: `submit` is declared below.
+stepper = checkout.controller(this, { onFinish: this.submit });
+submit = () => {};
+
+// Right
+stepper = checkout.controller(this, { onFinish: () => this.submit() });
+```
+
+### Typing a property that receives the stepper
+
+A child component that receives the controller, a flow or one view types it
+with the steps of the definition.
+
+```ts
+import type { Flow, Id, Stepper, StepperPrimitives } from "@stepperize/lit";
+
+type Steps = typeof checkout.steps;
+type StepId = Id<Steps>;
+type CheckoutFlow = Flow<Steps>; // a flow to follow
+type CheckoutView = Stepper<Steps>; // one view of it
+
+class CheckoutNav extends LitElement {
+  static properties = { stepper: { attribute: false } };
+  declare stepper: StepperPrimitives<Steps>; // the controller, with its directives
+}
+```
+
+From `@stepperize/lit/headless`, the controller is a `StepperController<Steps>`.
+
+<Callout type="info">
+Still stuck? Check the [FAQ](/docs/v9/lit/faq), or open an issue with a
+minimal reproduction.
+</Callout>

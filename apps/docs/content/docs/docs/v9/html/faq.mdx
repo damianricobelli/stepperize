@@ -1,0 +1,319 @@
+---
+title: FAQ
+description: Short answers to the questions that come up when you enhance server-rendered HTML with bindStepper.
+---
+
+## Is Stepperize a form library?
+
+No. It manages the **flow**: which step is current, moving between steps, what
+each step saved and which steps are complete. `bindStepper` never reads or
+writes your fields. You hand their values to `next(values)` yourself, and your
+server or your own script shows field errors.
+
+## Does it render markup or ship styles?
+
+No styles, and it never creates your content. You write every part; the only
+element it adds is a visually hidden live region at the end of the root, for
+announcements. Style the state it writes: `data-state`, `data-invalid`,
+`data-disabled`, `data-pending`, `data-finished` and `data-orientation`. See
+[Styling](/docs/v9/html/markup#styling).
+
+```css
+[data-component="stepper-trigger"][data-state="current"] { font-weight: 600; }
+[data-component="stepper"][data-pending] { opacity: 0.6; }
+```
+
+## Which attributes do I write, and which does it write?
+
+You write `data-component` on each part and `data-step` on the items and the
+panels. A trigger, indicator, title or description inside an item takes the
+item's `data-step`. Every `data-step` must be an id of the flow's steps. The
+binding writes the roles, ids and ARIA, `hidden` on panels, `disabled` and
+`type="button"` on buttons, and the `data-*` state. Your own ids, names, roles,
+classes and other attributes are kept. [Markup and options](/docs/v9/html/markup)
+lists every part.
+
+```html
+<li data-component="stepper-item" data-step="account">
+  <button data-component="stepper-trigger">Account</button>
+</li>
+
+<div data-component="stepper-content" data-step="account">…</div>
+```
+
+## Can I load it from a CDN without a bundler?
+
+Yes, as ES modules in a `<script type="module">`. There is no global build, so
+a classic `<script src>` does not work. [esm.sh](https://esm.sh) builds the
+package for the browser, and `?dev` keeps the development warnings. jsDelivr
+and unpkg serve the published files in `dist` as they are: pin the version you
+tested. Those files show no development warnings, because a page without a
+bundler has no `process.env.NODE_ENV`; errors are still thrown. See
+[The script](/docs/v9/html/guides/server-rendered#the-script).
+
+```html
+<script type="module">
+  import { createStepper } from "https://esm.sh/@stepperize/core";
+  import { bindStepper } from "https://esm.sh/@stepperize/core/dom";
+
+  const flow = createStepper([
+    { id: "account", title: "Account" },
+    { id: "plan", title: "Plan" },
+  ]);
+  bindStepper(document.getElementById("signup"), flow);
+</script>
+```
+
+## How do I validate a step before moving on?
+
+Put a `schema` on the step. `next()` validates the step's data and stays on the
+step when it fails. The item, trigger and indicator get `data-invalid`, and
+`flow.issues()` returns the messages. The `stepper-next` button calls `next()`
+without values, so a step with fields needs them passed in (next question).
+See [Schemas and validation](/docs/v9/react/guides/validation).
+
+```ts
+const flow = createStepper([
+  { id: "account", title: "Account", schema: z.object({ email: z.string().email() }) },
+  { id: "plan", title: "Plan" },
+]);
+```
+
+## How do I pass form values to next()?
+
+Add your own click listener to the Next button and call
+`event.preventDefault()` in it: the binding then leaves the move to you. Read
+the current panel's fields with `FormData` and call `flow.next(values)`.
+Making each panel a `<form>` keeps one step's fields apart from the others.
+
+```html
+<form data-component="stepper-content" data-step="account">
+  <input name="email" type="email" required />
+</form>
+```
+
+```ts
+const next = root.querySelector<HTMLButtonElement>('[data-component="stepper-next"]')!;
+
+next.addEventListener("click", (event) => {
+  event.preventDefault();
+  const form = root.querySelector<HTMLFormElement>(`form[data-step="${flow.current.id}"]`)!;
+  flow.next(Object.fromEntries(new FormData(form)));
+});
+
+// Enter can submit a step's form: make it press Next instead of reloading the page.
+root.addEventListener("submit", (event) => {
+  event.preventDefault();
+  next.click();
+});
+```
+
+`Object.fromEntries` keeps one value per name. For checkboxes that share a
+name, read them with `formData.getAll(name)`.
+
+## Can I use the browser's own validation?
+
+Yes. Prev and Next are `type="button"`, so `required`, `pattern` and the other
+constraints are not checked on their own. Call `reportValidity()` on the
+current panel's form before moving: it shows the browser's message and returns
+`false` when a field is invalid. A schema on the step still runs in `next()`.
+
+```ts
+next.addEventListener("click", (event) => {
+  event.preventDefault();
+  const form = root.querySelector<HTMLFormElement>(`form[data-step="${flow.current.id}"]`)!;
+  if (form.reportValidity()) flow.next(Object.fromEntries(new FormData(form)));
+});
+```
+
+## What do next, prev and goTo return?
+
+A promise of a result: `{ accepted: true, to, data }` or
+`{ accepted: false, reason, issues? }`. They do not throw for an expected
+outcome. The buttons the binding handles ignore the result, so call the move
+yourself when you need it. See
+[Moving between steps](/docs/v9/react/guides/navigation#read-the-result).
+
+```ts
+const result = await flow.next(values);
+if (!result.accepted) console.log(result.reason, result.issues);
+```
+
+## How do I handle the final submit?
+
+Press Next on the last step. `next()` validates it, finishes the flow and
+calls `onFinish` once with the validated output of every complete step; the
+root then gets `data-finished`. Return the request's promise from `onFinish`:
+the root has `data-pending` until it settles, and if it rejects the flow is
+not finished and Next can be pressed again. Show the failure from `onFinish`
+itself, since the Next button does not report it.
+
+```ts
+const flow = createStepper(steps, {
+  onFinish: async (output) => {
+    const response = await fetch("/signup", { method: "POST", body: JSON.stringify(output) });
+    if (!response.ok) {
+      errors.textContent = "Could not create the account. Try again.";
+      throw new Error(`Signup failed: ${response.status}`);
+    }
+    location.assign("/welcome");
+  },
+});
+```
+
+To post a regular form instead, wrap the whole stepper in one `<form>` and
+call `form.requestSubmit()` from `onFinish`. Fields in hidden panels are
+submitted too.
+
+## How do I start on a step the server chose?
+
+Pass it to the flow with the `step` option, and render that panel without
+`hidden`. The binding shows the flow's current step, not the panel the HTML
+showed, so the two must agree. An unknown id is ignored. In a `linear` flow a
+step can only be reached once the steps before it are complete, so pass the
+saved snapshot instead (see below).
+
+```html
+<div data-component="stepper" id="checkout" data-current="payment">…</div>
+```
+
+```ts
+const flow = createStepper(steps, { step: root.dataset.current });
+```
+
+## How do I keep the current step in the URL?
+
+Pass the URL value as the `step` option, update the URL from `onChange`, and
+give the flow the new value on `popstate`. `setOptions` replaces every option,
+so pass the others again. Have the server render the panel of the step in the
+URL. See [The step in the URL](/docs/v9/react/guides/url).
+
+```ts
+const param = () => new URLSearchParams(location.search).get("step");
+
+const options: Options<typeof steps> = {
+  onChange: (snapshot) => {
+    if (snapshot.step !== param()) history.pushState(null, "", `?step=${snapshot.step}`);
+  },
+  onInvalidStep: (current) => history.replaceState(null, "", `?step=${current}`),
+};
+
+const flow = createStepper(steps, { ...options, step: param() });
+addEventListener("popstate", () => flow.setOptions({ ...options, step: param() }));
+```
+
+## How do I save progress and resume later?
+
+Save the snapshot `onChange` gives you, and pass it back as `snapshot`. It is
+plain JSON, so the server can write it into the page and render the saved
+step's panel without `hidden`. The snapshot restores the flow, not your
+fields: render the saved values into the inputs on the server. See
+[Resuming where the user was](/docs/v9/html/guides/server-rendered#resuming-where-the-user-was)
+and [Saving and resuming](/docs/v9/react/guides/persistence).
+
+## Can a flow skip steps or have more than one ending?
+
+Yes. The `next` option decides where each step leads from its data, and a
+`null` entry ends the flow at that step. The panels of skipped steps stay
+hidden and their items keep `data-state="pending"`. See
+[Branching](/docs/v9/react/guides/branching).
+
+## How do I reset the whole flow?
+
+`flow.reset()` returns to the snapshot the flow started with and clears
+everything else. It does not touch your fields, since the binding never reads
+or writes their values: reset the forms too.
+
+```ts
+flow.reset();
+for (const form of root.querySelectorAll("form")) form.reset();
+```
+
+## Does it work with htmx?
+
+Yes. Swaps inside the stepper need nothing: stepper parts swapped in are
+picked up, and other content, such as a re-rendered form, costs nothing. A
+swap that replaces the root element itself needs a new `bindStepper` call on
+the new root; see [Troubleshooting](/docs/v9/html/troubleshooting#after-an-htmx-swap-the-buttons-do-nothing).
+For validation on the server, see [htmx](/docs/v9/html/guides/htmx).
+
+## Does it work with Alpine?
+
+Yes. Bind in the component's `init()`, unbind in `destroy()`, and let Alpine
+render everything else from the flow with `x-text` and `@click`. Leave the
+panels to the binding: no `x-show` on them. Keep the flow out of Alpine's
+reactive data. See [Alpine](/docs/v9/html/guides/alpine).
+
+## Does it work with Turbo?
+
+Yes, with one cleanup. Turbo keeps a copy of the page when you leave it and
+shows that copy on Back. Unbind on `turbo:before-cache`, so the copy is the
+markup the server sent, and bind again on `turbo:load`.
+
+```ts
+const cleanups: (() => void)[] = [];
+
+document.addEventListener("turbo:load", () => {
+  for (const root of document.querySelectorAll<HTMLElement>('[data-component="stepper"][data-steps]')) {
+    const flow = createStepper(JSON.parse(root.dataset.steps ?? "[]"));
+    const unbind = bindStepper(root, flow);
+    cleanups.push(() => {
+      unbind();
+      flow.destroy();
+    });
+  }
+});
+
+document.addEventListener("turbo:before-cache", () => {
+  for (const cleanup of cleanups.splice(0)) cleanup();
+});
+```
+
+## Can I have several steppers on one page?
+
+Yes. Call `bindStepper` once per root, each with its own flow. Each binding
+only touches its own parts, also when one stepper is nested in another's
+panel. Give each root an `id`: the ids the binding makes up start with it
+(`signup-trigger-account`), so they stay the same on every page load.
+
+## What does unbinding undo?
+
+The function `bindStepper` returns removes the binding's listeners and the
+live region, stops following the flow, and puts back every attribute and text
+it changed: roles, ids, ARIA, `hidden`, `disabled`, `type` and filled-in
+titles. Panels are then as the server sent them, so without `hidden` in the
+HTML they all show again. An attribute someone else changed since is left
+alone. It does not destroy the flow; call `flow.destroy()` when you are done
+with it. Binding the same root again runs it first, so a script that runs
+twice never moves two steps per click.
+
+## What do people without JavaScript see?
+
+The HTML the server sent, with buttons that do nothing. If the server hides
+the panels that are not current, they only reach the first step. For a
+fallback, put the whole stepper in one form with a real submit button, and
+show every panel when scripting is off, with a style inside `<noscript>`.
+
+```html
+<noscript>
+  <style>
+    [data-component="stepper-content"][hidden] { display: block; }
+    [data-component="stepper-prev"],
+    [data-component="stepper-next"] { display: none; }
+  </style>
+</noscript>
+```
+
+## Does it work with server rendering?
+
+Yes. Importing `@stepperize/core/dom` touches nothing; only calling
+`bindStepper` needs a DOM, so a module the server also loads can import it.
+The main `@stepperize/core` entry has no DOM code, and a flow can run on the
+server to validate a step with the same schemas. See
+[On a server](/docs/v9/core#on-a-server).
+
+## Does it work without TypeScript?
+
+Yes. The `data-step` values in your HTML are plain strings either way, checked
+when the page runs ([SZ102](/docs/v9/core/errors#sz102)). TypeScript adds
+typed ids and data to your own script.
