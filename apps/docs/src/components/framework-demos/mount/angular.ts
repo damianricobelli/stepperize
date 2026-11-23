@@ -1,7 +1,7 @@
 // The docs are not an Angular application, so there is no Angular compiler in the build: the
 // demo loads the JIT compiler and declares its component with the function form of `Component`.
 import "@angular/compiler";
-import { Component, signal } from "@angular/core";
+import { Component } from "@angular/core";
 import { bootstrapApplication } from "@angular/platform-browser";
 import { defineStepper, STEPPER_PRIMITIVES } from "@stepperize/angular";
 
@@ -46,7 +46,7 @@ const AngularDemo = Component({
 			<div stepperContent="account" class="${panel}">Create your account.</div>
 			<div stepperContent="plan" class="${panel}">Pick the plan that fits.</div>
 			<div stepperContent="done" class="${panel}">
-				{{ finished() ? "Finished. Thanks!" : "Press Finish to complete the flow." }}
+				{{ stepper().isFinished ? "Finished. Thanks!" : "Press Finish to complete the flow." }}
 			</div>
 			<div class="flex items-center gap-2">
 				<button stepperPrev class="rounded-md border px-3 py-1 disabled:opacity-40">Back</button>
@@ -61,11 +61,7 @@ const AngularDemo = Component({
 	`,
 })(
 	class {
-		readonly finished = signal(false);
-		readonly stepper = demo.injectStepper({
-			onFinish: () => this.finished.set(true),
-			onChange: () => this.finished.set(false),
-		});
+		readonly stepper = demo.injectStepper();
 	},
 );
 

@@ -4,8 +4,10 @@ import {
 	computed,
 	DestroyRef,
 	InjectionToken,
+	Injector,
 	inject,
 	type Provider,
+	runInInjectionContext,
 	type Signal,
 	signal,
 	untracked,
@@ -60,9 +62,12 @@ export function defineStepper<const S extends readonly Step[]>(steps: S, default
 	const token = new InjectionToken<StepperRef<S>>("stepperize");
 
 	function connect(options?: MaybeGetter<Options<S> | undefined>): StepperRef<S> {
+		// The options function is read again later (the first render, every change of a signal it
+		// reads): run it where `inject()` works, as the code around the call suggests it does.
+		const injector = inject(Injector);
 		const merged = (): Options<S> => ({
 			...defaults,
-			...(typeof options === "function" ? options() : options),
+			...(typeof options === "function" ? runInInjectionContext(injector, options) : options),
 		});
 		// Created the first time the stepper is read, which is when the template first renders:
 		// by then inputs are set, so `snapshot` and `step` can come from them.

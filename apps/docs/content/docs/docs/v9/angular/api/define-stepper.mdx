@@ -50,8 +50,9 @@ every change, with these properties:
 - The flow is created the first time the stepper is read, which is when the
   template first renders. `snapshot` is read at that moment, so it can come
   from an input.
-- Options are applied after a render, in the browser only. On the server the
-  current step renders and no callback runs.
+- Later option changes are applied after a render, in the browser only.
+  Nothing moves the flow while it renders on the server, so the current step
+  renders and no callback runs.
 - The flow is destroyed with the injector it was created in: the component,
   directive or service.
 

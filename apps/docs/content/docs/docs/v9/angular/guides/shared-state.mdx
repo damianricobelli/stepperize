@@ -29,13 +29,14 @@ The flow belongs to that component: one per instance, destroyed with it. Put
 `provideStepper()` in a route's `providers` to share it across the pages of the
 route, or in the application's to keep it for the whole session.
 
-Pass a function when an option depends on a signal. It runs in the provider's
-injection context, so it can `inject()`:
+Pass a function when an option depends on something else. It runs in the
+provider's injection context, so it can `inject()`, and it is read again when
+a signal it reads changes:
 
 ```ts
 providers: [
-  checkout.provideStepper(() => ({ step: inject(ActivatedRoute).snapshot.params["step"] })),
-];
+  checkout.provideStepper(() => ({ linear: inject(CheckoutSettings).linear() })),
+]
 ```
 
 ## injectStepperContext
