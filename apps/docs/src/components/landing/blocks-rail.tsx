@@ -3,6 +3,7 @@
 import { Link } from "@tanstack/react-router";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { type ComponentType, useRef, useState } from "react";
+import { FrameworkIcon } from "@/components/framework-icon";
 import { cta } from "@/components/site/cta";
 // Import the plain catalog, not `@/lib/blocks`: that barrel also inlines every
 // block's raw source for the gallery's code view, which the homepage never needs.
@@ -68,17 +69,31 @@ export function BlocksRail() {
 	return (
 		<section className="border-t bg-muted/30 [contain-intrinsic-size:auto_60rem] [content-visibility:auto]">
 			<div className="mx-auto flex w-full max-w-7xl flex-col justify-between gap-6 px-4 pt-16 sm:px-6 sm:pt-20 md:flex-row md:items-end lg:pt-28">
+				{/*
+				 * The blocks are shadcn/ui components, and shadcn/ui is React: the
+				 * section says so in its first words, whatever framework the visitor
+				 * picked, rather than presenting them as theirs.
+				 */}
 				<SectionHeading
-					eyebrow="Own your UI"
+					eyebrow={
+						<>
+							<FrameworkIcon
+								id="react"
+								className="size-3.5 text-primary dark:text-primary"
+							/>
+							For React, with shadcn/ui
+						</>
+					}
 					title={`${BLOCKS.length} blocks. Copy, paste, own every line.`}
 				>
-					Headless core, optional unstyled primitives, and production-ready
-					blocks built with Tailwind and shadcn/ui. Install one from the
-					registry and it is your code, with nothing to eject.
+					Production-ready flows built with Tailwind and shadcn/ui, installed
+					with the shadcn CLI. Each one is your code, with nothing to eject.
+					They are React because shadcn/ui is; the headless core they run on
+					works in every framework.
 				</SectionHeading>
 				<div className="flex shrink-0 items-center gap-2">
 					<Link to="/blocks" className={cta({ variant: "secondary" })}>
-						Browse all blocks
+						Browse React blocks
 						<ArrowRight aria-hidden />
 					</Link>
 					<div className="hidden gap-1 pointer-fine:flex">

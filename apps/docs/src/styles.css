@@ -438,29 +438,16 @@ figure.shiki > div.absolute:has(> button) {
   letter-spacing: -0.025em;
 }
 
-/* ── Landing entrance (one-time, above the fold only) ─────────────────── */
+/* ── Landing motion ────────────────────────────────────────────────────
+ * Entrances play once, above the fold, while React hydrates: so they are CSS
+ * keyframes on `transform` and `opacity` only, which the compositor runs off
+ * the main thread. No `filter: blur()`: blurring the 72px headline and the
+ * paragraphs every frame was the most expensive part of the old entrance.
+ */
 @keyframes lp-rise {
   from {
     opacity: 0;
-    transform: translateY(8px);
-    filter: blur(4px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-    filter: blur(0);
-  }
-}
-
-/* Large surfaces rise without blur: a blurred 1000px panel is expensive on phones. */
-@keyframes lp-lift {
-  from {
-    opacity: 0;
-    transform: translateY(12px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
+    transform: translateY(6px);
   }
 }
 
@@ -468,24 +455,75 @@ figure.shiki > div.absolute:has(> button) {
   from {
     opacity: 0;
   }
-  to {
-    opacity: 1;
+}
+
+/* A panel that replaces another (a tab, a step): a short settle, no blur. */
+@keyframes lp-swap {
+  from {
+    opacity: 0;
+    transform: scale(0.985);
+  }
+}
+
+@keyframes lp-from-right {
+  from {
+    opacity: 0;
+    transform: translateX(8px);
+  }
+}
+
+@keyframes lp-from-left {
+  from {
+    opacity: 0;
+    transform: translateX(-8px);
+  }
+}
+
+@keyframes lp-from-below {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
   }
 }
 
 .lp-rise {
-  animation: lp-rise 700ms var(--ease-out-strong) both;
+  animation: lp-rise 480ms var(--ease-out-strong) both;
 }
 
+/* The playground: a large surface, so a shorter travel. */
 .lp-lift {
-  animation: lp-lift 800ms var(--ease-out-strong) both;
+  animation: lp-rise 520ms var(--ease-out-strong) both;
+}
+
+.lp-swap {
+  animation: lp-swap 200ms var(--ease-out-strong) both;
+}
+
+.lp-from-right {
+  animation: lp-from-right 200ms var(--ease-out-strong) both;
+}
+
+.lp-from-left {
+  animation: lp-from-left 200ms var(--ease-out-strong) both;
+}
+
+.lp-from-below {
+  animation: lp-from-below 160ms var(--ease-out-strong) both;
+}
+
+.lp-fade {
+  animation: lp-fade 160ms var(--ease-out-strong) both;
 }
 
 @media (prefers-reduced-motion: reduce) {
   /* Gentler, not zero: keep the fade, drop the movement. */
   .lp-rise,
-  .lp-lift {
-    animation: lp-fade 300ms ease both;
+  .lp-lift,
+  .lp-swap,
+  .lp-from-right,
+  .lp-from-left,
+  .lp-from-below {
+    animation-name: lp-fade;
   }
 }
 

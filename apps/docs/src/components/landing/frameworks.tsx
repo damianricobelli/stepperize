@@ -2,68 +2,58 @@
 
 import { Link } from "@tanstack/react-router";
 import { ArrowRight, Check } from "lucide-react";
-import {
-	type CSSProperties,
-	type KeyboardEvent,
-	type ReactNode,
-	useRef,
-	useState,
-} from "react";
+import type { CSSProperties } from "react";
 import { FrameworkIcon } from "@/components/framework-icon";
-import { CURRENT_DOCS_VERSION } from "@/lib/docs-tree";
-import {
-	BINDINGS,
-	CORE_FRAMEWORK,
-	DEFAULT_FRAMEWORK,
-	FRAMEWORKS,
-} from "@/lib/frameworks";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { CORE_FRAMEWORK, DEFAULT_FRAMEWORK } from "@/lib/frameworks";
 import { cn } from "@/lib/utils";
-import { C, CodeFrame, F, K, P, S, Section, SectionHeading, T } from "./shared";
-
-const MAIN = BINDINGS.find((entry) => entry.id === DEFAULT_FRAMEWORK);
-const OTHERS = BINDINGS.filter((entry) => entry.id !== DEFAULT_FRAMEWORK);
-const CORE = FRAMEWORKS.find((entry) => entry.id === CORE_FRAMEWORK);
-
-const docs = (framework: string) => `${CURRENT_DOCS_VERSION}/${framework}`;
-const name = (entry: { title: string }) => entry.title;
+import { Highlighted, tokenize } from "./code";
+import {
+	CHOICES,
+	choiceOf,
+	docPath,
+	setFramework,
+	useFramework,
+} from "./framework-choice";
+import { CodeFrame, Section, SectionHeading } from "./shared";
 
 /**
- * One line under the headline: React leads, and the same engine runs in the
- * other frameworks. Each name opens that framework's documentation.
+ * The hero's framework row, and the one choice the rest of the page follows:
+ * the playground's code, the install command, the frameworks section and the
+ * "Get started" links. React is pressed until the visitor picks another.
  */
-export function FrameworkStrip({
+export function FrameworkPicker({
 	className,
 	style,
 }: {
 	className?: string;
 	style?: CSSProperties;
 }) {
-	if (!MAIN) return null;
+	const framework = useFramework();
 	return (
-		<ul
-			aria-label="Frameworks"
-			className={cn(
-				"flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-sm text-muted-foreground sm:text-[15px]",
-				className,
-			)}
+		<ToggleGroup
+			aria-label="Your framework: the code and links on this page follow it"
+			value={[framework]}
+			onValueChange={(value) => {
+				// Pressing the chosen one again would leave nothing chosen: keep it.
+				if (value[0]) setFramework(value[0]);
+			}}
+			spacing={1}
+			className={cn("flex-wrap justify-center", className)}
 			style={style}
 		>
-			{[MAIN, ...OTHERS, ...(CORE ? [CORE] : [])].map((entry) => (
-				<li key={entry.id}>
-					<Link
-						to="/docs/$"
-						params={{ _splat: docs(entry.id) }}
-						className={cn(
-							"pressable hit-44 inline-flex items-center gap-1.5 rounded-sm outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring",
-							entry.id === MAIN.id && "font-medium text-foreground",
-						)}
-					>
-						<FrameworkIcon id={entry.id} />
-						{name(entry)}
-					</Link>
-				</li>
+			{CHOICES.map((entry) => (
+				<ToggleGroupItem
+					key={entry.id}
+					value={entry.id}
+					className="pressable h-9 gap-1.5 rounded-full border border-transparent px-3 text-sm font-normal text-muted-foreground transition-[transform,background-color,border-color,color,box-shadow] pointer-coarse:h-11 hover:bg-transparent hover:text-foreground aria-pressed:border-border aria-pressed:bg-card aria-pressed:font-medium aria-pressed:text-foreground aria-pressed:shadow-xs focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:text-[15px]"
+				>
+					<FrameworkIcon id={entry.id} />
+					{entry.title}
+				</ToggleGroupItem>
 			))}
-		</ul>
+		</ToggleGroup>
 	);
 }
 
@@ -223,57 +213,27 @@ await flow.next();`,
 	},
 };
 
-/**
- * A small tokenizer, enough for the snippets above in every syntax they use
- * (TypeScript, JSX, Vue and Svelte templates, HTML). First match wins.
- */
-const TOKENS: [
-	RegExp,
-	((props: { children: ReactNode }) => ReactNode) | null,
-][] = [
-	// Comments.
-	[/\/\/.*|<!--[\s\S]*?-->/y, C],
-	// Strings. A template literal is left alone: it holds markup worth colouring.
-	[/"[^"\n]*"|'[^'\n]*'/y, S],
-	[
-		/\b(?:import|from|export|const|let|function|return|await|class|extends|readonly|this|new)\b/y,
-		K,
-	],
-	// A tag name, after `<` or `</`.
-	[/(?<=<\/?)[A-Za-z][\w.-]*/y, T],
-	// An attribute or directive: `onClick=`, `@click=`, `(click)=`, `data-step=`.
-	[/[@:(]?[A-Za-z][\w-]*\)?(?==["{$])/y, F],
-	// A decorator, then anything called.
-	[/@[A-Za-z]\w*/y, T],
-	[/[A-Za-z_$][\w$]*(?=\()/y, F],
-	// Types, classes and components.
-	[/\b[A-Z][\w$]*\b/y, T],
-	[/[{}()[\]<>/;,.:=`$]+/y, P],
-	// Anything else, one run at a time.
-	[/[A-Za-z_$][\w$]*|\s+|./y, null],
-];
+// Static: every snippet tokenized once at module load, never per render.
+const TOKENIZED = Object.fromEntries(
+	Object.entries(USAGE).map(([id, usage]) => [
+		id,
+		{
+			code: tokenize(usage.code),
+			first: usage.first && tokenize(usage.first.code),
+		},
+	]),
+);
+const DEFINITIONS = Object.fromEntries(
+	CHOICES.map((entry) => [entry.id, tokenize(definition(entry.package))]),
+);
 
-function highlight(code: string): ReactNode[] {
-	const out: ReactNode[] = [];
-	let at = 0;
-	while (at < code.length) {
-		for (const [pattern, Token] of TOKENS) {
-			pattern.lastIndex = at;
-			const text = pattern.exec(code)?.[0];
-			if (!text) continue;
-			out.push(Token ? <Token key={at}>{text}</Token> : text);
-			at += text.length;
-			break;
-		}
-	}
-	return out;
-}
-
-function Snippet({ code }: { code: string }) {
+function Snippet({ lines }: { lines: ReturnType<typeof tokenize> }) {
 	// One height for every framework: choosing one never moves the page below it.
 	return (
 		<pre className="min-h-[17.5rem] overflow-x-auto overscroll-x-contain p-4 font-mono text-[12.5px] leading-relaxed sm:p-5 sm:text-[13px]">
-			<code>{highlight(code)}</code>
+			<code>
+				<Highlighted lines={lines} />
+			</code>
 		</pre>
 	);
 }
@@ -287,50 +247,43 @@ const SHARED = [
 	"Accessible primitives",
 ];
 
-/** What only the main binding has today. */
+/**
+ * What only the main binding has today, and why: the blocks and the Studio
+ * are shadcn/ui components, and shadcn/ui is React.
+ */
 const MAIN_EXTRAS = [
-	"Copy-and-paste blocks",
-	"Stepper Studio",
+	"Blocks: shadcn/ui components, copied in with the shadcn CLI",
+	"Stepper Studio, which writes React and shadcn/ui code",
 	"Guides for React Hook Form, TanStack Form and Conform",
 ];
 
 /**
  * "Does it fit my stack?" Answered by showing it: the definition is the same
  * file in every framework, and the component next to it is the few lines that
- * differ. React is selected first and marked as the main binding.
+ * differ. It opens on the visitor's framework, React until they pick one, and
+ * picking a tab here changes it for the whole page.
  */
 export function Frameworks() {
-	const tabs = [MAIN, ...OTHERS, CORE].filter(
-		(entry): entry is NonNullable<typeof entry> => !!entry && entry.id in USAGE,
-	);
-	// Documented, but without a snippet here yet: still one click away.
-	const more = BINDINGS.filter((entry) => !(entry.id in USAGE));
-	const [active, setActive] = useState(tabs[0]?.id);
-	const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
-	const current = tabs.find((entry) => entry.id === active) ?? tabs[0];
-	if (!current) return null;
+	const framework = useFramework();
+	const current = choiceOf(framework);
 	const usage = USAGE[current.id];
 	const isCore = current.id === CORE_FRAMEWORK;
+	const isMain = current.id === DEFAULT_FRAMEWORK;
+	const tokens = TOKENIZED[current.id];
 	// The definition, or what this one has in its place. The core has neither.
-	const first =
-		usage.first ??
-		(isCore
+	const first = usage.first
+		? {
+				file: usage.first.file,
+				label: usage.first.label,
+				lines: tokens.first ?? [],
+			}
+		: isCore
 			? undefined
 			: {
 					file: "checkout.ts",
 					label: "Same in every framework",
-					code: definition(current.package),
-				});
-	const isMain = current.id === DEFAULT_FRAMEWORK;
-
-	const onKeyDown = (event: KeyboardEvent, index: number) => {
-		const delta = { ArrowRight: 1, ArrowLeft: -1 }[event.key];
-		if (delta === undefined) return;
-		event.preventDefault();
-		const next = (index + delta + tabs.length) % tabs.length;
-		setActive(tabs[next].id);
-		tabRefs.current[next]?.focus();
-	};
+					lines: DEFINITIONS[current.id],
+				};
 
 	return (
 		<Section id="frameworks" className="border-t">
@@ -343,27 +296,21 @@ export function Frameworks() {
 				definition does not change.
 			</SectionHeading>
 
-			<div
-				role="tablist"
-				aria-label="Framework"
-				className="-mx-4 mt-10 flex snap-x scroll-px-4 gap-2 overflow-x-auto overscroll-x-contain px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:mt-12 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0"
+			<Tabs
+				value={current.id}
+				onValueChange={(value) => setFramework(String(value))}
+				className="mt-10 gap-4 sm:mt-12"
 			>
-				{tabs.map((entry, index) => {
-					const selected = entry.id === current.id;
-					return (
-						<button
+				<TabsList
+					variant="line"
+					aria-label="Framework"
+					className="-mx-4 h-auto w-auto snap-x scroll-px-4 justify-start gap-2 overflow-x-auto overscroll-x-contain px-4 pb-1 [scrollbar-width:none] group-data-horizontal/tabs:h-auto sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0"
+				>
+					{CHOICES.map((entry) => (
+						<TabsTrigger
 							key={entry.id}
-							ref={(node) => {
-								tabRefs.current[index] = node;
-							}}
-							type="button"
-							role="tab"
-							id={`framework-tab-${entry.id}`}
-							aria-selected={selected}
-							aria-controls="framework-panel"
-							tabIndex={selected ? 0 : -1}
+							value={entry.id}
 							onClick={(event) => {
-								setActive(entry.id);
 								// On phones the tabs are a strip that scrolls: bring a
 								// half-visible one fully into view once chosen.
 								event.currentTarget.scrollIntoView({
@@ -376,57 +323,46 @@ export function Frameworks() {
 										: "smooth",
 								});
 							}}
-							onKeyDown={(event) => onKeyDown(event, index)}
-							className={cn(
-								"pressable hit-44 inline-flex h-10 shrink-0 snap-start items-center gap-2 rounded-full border px-4 text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring",
-								selected
-									? "border-primary/40 bg-card text-foreground shadow-sm shadow-primary/5"
-									: "bg-transparent text-muted-foreground hover:border-foreground/15 hover:bg-card/60 hover:text-foreground",
-							)}
+							className="pressable hit-44 h-10 flex-none shrink-0 snap-start gap-2 rounded-full border border-border px-4 text-sm font-medium text-muted-foreground transition-[transform,background-color,border-color,color,box-shadow] after:hidden hover:border-foreground/15 hover:bg-card/60 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring data-active:border-primary/40 data-active:bg-card data-active:text-foreground data-active:shadow-sm data-active:shadow-primary/5 dark:data-active:border-primary/40 dark:data-active:bg-card group-data-[variant=line]/tabs-list:data-active:bg-card dark:group-data-[variant=line]/tabs-list:data-active:border-primary/40 dark:group-data-[variant=line]/tabs-list:data-active:bg-card"
 						>
 							<FrameworkIcon id={entry.id} />
-							{name(entry)}
+							{entry.title}
 							{entry.id === DEFAULT_FRAMEWORK && (
 								<span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[11px] leading-none font-medium text-primary">
 									Main
 								</span>
 							)}
-						</button>
-					);
-				})}
-			</div>
+						</TabsTrigger>
+					))}
+				</TabsList>
 
-			<div
-				role="tabpanel"
-				id="framework-panel"
-				aria-labelledby={`framework-tab-${current.id}`}
-				className="mt-4 grid gap-4 lg:grid-cols-2"
-			>
-				{first && (
+				<TabsContent value={current.id} className="grid gap-4 lg:grid-cols-2">
+					{first && (
+						<CodeFrame
+							filename={first.file}
+							aside={
+								<span className="text-xs text-muted-foreground">
+									{first.label}
+								</span>
+							}
+						>
+							<Snippet lines={first.lines} />
+						</CodeFrame>
+					)}
 					<CodeFrame
-						filename={first.file}
-						aside={
-							<span className="text-xs text-muted-foreground">
-								{first.label}
-							</span>
-						}
+						filename={usage.file}
+						className={cn(!first && "lg:col-span-2")}
 					>
-						<Snippet code={first.code} />
+						<Snippet lines={tokens.code} />
 					</CodeFrame>
-				)}
-				<CodeFrame
-					filename={usage.file}
-					className={cn(!first && "lg:col-span-2")}
-				>
-					<Snippet code={usage.code} />
-				</CodeFrame>
-			</div>
+				</TabsContent>
+			</Tabs>
 
 			<div className="mt-4 grid gap-4 rounded-2xl border bg-card p-5 shadow-xs sm:p-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] lg:gap-10">
 				<div className="flex flex-col">
 					<h3 className="flex items-center gap-2 text-lg font-semibold tracking-tight">
 						<FrameworkIcon id={current.id} className="size-5" />
-						{name(current)}
+						{current.title}
 					</h3>
 					<p className="mt-1 font-mono text-xs text-muted-foreground">
 						{current.package}
@@ -436,7 +372,7 @@ export function Frameworks() {
 					</p>
 					<Link
 						to="/docs/$"
-						params={{ _splat: docs(current.id) }}
+						params={{ _splat: docPath(current.id, "intro") }}
 						className="group hit-44 mt-4 inline-flex items-center gap-1 self-start rounded-sm text-sm font-medium text-primary outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring lg:mt-auto lg:pt-4"
 					>
 						{current.title} docs
@@ -452,30 +388,20 @@ export function Frameworks() {
 						title="In every framework"
 						items={isCore ? SHARED.slice(0, -1) : SHARED}
 					/>
-					<Checklist
-						title="Only in React, for now"
-						items={MAIN_EXTRAS}
-						muted={!isMain}
-					/>
+					<div>
+						<Checklist
+							title="Only in React, for now"
+							items={MAIN_EXTRAS}
+							muted={!isMain}
+						/>
+						<p className="mt-3 text-xs leading-relaxed text-muted-foreground">
+							shadcn/ui is a React component library, so the blocks and the
+							Studio are React. Everything else on this page works in{" "}
+							{isMain ? "every framework" : current.title}.
+						</p>
+					</div>
 				</div>
 			</div>
-
-			{more.length > 0 && (
-				<p className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
-					Also available:
-					{more.map((entry) => (
-						<Link
-							key={entry.id}
-							to="/docs/$"
-							params={{ _splat: docs(entry.id) }}
-							className="pressable hit-44 inline-flex items-center gap-1.5 rounded-sm font-medium text-foreground outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring"
-						>
-							<FrameworkIcon id={entry.id} />
-							{entry.title}
-						</Link>
-					))}
-				</p>
-			)}
 		</Section>
 	);
 }

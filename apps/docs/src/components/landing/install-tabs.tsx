@@ -10,8 +10,13 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import { BINDINGS, CORE_FRAMEWORK, FRAMEWORKS } from "@/lib/frameworks";
 import { cn } from "@/lib/utils";
+import {
+	CHOICE_LABELS,
+	CHOICES,
+	setFramework,
+	useFramework,
+} from "./framework-choice";
 
 const MANAGERS = {
 	npm: "npm i",
@@ -24,32 +29,25 @@ const MANAGERS = {
  * One entry per framework, React first, then the core. `@stepperize/core/dom`
  * is an entry of `@stepperize/core`: what you install is the package.
  */
-const PACKAGES = [
-	...BINDINGS,
-	...FRAMEWORKS.filter((entry) => entry.id === CORE_FRAMEWORK),
-].map((entry) => ({
+const PACKAGES = CHOICES.map((entry) => ({
 	id: entry.id,
 	label: entry.title,
 	package: entry.package.split("/").slice(0, 2).join("/"),
 }));
-
-/** What the closed select shows for each value. */
-const FRAMEWORK_LABELS = Object.fromEntries(
-	PACKAGES.map((entry) => [entry.id, entry.label]),
-);
 
 type Manager = keyof typeof MANAGERS;
 const MANAGER_IDS = Object.keys(MANAGERS) as Manager[];
 
 /**
  * Copy-ready install command with a switch per package manager and a choice
- * of framework, which starts on React. Meeting the developer at whichever
+ * of framework: the visitor's, shared with the rest of the page (React until
+ * they pick one). Meeting the developer at whichever
  * tools they already use removes a tiny but real friction point on the path
  * to a first install.
  */
 export function InstallTabs({ className }: { className?: string }) {
 	const [manager, setManager] = useState<Manager>("npm");
-	const [framework, setFramework] = useState<string>(PACKAGES[0].id);
+	const framework = useFramework();
 	const [copied, setCopied] = useState(false);
 	const resetTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 	const pkg = PACKAGES.find((entry) => entry.id === framework) ?? PACKAGES[0];
@@ -101,7 +99,7 @@ export function InstallTabs({ className }: { className?: string }) {
 					))}
 				</fieldset>
 				<Select
-					items={FRAMEWORK_LABELS}
+					items={CHOICE_LABELS}
 					value={framework}
 					onValueChange={(id) => {
 						if (id) setFramework(id);

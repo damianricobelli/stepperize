@@ -2,7 +2,9 @@
 
 import { Star } from "lucide-react";
 import { GITHUB_URL, NPM_URL } from "@/components/site/brand";
+import type { DocsFramework } from "@/lib/frameworks";
 import { cn } from "@/lib/utils";
+import { useFramework } from "./framework-choice";
 import { GitHubMark } from "./shared";
 import { formatCompact, useStepperizeStats } from "./stats";
 
@@ -37,13 +39,79 @@ export function HeaderStars({ className }: { className?: string }) {
 }
 
 /**
+ * Size and third-party dependencies of each binding, as the visitor reads the
+ * page. Sizes are min + gzip from `node scripts/check-bundle.mjs` (the
+ * `/headless` entry of each binding: the flow and its glue, core included,
+ * without the UI primitives); update them from that script. Dependencies are
+ * the `dependencies` of each package other than `@stepperize/core`.
+ */
+const FOOTPRINT: Record<
+	DocsFramework,
+	{ size: string; sizeLabel: string; deps: number; depsLabel: string }
+> = {
+	react: {
+		size: "2.6 kB",
+		sizeLabel: "React hooks, min + gzip",
+		deps: 0,
+		depsLabel: "third-party dependencies",
+	},
+	vue: {
+		size: "3.2 kB",
+		sizeLabel: "Vue composables, min + gzip",
+		deps: 0,
+		depsLabel: "third-party dependencies",
+	},
+	svelte: {
+		size: "3.2 kB",
+		sizeLabel: "Svelte flow, min + gzip",
+		deps: 1,
+		depsLabel: "third-party dependency (esm-env)",
+	},
+	solid: {
+		size: "2.9 kB",
+		sizeLabel: "Solid flow, min + gzip",
+		deps: 0,
+		depsLabel: "third-party dependencies",
+	},
+	angular: {
+		size: "2.6 kB",
+		sizeLabel: "Angular signals, min + gzip",
+		deps: 1,
+		depsLabel: "third-party dependency (tslib)",
+	},
+	lit: {
+		size: "2.5 kB",
+		sizeLabel: "Lit controller, min + gzip",
+		deps: 0,
+		depsLabel: "third-party dependencies",
+	},
+	html: {
+		size: "2.8 kB",
+		sizeLabel: "bindStepper, on the 2.2 kB core",
+		deps: 0,
+		depsLabel: "third-party dependencies",
+	},
+	core: {
+		size: "2.2 kB",
+		sizeLabel: "the state machine, min + gzip",
+		deps: 0,
+		depsLabel: "third-party dependencies",
+	},
+};
+
+/**
  * Trust strip. Live numbers (stars, downloads) sit next to static facts so a
- * first-time visitor can answer "can I trust this?"
- * without leaving for GitHub or npm. Live values degrade to static copy when a
- * fetch fails, so the strip is never empty or misleading.
+ * first-time visitor can answer "can I trust this?" without leaving for
+ * GitHub or npm. Live values degrade to static copy when a fetch fails, so the
+ * strip is never empty or misleading.
+ *
+ * Size and dependencies follow the visitor's framework. Downloads are the
+ * React package's and say so: the other bindings are new, and adding up
+ * packages that depend on each other would count one install several times.
  */
 export function StatBar({ className }: { className?: string }) {
 	const { stars, downloads } = useStepperizeStats();
+	const footprint = FOOTPRINT[useFramework()];
 
 	const stats = [
 		{
@@ -53,13 +121,11 @@ export function StatBar({ className }: { className?: string }) {
 		},
 		{
 			value: downloads != null ? formatCompact(downloads) : "npm",
-			label: "monthly downloads",
+			label: "monthly downloads of @stepperize/react",
 			href: NPM_URL,
 		},
-		// Measured by `pnpm benchmark:size` for `@stepperize/react/headless`: the
-		// hooks and Provider, without the UI primitives. Update it with that script.
-		{ value: "2.6 kB", label: "React hooks, min + gzip" },
-		{ value: "0", label: "third-party dependencies" },
+		{ value: footprint.size, label: footprint.sizeLabel },
+		{ value: String(footprint.deps), label: footprint.depsLabel },
 	];
 
 	return (
@@ -89,12 +155,12 @@ export function StatBar({ className }: { className?: string }) {
 								href={stat.href}
 								target="_blank"
 								rel="noreferrer noopener"
-								className="flex flex-1 flex-col gap-0.5 px-5 py-4 outline-none transition-colors duration-150 hover:bg-muted/60 focus-visible:bg-muted/60"
+								className="flex flex-1 flex-col gap-0.5 px-4 py-4 outline-none transition-colors duration-150 hover:bg-muted/60 focus-visible:bg-muted/60 sm:px-5"
 							>
 								{body}
 							</a>
 						) : (
-							<div className="flex flex-1 flex-col gap-0.5 px-5 py-4">
+							<div className="flex flex-1 flex-col gap-0.5 px-4 py-4 sm:px-5">
 								{body}
 							</div>
 						)}

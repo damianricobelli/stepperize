@@ -5,6 +5,8 @@ import { useSearchContext } from "fumadocs-ui/contexts/search";
 import { Moon, Search, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 import type { ReactNode } from "react";
+import { FrameworkIcon } from "@/components/framework-icon";
+import { docPath, useFramework } from "@/components/landing/framework-choice";
 import { HeaderStars } from "@/components/landing/social-proof";
 import { cn } from "@/lib/utils";
 import { Wordmark } from "./brand";
@@ -24,8 +26,10 @@ export function SiteHeader({
 	/** `full` lines the bar up with full-bleed app surfaces such as the Studio. */
 	width?: "contained" | "full";
 }) {
+	// Docs open on the framework the visitor picked (React until they do).
+	const framework = useFramework();
 	return (
-		<header className="sticky top-[var(--fd-banner-height,0px)] z-40 border-b border-border/70 bg-background/80 backdrop-blur-xl supports-backdrop-filter:bg-background/65">
+		<header className="sticky top-[var(--fd-banner-height,0px)] z-40 border-b border-border/70 bg-background/85 backdrop-blur-md supports-backdrop-filter:bg-background/75">
 			<div
 				className={cn(
 					"mx-auto flex h-14 w-full items-center gap-1 pr-[max(0.75rem,env(safe-area-inset-right))] pl-[max(1rem,env(safe-area-inset-left))]",
@@ -44,15 +48,21 @@ export function SiteHeader({
 				<nav aria-label="Main" className="flex items-center">
 					<NavLink
 						active={active === "docs"}
-						href={{ to: "/docs/$", params: { _splat: "latest" } }}
+						href={{
+							to: "/docs/$",
+							params: { _splat: docPath(framework, "intro") },
+						}}
 					>
 						Docs
 					</NavLink>
+					{/* Blocks and Studio are shadcn/ui for React: marked where there is room. */}
 					<NavLink active={active === "blocks"} href={{ to: "/blocks" }}>
 						Blocks
+						<ReactMark />
 					</NavLink>
 					<NavLink active={active === "studio"} href={{ to: "/studio" }}>
 						Studio
+						<ReactMark />
 					</NavLink>
 					<NavLink
 						active={active === "changelog"}
@@ -93,13 +103,22 @@ function NavLink({
 			{...href}
 			aria-current={active ? "page" : undefined}
 			className={cn(
-				"pressable inline-flex h-9 items-center rounded-lg px-2.5 text-sm font-medium pointer-coarse:h-10 outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring sm:px-3",
+				"pressable inline-flex h-9 items-center rounded-lg px-2.5 text-sm font-medium pointer-coarse:h-11 outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring sm:px-3",
 				active ? "text-foreground" : "text-muted-foreground",
 				className,
 			)}
 		>
 			{children}
 		</Link>
+	);
+}
+
+function ReactMark() {
+	return (
+		<span className="ml-1.5 inline-flex max-md:hidden" title="React">
+			<FrameworkIcon id="react" className="size-3" />
+			<span className="sr-only">(React)</span>
+		</span>
 	);
 }
 
@@ -113,7 +132,7 @@ function SearchButton() {
 			type="button"
 			onClick={() => setOpenSearch(true)}
 			aria-label="Search documentation"
-			className="pressable inline-flex h-9 items-center gap-2 rounded-lg text-sm text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring max-md:w-9 max-md:justify-center pointer-coarse:max-md:size-10 md:w-52 md:border md:bg-card/60 md:pr-1.5 md:pl-3 md:shadow-xs md:hover:border-foreground/15"
+			className="pressable inline-flex h-9 items-center gap-2 rounded-lg text-sm text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring max-md:w-9 max-md:justify-center pointer-coarse:max-md:size-11 md:w-52 md:border md:bg-card/60 md:pr-1.5 md:pl-3 md:shadow-xs md:hover:border-foreground/15"
 		>
 			<Search className="size-4 shrink-0" aria-hidden />
 			<span className="hidden flex-1 text-left md:inline">Search docs…</span>
@@ -136,7 +155,7 @@ function ThemeToggle() {
 			type="button"
 			aria-label="Toggle color theme"
 			onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
-			className="pressable relative inline-flex size-9 pointer-coarse:size-10 items-center justify-center rounded-lg text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+			className="pressable relative inline-flex size-9 pointer-coarse:size-11 items-center justify-center rounded-lg text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
 		>
 			<Moon
 				aria-hidden

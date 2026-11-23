@@ -1,15 +1,229 @@
+"use client";
+
 import { Link } from "@tanstack/react-router";
 import { ArrowRight, Check } from "lucide-react";
 import type { ReactNode } from "react";
+import type { DocsFramework } from "@/lib/frameworks";
 import { cn } from "@/lib/utils";
+import { docPath, useFramework } from "./framework-choice";
 import { C, F, K, P, S, Section, SectionHeading, T } from "./shared";
+
+/**
+ * How each framework spells the parts the grid shows. Only names change: the
+ * features themselves are the core's, so every cell is true in every binding.
+ */
+const SPELLING: Record<
+	DocsFramework,
+	{
+		/** What a move is called on: `stepper.next()`, `stepper().next()`. */
+		receiver: string;
+		ownership: { code: ReactNode; note: string }[];
+		ownershipText: ReactNode;
+		primitivesText: ReactNode;
+		/** Where fields live, next to the Standard Schema libraries. */
+		fields: string[];
+	}
+> = {
+	react: {
+		receiver: "stepper",
+		ownership: [
+			{ code: call("checkout.", "useStepper", "()"), note: "local flow" },
+			{ code: tag("checkout.", "Provider"), note: "share it" },
+			{
+				code: call("", "useStepperContext", "(s => s.current.id)"),
+				note: "subscribe to a slice",
+			},
+		],
+		ownershipText: (
+			<>
+				Each <InlineCode>useStepper()</InlineCode> is its own flow. A Provider
+				shares one, and selectors keep re-renders focused.
+			</>
+		),
+		primitivesText: (
+			<>
+				Unstyled <InlineCode>Stepper.*</InlineCode> components ship roles, ARIA
+				and keyboard navigation. Style them through data attributes.
+			</>
+		),
+		fields: ["React Hook Form", "TanStack Form", "Conform", "useState"],
+	},
+	vue: {
+		receiver: "stepper",
+		ownership: [
+			{ code: call("checkout.", "useStepper", "()"), note: "local flow" },
+			{ code: tag("checkout.", "Provider"), note: "share it" },
+			{
+				code: call("checkout.", "useStepperContext", "()"),
+				note: "read it anywhere below",
+			},
+		],
+		ownershipText: (
+			<>
+				Each <InlineCode>useStepper()</InlineCode> is its own flow. A Provider
+				shares one with every component below it.
+			</>
+		),
+		primitivesText: (
+			<>
+				Unstyled <InlineCode>Stepper.*</InlineCode> components ship roles, ARIA
+				and keyboard navigation. Style them through data attributes.
+			</>
+		),
+		fields: ["v-model", "your form library"],
+	},
+	svelte: {
+		receiver: "stepper",
+		ownership: [
+			{ code: call("checkout.", "useStepper", "()"), note: "local flow" },
+			{ code: tag("checkout.", "Provider"), note: "share it" },
+			{
+				code: call("checkout.", "useStepperContext", "()"),
+				note: "read it anywhere below",
+			},
+		],
+		ownershipText: (
+			<>
+				Each <InlineCode>useStepper()</InlineCode> is its own flow. A Provider
+				shares one with every component below it.
+			</>
+		),
+		primitivesText: (
+			<>
+				Unstyled <InlineCode>Stepper.*</InlineCode> components ship roles, ARIA
+				and keyboard navigation. Style them through data attributes.
+			</>
+		),
+		fields: ["bind:value", "$state"],
+	},
+	solid: {
+		receiver: "stepper",
+		ownership: [
+			{ code: call("checkout.", "useStepper", "()"), note: "local flow" },
+			{ code: tag("checkout.", "Provider"), note: "share it" },
+			{
+				code: call("checkout.", "useStepperContext", "(s => s.current.id)"),
+				note: "track a slice",
+			},
+		],
+		ownershipText: (
+			<>
+				Each <InlineCode>useStepper()</InlineCode> is its own flow. A Provider
+				shares one, and selectors track only what they read.
+			</>
+		),
+		primitivesText: (
+			<>
+				Unstyled <InlineCode>Stepper.*</InlineCode> components ship roles, ARIA
+				and keyboard navigation. Style them through data attributes.
+			</>
+		),
+		fields: ["stores", "signals"],
+	},
+	angular: {
+		receiver: "stepper()",
+		ownership: [
+			{ code: call("checkout.", "injectStepper", "()"), note: "local flow" },
+			{ code: call("checkout.", "provideStepper", "()"), note: "share it" },
+			{
+				code: call("checkout.", "injectStepperContext", "()"),
+				note: "inject it below",
+			},
+		],
+		ownershipText: (
+			<>
+				Each <InlineCode>injectStepper()</InlineCode> is its own flow, read as a
+				signal. <InlineCode>provideStepper()</InlineCode> shares one through
+				dependency injection.
+			</>
+		),
+		primitivesText: (
+			<>
+				Unstyled directives ship roles, ARIA and keyboard navigation on your own
+				template. Style them through data attributes.
+			</>
+		),
+		fields: ["Angular forms", "signals"],
+	},
+	lit: {
+		receiver: "stepper",
+		ownership: [
+			{ code: call("checkout.", "controller", "(this)"), note: "own a flow" },
+			{ code: call("checkout.", "create", "()"), note: "make a shared one" },
+			{
+				code: call("checkout.", "controller", "(this, flow)"),
+				note: "follow it",
+			},
+		],
+		ownershipText: (
+			<>
+				A controller gives an element its own flow, or follows one that another
+				element or a module owns.
+			</>
+		),
+		primitivesText: (
+			<>
+				Element directives ship roles, ARIA and keyboard navigation on your own
+				tags. Style them through data attributes.
+			</>
+		),
+		fields: ["properties", "events"],
+	},
+	html: {
+		receiver: "flow",
+		ownership: [
+			{ code: call("", "createStepper", "(steps)"), note: "the flow" },
+			{ code: call("", "bindStepper", "(root, flow)"), note: "your markup" },
+			{ code: call("flow.", "subscribe", "(render)"), note: "anything else" },
+		],
+		ownershipText: (
+			<>
+				One flow, bound to markup your server already rendered, and readable
+				from Alpine, htmx or any script.
+			</>
+		),
+		primitivesText: (
+			<>
+				<InlineCode>bindStepper</InlineCode> gives your own markup roles, ARIA
+				and keyboard navigation. Style it through data attributes.
+			</>
+		),
+		fields: ["your form", "htmx"],
+	},
+	core: {
+		receiver: "flow",
+		ownership: [
+			{ code: call("", "createStepper", "(steps)"), note: "the flow" },
+			{ code: call("flow.", "subscribe", "(listener)"), note: "listen" },
+			{ code: call("flow.", "get", "()"), note: "an immutable view" },
+		],
+		ownershipText: (
+			<>
+				A plain object you own. <InlineCode>get</InlineCode> and{" "}
+				<InlineCode>subscribe</InlineCode> are what external stores expect.
+			</>
+		),
+		primitivesText: (
+			<>
+				Every binding ships them, and{" "}
+				<InlineCode>@stepperize/core/dom</InlineCode> adds them to plain HTML:
+				roles, ARIA and keyboard navigation.
+			</>
+		),
+		fields: ["any form", "any state"],
+	},
+};
 
 /**
  * The capability grid. Every cell shows the thing instead of describing it:
  * an editor diagnostic for type safety, the actual result union for
- * navigation, the real attribute names for primitives.
+ * navigation, the real attribute names for primitives. Names and links follow
+ * the visitor's framework; the features are the core's, so they hold in each.
  */
 export function Features() {
+	const framework = useFramework();
+	const spelling = SPELLING[framework];
+
 	return (
 		<Section className="border-t">
 			<SectionHeading
@@ -24,18 +238,18 @@ export function Features() {
 				<Cell
 					className="md:col-span-2"
 					title="Your step ids are a type"
-					doc="v9/react/first-stepper"
-					visual={<TypesVisual />}
+					doc={docPath(framework, "start")}
+					visual={<TypesVisual receiver={spelling.receiver} />}
 				>
-					Ids become a literal union the moment you call{" "}
-					<InlineCode>defineStepper</InlineCode>. Typos and missing cases fail
-					in your editor, not in production. No generics to wire up.
+					Ids become a literal union the moment you define the steps. Typos and
+					missing cases fail in your editor, not in production. No generics to
+					wire up.
 				</Cell>
 
 				<Cell
 					title="Every move has a result"
-					doc="v9/react/api/stepper"
-					visual={<ResultVisual />}
+					doc={docPath(framework, "api")}
+					visual={<ResultVisual receiver={spelling.receiver} />}
 				>
 					Navigation resolves to a typed result. Check{" "}
 					<InlineCode>accepted</InlineCode>, then handle the exact reason a move
@@ -44,34 +258,54 @@ export function Features() {
 
 				<Cell
 					title="Local or shared, your call"
-					doc="v9/react/guides/shared-state"
-					visual={<OwnershipVisual />}
+					doc={docPath(framework, "shared-state")}
+					visual={<OwnershipVisual rows={spelling.ownership} />}
 				>
-					Each <InlineCode>useStepper()</InlineCode> is its own flow. A Provider
-					shares one, and selectors keep re-renders focused.
+					{spelling.ownershipText}
 				</Cell>
 
 				<Cell
 					title="Accessible primitives"
-					doc="v9/react/guides/primitives"
+					doc={docPath(framework, "primitives")}
 					visual={<PrimitivesVisual />}
 				>
-					Unstyled <InlineCode>Stepper.*</InlineCode> components ship roles,
-					ARIA and keyboard navigation. Style them through data attributes.
+					{spelling.primitivesText}
 				</Cell>
 
 				<Cell
 					badge="New in v9"
 					title="next() validates"
-					doc="v9/react/guides/validation"
-					visual={<FormsVisual />}
+					doc={docPath(framework, "forms")}
+					visual={<FormsVisual fields={spelling.fields} />}
 				>
 					Attach a Standard Schema per step and <InlineCode>next()</InlineCode>{" "}
-					checks it for you. Keep fields in React Hook Form, TanStack Form,
-					Conform, or plain state.
+					checks it for you. Your fields stay where they are:{" "}
+					{new Intl.ListFormat("en", { type: "disjunction" }).format(
+						spelling.fields,
+					)}
+					.
 				</Cell>
 			</div>
 		</Section>
+	);
+}
+
+function call(owner: string, name: string, args: string) {
+	return (
+		<>
+			{owner}
+			<F>{name}</F>
+			{args}
+		</>
+	);
+}
+
+function tag(owner: string, name: string) {
+	return (
+		<>
+			&lt;{owner}
+			<T>{name}</T>&gt;
+		</>
 	);
 }
 
@@ -159,13 +393,26 @@ function MiniEditor({
 
 const IDS = ["shipping", "payment", "review"] as const;
 
-function TypesVisual() {
+function Receiver({ name }: { name: string }) {
+	// `stepper()` is a call: colour the name like one.
+	return name.endsWith("()") ? (
+		<>
+			<F>{name.slice(0, -2)}</F>
+			<P>()</P>
+		</>
+	) : (
+		name
+	);
+}
+
+function TypesVisual({ receiver }: { receiver: string }) {
 	return (
 		<div className="grid w-full max-w-2xl gap-4 sm:grid-cols-2">
 			{/* Autocomplete: inference you can see. */}
 			<MiniEditor className="self-start">
 				<div className="px-4 pt-3">
-					stepper<P>.</P>
+					<Receiver name={receiver} />
+					<P>.</P>
 					<F>goTo</F>
 					<P>(</P>
 					<S>"</S>
@@ -197,7 +444,8 @@ function TypesVisual() {
 			{/* Diagnostic: the typo that never reaches production. */}
 			<MiniEditor className="self-end">
 				<div className="px-4 py-3">
-					stepper<P>.</P>
+					<Receiver name={receiver} />
+					<P>.</P>
 					<F>goTo</F>
 					<P>(</P>
 					<span className="underline decoration-red-500 decoration-wavy decoration-1 underline-offset-[5px]">
@@ -217,11 +465,12 @@ function TypesVisual() {
 	);
 }
 
-function ResultVisual() {
+function ResultVisual({ receiver }: { receiver: string }) {
 	return (
 		<MiniEditor className="px-4 py-3">
 			<div>
-				<K>const</K> result <P>=</P> <K>await</K> stepper<P>.</P>
+				<K>const</K> result <P>=</P> <K>await</K> <Receiver name={receiver} />
+				<P>.</P>
 				<F>next</F>
 				<P>();</P>
 			</div>
@@ -251,34 +500,11 @@ function ResultVisual() {
 	);
 }
 
-function OwnershipVisual() {
-	const rows = [
-		{
-			code: (
-				<>
-					checkout.<F>useStepper</F>()
-				</>
-			),
-			note: "local flow",
-		},
-		{
-			code: (
-				<>
-					&lt;checkout.<T>Provider</T>&gt;
-				</>
-			),
-			note: "share it",
-		},
-		{
-			code: (
-				<>
-					<F>useStepperContext</F>(s <P>{"=>"}</P> s.current.id)
-				</>
-			),
-			note: "subscribe to a slice",
-		},
-	];
-
+function OwnershipVisual({
+	rows,
+}: {
+	rows: { code: ReactNode; note: string }[];
+}) {
 	return (
 		<MiniEditor className="divide-y">
 			{rows.map((row) => (
@@ -352,19 +578,13 @@ function PrimitivesVisual() {
 	);
 }
 
-const FORM_LIBS = [
-	"React Hook Form",
-	"TanStack Form",
-	"Conform",
-	"Zod",
-	"Valibot",
-	"ArkType",
-];
+/** Standard Schema libraries: the same in every framework. */
+const SCHEMA_LIBS = ["Zod", "Valibot", "ArkType"];
 
-function FormsVisual() {
+function FormsVisual({ fields }: { fields: string[] }) {
 	return (
 		<ul className="flex max-w-xs flex-wrap justify-center gap-2">
-			{FORM_LIBS.map((lib) => (
+			{[...fields, ...SCHEMA_LIBS].map((lib) => (
 				<li
 					key={lib}
 					className="rounded-full border bg-card px-3 py-1 text-xs font-medium shadow-xs"
