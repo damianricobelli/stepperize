@@ -38,6 +38,42 @@ describe("useStepper", () => {
 		dispose();
 	});
 
+	it("only tells a reader about the state it read", async () => {
+		const ids = vi.fn();
+		const { result: stepper, dispose } = host(() => {
+			const stepper = flow.useStepper();
+			createEffect(() => ids(stepper.current.id));
+			return stepper;
+		});
+		await settle();
+		stepper.setData("a", { draft: 1 });
+		stepper.setData("a", { draft: 2 });
+		await settle();
+		expect(ids).toHaveBeenCalledTimes(1);
+		dispose();
+	});
+
+	it("lets an effect write to the flow without depending on it", async () => {
+		const [name, setName] = createSignal("Ada");
+		const runs = vi.fn();
+		const { result: stepper, dispose } = host(() => {
+			const stepper = flow.useStepper();
+			createEffect(() => {
+				runs();
+				// A new object every time: nothing short-circuits this write.
+				stepper.setData("a", { name: name() });
+			});
+			return stepper;
+		});
+		await settle();
+		expect(runs).toHaveBeenCalledTimes(1);
+		setName("Grace");
+		await settle();
+		expect(runs).toHaveBeenCalledTimes(2);
+		expect(stepper.data).toEqual({ a: { name: "Grace" } });
+		dispose();
+	});
+
 	it("renders in JSX and updates the DOM", async () => {
 		let api!: Api;
 		function Owner() {

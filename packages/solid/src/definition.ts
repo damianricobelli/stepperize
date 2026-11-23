@@ -1,6 +1,7 @@
 import { createStepper, type Flow, fail, type Options, type Step, type Stepper } from "@stepperize/core";
 import { OPTION_KEYS } from "@stepperize/core/primitives";
 import {
+	$PROXY,
 	type Accessor,
 	type Component,
 	createComponent,
@@ -54,6 +55,19 @@ export function pickOptions<S extends readonly Step[]>(props: Record<string, unk
 	return options as Options<S>;
 }
 
+const ACTIONS: ReadonlySet<PropertyKey> = new Set(["next", "prev", "goTo", "setData", "validate", "reset", "restore"]);
+const STATE_KEYS = [
+	"current",
+	"index",
+	"isFirst",
+	"isLast",
+	"progress",
+	"data",
+	"output",
+	"isPending",
+	"isFinished",
+] as const satisfies readonly (keyof Stepper<readonly Step[]>)[];
+
 export function createDefinition<const S extends readonly Step[]>(steps: S, defaults: Options<S> = {}) {
 	const FlowContext = createContext<Shared<S>>();
 	/** Step id -> position, for the primitives that are handed an id. */
@@ -78,9 +92,32 @@ export function createDefinition<const S extends readonly Step[]>(steps: S, defa
 		});
 		if (getOwner()) onCleanup(() => flow.destroy());
 		const read = () => view() as Record<PropertyKey, unknown>;
+		// One memo per piece of state: a reader of `current` is not told about a draft, because a
+		// memo only notifies when its own value changed. The view as a whole is one signal.
+		const fields: Record<PropertyKey, Accessor<unknown>> = { steps: () => steps };
+		for (const key of STATE_KEYS) fields[key] = createMemo(() => view()[key]);
+		const live = flow as unknown as Record<PropertyKey, unknown>;
+		// The step decides which handler runs. Its data is handed over, not followed: a handler that
+		// renders a form would otherwise be rendered again, and lose focus, on every draft.
+		const match: Stepper<S>["match"] = (handlers) => {
+			const step = fields.current() as S[number];
+			const id = step.id as keyof typeof handlers;
+			return handlers[id](
+				step as never,
+				untrack(() => flow.data[id]),
+			);
+		};
 		const stepper = new Proxy({} as Stepper<S>, {
-			get: (_, key) => read()[key],
-			has: (_, key) => key in read(),
+			get: (_, key) => {
+				// Actions never change and read nothing: calling one in an effect must not make
+				// that effect depend on the flow it is writing to.
+				if (ACTIONS.has(key)) return live[key];
+				if (key === "match") return match;
+				// The other queries (`state`, `issues`, `canGoTo`, `snapshot`) close over a whole view.
+				return (fields[key] ?? (() => read()[key]))();
+			},
+			// `$PROXY` is how `mergeProps`, `splitProps` and a spread know to stay reactive.
+			has: (_, key) => key === $PROXY || key in read(),
 			ownKeys: () => Reflect.ownKeys(read()),
 			getOwnPropertyDescriptor: (_, key) => {
 				const descriptor = Reflect.getOwnPropertyDescriptor(read(), key);

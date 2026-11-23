@@ -59,6 +59,9 @@ function apply(element: Element, attrs: Attrs) {
 	}
 }
 
+/** The binding of each root, so binding it again replaces the previous one. */
+const bound = new WeakMap<HTMLElement, () => void>();
+
 /**
  * Make server-rendered markup a stepper: roles, ids, `data-state`, keyboard
  * navigation, focus hand-off and announcements, kept in sync with the flow.
@@ -87,6 +90,8 @@ export function bindStepper<S extends readonly Step[]>(
 	flow: Flow<S>,
 	options: BindOptions = {},
 ): () => void {
+	// Binding twice (an init script run again by Turbo or htmx, HMR) would move two steps per click.
+	bound.get(root)?.();
 	const doc = root.ownerDocument;
 	const steps = flow.steps;
 	const positions = new Map(steps.map((step, index) => [step.id as string, index]));
@@ -127,6 +132,9 @@ export function bindStepper<S extends readonly Step[]>(
 	const blocked = new Map<string, boolean>();
 	const checked = new WeakSet<Element>();
 
+	// `parts` looks for the root by this attribute: a root bound without it must have it first.
+	if (!root.hasAttribute("data-component")) root.setAttribute("data-component", "stepper");
+
 	function render() {
 		const view = flow.get();
 		const triggers = parts<HTMLButtonElement>("trigger");
@@ -136,7 +144,7 @@ export function bindStepper<S extends readonly Step[]>(
 		if (named) delete attrs["aria-label"];
 		apply(root, attrs);
 		for (const list of parts("list")) {
-			apply(list, listAttrs(ui, (list.getAttribute("data-orientation") as Orientation | null) ?? orientation));
+			apply(list, listAttrs(ui, list.getAttribute("data-orientation") === "vertical" ? "vertical" : orientation));
 		}
 		const item = (step: S[number]) =>
 			itemValue<S>(step, positions.get(step.id) ?? -1, itemBits(view, step.id as Id<S>));
@@ -184,11 +192,25 @@ export function bindStepper<S extends readonly Step[]>(
 	}
 
 	let index = flow.get().index;
+	/**
+	 * After the first render, bad markup (a `data-step` that is not in the flow, swapped in
+	 * later) is reported, not thrown: this runs inside the flow's notification, and throwing
+	 * there would reject the move that caused it and skip every other subscriber.
+	 */
+	const safe = () => {
+		try {
+			render();
+		} catch (error) {
+			// biome-ignore lint/suspicious/noConsole: the one way left to report it without breaking the flow.
+			console.error(error);
+		}
+	};
+
 	const update = () => {
 		const next = flow.get().index;
 		// Read before the panels change: was focus in this stepper?
 		const inside = next !== index && focusInside(root);
-		render();
+		safe();
 		if (next !== index) {
 			index = next;
 			stepChanged(root, region, flow.get().current, ui, inside);
@@ -218,7 +240,7 @@ export function bindStepper<S extends readonly Step[]>(
 				list,
 				flow,
 				ui,
-				(list.getAttribute("data-orientation") as Orientation | null) ?? orientation,
+				list.getAttribute("data-orientation") === "vertical" ? "vertical" : orientation,
 			);
 		}
 	};
@@ -229,16 +251,18 @@ export function bindStepper<S extends readonly Step[]>(
 	const unsubscribe = flow.subscribe(update);
 	// Markup swapped in later (htmx, Alpine, Turbo) becomes part of the stepper without another call.
 	const observer = new MutationObserver((records) => {
-		if (records.some((record) => record.target !== region)) render();
+		if (records.some((record) => record.target !== region)) safe();
 	});
 	observer.observe(root, { childList: true, subtree: true });
 	const unbind = () => {
+		bound.delete(root);
 		observer.disconnect();
 		unsubscribe();
 		root.removeEventListener("click", onClick);
 		root.removeEventListener("keydown", onKeydown);
 		region.remove();
 	};
+	bound.set(root, unbind);
 	try {
 		render();
 	} catch (error) {

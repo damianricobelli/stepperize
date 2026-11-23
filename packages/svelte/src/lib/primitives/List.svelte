@@ -1,10 +1,10 @@
 <script lang="ts">
 import type { Step } from "@stepperize/core";
 import { listAttrs, onListKeydown } from "@stepperize/core/primitives";
-import { useShared } from "../flow.svelte";
-import { useScope } from "../scope";
-import type { ListProps } from "../types";
-import { setTablist, useElement, useRoot } from "./context.svelte";
+import { useShared } from "../flow.svelte.js";
+import { useScope } from "../scope.js";
+import type { ListProps } from "../types.js";
+import { setTablist, useElement, useRoot } from "./context.svelte.js";
 import Index from "./Index.svelte";
 
 let { orientation, item, children, child, onkeydown, ...rest }: ListProps<readonly Step[]> = $props();

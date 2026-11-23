@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render } from "vitest-browser-vue";
-import { computed, defineComponent, effectScope, nextTick, onMounted, ref, watch } from "vue";
+import { computed, defineComponent, effectScope, nextTick, onMounted, reactive, ref, watch } from "vue";
 import { defineStepper } from "../headless";
 
 afterEach(cleanup);
@@ -38,6 +38,47 @@ describe("useStepper", () => {
 		// Enumerable like the view it stands for.
 		expect(Object.keys(stepper)).toContain("current");
 		expect("next" in stepper).toBe(true);
+	});
+
+	it("only tells a reader about the state it read", async () => {
+		const { result: stepper } = await mount(() => flow.useStepper());
+		const runs = vi.fn();
+		const id = computed(() => {
+			runs();
+			return stepper.current.id;
+		});
+		expect(id.value).toBe("a");
+		stepper.setData("a", { draft: 1 });
+		stepper.setData("a", { draft: 2 });
+		await nextTick();
+		expect(id.value).toBe("a");
+		expect(runs).toHaveBeenCalledTimes(1);
+	});
+
+	it("calls the callback of this moment, not of the last flush", async () => {
+		const tag = ref("one");
+		const seen: string[] = [];
+		const { result: stepper } = await mount(() =>
+			flow.useStepper(() => ({ onChange: (snapshot) => seen.push(`${tag.value}:${snapshot.step}`) })),
+		);
+		tag.value = "two";
+		await stepper.next();
+		expect(seen).toEqual(["two:b"]);
+	});
+
+	it("refuses an assignment instead of breaking later reads", async () => {
+		const { result: stepper } = await mount(() => flow.useStepper());
+		expect(Reflect.set(stepper, "index", 2)).toBe(false);
+		expect(stepper.index).toBe(0);
+	});
+
+	it("is not wrapped by reactive(), so data keeps its identity", async () => {
+		const { result: stepper } = await mount(() => flow.useStepper());
+		const state = reactive({ stepper });
+		const draft = { name: "Ada" };
+		state.stepper.setData("a", draft);
+		expect(state.stepper).toBe(stepper);
+		expect(state.stepper.data.a).toBe(draft);
 	});
 
 	it("renders the flow in a template and updates the DOM", async () => {

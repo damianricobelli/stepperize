@@ -1,10 +1,10 @@
 <script lang="ts">
 import { fail, type Step } from "@stepperize/core";
 import { contentAttrs } from "@stepperize/core/primitives";
-import { useShared } from "../flow.svelte";
-import { useScope } from "../scope";
-import type { ContentProps } from "../types";
-import { useElement, useRoot } from "./context.svelte";
+import { useShared } from "../flow.svelte.js";
+import { useScope } from "../scope.js";
+import type { ContentProps } from "../types.js";
+import { useElement, useRoot } from "./context.svelte.js";
 
 let { step: id, forceMount = false, children, child, ...rest }: ContentProps<readonly Step[]> = $props();
 

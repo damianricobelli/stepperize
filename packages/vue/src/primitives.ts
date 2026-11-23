@@ -145,10 +145,12 @@ function createRoot<S extends readonly Step[]>(scope: Scope<S>) {
 			onMounted(() => {
 				mounted.value = true;
 			});
+			// On its own, so `ui` only becomes a new object when the answer changes, not on every count.
+			const tabs = computed(() => !(props.linear ?? scope.defaults.linear) && (!mounted.value || triggers.value > 0));
 			const ui = computed<Ui>(() => ({
 				id,
 				orientation: props.orientation ?? "horizontal",
-				tabs: !(props.linear ?? scope.defaults.linear) && (!mounted.value || triggers.value > 0),
+				tabs: tabs.value,
 			}));
 			provide(UiKey, ui);
 			const status = computed(() => statusBits(shared.view.value));
@@ -273,7 +275,8 @@ function createTrigger<S extends readonly Step[]>(scope: Scope<S>) {
 			onMounted(() => {
 				if (triggers) triggers.value++;
 				const button = node(target);
-				if (button) checkTrigger(button, item.value.step.id);
+				// `as-child` on a component with several roots gives a text node, not an element.
+				if (button instanceof Element) checkTrigger(button, item.value.step.id);
 			});
 			onUnmounted(() => {
 				if (triggers) triggers.value--;

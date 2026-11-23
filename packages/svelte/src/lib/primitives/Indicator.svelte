@@ -1,7 +1,7 @@
 <script lang="ts">
 import { indicatorAttrs } from "@stepperize/core/primitives";
-import type { TextProps } from "../types";
-import { useElement, useItem } from "./context.svelte";
+import type { TextProps } from "../types.js";
+import { useElement, useItem } from "./context.svelte.js";
 
 let { children, child, ...rest }: TextProps = $props();
 

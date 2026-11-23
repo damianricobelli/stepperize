@@ -46,6 +46,41 @@ describe("useStepper", () => {
 		destroy();
 	});
 
+	it("only tells a reader about the state it read", () => {
+		const ids = vi.fn();
+		const { result: stepper, destroy } = host(() => {
+			const stepper = flow.useStepper();
+			$effect(() => ids(stepper.current.id));
+			return stepper;
+		});
+		stepper.setData("a", { draft: 1 });
+		flushSync();
+		stepper.setData("a", { draft: 2 });
+		flushSync();
+		expect(ids).toHaveBeenCalledTimes(1);
+		destroy();
+	});
+
+	it("lets an effect write to the flow without depending on it", () => {
+		let name = $state("Ada");
+		const runs = vi.fn();
+		const { result: stepper, destroy } = host(() => {
+			const stepper = flow.useStepper();
+			$effect(() => {
+				runs();
+				// A new object every time: nothing short-circuits this write.
+				stepper.setData("a", { name });
+			});
+			return stepper;
+		});
+		expect(runs).toHaveBeenCalledTimes(1);
+		name = "Grace";
+		flushSync();
+		expect(runs).toHaveBeenCalledTimes(2);
+		expect(stepper.data).toEqual({ a: { name: "Grace" } });
+		destroy();
+	});
+
 	it("renders in markup and updates the DOM", async () => {
 		let api!: Api;
 		const screen = await render(Owner, { props: { ready: (stepper: Api) => (api = stepper) } });

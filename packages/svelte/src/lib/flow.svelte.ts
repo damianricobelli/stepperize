@@ -1,8 +1,8 @@
 import { createStepper, type Flow, fail, type Options, type Step, type Stepper } from "@stepperize/core";
 import { getContext, setContext, untrack } from "svelte";
 import { createSubscriber } from "svelte/reactivity";
-import type { Scope } from "./scope";
-import type { MaybeGetter } from "./types";
+import type { Scope } from "./scope.js";
+import type { MaybeGetter } from "./types.js";
 
 /** One flow as Svelte sees it. */
 export type Shared<S extends readonly Step[] = readonly Step[]> = {
@@ -12,6 +12,12 @@ export type Shared<S extends readonly Step[] = readonly Step[]> = {
 	/** Reads fall through to the latest view and are tracked. */
 	stepper: Stepper<S>;
 };
+
+const ACTION_KEYS = ["next", "prev", "goTo", "setData", "validate", "reset", "restore"] as const;
+type Action = (typeof ACTION_KEYS)[number];
+const ACTIONS: ReadonlySet<PropertyKey> = new Set(ACTION_KEYS);
+type Query = "state" | "issues" | "canGoTo" | "match" | "snapshot";
+type StateKey = Exclude<keyof Stepper<readonly Step[]>, Action | Query>;
 
 /** One flow per component instance. `snapshot` is read once; everything else stays current. */
 export function useFlow<S extends readonly Step[]>(
@@ -29,15 +35,53 @@ export function useFlow<S extends readonly Step[]>(
 		return flow.get();
 	};
 	// Effects do not run on the server: options are applied once mounted and after every
-	// later change, like every other binding. Following `step` calls back into the owner.
-	$effect(() => {
+	// later change, like every other binding. Following `step` calls back into the owner,
+	// so the first time waits for the mount. Later changes are applied before the effects
+	// of the components below run, or a child's effect would still see the old callbacks.
+	let mounted = false;
+	$effect.pre(() => {
 		const next = merged();
-		untrack(() => flow.setOptions(next));
+		if (mounted) untrack(() => flow.setOptions(next));
 	});
-	$effect(() => () => flow.destroy());
+	$effect(() => {
+		mounted = true;
+		untrack(() => flow.setOptions(merged()));
+		return () => flow.destroy();
+	});
 	const read = () => view() as Record<PropertyKey, unknown>;
+	// One derived per piece of state: a reader of `current` is not told about a draft, because
+	// a derived only notifies when its own value changed. The view as a whole is one signal.
+	const current = $derived(view().current);
+	const index = $derived(view().index);
+	const isFirst = $derived(view().isFirst);
+	const isLast = $derived(view().isLast);
+	const progress = $derived(view().progress);
+	const data = $derived(view().data);
+	const output = $derived(view().output);
+	const isPending = $derived(view().isPending);
+	const isFinished = $derived(view().isFinished);
+	const state: { [K in StateKey]: () => Stepper<S>[K] } = {
+		steps: () => scope.steps,
+		current: () => current,
+		index: () => index,
+		isFirst: () => isFirst,
+		isLast: () => isLast,
+		progress: () => progress,
+		data: () => data,
+		output: () => output,
+		isPending: () => isPending,
+		isFinished: () => isFinished,
+	};
+	const live = flow as unknown as Record<PropertyKey, unknown>;
 	const stepper = new Proxy({} as Stepper<S>, {
-		get: (_, key) => read()[key],
+		get: (_, key) => {
+			// Actions never change and read nothing: calling one in an effect must not make
+			// that effect depend on the flow it is writing to.
+			if (ACTIONS.has(key)) return live[key];
+			const field = state[key as StateKey];
+			// The queries (`state`, `issues`, `canGoTo`, `match`, `snapshot`) close over a whole view.
+			return field ? field() : read()[key];
+		},
 		has: (_, key) => key in read(),
 		ownKeys: () => Reflect.ownKeys(read()),
 		getOwnPropertyDescriptor: (_, key) => {

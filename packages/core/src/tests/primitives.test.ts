@@ -55,7 +55,7 @@ describe("primitives", () => {
 
 	it("a pending move sets aria-disabled without disabling natively", () => {
 		const pending = { ...itemValue(steps[1], 1, 0), pending: true, disabled: true };
-		expect(triggerAttrs(tabs, pending, false, 3)).toMatchObject({ disabled: false, "aria-disabled": "true" });
+		expect(triggerAttrs(tabs, pending, false, 3)).toMatchObject({ disabled: undefined, "aria-disabled": "true" });
 		expect(triggerAttrs(tabs, pending, true, 3)).toMatchObject({ disabled: true, "aria-disabled": "true" });
 	});
 
@@ -80,12 +80,12 @@ describe("primitives", () => {
 	it("Next and Prev follow the edges, a running move and a finished flow", async () => {
 		const flow = createStepper(steps, { snapshot: { step: "c" } });
 		expect(navAttrs("prev", navBits(createStepper(steps).get(), "prev"), false).disabled).toBe(true);
-		expect(navAttrs("prev", navBits(flow.get(), "prev"), false).disabled).toBe(false);
+		expect(navAttrs("prev", navBits(flow.get(), "prev"), false).disabled).toBeUndefined();
 		expect(navIdle(navBits(flow.get(), "next"))).toBe(false);
 		await flow.next();
 		const done = navBits(flow.get(), "next");
 		expect(navIdle(done)).toBe(true);
-		expect(navAttrs("next", done, false)).toMatchObject({ disabled: false, "aria-disabled": "true" });
+		expect(navAttrs("next", done, false)).toMatchObject({ disabled: undefined, "aria-disabled": "true" });
 		expect(rootAttrs("vertical", statusBits(flow.get()))).toMatchObject({
 			"data-orientation": "vertical",
 			"data-finished": "",

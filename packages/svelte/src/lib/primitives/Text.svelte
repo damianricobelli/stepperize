@@ -1,7 +1,7 @@
 <script lang="ts">
-import { useExtra } from "../scope";
-import type { TextProps } from "../types";
-import { findItem, useElement } from "./context.svelte";
+import { useExtra } from "../scope.js";
+import type { TextProps } from "../types.js";
+import { findItem, useElement } from "./context.svelte.js";
 
 let { children, child, ...rest }: TextProps = $props();
 

@@ -117,7 +117,10 @@ export class StepperRoot {
 	readonly #browser = isPlatformBrowser(inject(PLATFORM_ID));
 	/** Tabs need triggers: each one counts itself in while it exists. */
 	readonly triggers = signal(0);
-	readonly #parts = new Map<Element, { kind: Kind; step?: () => string; orientation?: () => Orientation }>();
+	readonly #parts = new Map<
+		Element,
+		{ kind: Kind; step?: () => string; orientation?: () => Orientation; disabled?: () => boolean }
+	>();
 	#region?: HTMLSpanElement;
 
 	/** @internal */
@@ -161,7 +164,10 @@ export class StepperRoot {
 	}
 
 	/** @internal Parts tell the root where they are, so it can handle their clicks and keys. */
-	register(element: Element, part: { kind: Kind; step?: () => string; orientation?: () => Orientation }) {
+	register(
+		element: Element,
+		part: { kind: Kind; step?: () => string; orientation?: () => Orientation; disabled?: () => boolean },
+	) {
 		this.#parts.set(element, part);
 		if (part.kind === "trigger") untracked(() => this.triggers.update((count) => count + 1));
 		inject(DestroyRef).onDestroy(() => {
@@ -186,10 +192,12 @@ export class StepperRoot {
 	// Handled here so a `(click)` of your own on the button runs first and can `preventDefault()`.
 	protected onClick(event: MouseEvent) {
 		if (event.defaultPrevented) return;
-		for (const node of event.composedPath()) {
+		for (const node of this.#path(event)) {
 			if (node === this.element) return;
 			const part = this.#parts.get(node as Element);
 			if (!part) continue;
+			// A native `disabled` stops a button by itself; a link or a div needs this.
+			if (part.disabled?.()) return;
 			const { flow } = this.stepper();
 			const view = flow.get();
 			if (part.kind === "trigger" && part.step && !view.isPending) void flow.goTo(part.step());
@@ -201,8 +209,28 @@ export class StepperRoot {
 		}
 	}
 
+	/**
+	 * From the target up to this root. `composedPath()` is what crosses shadow roots, but Angular
+	 * makes it throw while it replays events recorded before hydration, and it is empty once the
+	 * dispatch is over: walk the parents then.
+	 */
+	#path(event: Event): EventTarget[] {
+		try {
+			const path = event.composedPath();
+			if (path.length) return path;
+		} catch {
+			// Event replay.
+		}
+		const path: EventTarget[] = [];
+		for (let node = event.target as Node | null; node; node = node.parentNode ?? (node as ShadowRoot).host ?? null) {
+			path.push(node);
+			if (node === this.element) break;
+		}
+		return path;
+	}
+
 	protected onKeydown(event: KeyboardEvent) {
-		for (const node of event.composedPath()) {
+		for (const node of this.#path(event)) {
 			if (node === this.element) return;
 			const part = this.#parts.get(node as Element);
 			if (part?.kind !== "list") continue;
@@ -325,7 +353,7 @@ export class StepperTrigger {
 
 	constructor() {
 		const element = useElement();
-		this.#root.register(element, { kind: "trigger", step: () => this.#step() });
+		this.#root.register(element, { kind: "trigger", step: () => this.#step(), disabled: this.disabled });
 		if (isDevMode()) {
 			afterNextRender(() => {
 				if (
@@ -421,7 +449,7 @@ abstract class StepperNav {
 	);
 
 	protected connect(kind: "next" | "prev") {
-		this.#root.register(useElement(), { kind });
+		this.#root.register(useElement(), { kind, disabled: this.disabled });
 	}
 }
 

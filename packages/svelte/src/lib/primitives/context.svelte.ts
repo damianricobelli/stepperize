@@ -34,6 +34,16 @@ export function useItem<S extends readonly Step[]>(): ItemValue<S> {
 export const setIndex = (index: number) => setContext(INDEX, index);
 export const useIndex = () => (getContext(INDEX) as number | undefined) ?? -1;
 
+/**
+ * A Root starts a new stepper: what an enclosing stepper set for its own items
+ * must not reach the primitives of this one.
+ */
+export function isolate() {
+	setContext(ITEM, undefined);
+	setContext(INDEX, undefined);
+	setContext(TABLIST, undefined);
+}
+
 /** `tabs` is true inside a tablist: its items are presentational. */
 export const setTablist = (list: { readonly tabs: boolean }) => setContext(TABLIST, list);
 export const inTablist = () => !!(getContext(TABLIST) as { tabs: boolean } | undefined)?.tabs;
@@ -44,6 +54,8 @@ export const inTablist = () => !!(getContext(TABLIST) as { tabs: boolean } | und
  * development, a `child` snippet that did not spread its props is reported.
  */
 export function useElement(name: string, custom: () => boolean, check?: (node: Element) => void) {
+	// The element is only looked at by the development checks.
+	if (!DEV) return {};
 	let node: Element | undefined;
 	const attach = {
 		[createAttachmentKey()]: (element: Element) => {
@@ -53,19 +65,17 @@ export function useElement(name: string, custom: () => boolean, check?: (node: E
 			};
 		},
 	};
-	if (DEV) {
-		$effect(() => {
-			const own = custom();
-			void tick().then(() => {
-				if (node) check?.(node);
-				else if (own) {
-					warn(
-						"SZ001",
-						`Stepper.${name} received a \`child\` snippet that did not spread its props onto an element, so ARIA attributes and handlers are missing.`,
-					);
-				}
-			});
+	$effect(() => {
+		const own = custom();
+		void tick().then(() => {
+			if (node) check?.(node);
+			else if (own) {
+				warn(
+					"SZ001",
+					`Stepper.${name} received a \`child\` snippet that did not spread its props onto an element, so ARIA attributes and handlers are missing.`,
+				);
+			}
 		});
-	}
+	});
 	return attach;
 }

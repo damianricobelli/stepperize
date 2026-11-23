@@ -150,7 +150,7 @@ export function triggerAttrs(ui: Ui, item: ItemValue, disabled: boolean, total: 
 		"data-state": item.state,
 		"data-invalid": flag(item.invalid),
 		"data-disabled": flag(off),
-		disabled,
+		disabled: disabled || undefined,
 		"aria-disabled": aria(off),
 		...(ui.tabs
 			? {
@@ -205,7 +205,7 @@ export function navAttrs(dir: "next" | "prev", bits: number, disabledProp: boole
 		"data-component": `stepper-${dir}`,
 		"data-pending": flag(!!(bits & 2)),
 		"data-disabled": flag(off),
-		disabled,
+		disabled: disabled || undefined,
 		"aria-disabled": aria(off),
 	};
 }
@@ -228,11 +228,17 @@ export function onListKeydown<S extends readonly Step[]>(
 ) {
 	const target = event.target as HTMLElement;
 	if (event.defaultPrevented || target.getAttribute?.("role") !== "tab") return;
+	// Alt+Left is the browser's Back, Ctrl+End scrolls: with a modifier the key is not ours.
+	if (event.altKey || event.ctrlKey || event.metaKey) return;
 	const horizontal = orientation === "horizontal";
 	let delta = KEYS[event.key]?.[horizontal ? 0 : 1];
 	if (!delta && event.key !== "Home" && event.key !== "End") return;
 	// Only this instance's tabs, in DOM order: nested lists stay correct.
-	const tabs = Array.from(list.querySelectorAll<HTMLElement>('[role="tab"]')).filter((tab) => tab.id.startsWith(ui.id));
+	// A tab the application disabled is skipped: the flow knows nothing about it, and moving
+	// onto it would leave the list without a tab stop.
+	const tabs = Array.from(list.querySelectorAll<HTMLElement>('[role="tab"]')).filter(
+		(tab) => tab.id.startsWith(ui.id) && (tab === target || !(tab as HTMLButtonElement).disabled),
+	);
 	const from = tabs.indexOf(target);
 	if (from === -1) return;
 	// Left and right swap in right-to-left layouts.

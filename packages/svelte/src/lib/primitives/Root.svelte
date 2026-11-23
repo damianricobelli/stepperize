@@ -2,10 +2,10 @@
 import type { Step } from "@stepperize/core";
 import { focusInside, HIDDEN, rootAttrs, statusBits, stepChanged, type Ui } from "@stepperize/core/primitives";
 import { untrack } from "svelte";
-import { defined, share, useFlow } from "../flow.svelte";
-import { useScope } from "../scope";
-import type { RootProps } from "../types";
-import { setRoot } from "./context.svelte";
+import { defined, share, useFlow } from "../flow.svelte.js";
+import { useScope } from "../scope.js";
+import type { RootProps } from "../types.js";
+import { isolate, setRoot } from "./context.svelte.js";
 
 let {
 	linear,
@@ -46,6 +46,7 @@ const ui: Ui = {
 		return !(linear ?? scope.defaults.linear) && (!mounted || triggers > 0);
 	},
 };
+isolate();
 setRoot({
 	ui,
 	register: () => {

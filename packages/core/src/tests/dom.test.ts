@@ -221,6 +221,34 @@ describe("state and data attributes", () => {
 		expect(() => serve(missing)).toThrow(/SZ101/);
 	});
 
+	it("reports markup that goes bad later without breaking the flow", async () => {
+		const { root, flow } = serve(markup());
+		const error = vi.spyOn(console, "error").mockImplementation(() => {});
+		const seen = vi.fn();
+		flow.subscribe(seen);
+		root.insertAdjacentHTML("beforeend", '<div data-component="stepper-content" data-step="typo"></div>');
+		await expect(flow.next()).resolves.toMatchObject({ accepted: true });
+		expect(seen).toHaveBeenCalled();
+		expect(String(error.mock.calls[0]?.[0])).toMatch(/SZ102/);
+		error.mockRestore();
+	});
+
+	it("replaces the previous binding when the same root is bound again", async () => {
+		const { root, flow } = serve(markup());
+		cleanups.push(bindStepper(root, flow));
+		next().click();
+		await vi.waitFor(() => expect(flow.index).toBe(1));
+		expect(root.querySelectorAll(':scope > [aria-live="polite"]')).toHaveLength(1);
+	});
+
+	it("ignores arrow keys pressed with a modifier", () => {
+		const { root } = serve(markup());
+		const tab = root.querySelector<HTMLElement>('[role="tab"]');
+		const event = new KeyboardEvent("keydown", { key: "ArrowRight", altKey: true, bubbles: true, cancelable: true });
+		tab?.dispatchEvent(event);
+		expect(event.defaultPrevented).toBe(false);
+	});
+
 	it("leaves nothing behind when the markup cannot be bound", async () => {
 		const { root, flow } = serve(
 			'<div data-component="stepper"><div data-component="stepper-content" data-step="nope"></div></div>',

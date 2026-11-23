@@ -78,6 +78,8 @@ export class StepperPrimitives<S extends readonly Step[]> extends StepperControl
 	/** Steps that were unreachable before the running move started: see `triggerAttrs`. */
 	#blocked = new Map<string, boolean>();
 	#index?: number;
+	/** Between `hostUpdate` and `hostUpdated`: parts recorded now are painted by this update. */
+	#updating = false;
 	#inside = false;
 	#checked = new WeakSet<Element>();
 
@@ -138,6 +140,9 @@ export class StepperPrimitives<S extends readonly Step[]> extends StepperControl
 	 * presentational inside a tablist, and a tablist needs triggers).
 	 */
 	_attach(element: Element, next: Part) {
+		// A part that arrives outside an update of the host (`until`, a task, anything that sets a
+		// value later) would never be painted: ask for the update that paints it.
+		if (!this.#updating && !this.#parts.has(element)) this.host.requestUpdate();
 		this.#parts.set(element, next);
 		if (next.kind === "root") {
 			if (this.#root && this.#root !== element) this._detach(this.#root);
@@ -205,7 +210,9 @@ export class StepperPrimitives<S extends readonly Step[]> extends StepperControl
 	#onClick = (event: MouseEvent) => {
 		const found = this.#from(event);
 		if (!found || event.defaultPrevented) return;
-		const [, { kind, step }] = found;
+		const [, { kind, step, disabled }] = found;
+		// A native `disabled` stops a button by itself; a link or a div needs this.
+		if (disabled) return;
 		const view = this.flow.get();
 		if (kind === "trigger" && step && !view.isPending) void this.flow.goTo(step as Id<S>);
 		// A rejecting `onFinish` rejects `next()`: the error belongs to `onFinish`, which reports it.
@@ -221,6 +228,7 @@ export class StepperPrimitives<S extends readonly Step[]> extends StepperControl
 	};
 
 	hostUpdate() {
+		this.#updating = true;
 		// Read before Lit touches the DOM: was focus in this stepper?
 		const index = this.flow.get().index;
 		this.#index ??= index;
@@ -229,6 +237,10 @@ export class StepperPrimitives<S extends readonly Step[]> extends StepperControl
 
 	override hostUpdated() {
 		super.hostUpdated();
+		this.#updating = false;
+		// A child expression that ends right at the root's closing tag clears everything after
+		// itself when it changes, the live region included: put it back.
+		if (this.#root && this.#region && this.#region.parentNode !== this.#root) this.#root.append(this.#region);
 		if (!this.#root && this.#parts.size) {
 			fail("SZ100", "Missing root. Put the `root()` directive on the element that contains the other parts.");
 		}
@@ -248,12 +260,12 @@ export class StepperPrimitives<S extends readonly Step[]> extends StepperControl
 		this.#index = index;
 		stepChanged(this.#root, this.#region, this.flow.get().current, this.#ui, this.#inside);
 	}
-
 }
 
 class PartDirective extends AsyncDirective {
 	#element?: Element;
 	#owner?: StepperPrimitives<readonly Step[]>;
+	#value?: Part;
 
 	constructor(info: PartInfo) {
 		super(info);
@@ -269,12 +281,19 @@ class PartDirective extends AsyncDirective {
 	override update(part: ElementPart, [owner, value]: [StepperPrimitives<readonly Step[]>, Part]) {
 		this.#element = part.element;
 		this.#owner = owner;
+		this.#value = value;
 		owner._attach(part.element, value);
 		return noChange;
 	}
 
 	protected override disconnected() {
 		if (this.#element) this.#owner?._detach(this.#element);
+	}
+
+	// A part that is not rendered again after its host comes back (inside `guard` or `cache`)
+	// would otherwise stay detached and stop following the flow.
+	protected override reconnected() {
+		if (this.#element && this.#value) this.#owner?._attach(this.#element, this.#value);
 	}
 }
 

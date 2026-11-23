@@ -29,8 +29,9 @@ export type Definition<S extends readonly Step[]> = {
 	create: (options?: Options<S>) => Flow<S>;
 	/**
 	 * A flow owned by this component. The result is reactive: read it in the
-	 * template or in a `computed`, and do not destructure its state. Pass a
-	 * getter or a ref when an option depends on reactive state.
+	 * template or in a `computed`, and do not destructure its state. To watch
+	 * it, watch a getter (`watch(() => stepper.index, ...)`), not the object.
+	 * Pass a getter or a ref when an option depends on reactive state.
 	 */
 	useStepper: (options?: MaybeRefOrGetter<Options<S> | undefined>) => Stepper<S>;
 	/**
@@ -59,19 +60,45 @@ export const optionProps = {
 	linear: { type: Boolean, default: undefined },
 	next: Object,
 	guard: Function,
-	onChange: Function,
-	onFinish: Function,
+	// A wrapper that merges its own listener with the caller's hands over an array.
+	onChange: [Function, Array],
+	onFinish: [Function, Array],
 	snapshot: Object,
 	step: String as PropType<string | null>,
-	onInvalidStep: Function,
+	onInvalidStep: [Function, Array],
 } satisfies Record<(typeof OPTION_KEYS)[number], unknown>;
 
 /** The options a component received as props. An absent prop does not override a default. */
 export function pickOptions<S extends readonly Step[]>(props: Record<string, unknown>): Options<S> {
 	const options: Record<string, unknown> = {};
-	for (const key of OPTION_KEYS) if (props[key] !== undefined) options[key] = props[key];
+	for (const key of OPTION_KEYS) {
+		const value = props[key];
+		if (value === undefined) continue;
+		options[key] = Array.isArray(value)
+			? (...args: unknown[]) => {
+					let result: unknown;
+					for (const listener of value as ((...args: unknown[]) => unknown)[]) result = listener(...args);
+					return result;
+				}
+			: value;
+	}
 	return options as Options<S>;
 }
+
+const ACTIONS: ReadonlySet<PropertyKey> = new Set(["next", "prev", "goTo", "setData", "validate", "reset", "restore"]);
+/** State that keeps its identity until it changes. The queries are new functions for every view. */
+const STATE: ReadonlySet<PropertyKey> = new Set([
+	"steps",
+	"current",
+	"index",
+	"isFirst",
+	"isLast",
+	"progress",
+	"data",
+	"output",
+	"isPending",
+	"isFinished",
+]);
 
 export function createDefinition<const S extends readonly Step[]>(steps: S, defaults: Options<S> = {}) {
 	const FlowKey: InjectionKey<Shared<S>> = Symbol("stepperize");
@@ -82,7 +109,9 @@ export function createDefinition<const S extends readonly Step[]>(steps: S, defa
 	/** One flow per component instance. `snapshot` is read once; everything else stays current. */
 	function useFlow(options?: MaybeRefOrGetter<Options<S> | undefined>): Shared<S> {
 		const merged = () => ({ ...defaults, ...toValue(options) });
-		const flow = createStepper(steps, merged());
+		// Cached until something it reads changes, so a getter that loads a snapshot is not run again.
+		const current = computed(merged);
+		const flow = createStepper(steps, current.value);
 		const view = shallowRef(flow.get());
 		// Subscribed from the start, so a change made by a child's `onMounted` is never missed.
 		flow.subscribe(() => {
@@ -90,14 +119,60 @@ export function createDefinition<const S extends readonly Step[]>(steps: S, defa
 		});
 		// Options are applied once the component is mounted and after every later change, never
 		// during server rendering: following `step` calls back into the owner.
-		const apply = () => flow.setOptions(merged());
-		if (getCurrentInstance()) onMounted(apply);
-		else if (typeof window !== "undefined") apply();
-		watch(merged, apply, { flush: "post" });
+		// The callbacks are read when the flow calls them, so one changed a moment ago is never stale.
+		// `linear` and `step` are what the flow compares, so those are values.
+		const lazy = (now: Options<S>): Options<S> => ({
+			linear: now.linear,
+			step: now.step,
+			snapshot: now.snapshot,
+			get next() {
+				return current.value.next;
+			},
+			get guard() {
+				return current.value.guard;
+			},
+			get onChange() {
+				return current.value.onChange;
+			},
+			get onFinish() {
+				return current.value.onFinish;
+			},
+			get onInvalidStep() {
+				return current.value.onInvalidStep;
+			},
+		});
+		const apply = (now: Options<S> = current.value) => flow.setOptions(lazy(now));
+		const browser = typeof window !== "undefined";
+		if (getCurrentInstance()) onMounted(() => apply());
+		else if (browser) apply();
+		// Before the owner renders, so a `step` that changed is followed in the same render.
+		if (browser) watch(current, (now) => apply(now));
 		if (getCurrentScope()) onScopeDispose(() => flow.destroy());
 		const read = () => view.value as Record<PropertyKey, unknown>;
+		// One computed per piece of state, as `useRoute()` does: a reader of `current` is not
+		// rendered again for a draft, because a computed only notifies when its value changed.
+		const fields = new Map<PropertyKey, ComputedRef<unknown>>();
+		const live = flow as unknown as Record<PropertyKey, unknown>;
+		const refuse = () => false;
 		const stepper = new Proxy({} as Stepper<S>, {
-			get: (_, key) => read()[key],
+			get: (_, key) => {
+				// Never wrapped by `reactive()`, `ref()` or a store: it would hand deep proxies of the data back.
+				if (key === "__v_skip") return true;
+				// Actions never change and read nothing.
+				if (ACTIONS.has(key)) return live[key];
+				if (!STATE.has(key)) return read()[key];
+				let field = fields.get(key);
+				if (!field) {
+					field = computed(() => read()[key]);
+					fields.set(key, field);
+				}
+				return field.value;
+			},
+			// It is a view: an assignment would define the property on the target and make every
+			// later read throw.
+			set: refuse,
+			defineProperty: refuse,
+			deleteProperty: refuse,
 			has: (_, key) => key in read(),
 			ownKeys: () => Reflect.ownKeys(read()),
 			getOwnPropertyDescriptor: (_, key) => {

@@ -30,7 +30,7 @@ export type PrimitiveProps<Attributes = HTMLAttributes<HTMLElement>> = Omit<Attr
 export type RootProps<S extends readonly Step[]> = Omit<HTMLAttributes<HTMLDivElement>, "children"> &
 	Options<S> & {
 		orientation?: Orientation;
-		/** Receives the stepper. Reactive: it only updates for what it reads. */
+		/** Receives the stepper. Reactive: reading `current` does not follow a change of `data`, and so on. */
 		children?: Snippet<[Stepper<S>]>;
 	};
 

@@ -1,9 +1,9 @@
 <script lang="ts">
 import { navAttrs, navBits, navIdle } from "@stepperize/core/primitives";
-import { useShared } from "../flow.svelte";
-import { useExtra, useScope } from "../scope";
-import type { ButtonProps } from "../types";
-import { useElement } from "./context.svelte";
+import { useShared } from "../flow.svelte.js";
+import { useExtra, useScope } from "../scope.js";
+import type { ButtonProps } from "../types.js";
+import { useElement } from "./context.svelte.js";
 
 let { children, child, disabled, onclick, ...rest }: ButtonProps = $props();
 

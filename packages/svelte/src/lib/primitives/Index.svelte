@@ -1,6 +1,6 @@
 <script lang="ts">
 import type { Snippet } from "svelte";
-import { setIndex } from "./context.svelte";
+import { setIndex } from "./context.svelte.js";
 
 let { index, children }: { index: number; children: Snippet } = $props();
 // One instance per step, keyed by its id: the index of an instance never changes.

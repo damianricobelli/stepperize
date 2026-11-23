@@ -1,9 +1,9 @@
 import { createStepper, type Flow, type Options, type Step, type Stepper } from "@stepperize/core";
 import type { Component } from "svelte";
-import { useFlow, useShared } from "./flow.svelte";
+import { useFlow, useShared } from "./flow.svelte.js";
 import Provider from "./Provider.svelte";
-import { bind, type Scope } from "./scope";
-import type { MaybeGetter, ProviderProps } from "./types";
+import { bind, type Scope } from "./scope.js";
+import type { MaybeGetter, ProviderProps } from "./types.js";
 
 /** What `defineStepper` returns: one typed flow, usable with or without Svelte. */
 export type Definition<S extends readonly Step[]> = {

@@ -2,7 +2,28 @@ import type { Options, Step } from "@stepperize/core";
 import { StepperController } from "./controller";
 import { createDefinition, type Definition } from "./definition";
 
-export type * from "@stepperize/core";
+// Named one by one: a bundled `export type *` is published as `export *`, which
+// would declare `createStepper` and others that this entry does not have.
+export type {
+	Code,
+	Flow,
+	FlowData,
+	FlowOutput,
+	GuardContext,
+	Id,
+	Input,
+	Issue,
+	Options,
+	Output,
+	Reason,
+	Result,
+	Snapshot,
+	StandardSchemaV1,
+	Step,
+	StepOf,
+	Stepper,
+	StepState,
+} from "@stepperize/core";
 export type { ControllerOptions, MaybeGetter } from "./controller";
 export { StepperController } from "./controller";
 export type { Definition } from "./definition";

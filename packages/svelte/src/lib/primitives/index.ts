@@ -1,10 +1,10 @@
 import type { Step } from "@stepperize/core";
 import type { ItemValue } from "@stepperize/core/primitives";
 import type { Component } from "svelte";
-import { bind, type Scope } from "../scope";
-import type { ButtonProps, ContentProps, ItemProps, ListProps, RootProps, TextProps } from "../types";
+import { bind, type Scope } from "../scope.js";
+import type { ButtonProps, ContentProps, ItemProps, ListProps, RootProps, TextProps } from "../types.js";
 import Content from "./Content.svelte";
-import { useItem } from "./context.svelte";
+import { useItem } from "./context.svelte.js";
 import Indicator from "./Indicator.svelte";
 import Item from "./Item.svelte";
 import List from "./List.svelte";

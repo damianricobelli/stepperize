@@ -40,6 +40,7 @@ import {
 	onMount,
 	Show,
 	splitProps,
+	untrack,
 	useContext,
 } from "solid-js";
 import { Dynamic } from "solid-js/web";
@@ -139,9 +140,26 @@ function element(
 	);
 }
 
-/** Children that may be a function of something the primitive knows. */
+const NONE = () => ({});
+
+/**
+ * For Prev and Next: `type="button"` unless `as` names another tag. A component
+ * gets it too: a design-system button inside a form would otherwise submit it.
+ * It is a default, so a `type` the caller passes still wins.
+ */
+const buttonType = (as: unknown) => (typeof as === "string" && as !== "button" ? {} : { type: "button" });
+
+/**
+ * Children that may be a function of something the primitive knows. A function
+ * that takes no argument is one of Solid's own accessors (`<Show>`, `<For>`),
+ * not a render function. The call is not tracked, as in `<Show>`: what the
+ * function reads at its top level must not render the whole subtree again,
+ * only the expressions in its JSX follow the flow.
+ */
 const resolve = <T>(children: unknown, value: T): JSX.Element =>
-	typeof children === "function" ? (children as (value: T) => JSX.Element)(value) : (children as JSX.Element);
+	typeof children === "function" && children.length > 0
+		? untrack(() => (children as (value: T) => JSX.Element)(value))
+		: (children as JSX.Element);
 
 function createRoot<S extends readonly Step[]>(scope: Scope<S>): Component<RootProps<S>> {
 	return (props) => {
@@ -226,7 +244,14 @@ function createRoot<S extends readonly Step[]>(scope: Scope<S>): Component<RootP
 
 function createList<S extends readonly Step[]>(scope: Scope<S>): Component<ListProps<S>> {
 	return (props) => {
-		const [local, rest] = splitProps(props as Props, ["orientation", "children", "as", "ref", "onKeyDown"]);
+		const [local, rest] = splitProps(props as Props, [
+			"orientation",
+			"children",
+			"as",
+			"ref",
+			"onKeyDown",
+			"onkeydown",
+		]);
 		const { ui } = useRoot();
 		// Read lazily in the handler so the List never updates on navigation.
 		const { flow } = scope.useShared();
@@ -234,25 +259,34 @@ function createList<S extends readonly Step[]>(scope: Scope<S>): Component<ListP
 		return createComponent(TablistContext.Provider, {
 			value: ui,
 			get children() {
-				return element("List", "ol", local, rest, () => listAttrs(ui, orientation()), {
-					onKeyDown: (event: KeyboardEvent) => {
-						call(local.onKeyDown, event);
-						onListKeydown(event, event.currentTarget as HTMLElement, flow, ui, orientation());
+				// What the caller passes wins over the computed attributes, as in every other binding.
+				return element(
+					"List",
+					"ol",
+					local,
+					mergeProps(() => listAttrs(ui, orientation()), rest),
+					NONE,
+					{
+						onKeyDown: (event: KeyboardEvent) => {
+							// Solid keeps both spellings in one slot: take whichever the caller used.
+							call(local.onKeyDown ?? local.onkeydown, event);
+							onListKeydown(event, event.currentTarget as HTMLElement, flow, ui, orientation());
+						},
+						get children() {
+							const children = local.children;
+							return typeof children === "function"
+								? scope.steps.map((step, index) =>
+										createComponent(IndexContext.Provider, {
+											value: index,
+											get children() {
+												return (children as (step: S[number], index: number) => JSX.Element)(step, index);
+											},
+										}),
+									)
+								: children;
+						},
 					},
-					get children() {
-						const children = local.children;
-						return typeof children === "function"
-							? scope.steps.map((step, index) =>
-									createComponent(IndexContext.Provider, {
-										value: index,
-										get children() {
-											return (children as (step: S[number], index: number) => JSX.Element)(step, index);
-										},
-									}),
-								)
-							: children;
-					},
-				});
+				);
 			},
 		});
 	};
@@ -299,11 +333,18 @@ function createItem<S extends readonly Step[]>(scope: Scope<S>): Component<ItemP
 		return createComponent(ItemContext.Provider, {
 			value: item,
 			get children() {
-				return element("Item", "li", local, rest, () => itemAttrs(value(), !!tablist?.tabs), {
-					get children() {
-						return resolve(local.children, item);
+				return element(
+					"Item",
+					"li",
+					local,
+					mergeProps(() => itemAttrs(value(), !!tablist?.tabs), rest),
+					NONE,
+					{
+						get children() {
+							return resolve(local.children, item);
+						},
 					},
-				});
+				);
 			},
 		});
 	};
@@ -311,7 +352,7 @@ function createItem<S extends readonly Step[]>(scope: Scope<S>): Component<ItemP
 
 function createTrigger<S extends readonly Step[]>(scope: Scope<S>): Component<ButtonProps> {
 	return (props) => {
-		const [local, rest] = splitProps(props as Props, ["children", "as", "ref", "disabled", "onClick"]);
+		const [local, rest] = splitProps(props as Props, ["children", "as", "ref", "disabled", "onClick", "onclick"]);
 		const { ui, register } = useRoot();
 		// Read lazily in the handler: the item above already follows this step.
 		const { flow } = scope.useShared();
@@ -327,12 +368,12 @@ function createTrigger<S extends readonly Step[]>(scope: Scope<S>): Component<Bu
 			"Trigger",
 			"button",
 			local,
-			// A default only: with `as`, the type of your own element stands.
+			// A default only: with `as`, the type of your own element stands. A trigger is often a link.
 			mergeProps(() => (local.as ? {} : { type: "button" }), rest),
 			() => triggerAttrs(ui, item, disabled(), scope.steps.length),
 			{
 				onClick: (event: MouseEvent) => {
-					call(local.onClick, event);
+					call(local.onClick ?? local.onclick, event);
 					if (!event.defaultPrevented && !item.pending) void flow.goTo(item.step.id as Id<S>);
 				},
 				get children() {
@@ -418,18 +459,18 @@ function createContent<S extends readonly Step[]>(scope: Scope<S>): Component<Co
  */
 function createNav<S extends readonly Step[]>(dir: "next" | "prev", scope: Scope<S>): Component<ButtonProps> {
 	return (props) => {
-		const [local, rest] = splitProps(props as Props, ["children", "as", "ref", "disabled", "onClick"]);
+		const [local, rest] = splitProps(props as Props, ["children", "as", "ref", "disabled", "onClick", "onclick"]);
 		const { flow, view } = scope.useShared();
 		const bits = createMemo(() => navBits(view(), dir));
 		return element(
 			dir === "next" ? "Next" : "Prev",
 			"button",
 			local,
-			mergeProps(() => (local.as ? {} : { type: "button" }), rest),
+			mergeProps(() => buttonType(local.as), rest),
 			() => navAttrs(dir, bits(), !!local.disabled),
 			{
 				onClick: (event: MouseEvent) => {
-					call(local.onClick, event);
+					call(local.onClick ?? local.onclick, event);
 					// A rejecting `onFinish` rejects `next()`: the flow is not finished and the button works
 					// again. The error belongs to `onFinish`, which reports it; nothing awaits this click.
 					if (!event.defaultPrevented && !navIdle(bits())) flow[dir]().catch(() => {});

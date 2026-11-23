@@ -1,10 +1,10 @@
 <script lang="ts">
 import { fail, type Step } from "@stepperize/core";
 import { type ItemValue, itemAttrs, itemBits, itemValue } from "@stepperize/core/primitives";
-import { useShared } from "../flow.svelte";
-import { useScope } from "../scope";
-import type { ItemProps } from "../types";
-import { inTablist, setItem, useElement, useIndex } from "./context.svelte";
+import { useShared } from "../flow.svelte.js";
+import { useScope } from "../scope.js";
+import type { ItemProps } from "../types.js";
+import { inTablist, setItem, useElement, useIndex } from "./context.svelte.js";
 
 let { step: id, children, child, ...rest }: ItemProps<readonly Step[]> = $props();
 

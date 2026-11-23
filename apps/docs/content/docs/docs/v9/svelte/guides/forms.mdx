@@ -101,9 +101,8 @@ flow: wrap the steps in `signup.Provider` (see
 </label>
 ```
 
-Write the draft from the input's event, not from an `$effect`: an effect that
-calls `setData` reads the flow it changes, so it runs again on every change,
-and it would also run once on mount and make a complete step incomplete
+Write the draft from the input's event, not from an `$effect`: an effect also
+runs once on mount, and that first write would make a complete step incomplete
 without the user touching it.
 
 `setData` does not validate. A step that was complete stops being complete when

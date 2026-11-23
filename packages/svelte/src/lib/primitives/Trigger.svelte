@@ -2,10 +2,10 @@
 import type { Step } from "@stepperize/core";
 import { checkTrigger, triggerAttrs } from "@stepperize/core/primitives";
 import { untrack } from "svelte";
-import { useShared } from "../flow.svelte";
-import { useScope } from "../scope";
-import type { ButtonProps } from "../types";
-import { useElement, useItem, useRoot } from "./context.svelte";
+import { useShared } from "../flow.svelte.js";
+import { useScope } from "../scope.js";
+import type { ButtonProps } from "../types.js";
+import { useElement, useItem, useRoot } from "./context.svelte.js";
 
 let { children, child, disabled, onclick, ...rest }: ButtonProps = $props();
 
