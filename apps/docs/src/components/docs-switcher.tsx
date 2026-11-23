@@ -112,7 +112,7 @@ function Switcher({
 				/>
 			</DropdownMenuTrigger>
 			<DropdownMenuContent
-				className="w-auto min-w-(--anchor-width)"
+				className="w-auto min-w-(--anchor-width) max-w-(--available-width)"
 				// Open on the page being read, not on the first entry. Base UI's
 				// popup takes `initialFocus` (its focus manager's option) but does
 				// not type it yet.
