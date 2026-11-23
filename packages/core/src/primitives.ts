@@ -256,7 +256,8 @@ export const focusInside = (root: Element | null | undefined) => !!root?.contain
  * Call it once the DOM shows the new step.
  *
  * - Focus falls back to <body> when its element unmounts (a field in the old
- *   panel, a button that is replaced) or becomes disabled. Hand it to the new
+ *   panel, a button that is replaced) or becomes disabled, and stays on an
+ *   element nobody can see when its panel is only hidden. Hand it to the new
  *   panel instead of stranding keyboard users. Focus that was elsewhere
  *   (`inside` is false) is never moved.
  * - Pressing Next changes the page silently for screen readers. Announce the
@@ -272,7 +273,9 @@ export function stepChanged(
 	const doc = root?.ownerDocument;
 	if (!doc) return;
 	let active = doc.activeElement as HTMLButtonElement | null;
-	if (inside && (!active || active === doc.body || active.disabled)) {
+	// Hidden counts as gone: a panel kept in the page (`forceMount`, server-rendered markup) hides
+	// its fields without blurring them.
+	if (inside && (!active || active === doc.body || active.disabled || active.closest("[hidden]"))) {
 		active = doc.getElementById(panelId(ui, step.id)) as HTMLButtonElement | null;
 		active?.focus();
 	}
