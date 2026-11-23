@@ -249,7 +249,10 @@ export function onListKeydown<S extends readonly Step[]>(
 }
 
 /** Was focus in this stepper? Read it before the framework touches the DOM for a step change. */
-export const focusInside = (root: Element | null | undefined) => !!root?.contains(root.ownerDocument.activeElement);
+export const focusInside = (root: Element | null | undefined) => !!root?.contains(scopeOf(root).activeElement);
+
+/** Where an element's ids and focus live: its document, or the shadow root it is rendered in. */
+const scopeOf = (root: Element) => root.getRootNode() as Document | ShadowRoot;
 
 /**
  * What a step change needs beyond rendering, for people who cannot see it.
@@ -270,8 +273,8 @@ export function stepChanged(
 	ui: Ui,
 	inside: boolean,
 ) {
-	const doc = root?.ownerDocument;
-	if (!doc) return;
+	if (!root) return;
+	const doc = scopeOf(root) as Document;
 	let active = doc.activeElement as HTMLButtonElement | null;
 	// Hidden counts as gone: a panel kept in the page (`forceMount`, server-rendered markup) hides
 	// its fields without blurring them.
