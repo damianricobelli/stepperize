@@ -18,7 +18,7 @@ import {
 	FRAMEWORKS,
 } from "@/lib/frameworks";
 import { cn } from "@/lib/utils";
-import { C, CodeFrame, K, S, Section, SectionHeading } from "./shared";
+import { C, CodeFrame, F, K, P, S, Section, SectionHeading, T } from "./shared";
 
 const MAIN = BINDINGS.find((entry) => entry.id === DEFAULT_FRAMEWORK);
 const OTHERS = BINDINGS.filter((entry) => entry.id !== DEFAULT_FRAMEWORK);
@@ -223,18 +223,50 @@ await flow.next();`,
 	},
 };
 
-const TOKEN =
-	/(\/\/.*$|"[^"\n]*"|\b(?:import|from|export|const|function|return|await|class|extends|readonly)\b)/gm;
+/**
+ * A small tokenizer, enough for the snippets above in every syntax they use
+ * (TypeScript, JSX, Vue and Svelte templates, HTML). First match wins.
+ */
+const TOKENS: [
+	RegExp,
+	((props: { children: ReactNode }) => ReactNode) | null,
+][] = [
+	// Comments.
+	[/\/\/.*|<!--[\s\S]*?-->/y, C],
+	// Strings. A template literal is left alone: it holds markup worth colouring.
+	[/"[^"\n]*"|'[^'\n]*'/y, S],
+	[
+		/\b(?:import|from|export|const|let|function|return|await|class|extends|readonly|this|new)\b/y,
+		K,
+	],
+	// A tag name, after `<` or `</`.
+	[/(?<=<\/?)[A-Za-z][\w.-]*/y, T],
+	// An attribute or directive: `onClick=`, `@click=`, `(click)=`, `data-step=`.
+	[/[@:(]?[A-Za-z][\w-]*\)?(?==["{$])/y, F],
+	// A decorator, then anything called.
+	[/@[A-Za-z]\w*/y, T],
+	[/[A-Za-z_$][\w$]*(?=\()/y, F],
+	// Types, classes and components.
+	[/\b[A-Z][\w$]*\b/y, T],
+	[/[{}()[\]<>/;,.:=`$]+/y, P],
+	// Anything else, one run at a time.
+	[/[A-Za-z_$][\w$]*|\s+|./y, null],
+];
 
-/** Enough highlighting to read a short snippet: comments, strings, keywords. */
 function highlight(code: string): ReactNode[] {
-	return code.split(TOKEN).map((part, index) => {
-		const key = `${index}:${part}`;
-		if (index % 2 === 0) return part;
-		if (part.startsWith("//")) return <C key={key}>{part}</C>;
-		if (part.startsWith('"')) return <S key={key}>{part}</S>;
-		return <K key={key}>{part}</K>;
-	});
+	const out: ReactNode[] = [];
+	let at = 0;
+	while (at < code.length) {
+		for (const [pattern, Token] of TOKENS) {
+			pattern.lastIndex = at;
+			const text = pattern.exec(code)?.[0];
+			if (!text) continue;
+			out.push(Token ? <Token key={at}>{text}</Token> : text);
+			at += text.length;
+			break;
+		}
+	}
+	return out;
 }
 
 function Snippet({ code }: { code: string }) {
