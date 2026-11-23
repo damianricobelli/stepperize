@@ -5,7 +5,7 @@
 // Nothing here touches the DOM until `bindStepper` is called, so the module is
 // safe to import on a server.
 
-import { development, fail, warn } from "./dev";
+import { development, fail } from "./dev";
 import {
 	type Attrs,
 	checkTrigger,
@@ -238,12 +238,6 @@ export function bindStepper<S extends readonly Step[]>(
 			if (!checked.has(element) && development()) {
 				checked.add(element);
 				checkTrigger(element, step.id);
-				if (element.tagName !== "BUTTON") {
-					warn(
-						"SZ005",
-						`The trigger for step "${step.id}" is a <${element.tagName.toLowerCase()}>, not a <button>: Enter and Space do not press it and it cannot be disabled. Use a <button>.`,
-					);
-				}
 			}
 		}
 		for (const element of all("indicator")) {

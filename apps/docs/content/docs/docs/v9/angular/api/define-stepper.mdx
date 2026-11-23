@@ -87,6 +87,14 @@ or of the nearest `[stepperRoot]` bound to one of its steppers. Providers and
 roots of other definitions are skipped. Without either it throws
 [SZ100](/docs/v9/core/errors#sz100).
 
+It takes no selector, unlike React's `useStepperContext`: a signal already is
+one. Wrap what you need in `computed()`, and the template only updates when
+that value changes.
+
+```ts
+readonly title = computed(() => this.stepper().current.title);
+```
+
 ## Types
 
 Everything `@stepperize/core` exports as a type is re-exported:

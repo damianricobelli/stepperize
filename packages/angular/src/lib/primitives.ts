@@ -29,6 +29,7 @@ import {
 	focusInside,
 	type ItemValue,
 	indicatorAttrs,
+	isPressable,
 	itemAttrs,
 	itemBits,
 	itemValue,
@@ -450,6 +451,12 @@ export class StepperTrigger {
 					}
 					if (!element.closest('[data-component="stepper-list"]')) {
 						warn("SZ003", `Stepper trigger for step "${step}" is outside stepperList.`);
+					}
+					if (!isPressable(element)) {
+						warn(
+							"SZ005",
+							`The trigger for step "${step}" is a <${element.tagName.toLowerCase()}>, not a <button>: Enter and Space do not press it and it cannot be disabled. Use a <button>.`,
+						);
 					}
 				},
 			});

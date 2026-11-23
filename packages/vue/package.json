@@ -5,7 +5,18 @@
 	"publishConfig": {
 		"access": "public"
 	},
-	"description": "The library for building step-by-step workflows for Vue apps",
+	"description": "Type-safe steppers, wizards and multi-step forms for Vue 3: composables and accessible, unstyled components.",
+	"keywords": [
+		"vue",
+		"vue3",
+		"nuxt",
+		"stepper",
+		"wizard",
+		"multi-step form",
+		"composables",
+		"headless",
+		"accessible"
+	],
 	"author": "damianricobelli",
 	"license": "MIT",
 	"repository": {
@@ -13,7 +24,7 @@
 		"url": "https://github.com/damianricobelli/stepperize.git",
 		"directory": "packages/vue"
 	},
-	"homepage": "https://stepperize.com",
+	"homepage": "https://stepperize.com/docs/v9/vue",
 	"sideEffects": false,
 	"files": [
 		"dist"

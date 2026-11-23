@@ -350,7 +350,11 @@ export function stepChanged(
 	if (region) region.textContent = !reads && typeof title === "string" ? title : "";
 }
 
-/** Development only: a trigger needs a name and a List around it. */
+/** A trigger the keyboard can press: a button, or a link that goes somewhere. */
+export const isPressable = (node: Element) =>
+	node.tagName === "BUTTON" || (node.tagName === "A" && node.hasAttribute("href"));
+
+/** Development only: a trigger needs a name, a List around it, and to be a button. */
 export function checkTrigger(node: Element, step: string) {
 	if (!development()) return;
 	if (!(node.textContent?.trim() || node.getAttribute("aria-label") || node.getAttribute("aria-labelledby"))) {
@@ -358,5 +362,11 @@ export function checkTrigger(node: Element, step: string) {
 	}
 	if (!node.closest('[data-component="stepper-list"]')) {
 		warn("SZ003", `Stepper.Trigger for step "${step}" is outside Stepper.List.`);
+	}
+	if (!isPressable(node)) {
+		warn(
+			"SZ005",
+			`The trigger for step "${step}" is a <${node.tagName.toLowerCase()}>, not a <button>: Enter and Space do not press it and it cannot be disabled. Use a <button>.`,
+		);
 	}
 }

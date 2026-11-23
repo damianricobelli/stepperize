@@ -5,7 +5,18 @@
 	"publishConfig": {
 		"access": "public"
 	},
-	"description": "The library for building step-by-step workflows for Svelte apps",
+	"description": "Type-safe steppers, wizards and multi-step forms for Svelte 5: runes and accessible, unstyled components.",
+	"keywords": [
+		"svelte",
+		"svelte5",
+		"sveltekit",
+		"stepper",
+		"wizard",
+		"multi-step form",
+		"runes",
+		"headless",
+		"accessible"
+	],
 	"author": "damianricobelli",
 	"license": "MIT",
 	"repository": {
@@ -13,7 +24,7 @@
 		"url": "https://github.com/damianricobelli/stepperize.git",
 		"directory": "packages/svelte"
 	},
-	"homepage": "https://stepperize.com",
+	"homepage": "https://stepperize.com/docs/v9/svelte",
 	"sideEffects": false,
 	"files": [
 		"dist"

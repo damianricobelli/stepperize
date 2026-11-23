@@ -5,7 +5,17 @@
 	"publishConfig": {
 		"access": "public"
 	},
-	"description": "The library for building step-by-step workflows for Lit and web components",
+	"description": "Type-safe steppers, wizards and multi-step forms for Lit and web components: a reactive controller and accessible element directives.",
+	"keywords": [
+		"lit",
+		"web components",
+		"custom elements",
+		"stepper",
+		"wizard",
+		"multi-step form",
+		"reactive controller",
+		"accessible"
+	],
 	"author": "damianricobelli",
 	"license": "MIT",
 	"repository": {
@@ -13,7 +23,7 @@
 		"url": "https://github.com/damianricobelli/stepperize.git",
 		"directory": "packages/lit"
 	},
-	"homepage": "https://stepperize.com",
+	"homepage": "https://stepperize.com/docs/v9/lit",
 	"sideEffects": false,
 	"files": [
 		"dist"

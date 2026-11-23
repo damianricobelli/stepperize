@@ -5,7 +5,17 @@
 	"publishConfig": {
 		"access": "public"
 	},
-	"description": "The library for building step-by-step workflows for Solid apps",
+	"description": "Type-safe steppers, wizards and multi-step forms for Solid: a reactive stepper and accessible, unstyled components.",
+	"keywords": [
+		"solid",
+		"solidjs",
+		"solid-start",
+		"stepper",
+		"wizard",
+		"multi-step form",
+		"headless",
+		"accessible"
+	],
 	"author": "damianricobelli",
 	"license": "MIT",
 	"repository": {
@@ -13,7 +23,7 @@
 		"url": "https://github.com/damianricobelli/stepperize.git",
 		"directory": "packages/solid"
 	},
-	"homepage": "https://stepperize.com",
+	"homepage": "https://stepperize.com/docs/v9/solid",
 	"sideEffects": false,
 	"files": [
 		"dist"

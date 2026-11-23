@@ -1,4 +1,4 @@
-import { fail, type Id, type Options, type Step, type StepOf, type Stepper, warn } from "@stepperize/core";
+import { development, fail, type Id, type Options, type Step, type StepOf, type Stepper, warn } from "@stepperize/core";
 import {
 	type Attrs,
 	checkTrigger,
@@ -385,7 +385,7 @@ export class StepperPrimitives<S extends readonly Step[]> extends StepperControl
 		this.#ui.tabs = !view.isLinear && triggers > 0;
 		for (const [element, value] of this.#parts) {
 			this.#paint(element, value);
-			if (process.env.NODE_ENV !== "production" && !this.#checked.has(element)) {
+			if (development() && !this.#checked.has(element)) {
 				this.#checked.add(element);
 				if (value.kind === "trigger") checkTrigger(element, value.step ?? "");
 				this.#checkScope(element, value);

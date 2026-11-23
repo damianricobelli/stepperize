@@ -5,7 +5,17 @@
 	"publishConfig": {
 		"access": "public"
 	},
-	"description": "The library for building step-by-step workflows for React and React Native apps",
+	"description": "Type-safe steppers, wizards and multi-step forms for React: hooks and accessible, unstyled primitives.",
+	"keywords": [
+		"react",
+		"stepper",
+		"wizard",
+		"multi-step form",
+		"hooks",
+		"headless",
+		"accessible",
+		"typescript"
+	],
 	"author": "damianricobelli",
 	"license": "MIT",
 	"repository": {
@@ -13,7 +23,7 @@
 		"url": "https://github.com/damianricobelli/stepperize.git",
 		"directory": "packages/react"
 	},
-	"homepage": "https://stepperize.com",
+	"homepage": "https://stepperize.com/docs/v9/react",
 	"sideEffects": false,
 	"files": [
 		"dist"
