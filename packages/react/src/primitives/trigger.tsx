@@ -1,5 +1,6 @@
 import type { Id, Step } from "@stepperize/core";
 import { warn } from "@stepperize/core";
+import { reportError } from "@stepperize/core/primitives";
 import React from "react";
 import type { Scope } from "../definition";
 import { element, panelId, primitive, triggerId, useDevRef, useItem, useUi } from "./shared";
@@ -71,7 +72,7 @@ export function createTrigger<S extends readonly Step[]>(scope: Scope<S>): Compo
 				: { "aria-current": current ? ("step" as const) : undefined }),
 			onClick: (e: React.MouseEvent<HTMLButtonElement>) => {
 				onClick?.(e);
-				if (!e.defaultPrevented && !pending) void flow.goTo(id);
+				if (!e.defaultPrevented && !pending) flow.goTo(id).catch(reportError);
 			},
 		};
 		return element("button", domProps, render);

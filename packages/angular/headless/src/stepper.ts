@@ -187,6 +187,7 @@ export function defineStepper<const S extends readonly Step[]>(steps: S, default
 	}
 
 	function injectStepperContext(): StepperRef<S> {
+		if (typeof ngDevMode === "undefined" || ngDevMode) assertInInjectionContext(injectStepperContext);
 		const missing = () =>
 			fail(
 				"SZ100",

@@ -393,6 +393,37 @@ describe("development diagnostics", () => {
 		expect(seen.some((message) => message.includes("SZ003"))).toBe(true);
 	});
 
+	it("warns about a part rendered outside root(), whose clicks never reach the stepper", async () => {
+		const seen = await warnings(async () => {
+			await scenario("outside");
+		});
+		expect(seen.filter((message) => message.includes("SZ100") && message.includes("next() part"))).toHaveLength(1);
+		expect(seen.filter((message) => message.includes("content() part"))).toEqual([]);
+	});
+
+	it("reports what a click's move throws, and Next works again", async () => {
+		const errors: unknown[] = [];
+		const spy = vi.spyOn(globalThis, "reportError").mockImplementation((error) => {
+			errors.push(error);
+		});
+		const onFinish = vi.fn().mockRejectedValueOnce(new Error("payment declined"));
+		const guard = ({ direction }: { direction: string }) => {
+			if (direction === "goTo") throw new Error("guard broke");
+			return true;
+		};
+		const element = await full({ snapshot: { step: "third" }, onFinish, guard });
+		await userEvent.click(next());
+		await vi.waitFor(() => expect(errors).toHaveLength(1));
+		expect(String(errors[0])).toMatch(/payment declined/);
+		await userEvent.click(screen.getByRole("tab", { name: /First/ }));
+		await vi.waitFor(() => expect(errors).toHaveLength(2));
+		expect(String(errors[1])).toMatch(/guard broke/);
+		await flush(element);
+		await userEvent.click(next());
+		await vi.waitFor(() => expect(onFinish).toHaveBeenCalledTimes(2));
+		spy.mockRestore();
+	});
+
 	it("reports coded errors for parts without a root and for unknown steps", async () => {
 		const errors: string[] = [];
 		const onError = (event: ErrorEvent | PromiseRejectionEvent) => {
@@ -595,6 +626,16 @@ describe("child components", () => {
 		// Tabs and panels name each other by id, which cannot cross shadow roots: that is reported.
 		expect(seen.filter((message) => message.includes("SZ004")).length).toBe(3);
 		expect(seen.some((message) => message.includes('trigger() part of step "first"'))).toBe(true);
+	});
+
+	it("a trigger a child component renders inside the List is inside it, across the shadow root", async () => {
+		const seen = await warnings(async () => {
+			const element = await scenario("child-trigger");
+			for (const child of root(element).querySelectorAll("sz-child-trigger")) await (child as Scenario).updateComplete;
+			await flush(element);
+			expect(root(element).querySelector("ol")?.getAttribute("role")).toBe("tablist");
+		});
+		expect(seen.filter((message) => message.includes("SZ003"))).toEqual([]);
 	});
 });
 

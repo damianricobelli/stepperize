@@ -32,7 +32,10 @@ html`<button ${s.next()}>Continue</button>`;
 The host's template has parts (`list()`, `content()`, `next()`...) and no
 element with `root()`. The controller checks this after every update of its host, so
 `root()` must be in the host's own template. A `root()` rendered by a child
-component arrives too late and does not count.
+component arrives too late and does not count. The other parts must be inside
+the element with `root()`, in the host's template or in a child component
+rendered inside it: a part outside gets a development warning with the same
+code (see [A button with next() does nothing](#a-button-with-next-does-nothing)).
 
 ```ts
 // Wrong: the root is in a child component.
@@ -83,10 +86,10 @@ html`
 
 ### SZ003: A trigger is outside the list
 
-The trigger has no element with `list()` around it in its own tree. The check
-does not look across shadow roots: a trigger rendered by a child component
-inside a list of the parent's template is reported too. Render the list and
-its triggers in the same template.
+The trigger has no element with `list()` around it. The check looks across
+shadow roots: a trigger that a child component renders, inside an item of the
+parent's list, is inside the list. Move the trigger into the list, or use a
+plain button that calls `goTo`.
 
 ### SZ004: A part is in another shadow root
 
@@ -277,9 +280,21 @@ or resume with `snapshot`.
 ### A button with next() does nothing
 
 The button is outside the element that has `root()`. The directives listen for
-clicks on the root, so a part outside it is painted but never pressed. Put
-everything inside the root, or call `this.stepper.value.next()` from your own
-`@click`.
+clicks on the root, so a part outside it is painted but never pressed. In
+development the controller warns about it with
+[SZ100](/docs/v9/core/errors#sz100), naming the part. Put everything inside
+the root, or call `this.stepper.value.next()` from your own `@click`.
+
+### Pressing Next logs an uncaught error
+
+`onFinish` rejected, or a `guard` or schema threw, in a move started by
+`next()`, `prev()` or a trigger. Nothing awaits a click, so the error is
+reported as one thrown by any event listener: the console shows it as
+uncaught, and `window.onerror` and error trackers receive it. The flow is idle
+again, so the button works on the next press. To tell the person, catch the
+error in `onFinish` and rethrow it so the flow is not finished, or call
+`this.stepper.value.next()` yourself and handle the promise. See
+[Errors from a click](/docs/v9/core/errors#errors-from-a-click).
 
 ### Styles do not reach the parts
 

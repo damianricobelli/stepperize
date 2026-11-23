@@ -15,3 +15,9 @@ Every package now shares one version: `@stepperize/core` and every binding are r
 - Focus left in the panel of another step, during a leave transition, moves to the new panel.
 
 `@stepperize/react`: the published types no longer declare `createStepper` and other core values as exports of `@stepperize/react`, which type-checked and then failed at run time.
+
+Every binding, including React:
+
+- Errors from Next, Prev, a trigger or the arrow keys are reported with `reportError` (the platform's path for errors thrown in event listeners, falling back to `console.error`) instead of being swallowed. A rejecting `onFinish` or a throwing guard now shows up in the console and in error trackers, and the button works again.
+- `Content` with a step id that is not in the definition throws SZ102 in every binding, as the other parts already did. React's `Stepper.Content` used to render nothing.
+

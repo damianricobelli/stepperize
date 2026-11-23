@@ -80,10 +80,11 @@ written in the List's default slot has neither.
 ### SZ102: Step "…" not found
 
 An id that is not in the definition reached `goTo`, `setData`, a `next` branch,
-a `Stepper.Item` or a `Stepper.Content` with `force-mount`. `vue-tsc` rejects
-this at compile time, so it usually means a cast, or a value from outside. For
-route values use the [`step` option](/docs/v9/vue/guides/url), which ignores
-unknown ids.
+a `Stepper.Item` or a `Stepper.Content`. A `Stepper.Content` throws whether its
+step is current or not, `force-mount` or not: no step is ever current under an
+unknown id, so it would never show. `vue-tsc` rejects this at compile time, so
+it usually means a cast, or a value from outside. For route values use the
+[`step` option](/docs/v9/vue/guides/url), which ignores unknown ids.
 
 `Step "[object PointerEvent]" not found` means a click event reached `goTo`:
 see [Continue saves the click event](#continue-saves-the-click-event).
@@ -318,6 +319,18 @@ to `render` or `mount` to test the real one.
 can fail, return its promise: when it rejects the flow is not finished and
 `next()` can be called again. See
 [When submitting can fail](/docs/v9/react/guides/navigation#when-submitting-can-fail).
+
+### Pressing Next logs an uncaught error
+
+`onFinish` rejected, or a `guard` or schema threw, in a move started by
+`Stepper.Next`, `Stepper.Prev` or a trigger. Nothing awaits a click, so the
+error is reported as one thrown by any event handler: the console shows it as
+uncaught, and `window.onerror` and error trackers receive it. Vue's
+`app.config.errorHandler` does not, because the error is not thrown by a
+component. The flow is idle again, so the button works on the next press. To
+tell the person, catch the error in `onFinish` and rethrow it so the flow is
+not finished, or call `stepper.next()` yourself and handle the promise. See
+[Errors from a click](/docs/v9/core/errors#errors-from-a-click).
 
 ### Hydration mismatch, or "localStorage is not defined"
 

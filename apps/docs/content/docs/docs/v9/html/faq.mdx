@@ -29,8 +29,9 @@ You write `data-component` on each part and `data-step` on the items and the
 panels. A trigger, indicator, title or description inside an item takes the
 item's `data-step`. Every `data-step` must be an id of the flow's steps. The
 binding writes the roles, ids and ARIA, `hidden` on panels, `disabled` and
-`type="button"` on buttons, and the `data-*` state. Your own ids, names, roles,
-classes and other attributes are kept. [Markup and options](/docs/v9/html/markup)
+`type="button"` on buttons, the `data-*` state, and `data-stepperize`, its
+record of what it changed. Your own ids, names, roles, classes and other
+attributes are kept. [Markup and options](/docs/v9/html/markup)
 lists every part.
 
 ```html
@@ -145,8 +146,9 @@ Press Next on the last step. `next()` validates it, finishes the flow and
 calls `onFinish` once with the validated output of every complete step; the
 root then gets `data-finished`. Return the request's promise from `onFinish`:
 the root has `data-pending` until it settles, and if it rejects the flow is
-not finished and Next can be pressed again. Show the failure from `onFinish`
-itself, since the Next button does not report it.
+not finished and Next can be pressed again. The Next button reports the error
+as any click handler's error is reported (the console, `window.onerror`, your
+error tracker); show the person what went wrong from `onFinish` itself.
 
 ```ts
 const flow = createStepper(steps, {
@@ -246,9 +248,10 @@ reactive data. See [Alpine](/docs/v9/html/guides/alpine).
 
 ## Does it work with Turbo?
 
-Yes, with one cleanup. Turbo keeps a copy of the page when you leave it and
-shows that copy on Back. Unbind on `turbo:before-cache`, so the copy is the
-markup the server sent, and bind again on `turbo:load`.
+Yes. Bind on `turbo:load`, which also runs when Turbo shows its copy of the
+page on Back: a copy of bound markup starts clean. Unbind on
+`turbo:before-cache`, so the binding of the page you leave stops following its
+flow.
 
 ```ts
 const cleanups: (() => void)[] = [];
@@ -286,6 +289,14 @@ HTML they all show again. An attribute someone else changed since is left
 alone. It does not destroy the flow; call `flow.destroy()` when you are done
 with it. Binding the same root again runs it first, so a script that runs
 twice never moves two steps per click.
+
+## Can a trigger be a link?
+
+Yes. A link to another page (`href="?step=plan"`) stays navigation: the
+browser loads that page, which shows its step, and the flow does not move. A
+link within the page (`href="#plan"`) moves the flow instead, without jumping.
+A link to a step that cannot be reached goes nowhere. See
+[Link triggers](/docs/v9/html/markup#link-triggers).
 
 ## What do people without JavaScript see?
 

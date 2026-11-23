@@ -74,7 +74,9 @@ branching, guards and snapshots all work as documented there.
 - **No templating.** It never creates your content. The only element it adds
   is a visually hidden live region for announcements.
 - **Undoable.** The function it returns puts the markup back as the server
-  sent it, so binding again (Turbo, htmx, hot reload) starts clean.
+  sent it, so binding again (Turbo, htmx, hot reload) starts clean. So does
+  binding a copy of bound markup, such as the snapshot Turbo or htmx shows on
+  Back: the binding recognises what an earlier one wrote.
 - **Several steppers.** Call it once per stepper. Each one only touches its own
   parts, including when one stepper is nested in another's panel.
 - **Markup that arrives later.** Parts swapped in by htmx, Alpine or Turbo
@@ -84,7 +86,7 @@ branching, guards and snapshots all work as documented there.
   same: ids, focus and keys stay in that shadow root.
 - **Server safe.** Importing the module touches nothing; only `bindStepper`
   needs a DOM. The main `@stepperize/core` entry has no DOM code at all.
-- **Small.** About 4.0 KiB min + gzip on top of the 2.3 KiB state machine.
+- **Small.** About 4.5 KiB min + gzip on top of the 2.3 KiB state machine.
 
 ## Next
 

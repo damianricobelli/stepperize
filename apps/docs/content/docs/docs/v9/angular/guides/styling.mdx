@@ -168,11 +168,16 @@ When a rule needs more than an attribute selector, read the item.
 </li>
 ```
 
-Read `item.value()` inside the item, as above, and not in a binding on the
-`<li>` itself: on the first render that binding runs before the item has its
-step, and Angular throws `NG0950`. Each item follows only its own step, so
-these bindings only update when that step changes. The `data-*` attributes stay
-the simpler choice: they need no binding.
+A binding on the `<li>` itself works too, and so does `[class.open]="panel.active()"`
+on a `stepperContent` element:
+
+```html
+<li [stepperItem]="step" #item="stepperItem" [class.done]="item.value().state === 'complete'">…</li>
+```
+
+Each item follows only its own step, so these bindings only update when that
+step changes. The `data-*` attributes stay the simpler choice: they need no
+binding.
 
 ## Your attributes stay
 

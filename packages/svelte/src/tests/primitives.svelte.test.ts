@@ -142,9 +142,10 @@ describe("navigation", () => {
 		expect(onFinish).toHaveBeenCalledTimes(1);
 	});
 
-	it("a rejecting onFinish leaves the flow unfinished and Next usable, with nothing unhandled", async () => {
+	it("a rejecting onFinish is reported, leaves the flow unfinished and Next usable, with nothing unhandled", async () => {
 		const unhandled = vi.fn();
 		window.addEventListener("unhandledrejection", unhandled);
+		const reported = vi.spyOn(globalThis, "reportError").mockImplementation(() => {});
 		const onFinish = vi.fn(() => Promise.reject(new Error("Payment declined")));
 		const { container } = await full({ snapshot: { step: "third" }, onFinish });
 		await userEvent.click(next());
@@ -158,6 +159,24 @@ describe("navigation", () => {
 		expect(onFinish).toHaveBeenCalledTimes(2);
 		expect(unhandled).not.toHaveBeenCalled();
 		window.removeEventListener("unhandledrejection", unhandled);
+		// Not swallowed: reported as an error thrown by a click handler is.
+		expect(reported.mock.calls.map(([error]) => String(error))).toEqual([
+			"Error: Payment declined",
+			"Error: Payment declined",
+		]);
+		reported.mockRestore();
+	});
+
+	it("reports a guard that throws behind a trigger", async () => {
+		const reported = vi.spyOn(globalThis, "reportError").mockImplementation(() => {});
+		const guard = () => {
+			throw new Error("guard broke");
+		};
+		await full({ guard });
+		await userEvent.click(tab(/Second/));
+		await vi.waitFor(() => expect(reported).toHaveBeenCalledTimes(1));
+		expect(String(reported.mock.calls[0][0])).toMatch(/guard broke/);
+		reported.mockRestore();
 	});
 
 	it("disabled on Trigger, Prev and Next blocks them, and arrow keys skip a disabled tab", async () => {
@@ -490,6 +509,8 @@ describe("development diagnostics", () => {
 		await expect(scenario("no-root")).rejects.toThrow(/SZ100/);
 		await expect(scenario("no-item")).rejects.toThrow(/SZ101/);
 		await expect(scenario("unknown")).rejects.toThrow(/SZ102/);
+		// A Content of an unknown step is never current: it throws whether it is shown or not.
+		await expect(scenario("unknown-content")).rejects.toThrow(/SZ102/);
 	});
 });
 

@@ -1,5 +1,5 @@
 <script lang="ts">
-import { navAttrs, navBits, navIdle } from "@stepperize/core/primitives";
+import { navAttrs, navBits, navIdle, reportError } from "@stepperize/core/primitives";
 import type { MouseEventHandler } from "svelte/elements";
 import { useShared } from "../flow.svelte.js";
 import { useExtra, useScope } from "../scope.js";
@@ -22,9 +22,9 @@ const bits = $derived(navBits(view(), direction));
 const click: MouseEventHandler<HTMLElement> = (event) => {
 	// Your handler was typed for the default `button`; with `child` it gets your element.
 	onclick?.(event as Parameters<MouseEventHandler<HTMLButtonElement>>[0]);
-	// A rejecting `onFinish` rejects `next()`: the flow is not finished and the button works
-	// again. The error belongs to `onFinish`, which reports it; nothing awaits this click.
-	if (!event.defaultPrevented && !navIdle(bits)) flow[direction]().catch(() => {});
+	// Nothing awaits a click: a move that throws (a guard, a schema, a rejecting `onFinish`) is
+	// reported like an error in any event listener. The flow is idle again, so the button works.
+	if (!event.defaultPrevented && !navIdle(bits)) flow[direction]().catch(reportError);
 };
 const attrs = $derived({
 	...(child ? {} : { type: "button" as const }),

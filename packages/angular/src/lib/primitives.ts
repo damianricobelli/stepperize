@@ -25,6 +25,7 @@ import { type StepperRef, ɵSTEPPER_CONTEXT, type ɵStepperContext } from "@step
 import { fail, type Step, warn } from "@stepperize/core";
 import {
 	type Attrs,
+	closestComposed,
 	contentAttrs,
 	focusInside,
 	type ItemValue,
@@ -40,6 +41,7 @@ import {
 	navIdle,
 	type Orientation,
 	onListKeydown,
+	reportError,
 	rootAttrs,
 	statusBits,
 	stepChanged,
@@ -117,6 +119,31 @@ const afterListeners = (event: Event, act: () => void) =>
 	queueMicrotask(() => {
 		if (!event.defaultPrevented) act();
 	});
+
+/**
+ * A required input, or `undefined` while Angular has not set it. On the first pass Angular updates the
+ * class and style bindings of an element before the inputs of its directives, so
+ * `[class.done]="item.value().state === 'complete'"` next to `[stepperItem]` reads the directive
+ * first. The read is still tracked: once the input is set, the binding is checked again in the same
+ * pass, before anything is painted. Reading an input signal throws nothing but NG0950.
+ */
+function early<T>(read: () => T): T | undefined {
+	try {
+		return read();
+	} catch {
+		return undefined;
+	}
+}
+
+/** What an item is before its step is known: see `early`. Never painted. */
+const UNSET: ItemValue = {
+	step: { id: "" },
+	index: -1,
+	state: "pending",
+	invalid: false,
+	disabled: true,
+	pending: false,
+};
 
 /** One counter per application, so ids are the same on the server and in the browser. */
 @Injectable({ providedIn: "root" })
@@ -356,12 +383,17 @@ export class StepperItem<I extends StepId | Step = StepId> {
 	readonly #scope = useScope();
 	readonly #list = inject(StepperList, { optional: true });
 	readonly #own = authored(ITEM);
-	/** The step as this item sees it: its state and whether it can be reached. */
-	readonly value: Signal<ItemValue<readonly StepFor<I>[]>> = this.#scope.item(
-		computed(() => {
-			const step = this.stepperItem();
-			return typeof step === "string" ? step : step.id;
-		}),
+	readonly #id = computed(() => {
+		const step = early(this.stepperItem);
+		return step === undefined || typeof step === "string" ? step : step.id;
+	});
+	readonly #value = this.#scope.item(computed(() => this.#id() ?? ""));
+	/**
+	 * The step as this item sees it: its state and whether it can be reached. Safe to read in a
+	 * binding on the item's own element, `[class.done]` included.
+	 */
+	readonly value: Signal<ItemValue<readonly StepFor<I>[]>> = computed(() =>
+		this.#id() === undefined ? UNSET : this.#value(),
 	) as Signal<ItemValue<readonly StepFor<I>[]>>;
 	protected readonly attrs = computed(() =>
 		bound(itemAttrs(this.value(), !!this.#list && this.#scope.tabs()), this.#own),
@@ -449,7 +481,8 @@ export class StepperTrigger {
 					) {
 						warn("SZ002", `Stepper trigger for step "${step}" has no accessible name. Render text or pass aria-label.`);
 					}
-					if (!element.closest('[data-component="stepper-list"]')) {
+					// Across shadow roots: a trigger in a child component's shadow root is inside the list around it.
+					if (!closestComposed(element, '[data-component="stepper-list"]')) {
 						warn("SZ003", `Stepper trigger for step "${step}" is outside stepperList.`);
 					}
 					if (!isPressable(element)) {
@@ -468,7 +501,8 @@ export class StepperTrigger {
 			const item = this.#value();
 			// A native `disabled` stops a button by itself; a link or a div needs this.
 			if (this.disabled() || item.pending) return;
-			void this.#scope.flow().goTo(item.step.id);
+			// Nothing awaits a click: a guard that throws is reported like an error in any event listener.
+			this.#scope.flow().goTo(item.step.id).catch(reportError);
 		});
 	}
 }
@@ -537,8 +571,8 @@ export class StepperContent {
 
 	readonly #scope = useScope();
 	readonly #own = authored(CONTENT);
-	/** Whether this is the panel of the current step. */
-	readonly active = computed(() => this.#scope.view().current.id === this.stepperContent());
+	/** Whether this is the panel of the current step. Safe to read in a binding on the panel's own element. */
+	readonly active = computed(() => this.#scope.view().current.id === early(this.stepperContent));
 	readonly #step = computed(() => this.#scope.steps()[this.#scope.index(this.stepperContent())]);
 	protected readonly attrs = computed(() =>
 		bound(contentAttrs(this.#scope.ui(), this.#step(), this.active()), this.#own),
@@ -586,11 +620,9 @@ abstract class StepperNav {
 		afterListeners(event, () => {
 			const bits = this.#bits();
 			if (this.disabled() || !(bits & 1) || navIdle(bits)) return;
-			// A rejecting `onFinish` rejects `next()`: the error belongs to `onFinish`, which reports it.
-			this.#scope
-				.flow()
-				[this.direction]()
-				.catch(() => {});
+			// Nothing awaits a click: a move that throws (a guard, a schema, a rejecting `onFinish`) is
+			// reported like an error in any event listener. The flow is idle again, so the button works.
+			this.#scope.flow()[this.direction]().catch(reportError);
 		});
 	}
 }
@@ -607,14 +639,18 @@ export class StepperNext extends StepperNav {
 	protected readonly direction = "next";
 }
 
-/** Every primitive, for the `imports` of a component. */
-export const STEPPER_PRIMITIVES = [
-	StepperRoot,
-	StepperList,
-	StepperItem,
-	StepperTrigger,
-	StepperIndicator,
-	StepperContent,
-	StepperPrev,
-	StepperNext,
-] as const;
+/**
+ * Every primitive, for the `imports` of a standalone component or of an `NgModule`. A tuple, so
+ * Angular's compiler sees each directive in the published typings; not `readonly`, because an
+ * `NgModule`'s `imports` only takes a mutable array.
+ */
+export const STEPPER_PRIMITIVES: [
+	typeof StepperRoot,
+	typeof StepperList,
+	typeof StepperItem,
+	typeof StepperTrigger,
+	typeof StepperIndicator,
+	typeof StepperContent,
+	typeof StepperPrev,
+	typeof StepperNext,
+] = [StepperRoot, StepperList, StepperItem, StepperTrigger, StepperIndicator, StepperContent, StepperPrev, StepperNext];

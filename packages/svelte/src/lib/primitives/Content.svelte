@@ -18,14 +18,15 @@ let {
 const scope = useScope();
 const { ui } = useRoot();
 const { view } = useShared(scope);
-const active = $derived(view().current.id === id);
+const step = $derived(scope.steps[scope.positions.get(id) ?? -1] ?? fail("SZ102", `Step "${id}" not found.`));
+// Read through `step`, so an unknown id throws whether the panel is shown or not: it is never current.
+const active = $derived(view().current.id === step.id);
 // A hidden panel renders nothing, so there is no element to check.
 const attach = useElement<HTMLDivElement>(
 	"Content",
 	(node) => (ref = node),
 	() => !!child && (active || forceMount),
 );
-const step = $derived(scope.steps[scope.positions.get(id) ?? -1] ?? fail("SZ102", `Step "${id}" not found.`));
 const attrs = $derived({ ...contentAttrs(ui, step, active), ...rest, ...attach });
 </script>
 

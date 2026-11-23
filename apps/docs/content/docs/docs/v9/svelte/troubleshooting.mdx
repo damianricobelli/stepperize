@@ -28,8 +28,10 @@ the `children` snippet of `Stepper.Root`, which receives the stepper.
 
 A provider of another definition does not count, and neither does a second
 definition created from the same steps. Call `defineStepper` once, in a module,
-and import that object everywhere. The primitives throw the same code outside
-`Stepper.Root`.
+and import that object everywhere. `Stepper.List`, `Stepper.Trigger` and
+`Stepper.Content` throw the same code outside `Stepper.Root` ("Missing
+Stepper.Root"); `Stepper.Item`, `Stepper.Prev` and `Stepper.Next` only need
+the flow, so a `Provider` is enough for them.
 
 ### SZ101: Missing Stepper.Item
 
@@ -57,7 +59,9 @@ render their children, or nothing.
 ### SZ102: Step "…" not found
 
 An id that is not in the definition reached `goTo`, `setData`, a `next`
-branch, a `Stepper.Item` or a `Stepper.Content`. `svelte-check` rejects this at
+branch, a `Stepper.Item` or a `Stepper.Content`. A `Stepper.Content` throws
+whether its step is current or not: no step is ever current under an unknown
+id, so it would never show. `svelte-check` rejects this at
 compile time, so it usually means a cast, or a value from outside, such as
 `page.params`. For URL values use the [`step` option](/docs/v9/svelte/guides/url),
 which ignores unknown ids and calls `onInvalidStep`.
@@ -328,8 +332,11 @@ not run. Pass a plain copy: `stepper.next($state.snapshot(values))`.
 `reason: "finished"` until the flow changes: any move to another step, a
 `setData` with a new value, `reset()` or `restore()`. If the request inside it
 can fail, return its promise: when it rejects, the flow is not finished and
-`next()` can be called again. `Stepper.Next` does not report that rejection, so
-show the failure from inside `onFinish`. See
+`next()` can be called again. `Stepper.Next` reports the rejection as an error
+thrown by any click handler is reported: the console shows it as uncaught, and
+`window.onerror` and error trackers receive it (see
+[Errors from a click](/docs/v9/core/errors#errors-from-a-click)). To tell the
+person, show the failure from inside `onFinish`. See
 [When submitting can fail](/docs/v9/react/guides/navigation#when-submitting-can-fail).
 
 ```ts

@@ -4,8 +4,9 @@ description: Inputs of every stepper directive.
 ---
 
 Standalone attribute directives. Import the ones you use, or all of them with
-`STEPPER_PRIMITIVES`. They add host attributes, and a static attribute you
-write on the root, the list, an item, a panel or an indicator wins over theirs.
+`STEPPER_PRIMITIVES`, in a standalone component's `imports` or an `NgModule`'s.
+They add host attributes, and a static attribute you write on the root, the
+list, an item, a panel or an indicator wins over theirs.
 
 Every directive except `stepperRoot` must be inside an element that has it;
 otherwise it throws [SZ100](/docs/v9/core/errors#sz100).

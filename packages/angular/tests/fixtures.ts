@@ -115,6 +115,26 @@ export class Pair {
 					</ol>
 				</div>
 			}
+			@case ("same-element") {
+				<div [stepperRoot]="stepper">
+					<ol stepperList>
+						@for (step of stepper.steps; track step.id) {
+							<li
+								[stepperItem]="step.id"
+								#item="stepperItem"
+								[class.done]="item.value().state === 'complete'"
+								[style.order]="item.value().index"
+							>
+								<button stepperTrigger>{{ step.title }}</button>
+							</li>
+						}
+					</ol>
+					@for (step of stepper.steps; track step.id) {
+						<div [stepperContent]="step.id" #panel="stepperContent" [class.open]="panel.active()">{{ step.title }}</div>
+					}
+					<button stepperNext>Continue</button>
+				</div>
+			}
 			@case ("prevent") {
 				<div [stepperRoot]="stepper" orientation="vertical" class="mine" data-extra="yes" aria-label="Checkout">
 					<output>{{ stepper().current.id }}</output>

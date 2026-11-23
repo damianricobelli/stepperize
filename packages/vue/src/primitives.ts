@@ -17,6 +17,7 @@ import {
 	type Orientation,
 	onListKeydown,
 	panelId,
+	reportError,
 	rootAttrs,
 	statusBits,
 	stepChanged,
@@ -435,7 +436,7 @@ function createTrigger<S extends readonly Step[]>(scope: Scope<S>) {
 						{
 							ref: target,
 							onClick: (event: MouseEvent) => {
-								if (!event.defaultPrevented && !pending) void flow.goTo(step.id as Id<S>);
+								if (!event.defaultPrevented && !pending) flow.goTo(step.id as Id<S>).catch(reportError);
 							},
 						},
 					),
@@ -498,18 +499,22 @@ function createContent<S extends readonly Step[]>(scope: Scope<S>) {
 			const ui = useUi();
 			const { view } = scope.useShared();
 			const active = computed(() => view.value.current.id === props.step);
+			// Checked on every render, not only when shown: no step is ever current under an unknown id,
+			// so a typo would otherwise render nothing, silently.
+			const step = computed(
+				() => scope.steps[scope.positions.get(props.step) ?? -1] ?? fail("SZ102", `Step "${props.step}" not found.`),
+			);
 			const arrived = inject(ArrivedKey, null);
 			onMounted(() => arrived?.(props.step));
 			useAsChildCheck("Content", () => props.asChild);
 			return () => {
+				const found = step.value;
 				if (!active.value && !props.forceMount) return null;
-				const step =
-					scope.steps[scope.positions.get(props.step) ?? -1] ?? fail("SZ102", `Step "${props.step}" not found.`);
 				return element(
 					"Content",
 					"div",
 					props.asChild,
-					mergeProps(contentAttrs(ui.value, step, active.value), attrs),
+					mergeProps(contentAttrs(ui.value, found, active.value), attrs),
 					slots.default,
 				);
 			};
@@ -538,9 +543,9 @@ function createNav<S extends readonly Step[]>(dir: "next" | "prev", scope: Scope
 					props.asChild,
 					mergeProps(props.asChild ? {} : BUTTON, attrs, navAttrs(dir, bits.value, props.disabled), {
 						onClick: (event: MouseEvent) => {
-							// A rejecting `onFinish` rejects `next()`: the flow is not finished and the button works
-							// again. The error belongs to `onFinish`, which reports it; nothing awaits this click.
-							if (!event.defaultPrevented && !navIdle(bits.value)) flow[dir]().catch(() => {});
+							// Nothing awaits a click: a move that throws (a guard, a schema, a rejecting `onFinish`) is
+							// reported like an error in any event listener. The flow is idle again, so the button works.
+							if (!event.defaultPrevented && !navIdle(bits.value)) flow[dir]().catch(reportError);
 						},
 					}),
 					slots.default,

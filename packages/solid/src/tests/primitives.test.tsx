@@ -259,6 +259,28 @@ describe("navigation", () => {
 		expect(onFinish).toHaveBeenCalledTimes(1);
 	});
 
+	it("reports what a click's move throws, and Next works again", async () => {
+		const errors: unknown[] = [];
+		const spy = vi.spyOn(globalThis, "reportError").mockImplementation((error) => {
+			errors.push(error);
+		});
+		const onFinish = vi.fn().mockRejectedValueOnce(new Error("payment declined"));
+		const guard = ({ direction }: { direction: string }) => {
+			if (direction === "goTo") throw new Error("guard broke");
+			return true;
+		};
+		render(() => <Full snapshot={{ step: "third" }} onFinish={onFinish} guard={guard} />);
+		await userEvent.click(next());
+		await vi.waitFor(() => expect(errors).toHaveLength(1));
+		expect(String(errors[0])).toMatch(/payment declined/);
+		await userEvent.click(screen.getByRole("tab", { name: /First/ }));
+		await vi.waitFor(() => expect(errors).toHaveLength(2));
+		expect(String(errors[1])).toMatch(/guard broke/);
+		await userEvent.click(next());
+		await vi.waitFor(() => expect(onFinish).toHaveBeenCalledTimes(2));
+		spy.mockRestore();
+	});
+
 	it("Prev is disabled at the start and returns along the path", async () => {
 		render(() => <Full />);
 		const back = screen.getByRole("button", { name: "Back" }).element() as HTMLButtonElement;
@@ -680,6 +702,14 @@ describe("development diagnostics", () => {
 			render(() => (
 				<Stepper.Root>
 					<Stepper.Item step={"nope" as "first"} />
+				</Stepper.Root>
+			)),
+		).toThrow(/SZ102/);
+		// A Content of an unknown step is never current: it throws whether it is shown or not.
+		expect(() =>
+			render(() => (
+				<Stepper.Root>
+					<Stepper.Content step={"secnod" as "first"}>Typo</Stepper.Content>
 				</Stepper.Root>
 			)),
 		).toThrow(/SZ102/);

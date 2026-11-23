@@ -18,7 +18,8 @@ export type ControllerSource<S extends readonly Step[]> = MaybeGetter<Options<S>
  *
  * @example
  * class CheckoutSteps extends LitElement {
- *   stepper = checkout.controller(this, () => ({ onFinish: this.placeOrder }));
+ *   // An arrow function: a method passed as it is would lose `this`.
+ *   stepper = checkout.controller(this, () => ({ onFinish: (output) => this.placeOrder(output) }));
  *
  *   render() {
  *     return html`<h2>${this.stepper.value.current.title}</h2>`;

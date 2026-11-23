@@ -1,6 +1,6 @@
 <script lang="ts">
 import type { Step } from "@stepperize/core";
-import { checkTrigger, triggerAttrs } from "@stepperize/core/primitives";
+import { checkTrigger, reportError, triggerAttrs } from "@stepperize/core/primitives";
 import { untrack } from "svelte";
 import type { MouseEventHandler } from "svelte/elements";
 import { useShared } from "../flow.svelte.js";
@@ -33,7 +33,7 @@ $effect.pre(() => {
 const click: MouseEventHandler<HTMLElement> = (event) => {
 	// Your handler was typed for the default `button`; with `child` it gets your element.
 	onclick?.(event as Parameters<MouseEventHandler<HTMLButtonElement>>[0]);
-	if (!event.defaultPrevented && !item.pending) void flow.goTo(item.step.id);
+	if (!event.defaultPrevented && !item.pending) flow.goTo(item.step.id).catch(reportError);
 };
 const attrs = $derived({
 	// A default only: with `child`, the type of your own element stands.

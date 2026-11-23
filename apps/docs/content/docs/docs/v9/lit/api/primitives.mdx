@@ -10,8 +10,10 @@ remove one they did not set; where you set the same one, see
 [Your attributes](/docs/v9/lit/guides/primitives#your-attributes).
 
 All of them must be inside the element that has `root()`, in your template or
-in a child component's. Without one the controller throws
-[SZ100](/docs/v9/core/errors#sz100).
+in a child component's. `root()` itself must be in the host's own template.
+Without one the controller throws [SZ100](/docs/v9/core/errors#sz100); a part
+outside it gets the same code as a development warning, since its clicks never
+reach the root.
 
 ## root
 

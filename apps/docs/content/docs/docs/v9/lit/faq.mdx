@@ -206,8 +206,10 @@ everything else. To keep the data and only go back to the start, use
 
 Yes. Pass the controller to the child as a property, typed
 `StepperPrimitives<typeof checkout.steps>`, and use its directives in the
-child's template. Ids do not cross shadow roots, so keep `root()`, the panels
-and the triggers of a flow shown as tabs in the host's own template. See
+child's template. `root()` belongs in the host's own template, and the child
+must be rendered inside the element that has it: the root listens for the
+parts' clicks. Ids do not cross shadow roots, so keep the panels and the
+triggers of a flow shown as tabs in the host's own template too. See
 [Parts in a child component](/docs/v9/lit/guides/primitives#parts-in-a-child-component).
 
 ## Shadow DOM or light DOM?

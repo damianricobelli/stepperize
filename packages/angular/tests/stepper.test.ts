@@ -164,6 +164,7 @@ describe("injectStepper", () => {
 		expect(() => flow.injectStepper()).toThrow(/injectStepper\(\).*injection context/);
 		const { injectStepper } = flow;
 		expect(() => injectStepper()).toThrow(/injectStepper\(\)/);
+		expect(() => flow.injectStepperContext()).toThrow(/injectStepperContext\(\).*injection context/);
 	});
 
 	it("calls the callbacks and guard of the latest options, changed in the same tick", async () => {

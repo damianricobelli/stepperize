@@ -1,4 +1,4 @@
-import type { Step } from "@stepperize/core";
+import { fail, type Step } from "@stepperize/core";
 import type { Scope } from "../definition";
 import { element, panelId, primitive, triggerId, useDevRef, useUi } from "./shared";
 import type { Component, ContentProps } from "./types";
@@ -10,9 +10,11 @@ export function createContent<S extends readonly Step[]>(scope: Scope<S>): Compo
 		const active = scope.useSelect(scope.useShared(), (s) => s.current.id === step);
 		// A hidden panel renders nothing, so there is no element to check.
 		const ref = useDevRef("Content", active || forceMount ? render : undefined, forwardedRef);
+		// A typo would otherwise render nothing, forever: no step is ever current under an unknown id.
+		const found = scope.steps[scope.positions.get(step) ?? -1] ?? fail("SZ102", `Step "${step}" not found.`);
 		if (!active && !forceMount) return null;
 		// A tabpanel is named by its tab. A group is named by the step title, which needs no trigger.
-		const title = (scope.steps[scope.positions.get(step) ?? -1] as { title?: unknown } | undefined)?.title;
+		const title = (found as { title?: unknown }).title;
 		const named = !ui.tabs && typeof title === "string";
 		const domProps = {
 			id: panelId(ui, step),

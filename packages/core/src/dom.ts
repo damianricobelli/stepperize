@@ -5,7 +5,7 @@
 // Nothing here touches the DOM until `bindStepper` is called, so the module is
 // safe to import on a server.
 
-import { development, fail } from "./dev";
+import { type Code, development, fail, warn } from "./dev";
 import {
 	type Attrs,
 	checkTrigger,
@@ -23,6 +23,7 @@ import {
 	type Orientation,
 	onListKeydown,
 	panelId,
+	reportError,
 	rootAttrs,
 	statusBits,
 	stepChanged,
@@ -48,6 +49,17 @@ const PARTS = '[data-component^="stepper-"]';
  * these wins over the binding's defaults, as props do in the framework primitives.
  */
 const AUTHORED = ["role", "aria-label", "aria-labelledby", "tabindex"];
+/**
+ * What a binding wrote, recorded on the elements themselves. A copy of bound markup (a Turbo or
+ * htmx cache snapshot, `cloneNode`) carries it, and the record of the binding that made it does
+ * not: a new binding reads this to put the page's markup back before it starts. On a part, the
+ * page's value of every attribute the binding changed (`null` when there was none) and, under
+ * `#text`, the text it filled in. On the live region, `region`.
+ */
+const MARK = "data-stepperize";
+const REGION = "region";
+/** Not an attribute name, so it never collides with one. */
+const TEXT = "#text";
 
 let roots = 0;
 
@@ -118,6 +130,41 @@ export function bindStepper<S extends readonly Step[]>(
 		else entries.set(name, [current, value]);
 		if (value === null) element.removeAttribute(name);
 		else element.setAttribute(name, value);
+		// The page's value is recorded once, when the binding first changes the attribute.
+		if (!entry) mark(element);
+	};
+	const mark = (element: Element) => {
+		const record: Record<string, string | null> = {};
+		for (const [name, [page]] of changed.get(element) ?? []) record[name] = page;
+		const text = filled.get(element);
+		if (text !== undefined) record[TEXT] = text;
+		element.setAttribute(MARK, JSON.stringify(record));
+	};
+	/**
+	 * A part copied from markup another binding changed: put the page's attributes and text back,
+	 * so this binding starts from the markup as the server wrote it.
+	 */
+	const adopt = (element: Element) => {
+		const raw = element.getAttribute(MARK);
+		if (raw === null || changed.has(element) || filled.has(element)) return;
+		let record: Record<string, string | null> = {};
+		try {
+			record = JSON.parse(raw);
+		} catch {}
+		for (const name in record) {
+			const page = record[name];
+			if (name === TEXT) {
+				if (element.textContent === page) element.textContent = "";
+			} else if (page === null) element.removeAttribute(name);
+			else element.setAttribute(name, page);
+		}
+		element.removeAttribute(MARK);
+	};
+	/** Live regions a copied binding left behind. */
+	const strays = () => {
+		for (const child of Array.from(root.children)) {
+			if (child !== region && child.getAttribute(MARK) === REGION) child.remove();
+		}
 	};
 	/**
 	 * Set what a primitive computed. `undefined` and `false` remove the attribute; `true` is a bare attribute.
@@ -143,6 +190,7 @@ export function bindStepper<S extends readonly Step[]>(
 		}
 	};
 
+	adopt(root);
 	// Parts find their stepper by this attribute: a root bound without it gets it before anything else.
 	write(root, "data-component", "stepper");
 	const orientationOf = (element: Element, fallback: Orientation): Orientation => {
@@ -158,18 +206,33 @@ export function bindStepper<S extends readonly Step[]>(
 		const element = (target as Element | null)?.closest?.<HTMLElement>(PART(name));
 		return element && element.closest(ROOT) === root ? element : null;
 	};
+	/**
+	 * Markup the flow cannot be bound to throws on the first render, so `bindStepper` fails where it
+	 * is called. Later, a bad part swapped in is skipped and reported: one typo must not stop the
+	 * rest of the stepper from following the flow.
+	 */
+	let binding = true;
 	/** The step an element belongs to: its own `data-step`, or its item's. */
 	const stepOf = (element: Element, required = true): S[number] | undefined => {
 		const id =
 			element.getAttribute("data-step") ?? element.closest(PART("item"))?.getAttribute("data-step") ?? undefined;
 		const step = id === undefined ? undefined : steps[positions.get(id) ?? -1];
 		if (step || !required) return step;
-		return id === undefined
-			? fail("SZ101", "A stepper part needs a `data-step` attribute, on itself or on its item.")
-			: fail("SZ102", `Step "${id}" not found.`);
+		const [code, message]: [Code, string] =
+			id === undefined
+				? ["SZ101", "A stepper part needs a `data-step` attribute, on itself or on its item."]
+				: ["SZ102", `Step "${id}" not found.`];
+		if (binding) fail(code, message);
+		if (development()) {
+			const part = element.getAttribute("data-component");
+			warn(code, `${message} The ${part} is skipped until its \`data-step\` names a step of the flow.`);
+		}
+		return undefined;
 	};
 
 	const region = liveRegion(doc);
+	region.setAttribute(MARK, REGION);
+	strays();
 	root.append(region);
 
 	/** Steps that were unreachable before the running move started: see `triggerAttrs`. */
@@ -185,6 +248,7 @@ export function bindStepper<S extends readonly Step[]>(
 		const parts: Record<string, HTMLElement[]> = {};
 		for (const element of root.querySelectorAll<HTMLElement>(PARTS)) {
 			if (element.closest(ROOT) !== root) continue;
+			adopt(element);
 			const name = (element.getAttribute("data-component") ?? "").slice("stepper-".length);
 			const group = parts[name] ?? [];
 			group.push(element);
@@ -194,6 +258,7 @@ export function bindStepper<S extends readonly Step[]>(
 		// Elements swapped out of the stepper are no longer ours to restore.
 		for (const element of changed.keys()) if (element !== root && !root.contains(element)) changed.delete(element);
 		for (const element of filled.keys()) if (!root.contains(element)) filled.delete(element);
+		strays();
 
 		triggers = new Map();
 		panels = new Map();
@@ -235,10 +300,6 @@ export function bindStepper<S extends readonly Step[]>(
 			if (ui.tabs) attrs["aria-controls"] = idOf(panels.get(step.id), panelId(ui, step.id));
 			if (element.tagName === "BUTTON") attrs.type = original(element, "type") ?? "button";
 			apply(element, attrs, ["id"]);
-			if (!checked.has(element) && development()) {
-				checked.add(element);
-				checkTrigger(element, step.id);
-			}
 		}
 		for (const element of all("indicator")) {
 			const step = stepOf(element);
@@ -251,7 +312,17 @@ export function bindStepper<S extends readonly Step[]>(
 				if (!element.childNodes.length && typeof text === "string") {
 					element.textContent = text;
 					filled.set(element, text);
+					mark(element);
 				}
+			}
+		}
+		// Once titles are filled in: a trigger named by the title inside it has a name.
+		if (development()) {
+			for (const element of all("trigger")) {
+				const step = stepOf(element, false);
+				if (!step || checked.has(element)) continue;
+				checked.add(element);
+				checkTrigger(element, step.id);
 			}
 		}
 		for (const element of all("content")) {
@@ -296,8 +367,7 @@ export function bindStepper<S extends readonly Step[]>(
 		try {
 			render();
 		} catch (error) {
-			// biome-ignore lint/suspicious/noConsole: the one way left to report it without breaking the flow.
-			console.error(error);
+			reportError(error);
 		}
 	};
 
@@ -341,17 +411,25 @@ export function bindStepper<S extends readonly Step[]>(
 		if (trigger) {
 			const step = stepOf(trigger, false);
 			// `aria-disabled`: a move is running, or the step cannot be reached.
-			if (step && trigger.getAttribute("aria-disabled") !== "true" && !flow.get().isPending) {
-				void flow.goTo(step.id as Id<S>);
+			const off = trigger.getAttribute("aria-disabled") === "true" || flow.get().isPending;
+			if (leaves(trigger, event)) {
+				// A link to another page is navigation: the browser loads it, and the page there shows its step.
+				// A disabled one goes nowhere, as a disabled button does nothing.
+				if (off) event.preventDefault();
+				return;
 			}
+			// A link within this page stands in for a button (it works without JavaScript): the flow moves instead.
+			if (trigger.tagName === "A") event.preventDefault();
+			if (step && !off) flow.goTo(step.id as Id<S>).catch(reportError);
 			return;
 		}
 		for (const dir of ["next", "prev"] as const) {
 			const button = owned(event.target, dir);
 			if (!button) continue;
-			// A rejecting `onFinish` rejects `next()`: the error belongs to `onFinish`, which reports it.
+			// Nothing awaits a click: a move that throws (a guard, a schema, a rejecting `onFinish`) is reported
+			// like an error in any event listener. The flow is idle again, so the button works on the next press.
 			if (button.getAttribute("aria-disabled") !== "true" && !navIdle(navBits(flow.get(), dir))) {
-				flow[dir]().catch(() => {});
+				flow[dir]().catch(reportError);
 			}
 			return;
 		}
@@ -414,6 +492,7 @@ export function bindStepper<S extends readonly Step[]>(
 		root.removeEventListener("click", onClick);
 		root.removeEventListener("keydown", onKeydown);
 		region.remove();
+		for (const element of [...changed.keys(), ...filled.keys()]) element.removeAttribute(MARK);
 		// Put back what the page had, wherever the binding's value is still there.
 		for (const [element, entries] of changed) {
 			for (const [name, [page, ours]] of entries) {
@@ -435,5 +514,21 @@ export function bindStepper<S extends readonly Step[]>(
 		unbind();
 		throw error;
 	}
+	binding = false;
 	return unbind;
+}
+
+/**
+ * Whether a click on a trigger leaves this page: a link to another URL, or one opened elsewhere (a
+ * modifier key, a `target`, `download`). A link to a fragment of this page does not.
+ */
+function leaves(trigger: HTMLElement, event: MouseEvent): boolean {
+	if (trigger.tagName !== "A" || !trigger.hasAttribute("href")) return false;
+	const link = trigger as HTMLAnchorElement;
+	if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return true;
+	if ((link.target && link.target !== "_self") || link.hasAttribute("download")) return true;
+	const here = new URL(link.ownerDocument.URL);
+	const there = new URL(link.href);
+	here.hash = there.hash = "";
+	return here.href !== there.href;
 }

@@ -32,8 +32,9 @@ export class Checkout {
 }
 ```
 
-`injectStepperContext()` follows the same rule; its message names the
-`stepperize` token and `inject()` instead. If the flow really has to start later, see
+`injectStepperContext()` follows the same rule, and its message names it:
+"injectStepperContext() can only be used within an injection context". If the
+flow really has to start later, see
 [Where can I call injectStepper?](/docs/v9/angular/faq#where-can-i-call-injectstepper)
 
 ### NG0950: Input is required but no value is available yet
@@ -54,6 +55,10 @@ export class OnboardingPage {
   }
 }
 ```
+
+The directives' own inputs never cause it: `item.value()` and `panel.active()`
+can be read in a binding on the item's or the panel's own element, such as
+`[class.done]`, which Angular evaluates before it sets the directive's input.
 
 ### SZ100: Missing provider
 
@@ -133,8 +138,9 @@ the `stepperItem` around them, or from their own input.
 ### SZ102: Step "…" not found
 
 An id that is not in the definition reached `goTo`, `setData`, a `next`
-branch, or a directive. Ids in TypeScript and in template expressions are
-checked at compile time, so it usually means a cast, or a value from outside.
+branch, or a directive. A `stepperContent` throws whether its step is current
+or not. Ids in TypeScript and in template expressions are checked at compile
+time, so it usually means a cast, or a value from outside.
 
 Ids given to `stepperItem`, `stepperContent`, `stepperTrigger` and
 `stepperIndicator` are plain strings until you register the definition in
@@ -168,7 +174,9 @@ is hidden from screen readers.
 
 **Warning**, in development builds only. Arrow keys and the list semantics
 come from `stepperList`. Move the trigger inside it, or use a plain button
-that calls `stepper().goTo(id)`.
+that calls `stepper().goTo(id)`. A trigger that a child component with
+`ViewEncapsulation.ShadowDom` renders inside an item of the list is inside it:
+the check crosses shadow roots.
 
 ### SZ005: The trigger is not a button
 
@@ -265,6 +273,18 @@ Without a `type`, `stepperNext` is `type="button"` and never submits.
 </form>
 ```
 
+### Pressing Next logs an uncaught error
+
+`onFinish` rejected, or a `guard` or schema threw, in a move started by
+`stepperNext`, `stepperPrev` or a trigger. Nothing awaits a click, so the
+error is reported as one thrown by any event listener, through the browser's
+`reportError()`: the console shows it as uncaught, and `window.onerror`, error
+trackers and, with `provideBrowserGlobalErrorListeners()`, Angular's
+`ErrorHandler` receive it. The flow is idle again, so the button works on the
+next press. To tell the person, catch the error in `onFinish` and rethrow it
+so the flow is not finished, or call `stepper().next()` yourself and handle
+the promise. See [Errors from a click](/docs/v9/core/errors#errors-from-a-click).
+
 ### onFinish never sends the request
 
 `onFinish` returned an Observable, such as `HttpClient.post()`. The flow only
@@ -357,17 +377,6 @@ Directive ids are plain strings until the definition is registered in
 the `declare module` block from
 [Typed step ids](/docs/v9/angular/guides/primitives#typed-step-ids) to a file
 that is part of the build.
-
-### STEPPER_PRIMITIVES is not assignable in an NgModule
-
-`STEPPER_PRIMITIVES` is a readonly array, which a component's `imports`
-accepts and an `NgModule`'s does not. Spread it, or list the directives you
-use.
-
-```ts
-@NgModule({ declarations: [Checkout], imports: [...STEPPER_PRIMITIVES] })
-export class CheckoutModule {}
-```
 
 ### The type of a stepper
 

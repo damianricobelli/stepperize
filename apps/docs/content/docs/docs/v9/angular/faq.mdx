@@ -238,6 +238,16 @@ export class Checkout {
 }
 ```
 
+## Can I use the primitives in an NgModule?
+
+Yes. The directives are standalone, and `STEPPER_PRIMITIVES` goes in an
+`NgModule`'s `imports` as it does in a standalone component's.
+
+```ts
+@NgModule({ declarations: [Checkout], imports: [STEPPER_PRIMITIVES] })
+export class CheckoutModule {}
+```
+
 ## Does it work with server rendering and hydration?
 
 Yes. The flow is created before the first render, so the server renders the

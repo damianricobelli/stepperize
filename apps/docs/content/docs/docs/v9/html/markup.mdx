@@ -28,6 +28,13 @@ else changed since is left as it is. It does not destroy the flow: call
 `flow.destroy()` if you are done with it. Binding the same root again undoes
 the previous binding first.
 
+The binding records what it changed on each element, in a `data-stepperize`
+attribute, and marks its live region the same way. A copy of bound markup (a
+Turbo or htmx snapshot, `cloneNode`) carries that record, so binding the copy
+puts the server's markup back first and starts clean: no attribute of the old
+binding is taken for yours, and there is one live region. Unbinding removes
+the record.
+
 ## Parts
 
 A part is an element with a `data-component` attribute. These are the same
@@ -38,15 +45,43 @@ names the framework primitives render, so one stylesheet fits both.
 | `stepper` | Any, usually `div` | | The root: `role="group"`, `aria-busy`, `data-pending`, `data-finished`. |
 | `stepper-list` | `ol` | | The list of steps. A `tablist` when the flow is not linear and has triggers. Handles arrow keys. |
 | `stepper-item` | `li` | Yes | One step: `data-state`, `data-invalid`, `data-disabled`. |
-| `stepper-trigger` | `button` | On it or on its item | Goes to its step. A `tab`, or a button with `aria-current="step"`. Any other element, except a link with an `href`, gets a development warning ([SZ005](/docs/v9/core/errors#sz005)): Enter and Space would not press it and it could not be disabled. |
+| `stepper-trigger` | `button` | On it or on its item | Goes to its step. A `tab`, or a button with `aria-current="step"`. A link with an `href` works too; see [Link triggers](#link-triggers). Any other element gets a development warning ([SZ005](/docs/v9/core/errors#sz005)): Enter and Space would not press it and it could not be disabled. |
 | `stepper-indicator` | `span` | On it or on its item | A decorative mark: `aria-hidden`, `data-state`. |
-| `stepper-title`, `stepper-description` | `span` | On it or on its item | Left as written. When empty, filled with the step's `title` or `description`. |
+| `stepper-title`, `stepper-description` | `span` | No | Left as written. When empty, filled with the `title` or `description` of its step: the one of its own `data-step`, or of its item. Without either, or with an unknown id, it is left as written. |
 | `stepper-content` | `div` | Yes | The panel of a step: `hidden` unless its step is current. A `tabpanel`, or a `group` named by the step's `title`. |
 | `stepper-prev`, `stepper-next` | `button` | | Call `prev()` and `next()`. |
 
-`data-step` is a step id. An id that is not in the flow throws
-[SZ102](/docs/v9/core/errors#sz102); a part that needs one and has none throws
-[SZ101](/docs/v9/core/errors#sz101).
+`data-step` is a step id. When `bindStepper` is called, an id that is not in
+the flow throws [SZ102](/docs/v9/core/errors#sz102), and a part that needs one
+and has none throws [SZ101](/docs/v9/core/errors#sz101); the markup is left as
+it was. A bad part that arrives later, in a swap, is skipped with the same code
+as a development warning, and the rest of the stepper keeps following the
+flow.
+
+## Link triggers
+
+A trigger can be a link, so the page also works without JavaScript. What a
+click does depends on where the link goes:
+
+- **To another page** (`href="?step=plan"`, `href="/signup/plan"`): it is
+  navigation. The browser follows the link and the binding does not move the
+  flow; the page at that URL shows its step, as it would without JavaScript.
+  Create the flow there with the step from the URL (the `step` option). A
+  click with a modifier key, or on a link with a `target` or `download`, is
+  left to the browser too.
+- **Within this page** (`href="#plan"`): it stands in for a button. The flow
+  moves, and the browser does not jump to the fragment.
+
+A link whose step cannot be reached (`aria-disabled="true"`, or a move is
+running) goes nowhere, as a disabled button does nothing. Arrow keys between
+tabs move the flow either way. To move without loading a page, use a
+`<button>`.
+
+```html
+<li data-component="stepper-item" data-step="plan">
+  <a data-component="stepper-trigger" href="?step=plan">Plan</a>
+</li>
+```
 
 ## What you control
 
@@ -123,6 +158,8 @@ Elements added or removed later (an htmx swap, an Alpine `x-if`, Turbo) are
 followed without another call, but only when they are, or contain, parts of
 this stepper. Text, form fields, messages and the parts of a stepper nested in
 a panel do not make it render again, and several changes in a row render once.
+Parts copied from markup another binding changed start clean, as a bound copy
+does (above).
 
 ## Avoiding a flash before the script runs
 

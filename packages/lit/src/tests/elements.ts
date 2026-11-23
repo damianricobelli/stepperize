@@ -257,6 +257,24 @@ export class Scenario extends LitElement {
 						<sz-child-nav .stepper=${s}></sz-child-nav>
 					</div>
 				`;
+			case "child-trigger":
+				return html`
+					<div ${s.root()}>
+						<ol ${s.list()}>
+							${s.steps.map(
+								(step) =>
+									html`<li ${s.item(step.id)}><sz-child-trigger .stepper=${s} .step=${step.id}></sz-child-trigger></li>`,
+							)}
+						</ol>
+					</div>
+				`;
+			case "outside":
+				return html`
+					<div ${s.root()}>
+						<div ${s.content("first")}>One</div>
+					</div>
+					<button ${s.next()}>Continue</button>
+				`;
 			case "two": {
 				const o = this.other;
 				return html`
@@ -304,6 +322,18 @@ export class ChildList extends LitElement {
 	}
 }
 customElements.define("sz-child-list", ChildList);
+
+/** One trigger rendered by a child component inside an item of the host's list. */
+export class ChildTrigger extends LitElement {
+	static properties = { stepper: { attribute: false }, step: { attribute: false } };
+	declare stepper: StepperPrimitives<typeof steps>;
+	declare step: (typeof steps)[number]["id"];
+
+	render() {
+		return html`<button ${this.stepper.trigger(this.step)}>${this.step}</button>`;
+	}
+}
+customElements.define("sz-child-trigger", ChildTrigger);
 
 /** Back and Continue rendered by a child component. */
 export class ChildNav extends LitElement {

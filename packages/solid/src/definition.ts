@@ -1,4 +1,4 @@
-import { createStepper, type Flow, fail, type Options, type Step, type Stepper } from "@stepperize/core";
+import { createStepper, type Flow, fail, type Options, type Step, type Stepper, warn } from "@stepperize/core";
 import {
 	$PROXY,
 	type Accessor,
@@ -8,6 +8,7 @@ import {
 	createEffect,
 	createMemo,
 	createSignal,
+	DEV,
 	getOwner,
 	on,
 	onCleanup,
@@ -121,6 +122,12 @@ export function createDefinition<const S extends readonly Step[]>(steps: S, defa
 		// back into the owner, which `on` keeps untracked.
 		createEffect(on([linear, step], ([linear, step]) => flow.setOptions(settings(linear, step))));
 		if (getOwner()) onCleanup(() => flow.destroy());
+		else if (DEV) {
+			warn(
+				"SZ104",
+				"useStepper() ran without an owner (after an `await`, in a `setTimeout`, or outside a component), so its flow is never destroyed: nothing cancels a running move or stops following `step`. Call it while a component runs, or inside createRoot() and dispose that root.",
+			);
+		}
 		const read = () => view() as Record<PropertyKey, unknown>;
 		// One memo per piece of state: a reader of `current` is not told about a draft, because a
 		// memo only notifies when its own value changed. The view as a whole is one signal.

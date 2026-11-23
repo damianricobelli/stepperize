@@ -2,6 +2,7 @@ import axe from "axe-core";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { page as screen, userEvent } from "vitest/browser";
 import { bindStepper } from "../dom";
+import { checkTrigger, reportError } from "../primitives";
 import { createStepper } from "../stepper";
 import type { Options } from "../types";
 
@@ -231,16 +232,30 @@ describe("state and data attributes", () => {
 		expect(() => serve(missing)).toThrow(/SZ101/);
 	});
 
-	it("reports markup that goes bad later without breaking the flow", async () => {
+	it("skips and reports a part that goes bad later, and keeps the rest of the stepper following the flow", async () => {
 		const { root, flow } = serve(markup());
-		const error = vi.spyOn(console, "error").mockImplementation(() => {});
+		const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
 		const seen = vi.fn();
 		flow.subscribe(seen);
 		root.insertAdjacentHTML("beforeend", '<div data-component="stepper-content" data-step="typo"></div>');
+		root.insertAdjacentHTML("beforeend", '<div data-component="stepper-content"></div>');
+		await new Promise((resolve) => setTimeout(resolve));
 		await expect(flow.next()).resolves.toMatchObject({ accepted: true });
 		expect(seen).toHaveBeenCalled();
-		expect(String(error.mock.calls[0]?.[0])).toMatch(/SZ102/);
-		error.mockRestore();
+		const messages = warn.mock.calls.map((call) => String(call[0]));
+		warn.mockRestore();
+		expect(messages.some((message) => message.includes("SZ102") && message.includes('"typo"'))).toBe(true);
+		expect(messages.some((message) => message.includes("SZ101"))).toBe(true);
+		// Every other part still follows the flow.
+		expect(panels(root).map((panel) => panel.hidden)).toEqual([true, false, true, false, false]);
+		expect(
+			screen
+				.getByRole("tab", { name: /Second/ })
+				.element()
+				.getAttribute("aria-selected"),
+		).toBe("true");
+		// The bad parts are left alone.
+		expect(panels(root)[3].hasAttribute("role")).toBe(false);
 	});
 
 	it("replaces the previous binding when the same root is bound again", async () => {
@@ -425,6 +440,47 @@ describe("the page changes", () => {
 		expect(panel.hasAttribute("id")).toBe(false);
 	});
 
+	it("does not warn about a trigger named by the title the binding fills in", () => {
+		const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+		const many = createStepper([{ id: "titled-only", title: "Titled" }, { id: "other" }]);
+		const container = document.createElement("div");
+		container.innerHTML =
+			'<div data-component="stepper"><ol data-component="stepper-list"><li data-component="stepper-item" data-step="titled-only"><button data-component="stepper-trigger"><span data-component="stepper-title"></span></button></li></ol></div>';
+		document.body.appendChild(container);
+		const stop = bindStepper(container.firstElementChild as HTMLElement, many);
+		const seen = warn.mock.calls.map((call) => String(call[0]));
+		warn.mockRestore();
+		stop();
+		container.remove();
+		expect(seen.filter((message) => message.includes("SZ002"))).toEqual([]);
+	});
+
+	it("starts clean on a copy of bound markup, as a Turbo or htmx snapshot is", async () => {
+		const { root, flow, unbind } = serve(markup(), { bind: false });
+		const pristine = shape(root);
+		const stop = bindStepper(root, flow);
+		await userEvent.click(next());
+		// What a cache snapshot holds: the markup as the binding left it.
+		const copy = root.cloneNode(true) as HTMLElement;
+		stop();
+		unbind();
+		root.replaceWith(copy);
+		const linear = createStepper(steps, { linear: true });
+		const again = bindStepper(copy, linear);
+		// One live region, and nothing of the free flow's tablist kept as if the page had written it.
+		expect(copy.querySelectorAll('[aria-live="polite"]')).toHaveLength(1);
+		expect(copy.querySelector("ol")?.hasAttribute("role")).toBe(false);
+		expect(copy.querySelector("li")?.hasAttribute("role")).toBe(false);
+		const triggers = copy.querySelectorAll('[data-component="stepper-trigger"]');
+		expect(Array.from(triggers, (trigger) => trigger.getAttribute("role"))).toEqual([null, null, null]);
+		expect(triggers[0].getAttribute("aria-current")).toBe("step");
+		expect(panels(copy).map((panel) => panel.hidden)).toEqual([false, true, true]);
+		// Unbinding puts back the markup the server wrote, not the copy.
+		again();
+		expect(shape(copy)).toEqual(pristine);
+		copy.remove();
+	});
+
 	it("warns about a trigger without a name or outside a list, with a link", () => {
 		const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
 		serve(
@@ -584,6 +640,134 @@ describe("what the page wrote", () => {
 		const seen = warn.mock.calls.map((call) => String(call[0]));
 		warn.mockRestore();
 		expect(seen.some((message) => message.includes("SZ005") && message.includes("<span>, not a <button>"))).toBe(true);
+	});
+});
+
+describe("errors nobody awaits", () => {
+	/** `reportError` fails the test run: record what it is given instead. */
+	function reported() {
+		const calls: unknown[] = [];
+		const spy = vi.spyOn(globalThis, "reportError").mockImplementation((error) => {
+			calls.push(error);
+		});
+		cleanups.push(() => spy.mockRestore());
+		return calls;
+	}
+
+	it("a failing onFinish reaches reportError, and Next works again", async () => {
+		const errors = reported();
+		const onFinish = vi.fn().mockRejectedValueOnce(new Error("payment declined"));
+		const { root, flow } = serve(markup(), { snapshot: { step: "third" }, onFinish });
+		await userEvent.click(next());
+		await vi.waitFor(() => expect(errors).toHaveLength(1));
+		expect(String(errors[0])).toMatch(/payment declined/);
+		expect([flow.isFinished, flow.isPending, root.hasAttribute("data-finished")]).toEqual([false, false, false]);
+		await userEvent.click(next());
+		await vi.waitFor(() => expect(flow.isFinished).toBe(true));
+		expect(onFinish).toHaveBeenCalledTimes(2);
+	});
+
+	it("a throwing guard behind a trigger, and an unknown id from a next branch, are reported", async () => {
+		const errors = reported();
+		const guard = vi.fn(({ direction }) => {
+			if (direction === "goTo") throw new Error("guard broke");
+			return true;
+		});
+		serve(markup(), { guard, next: { first: () => "fourth" as never } });
+		await userEvent.click(screen.getByRole("tab", { name: /Second/ }));
+		await vi.waitFor(() => expect(errors).toHaveLength(1));
+		expect(String(errors[0])).toMatch(/guard broke/);
+		await userEvent.click(next());
+		await vi.waitFor(() => expect(errors).toHaveLength(2));
+		expect(String(errors[1])).toMatch(/SZ102/);
+	});
+
+	it("falls back to console.error where reportError does not exist", () => {
+		const original = globalThis.reportError;
+		const error = vi.spyOn(console, "error").mockImplementation(() => {});
+		// @ts-expect-error: a runtime without it.
+		delete globalThis.reportError;
+		try {
+			reportError(new Error("no reportError"));
+		} finally {
+			globalThis.reportError = original;
+		}
+		expect(String(error.mock.calls[0]?.[0])).toMatch(/no reportError/);
+		error.mockRestore();
+	});
+});
+
+describe("link triggers", () => {
+	/** Where the browser would go: recorded, then stopped, after the binding has seen the click. */
+	function navigation() {
+		const seen: boolean[] = [];
+		const stop = (event: Event) => {
+			seen.push(event.defaultPrevented);
+			event.preventDefault();
+		};
+		window.addEventListener("click", stop);
+		cleanups.push(() => window.removeEventListener("click", stop));
+		return seen;
+	}
+	const links = (href: (id: string) => string) =>
+		markup().replace(
+			/<li data-component="stepper-item" data-step="(\w+)">\s*<button data-component="stepper-trigger">([\s\S]*?)<\/button>/g,
+			(_, id, inner) =>
+				`<li data-component="stepper-item" data-step="${id}"><a data-component="stepper-trigger" href="${href(id)}">${inner}</a>`,
+		);
+
+	it("a link to another page is navigation: the browser follows it and the flow stays", async () => {
+		const seen = navigation();
+		const { flow } = serve(links((id) => `?step=${id}`));
+		(screen.getByRole("tab", { name: /Second/ }).element() as HTMLElement).click();
+		expect(seen).toEqual([false]);
+		await new Promise((resolve) => setTimeout(resolve));
+		expect(flow.current.id).toBe("first");
+	});
+
+	it("a link to an unreachable step goes nowhere", async () => {
+		const seen = navigation();
+		const { flow } = serve(
+			links((id) => `?step=${id}`),
+			{ linear: true },
+		);
+		(screen.getByRole("link", { name: /Third/ }).element() as HTMLElement).click();
+		expect(seen).toEqual([true]);
+		expect(flow.current.id).toBe("first");
+	});
+
+	it("a link within the page stands in for a button: the flow moves and the page does not jump", async () => {
+		const seen = navigation();
+		const { flow } = serve(links((id) => `#${id}`));
+		(screen.getByRole("tab", { name: /Second/ }).element() as HTMLElement).click();
+		expect(seen).toEqual([true]);
+		await vi.waitFor(() => expect(flow.current.id).toBe("second"));
+	});
+});
+
+describe("shadow roots", () => {
+	it("a trigger in a child component's shadow root is inside the List around that component", () => {
+		const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+		const list = document.createElement("ol");
+		list.setAttribute("data-component", "stepper-list");
+		const item = document.createElement("li");
+		const host = document.createElement("div");
+		item.append(host);
+		list.append(item);
+		document.body.append(list);
+		const trigger = document.createElement("button");
+		trigger.textContent = "Shadowed";
+		host.attachShadow({ mode: "open" }).append(trigger);
+		checkTrigger(trigger, "shadowed-step");
+		const outside = document.createElement("button");
+		outside.textContent = "Outside";
+		document.body.append(outside);
+		checkTrigger(outside, "outside-step");
+		const seen = warn.mock.calls.map((call) => String(call[0]));
+		warn.mockRestore();
+		list.remove();
+		outside.remove();
+		expect(seen.filter((message) => message.includes("SZ003"))).toEqual([expect.stringContaining('"outside-step"')]);
 	});
 });
 

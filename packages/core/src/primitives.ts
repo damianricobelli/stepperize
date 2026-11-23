@@ -283,9 +283,44 @@ export function onListKeydown<S extends readonly Step[]>(
 	event.preventDefault();
 	const id = tab.dataset.step as Id<S>;
 	if (tab === target || !flow.canGoTo(id)) return;
-	void flow.goTo(id).then((result) => {
-		if (result.accepted) tab.focus();
-	});
+	flow
+		.goTo(id)
+		.then((result) => {
+			if (result.accepted) tab.focus();
+		})
+		.catch(reportError);
+}
+
+/**
+ * Report an error nobody can catch: a move started by a click or a key, whose
+ * promise has no caller to return to (a throwing guard or schema, a failing
+ * `onFinish`, an unknown step id from a `next` branch).
+ *
+ * It goes where an exception thrown by an event listener goes: the global
+ * `reportError()` dispatches an `error` event on `window` (so `window.onerror`
+ * and error trackers see it) and logs it as uncaught, without stopping the
+ * page. The flow is already idle again, so the button works on the next press.
+ * Where `reportError` does not exist (a server, an old browser) it is logged.
+ */
+export function reportError(error: unknown): void {
+	const global = globalThis as { reportError?: (error: unknown) => void };
+	if (typeof global.reportError === "function") global.reportError(error);
+	// biome-ignore lint/suspicious/noConsole: the fallback for runtimes without `reportError`.
+	else console.error(error);
+}
+
+/**
+ * `closest()` that crosses shadow roots: from an element in a component's shadow
+ * root up through its host and the trees above it.
+ */
+export function closestComposed(node: Element, selector: string): Element | null {
+	for (let at: Element | null = node; at; ) {
+		const found = at.closest(selector);
+		if (found) return found;
+		// A shadow root has a host; a document or a detached tree does not.
+		at = (at.getRootNode() as Partial<ShadowRoot>).host ?? null;
+	}
+	return null;
 }
 
 /** Was focus in this stepper? Read it before the framework touches the DOM for a step change. */
@@ -360,7 +395,8 @@ export function checkTrigger(node: Element, step: string) {
 	if (!(node.textContent?.trim() || node.getAttribute("aria-label") || node.getAttribute("aria-labelledby"))) {
 		warn("SZ002", `Stepper.Trigger for step "${step}" has no accessible name. Render text or pass aria-label.`);
 	}
-	if (!node.closest('[data-component="stepper-list"]')) {
+	// A trigger a child component renders in its own shadow root is still inside the List around that component.
+	if (!closestComposed(node, '[data-component="stepper-list"]')) {
 		warn("SZ003", `Stepper.Trigger for step "${step}" is outside Stepper.List.`);
 	}
 	if (!isPressable(node)) {

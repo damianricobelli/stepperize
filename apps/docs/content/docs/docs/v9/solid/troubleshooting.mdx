@@ -41,8 +41,10 @@ function Actions() {
 ```
 
 `Stepper.List`, `Stepper.Trigger` and `Stepper.Content` throw the same code
-with "Missing Stepper.Root": render them inside one. If the component only
-needs its own flow, call `useStepper()` instead.
+with "Missing Stepper.Root": render them inside one. `Stepper.Item`,
+`Stepper.Prev` and `Stepper.Next` only need the flow, so a `Provider` is
+enough for them. If the component only needs its own flow, call `useStepper()`
+instead.
 
 ### SZ101: Missing Stepper.Item
 
@@ -71,12 +73,13 @@ compile time, so it usually means a cast, or a value from outside. For URL
 values use the [`step` option](/docs/v9/solid/guides/url), which ignores
 unknown ids and calls `onInvalidStep`.
 
-A `Stepper.Content` checks its step when it renders. One with an unknown step
-is never current, so it renders nothing and only throws with `forceMount`.
+A `Stepper.Content` checks its step when it is created, whether its step is
+current or not and with or without `forceMount`: one with an unknown step
+would never be current, so it would never show.
 
 ```tsx
 // Throws: "paymnet" is not a step.
-<Stepper.Content step={"paymnet" as "payment"} forceMount>…</Stepper.Content>
+<Stepper.Content step={"paymnet" as "payment"}>…</Stepper.Content>
 ```
 
 ### SZ103: Invalid step list
@@ -149,14 +152,14 @@ or render a link with an `href`.
 <Stepper.Trigger as="a" href={`#${step.id}`}><Stepper.Title /></Stepper.Trigger>
 ```
 
-### "computations created outside a `createRoot`"
+### SZ104: useStepper() ran without an owner
 
-**Solid's own warning, development only.** `useStepper()` ran with no owner:
-at module scope, in an event handler, or after an `await`. Nothing will ever
-destroy that flow. Solid has no [SZ104](/docs/v9/core/errors#sz104): this
-warning is the equivalent. Call `useStepper()` in a component, run it under a
-`createRoot` that you dispose, or use `checkout.create()`, which needs no
-owner.
+**Warning, development only.** `useStepper()` ran with no owner: at module
+scope, in an event handler, in a `setTimeout`, or after an `await`. Nothing
+will ever destroy that flow, so nothing cancels a running move. Solid adds its
+own warning, "computations created outside a `createRoot`", for the effect the
+flow uses. Call `useStepper()` in a component, run it under a `createRoot`
+that you dispose, or use `checkout.create()`, which needs no owner.
 
 ```tsx
 const { stepper, dispose } = createRoot((dispose) => ({
@@ -273,11 +276,14 @@ click and pass the values. See
 </Stepper.Next>
 ```
 
-### A failed submit shows no error
+### A failed submit shows no error in the page
 
-`Stepper.Next` catches the rejection of `next()`. When `onFinish` rejects, the
-flow stays unfinished and the button works again, but nothing else hears the
-error. Report it inside `onFinish`, then rethrow so the flow is not finished.
+When `onFinish` rejects, the flow stays unfinished and the button works again.
+`Stepper.Next` reports the error as one thrown by any click handler: the
+console shows it as uncaught, and `window.onerror` and error trackers receive
+it (see [Errors from a click](/docs/v9/core/errors#errors-from-a-click)). An
+`ErrorBoundary` does not catch it, since no component threw it. To tell the
+person, report it inside `onFinish`, then rethrow so the flow is not finished.
 
 ```tsx
 const [error, setError] = createSignal<string>();

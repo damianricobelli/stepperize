@@ -32,8 +32,9 @@ const finished = ref("");
 		</Stepper.List>
 		<Stepper.Content step="cart">Cart form</Stepper.Content>
 		<Stepper.Content step="payment" force-mount>Payment form</Stepper.Content>
+		<!-- Never rendered: an unknown step id throws SZ102. It is a type error in templates too. -->
 		<!-- @vue-expect-error an unknown step id is a type error in templates too -->
-		<Stepper.Content step="shipping" />
+		<Stepper.Content v-if="false" step="shipping" />
 		<!-- @vue-expect-error the stepper is read-only -->
 		<button type="button" @click="stepper.index = 1">Cheat</button>
 		<Stepper.Prev>Back</Stepper.Prev>

@@ -263,8 +263,8 @@ runs on the server. `renderToString`, `renderToStringAsync` and
 Yes. `checkout.create()` returns the same state machine without Solid, with
 `get()` and `subscribe()`, for stores, tests and servers. `useStepper()` works
 under any owner, such as `createRoot`, and the flow is destroyed when the root
-is disposed. Called with no owner at all, Solid warns in development that the
-computations will never be disposed. On the server, do not keep a flow in module scope:
+is disposed. Called with no owner at all, it warns in development
+([SZ104](/docs/v9/core/errors#sz104)) that nothing will destroy the flow. On the server, do not keep a flow in module scope:
 every request would share it.
 
 ```tsx

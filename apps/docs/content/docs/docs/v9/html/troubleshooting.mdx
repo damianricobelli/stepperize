@@ -13,7 +13,8 @@ explains each one.
 
 `bindStepper` throws this when an item, a trigger, an indicator or a panel has
 no `data-step`, and is not inside a `stepper-item` that has one. The list, the
-titles, the descriptions, Prev and Next need none.
+titles, the descriptions, Prev and Next need none. A title or description
+without a step is left as the server wrote it.
 
 ```html
 <!-- Wrong: the panel does not say which step it shows. -->
@@ -29,7 +30,8 @@ titles, the descriptions, Prev and Next need none.
 ```
 
 When `bindStepper` throws, it leaves nothing behind: the markup stays as the
-server sent it, and the flow keeps working.
+server sent it, and the flow keeps working. A part without a step that
+arrives later, in a swap, is skipped instead, with a development warning.
 
 ### SZ102: Step "…" not found
 
@@ -39,10 +41,10 @@ markup and create the flow from the same list, for example the JSON on the
 root shown in [The script](/docs/v9/html/guides/server-rendered#the-script).
 
 When the markup is wrong from the start, `bindStepper` throws. When a bad part
-arrives later, in an htmx swap or an Alpine template, the error is logged with
-`console.error` instead, so the move still resolves. The stepper stops
-following the flow until that part is fixed or removed: its panels keep
-showing the old step.
+arrives later, in an htmx swap or an Alpine template, that part is skipped,
+with this code as a development warning, and the rest of the stepper keeps
+following the flow. The part gets its roles and state once its `data-step`
+names a step of the flow.
 
 ### SZ103: A flow needs at least one step
 
@@ -59,8 +61,10 @@ const flow = createStepper(steps);
 
 A development warning: a `stepper-trigger` has no text, `aria-label` or
 `aria-labelledby`, so a screen reader announces an unnamed button. A trigger
-that only holds an indicator is the usual case. Write its text on the server,
-which also shows before the script runs, or name it:
+that only holds an indicator is the usual case. An empty `stepper-title` inside
+it counts, when its step has a `title`: the check runs after the binding fills
+it in. Write its text on the server, which also shows before the script runs,
+or name it:
 
 ```html
 <button data-component="stepper-trigger" aria-label="Account">
@@ -207,25 +211,27 @@ are `disabled` until their step is reached.
 const flow = createStepper(steps, { linear: true });
 ```
 
-### A link trigger leaves the page
+### A link trigger loads a page instead of moving the flow
 
-A trigger can be a link with an `href`, for a page that also works without
-JavaScript. The binding moves the flow on click but does not cancel the
-link, so the browser follows it too. Cancel it after the binding has run, with
-a listener above the root:
+A link to another page (`href="?step=plan"`) is navigation: the browser
+follows it and the binding leaves the flow alone, so the page at that URL shows
+the step, as it does without JavaScript. Create the flow there with the step
+from the URL. To move in place, point the link within the page
+(`href="#plan"`), which moves the flow and does not jump, or use a `<button>`.
+See [Link triggers](/docs/v9/html/markup#link-triggers).
 
 ```ts
-document.addEventListener("click", (event) => {
-  if ((event.target as Element).closest('#signup a[data-component="stepper-trigger"]')) {
-    event.preventDefault();
-  }
-});
+const flow = createStepper(steps, { step: new URLSearchParams(location.search).get("step") ?? undefined });
 ```
 
-### The last Next does nothing, and no error appears
+### The last Next does nothing
 
 `onFinish` threw or rejected. The flow is not finished, so Next can be pressed
-again, but the Next button does not report the error. Show it from `onFinish`:
+again. The error is reported as one thrown by any click handler: it shows in
+the console as uncaught, and `window.onerror` and error trackers receive it
+(see [Errors from a click](/docs/v9/core/errors#errors-from-a-click)). The
+same goes for a guard or schema that throws. To tell the person, show it from
+`onFinish`:
 
 ```ts
 const flow = createStepper(steps, {
@@ -316,26 +322,21 @@ htmx.onLoad(() => {
 To keep the user's progress across the swap, bind the new root to the flow you
 already have instead of creating one.
 
-### After Back, the stepper is wrong
+### After Back, the buttons do nothing
 
 Turbo and htmx save a copy of the page when they navigate away, and show it on
-Back.
-A copy of bound markup carries the binding's roles, ids and live region, and
-binding it again treats them as yours: a list stays a `tablist`, and a second
-live region appears.
+Back. The copy is new elements, which no binding follows yet. Bind the root
+again when the copy is shown: on `turbo:load` with Turbo, in `htmx.onLoad`
+with htmx, as above. The copy starts clean: the binding marks what it wrote
+(`data-stepperize`), so a new binding does not take the old roles and ids for
+yours, and keeps one live region. See
+[Does it work with Turbo?](/docs/v9/html/faq#does-it-work-with-turbo).
 
-With Turbo, unbind before the copy is taken, and bind again on `turbo:load`;
-see [Does it work with Turbo?](/docs/v9/html/faq#does-it-work-with-turbo).
+Unbind the old root when it leaves the page, so its binding stops following
+the flow:
 
 ```ts
 document.addEventListener("turbo:before-cache", () => unbind());
-```
-
-With htmx, keep the page out of its history cache, so Back asks the server for
-it again:
-
-```html
-<div data-component="stepper" id="signup" hx-history="false">…</div>
 ```
 
 ## TypeScript

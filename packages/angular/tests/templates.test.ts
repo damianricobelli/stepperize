@@ -58,6 +58,12 @@ describe.for(["source", "published"] as const)("template type-checking of step i
 		]);
 	}, 60_000);
 
+	it("an NgModule imports the primitives as a standalone component does", () => {
+		expect(compile("./templates/module.ts", against)).toEqual([
+			expect.stringMatching(/item\.value\(\)\.step\.colour.*Property 'colour' does not exist/),
+		]);
+	}, 60_000);
+
 	it("without one, ids are strings, and an item bound to a step still types its fields", () => {
 		expect(compile("./templates/unregistered.ts", against)).toEqual([
 			expect.stringMatching(/typo\.value\(\)\.step\.colour.*Property 'colour' does not exist/),

@@ -180,6 +180,46 @@ describe("navigation", () => {
 		expect(onFinish).toHaveBeenCalledTimes(1);
 	});
 
+	it("reports what a click's move throws, and Next works again", async () => {
+		const errors: unknown[] = [];
+		const spy = vi.spyOn(globalThis, "reportError").mockImplementation((error) => {
+			errors.push(error);
+		});
+		const onFinish = vi.fn().mockRejectedValueOnce(new Error("payment declined"));
+		const guard = ({ direction }: { direction: string }) => {
+			if (direction === "goTo") throw new Error("guard broke");
+			return true;
+		};
+		const fixture = await full({ snapshot: { step: "third" }, onFinish, guard });
+		await userEvent.click(next());
+		await vi.waitFor(() => expect(errors).toHaveLength(1));
+		expect(String(errors[0])).toMatch(/payment declined/);
+		await userEvent.click(screen.getByRole("tab", { name: /First/ }));
+		await vi.waitFor(() => expect(errors).toHaveLength(2));
+		expect(String(errors[1])).toMatch(/guard broke/);
+		await fixture.whenStable();
+		await userEvent.click(next());
+		await vi.waitFor(() => expect(onFinish).toHaveBeenCalledTimes(2));
+		spy.mockRestore();
+	});
+
+	it("an item's value and a panel's active state can be read in bindings on their own element", async () => {
+		const fixture = await scenario("same-element");
+		const container: HTMLElement = fixture.nativeElement;
+		const items = () => Array.from(container.querySelectorAll<HTMLElement>("li"));
+		const panels = () => Array.from(container.querySelectorAll<HTMLElement>('[data-component="stepper-content"]'));
+		expect(items().map((item) => [item.classList.contains("done"), item.style.order])).toEqual([
+			[false, "0"],
+			[false, "1"],
+			[false, "2"],
+		]);
+		expect(panels().map((panel) => panel.classList.contains("open"))).toEqual([true, false, false]);
+		await userEvent.click(next());
+		await fixture.whenStable();
+		expect(items().map((item) => item.classList.contains("done"))).toEqual([true, false, false]);
+		expect(panels().map((panel) => panel.classList.contains("open"))).toEqual([false, true, false]);
+	});
+
 	it("Prev is disabled at the start and returns along the path", async () => {
 		const fixture = await full();
 		const back = screen.getByRole("button", { name: "Back" }).element() as HTMLButtonElement;

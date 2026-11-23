@@ -160,6 +160,8 @@ let {
 	<Stepper.Root><Stepper.Indicator /></Stepper.Root>
 {:else if name === "unknown"}
 	<Stepper.Root><Stepper.Item step={"nope" as "first"} /></Stepper.Root>
+{:else if name === "unknown-content"}
+	<Stepper.Root><Stepper.Content step={"secnod" as "first"}>Typo</Stepper.Content></Stepper.Root>
 {:else if name === "provider"}
 	<flow.Provider {...options}>
 		<Show {seen} />

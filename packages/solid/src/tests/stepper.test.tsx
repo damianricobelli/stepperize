@@ -225,6 +225,20 @@ describe("useStepper", () => {
 		expect(stepper.current.id).toBe("a");
 	});
 
+	it("warns SZ104 when nothing owns the flow, so nothing would destroy it", () => {
+		const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+		const stepper = flow.useStepper();
+		const seen = warn.mock.calls.map((call) => String(call[0]));
+		warn.mockRestore();
+		stepper.snapshot();
+		expect(seen.filter((message) => message.includes("SZ104"))).toHaveLength(1);
+		// Under an owner, nothing to say.
+		const warned = vi.spyOn(console, "warn").mockImplementation(() => {});
+		host(() => flow.useStepper()).dispose();
+		expect(warned.mock.calls.filter((call) => String(call[0]).includes("SZ104"))).toEqual([]);
+		warned.mockRestore();
+	});
+
 	it("uses the definition's defaults and lets an instance override them", () => {
 		const linear = defineStepper([{ id: "a" }, { id: "b" }], { linear: true });
 		const strict = host(() => linear.useStepper());

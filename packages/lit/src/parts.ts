@@ -16,6 +16,7 @@ import {
 	navIdle,
 	type Orientation,
 	onListKeydown,
+	reportError,
 	rootAttrs,
 	statusBits,
 	stepChanged,
@@ -313,9 +314,12 @@ export class StepperPrimitives<S extends readonly Step[]> extends StepperControl
 		// A native `disabled` stops a button by itself; a link or a div needs this.
 		if (disabled || element.hasAttribute("disabled")) return;
 		const view = this.flow.get();
-		if (kind === "trigger" && step && !view.isPending) void this.flow.goTo(step as Id<S>);
-		// A rejecting `onFinish` rejects `next()`: the error belongs to `onFinish`, which reports it.
-		else if ((kind === "next" || kind === "prev") && !navIdle(navBits(view, kind))) this.flow[kind]().catch(() => {});
+		// Nothing awaits a click: a move that throws (a guard, a schema, a rejecting `onFinish`) is reported
+		// like an error in any event listener. The flow is idle again, so the button works on the next press.
+		if (kind === "trigger" && step && !view.isPending) this.flow.goTo(step as Id<S>).catch(reportError);
+		else if ((kind === "next" || kind === "prev") && !navIdle(navBits(view, kind))) {
+			this.flow[kind]().catch(reportError);
+		}
 	};
 
 	#onKeydown = (event: KeyboardEvent) => {
@@ -383,14 +387,35 @@ export class StepperPrimitives<S extends readonly Step[]> extends StepperControl
 		let triggers = 0;
 		for (const { kind } of this.#parts.values()) if (kind === "trigger") triggers++;
 		this.#ui.tabs = !view.isLinear && triggers > 0;
+		for (const [element, value] of this.#parts) this.#paint(element, value);
+		// Once every part is painted: a trigger's List says what it is only after its own paint.
+		// Without a root, `hostUpdated` reports that instead.
+		if (!development() || !this.#root) return;
 		for (const [element, value] of this.#parts) {
-			this.#paint(element, value);
-			if (development() && !this.#checked.has(element)) {
-				this.#checked.add(element);
-				if (value.kind === "trigger") checkTrigger(element, value.step ?? "");
-				this.#checkScope(element, value);
-			}
+			if (this.#checked.has(element)) continue;
+			this.#checked.add(element);
+			if (value.kind === "trigger") checkTrigger(element, value.step ?? "");
+			this.#checkInside(element, value);
+			this.#checkScope(element, value);
 		}
+	}
+
+	/**
+	 * Development only. The root listens for the clicks of every part: a part rendered outside it (in
+	 * another element's template, or next to the root instead of in it) does nothing when pressed.
+	 */
+	#checkInside(element: Element, { kind, step }: Part) {
+		const root = this.#root;
+		if (!root || element === root) return;
+		for (let at: Node | null = element; at; ) {
+			if (at === root) return;
+			at = at.parentNode ?? (at as Partial<ShadowRoot>).host ?? null;
+		}
+		const which = step === undefined ? `The ${kind}() part` : `The ${kind}() part of step "${step}"`;
+		warn(
+			"SZ100",
+			`${which} is not inside the element with root(), so its clicks and keys never reach the stepper. Render it inside root(), in the host's template or in a child component rendered there.`,
+		);
 	}
 
 	/**

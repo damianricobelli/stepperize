@@ -15,6 +15,7 @@ import {
 	navIdle,
 	OPTION_KEYS,
 	onListKeydown,
+	reportError,
 	rootAttrs,
 	statusBits,
 	stepChanged,
@@ -390,7 +391,7 @@ function createTrigger<S extends readonly Step[]>(scope: Scope<S>) {
 			{
 				onClick: (event: MouseEvent) => {
 					call(local.onClick ?? local.onclick, event);
-					if (!event.defaultPrevented && !item.pending) void flow.goTo(item.step.id);
+					if (!event.defaultPrevented && !item.pending) flow.goTo(item.step.id).catch(reportError);
 				},
 				get children() {
 					return local.children;
@@ -446,9 +447,12 @@ function createContent<S extends readonly Step[]>(scope: Scope<S>) {
 		const [local, rest] = splitProps(props, ["step", "forceMount", "children", "as", "ref"]);
 		const { ui } = useRoot();
 		const { view } = scope.useShared();
-		const active = createMemo(() => view().current.id === local.step);
-		const step = () =>
-			scope.steps[scope.positions.get(local.step) ?? -1] ?? fail("SZ102", `Step "${local.step}" not found.`);
+		// Evaluated now, not when shown: no step is ever current under an unknown id, so a typo would
+		// otherwise render nothing, silently.
+		const step = createMemo(
+			() => scope.steps[scope.positions.get(local.step) ?? -1] ?? fail("SZ102", `Step "${local.step}" not found.`),
+		);
+		const active = createMemo(() => view().current.id === step().id);
 		return createComponent(Mount, {
 			get when() {
 				return active() || !!local.forceMount;
@@ -489,9 +493,9 @@ function createNav<S extends readonly Step[]>(dir: "next" | "prev", scope: Scope
 			{
 				onClick: (event: MouseEvent) => {
 					call(local.onClick ?? local.onclick, event);
-					// A rejecting `onFinish` rejects `next()`: the flow is not finished and the button works
-					// again. The error belongs to `onFinish`, which reports it; nothing awaits this click.
-					if (!event.defaultPrevented && !navIdle(bits())) flow[dir]().catch(() => {});
+					// Nothing awaits a click: a move that throws (a guard, a schema, a rejecting `onFinish`) is
+					// reported like an error in any event listener. The flow is idle again, so the button works.
+					if (!event.defaultPrevented && !navIdle(bits())) flow[dir]().catch(reportError);
 				},
 				get children() {
 					return local.children;
