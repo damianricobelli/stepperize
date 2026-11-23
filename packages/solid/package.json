@@ -1,0 +1,64 @@
+{
+	"name": "@stepperize/solid",
+	"version": "0.0.0",
+	"private": false,
+	"publishConfig": {
+		"access": "public"
+	},
+	"description": "The library for building step-by-step workflows for Solid apps",
+	"author": "damianricobelli",
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/damianricobelli/stepperize.git",
+		"directory": "packages/solid"
+	},
+	"homepage": "https://stepperize.com",
+	"sideEffects": false,
+	"files": [
+		"dist"
+	],
+	"type": "module",
+	"main": "./dist/index.js",
+	"module": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js",
+			"default": "./dist/index.js"
+		},
+		"./headless": {
+			"types": "./dist/headless.d.ts",
+			"import": "./dist/headless.js",
+			"default": "./dist/headless.js"
+		}
+	},
+	"scripts": {
+		"build": "tsup",
+		"dev": "tsup --watch",
+		"lint": "biome lint src",
+		"prepublishOnly": "pnpm run build",
+		"clean": "rm -rf .turbo && rm -rf node_modules dist",
+		"test": "vitest run",
+		"typecheck": "tsc --noEmit && tsc -p tsconfig.test.json"
+	},
+	"dependencies": {
+		"@stepperize/core": "workspace:*"
+	},
+	"peerDependencies": {
+		"solid-js": "^1.9.0"
+	},
+	"devDependencies": {
+		"@typescript/native": "catalog:",
+		"@vitest/browser-playwright": "catalog:",
+		"axe-core": "4.14.0",
+		"playwright": "catalog:",
+		"solid-js": "^1.9.20",
+		"tsup": "catalog:",
+		"typescript": "catalog:legacy-tooling",
+		"vite": "catalog:",
+		"vite-plugin-solid": "^2.11.17",
+		"vitest": "catalog:"
+	}
+}

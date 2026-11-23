@@ -216,6 +216,8 @@ This repository is a pnpm workspace managed with Turbo.
   accessible primitives. See [`packages/vue`](packages/vue/README.md).
 - `packages/svelte` - Svelte 5 binding: a reactive stepper, a provider and
   the same accessible primitives. See [`packages/svelte`](packages/svelte/README.md).
+- `packages/solid` - Solid binding: a reactive stepper, a provider and the
+  same accessible primitives. See [`packages/solid`](packages/solid/README.md).
 - `apps/docs` - the Stepperize documentation site, block gallery, changelog,
   and shadcn-compatible registry.
 
