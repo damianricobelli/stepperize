@@ -1,0 +1,64 @@
+{
+	"name": "@stepperize/angular",
+	"version": "0.0.0",
+	"private": false,
+	"publishConfig": {
+		"access": "public",
+		"directory": "dist",
+		"linkDirectory": true
+	},
+	"description": "Type-safe steppers, wizards and multi-step forms for Angular: signals and accessible standalone directives.",
+	"keywords": [
+		"angular",
+		"signals",
+		"stepper",
+		"wizard",
+		"multi-step form",
+		"directives",
+		"headless",
+		"accessible"
+	],
+	"author": "damianricobelli",
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/damianricobelli/stepperize.git",
+		"directory": "packages/angular"
+	},
+	"homepage": "https://stepperize.com/docs/v9/angular",
+	"sideEffects": false,
+	"scripts": {
+		"build": "ng-packagr -p ng-package.json -c tsconfig.lib.json",
+		"lint": "biome lint src headless tests",
+		"prepublishOnly": "pnpm run build",
+		"clean": "rm -rf .turbo && rm -rf node_modules dist",
+		"test": "vitest run",
+		"typecheck": "ngc -p tsconfig.lib.json --noEmit && ngc -p tsconfig.test.json --noEmit"
+	},
+	"dependencies": {
+		"@stepperize/core": "workspace:*"
+	},
+	"peerDependencies": {
+		"@angular/common": "^22.0.0",
+		"@angular/core": "^22.0.0"
+	},
+	"devDependencies": {
+		"@analogjs/vite-plugin-angular": "^2.9.7",
+		"@angular/build": "^22.3.0",
+		"@angular/common": "^22.3.0",
+		"@angular/compiler": "^22.3.0",
+		"@angular/compiler-cli": "^22.3.0",
+		"@angular/core": "^22.3.0",
+		"@angular/platform-browser": "^22.3.0",
+		"@angular/platform-server": "^22.3.0",
+		"@vitest/browser-playwright": "catalog:",
+		"axe-core": "4.14.0",
+		"ng-packagr": "^22.3.0",
+		"playwright": "catalog:",
+		"rxjs": "^7.8.2",
+		"tsup": "catalog:",
+		"typescript": "catalog:legacy-tooling",
+		"vite": "catalog:",
+		"vitest": "catalog:"
+	}
+}

@@ -1,0 +1,371 @@
+---
+title: Testing
+description: Test the flow without rendering, and the components by role with Solid Testing Library and Vitest.
+---
+
+A flow has two parts worth testing separately: its logic, which needs no
+component, and the components that show it.
+
+## The flow, without Solid
+
+`definition.create()` returns the same state machine `useStepper()` and
+`Stepper.Root` use, with no component, no owner and no DOM. Validation,
+branching and guards can be asserted directly, in a plain Node test.
+
+```ts title="checkout.ts"
+import { defineStepper } from "@stepperize/solid";
+import { z } from "zod";
+
+export const checkout = defineStepper([
+  {
+    id: "shipping",
+    title: "Shipping",
+    schema: z.object({ address: z.string().min(1, "Enter an address") }),
+  },
+  { id: "payment", title: "Payment" },
+  { id: "review", title: "Review" },
+]);
+```
+
+```ts title="checkout.test.ts"
+import { expect, it, vi } from "vitest";
+import { checkout } from "./checkout";
+
+it("rejects an empty address and keeps what was typed", async () => {
+  const flow = checkout.create();
+
+  const result = await flow.next({ address: "" });
+
+  expect(result).toMatchObject({ accepted: false, reason: "invalid" });
+  expect(flow.current.id).toBe("shipping");
+  expect(flow.data.shipping).toEqual({ address: "" });
+  expect(flow.issues()?.[0]?.message).toBe("Enter an address");
+});
+
+it("finishes once, with the output of every step", async () => {
+  const onFinish = vi.fn();
+  const flow = checkout.create({ onFinish });
+
+  await flow.next({ address: "1 Main St" });
+  await flow.next();
+  const result = await flow.next();
+
+  expect(result).toMatchObject({ accepted: true, to: null });
+  expect(onFinish).toHaveBeenCalledOnce();
+  expect(onFinish.mock.calls[0][0]).toEqual({ shipping: { address: "1 Main St" } });
+  expect(flow.isFinished).toBe(true);
+});
+
+it("does not let a linear flow jump ahead", async () => {
+  const flow = checkout.create({ linear: true });
+
+  expect(flow.canGoTo("review")).toBe(false);
+  expect(await flow.goTo("review")).toEqual({ accepted: false, reason: "policy" });
+});
+
+it("is pending while an async guard runs, and refuses a second move", async () => {
+  let allow!: (value: boolean) => void;
+  const flow = checkout.create({
+    snapshot: { step: "payment", complete: ["shipping"], data: { shipping: { address: "1 Main St" } } },
+    guard: () => new Promise<boolean>((resolve) => (allow = resolve)),
+  });
+
+  const moving = flow.next();
+  expect(flow.isPending).toBe(true);
+  expect(await flow.next()).toEqual({ accepted: false, reason: "pending" });
+
+  allow(true);
+  expect(await moving).toMatchObject({ accepted: true, to: "review" });
+  expect(flow.isPending).toBe(false);
+});
+```
+
+Reads on a flow (`flow.current`, `flow.data`, `flow.isPending`) always return
+the latest state, so there is nothing to re-query between steps. Start from any
+point with a `snapshot` instead of walking there, as the last test does.
+
+`create()` takes the definition's defaults, so a flow defined with
+`{ linear: true }` is linear here too. Pass an option to override it for one
+test.
+
+## Components
+
+Render the component and drive it the way a person would. These examples use
+[Solid Testing Library](https://github.com/solidjs/solid-testing-library) and
+[user-event](https://testing-library.com/docs/user-event/intro) on
+[Vitest](https://vitest.dev) with jsdom:
+
+```bash
+pnpm add -D vitest jsdom vite-plugin-solid @solidjs/testing-library @testing-library/user-event @testing-library/jest-dom
+```
+
+```ts title="vitest.config.ts"
+import solid from "vite-plugin-solid";
+import { defineConfig } from "vitest/config";
+
+export default defineConfig({
+  // Under Vitest, the plugin resolves Solid's browser build and compiles JSX for the DOM.
+  plugins: [solid()],
+  test: {
+    environment: "jsdom",
+    setupFiles: ["./vitest.setup.ts"],
+  },
+});
+```
+
+```ts title="vitest.setup.ts"
+import "@testing-library/jest-dom/vitest";
+import { cleanup } from "@solidjs/testing-library";
+import { afterEach } from "vitest";
+
+// Without Vitest's `globals`, Testing Library cannot register this itself.
+afterEach(cleanup);
+```
+
+The component under test: the primitives, a field whose draft is kept in the
+flow with `setData`, and its error.
+
+```tsx title="CheckoutSteps.tsx"
+import type { Options } from "@stepperize/solid";
+import { Show } from "solid-js";
+import { checkout } from "./checkout";
+
+const { Stepper } = checkout;
+
+export function CheckoutSteps(props: { linear?: boolean; guard?: Options<typeof checkout.steps>["guard"] }) {
+  return (
+    <Stepper.Root linear={props.linear} guard={props.guard} aria-label="Checkout">
+      {(stepper) => (
+        <>
+          <Stepper.List>
+            {(_step) => (
+              <Stepper.Item>
+                <Stepper.Trigger>
+                  <Stepper.Indicator />
+                  <Stepper.Title />
+                </Stepper.Trigger>
+              </Stepper.Item>
+            )}
+          </Stepper.List>
+
+          <Stepper.Content step="shipping">
+            <label>
+              Address
+              <input
+                value={stepper.data.shipping?.address ?? ""}
+                aria-invalid={stepper.issues("shipping") ? true : undefined}
+                aria-describedby={stepper.issues("shipping") ? "address-error" : undefined}
+                onInput={(event) => stepper.setData("shipping", { address: event.currentTarget.value })}
+              />
+            </label>
+            <Show when={stepper.issues("shipping")}>
+              {(issues) => (
+                <p id="address-error" role="alert">
+                  {issues()[0]?.message}
+                </p>
+              )}
+            </Show>
+          </Stepper.Content>
+          <Stepper.Content step="payment">Payment details</Stepper.Content>
+          <Stepper.Content step="review">Review your order</Stepper.Content>
+
+          <Stepper.Prev>Back</Stepper.Prev>
+          <Stepper.Next>Continue</Stepper.Next>
+        </>
+      )}
+    </Stepper.Root>
+  );
+}
+```
+
+```tsx title="CheckoutSteps.test.tsx"
+import { render, screen } from "@solidjs/testing-library";
+import userEvent from "@testing-library/user-event";
+import { expect, it, vi } from "vitest";
+import { CheckoutSteps } from "./CheckoutSteps";
+
+it("shows the error and stays on the step", async () => {
+  const user = userEvent.setup();
+  render(() => <CheckoutSteps />);
+
+  await user.click(screen.getByRole("button", { name: "Continue" }));
+
+  const address = screen.getByRole("textbox", { name: "Address" });
+  expect(await screen.findByRole("alert")).toBeVisible();
+  expect(address).toBeInvalid();
+  expect(address).toHaveAccessibleDescription();
+
+  // `setData` changes the step's data, which clears its issues.
+  await user.type(address, "1 Main St");
+  expect(screen.queryByRole("alert")).toBeNull();
+  expect(screen.getByRole("tab", { name: "Shipping" })).toHaveAttribute("aria-selected", "true");
+});
+
+it("moves with Continue and Back", async () => {
+  const user = userEvent.setup();
+  render(() => <CheckoutSteps />);
+
+  await user.type(screen.getByRole("textbox", { name: "Address" }), "1 Main St");
+  await user.click(screen.getByRole("button", { name: "Continue" }));
+
+  const shipping = screen.getByRole("tab", { name: "Shipping" });
+  expect(screen.getByRole("tab", { name: "Payment" })).toHaveAttribute("aria-selected", "true");
+  expect(shipping).toHaveAttribute("data-state", "complete");
+  expect(screen.getByRole("tabpanel")).toHaveTextContent("Payment details");
+
+  await user.click(screen.getByRole("button", { name: "Back" }));
+  expect(shipping).toHaveAttribute("aria-selected", "true");
+  expect(screen.getByRole("textbox", { name: "Address" })).toHaveValue("1 Main St");
+});
+
+it("renders a linear flow as a list of steps", () => {
+  render(() => <CheckoutSteps linear />);
+
+  expect(screen.queryByRole("tablist")).toBeNull();
+  expect(screen.getByRole("button", { name: "Shipping" })).toHaveAttribute("aria-current", "step");
+  expect(screen.getByRole("button", { name: "Review" })).toBeDisabled();
+  expect(screen.getByRole("group", { name: "Shipping" })).toBeVisible();
+});
+```
+
+`render` takes a function that returns JSX, as `render` from `solid-js/web`
+does, so props stay reactive: pass a signal's getter to change one during a
+test. Solid has no render queue to wait for: once an awaited `user` call
+returns, the DOM shows the move. Use `findBy*` for what appears after a promise
+of your own, such as an async schema or guard.
+
+### Assert roles and state
+
+Query by role and name, not by class. Which role the current step has depends
+on the flow:
+
+| Flow | The current step is |
+| --- | --- |
+| `linear` | A `button` with `aria-current="step"` |
+| Free navigation | A `tab` with `aria-selected="true"` (or `getByRole("tab", { selected: true })`) |
+| No triggers | The only `group` panel on the page with the step's `title` as its name |
+
+`data-state`, `data-invalid`, `data-disabled` and `data-pending` are part of
+the public API, so asserting them is fine when the role does not say it:
+`data-state="complete"` has no ARIA equivalent.
+
+### Async checks
+
+While an async schema, guard or `onFinish` runs, the stepper is busy and the
+buttons stay focusable. Hold the promise open and check both:
+
+```tsx
+it("waits for an async guard: busy, and a second click does nothing", async () => {
+  const user = userEvent.setup();
+  let allow!: (value: boolean) => void;
+  const guard = vi.fn(() => new Promise<boolean>((resolve) => (allow = resolve)));
+  render(() => <CheckoutSteps guard={guard} />);
+
+  await user.click(screen.getByRole("tab", { name: "Review" }));
+
+  const next = screen.getByRole("button", { name: "Continue" });
+  expect(screen.getByRole("group", { name: "Checkout" })).toHaveAttribute("aria-busy", "true");
+  expect(next).toHaveAttribute("aria-disabled", "true");
+  expect(next).toHaveAttribute("data-pending");
+  expect(next).toBeEnabled(); // not `disabled`: it keeps keyboard focus
+
+  await user.click(next);
+  expect(guard).toHaveBeenCalledOnce();
+
+  allow(true);
+  expect(await screen.findByRole("tab", { name: "Review", selected: true })).toBeInTheDocument();
+  expect(screen.getByRole("group", { name: "Checkout" })).not.toHaveAttribute("aria-busy");
+});
+```
+
+### Announcements
+
+The live region is a `span` with `aria-live="polite"` inside the root. When
+the step changes and focus stays on Continue, it holds the new step's title:
+
+```tsx
+it("announces the new step while focus stays on Continue", async () => {
+  const user = userEvent.setup();
+  render(() => <CheckoutSteps />);
+
+  await user.type(screen.getByRole("textbox", { name: "Address" }), "1 Main St");
+  await user.click(screen.getByRole("button", { name: "Continue" }));
+
+  expect(screen.getByRole("button", { name: "Continue" })).toHaveFocus();
+  expect(document.querySelector('[aria-live="polite"]')).toHaveTextContent("Payment");
+});
+```
+
+### Components that read the context
+
+A component that calls `checkout.useStepperContext()` or `Stepper.useItem()`
+needs its provider. Render it inside one, or pass `wrapper`:
+
+```tsx
+render(() => <PaymentSummary />, {
+  wrapper: (props) => (
+    <checkout.Provider snapshot={{ step: "payment", complete: ["shipping"] }}>{props.children}</checkout.Provider>
+  ),
+});
+```
+
+## Server rendering
+
+`renderToString` from `solid-js/web` runs your components with Solid's server
+build, so the HTML can be asserted in a Node test. No callback runs on the
+server. The JSX has to be compiled for the server too, so give these tests a
+Vitest project of their own, each with its own plugin:
+
+```ts title="vitest.config.ts"
+import solid from "vite-plugin-solid";
+import { defineConfig } from "vitest/config";
+
+export default defineConfig({
+  test: {
+    projects: [
+      {
+        plugins: [solid()],
+        test: {
+          name: "client",
+          environment: "jsdom",
+          setupFiles: ["./vitest.setup.ts"],
+          exclude: ["**/node_modules/**", "**/*.server.test.tsx"],
+        },
+      },
+      {
+        plugins: [solid({ ssr: true })],
+        test: { name: "server", environment: "node", include: ["**/*.server.test.tsx"] },
+      },
+    ],
+  },
+});
+```
+
+```tsx title="CheckoutSteps.server.test.tsx"
+import { renderToString } from "solid-js/web";
+import { expect, it } from "vitest";
+import { CheckoutSteps } from "./CheckoutSteps";
+
+it("renders the tabs and the current panel on the server", () => {
+  const html = renderToString(() => <CheckoutSteps />);
+
+  expect(html).toContain('role="tablist"');
+  expect(html).toMatch(/<button[^>]*aria-selected="true"[^>]*>.*Shipping/s);
+  expect(html).toMatch(/role="tabpanel"[^>]*>.*Address/s);
+  expect(html).not.toContain("Payment details");
+});
+```
+
+Keep the plugins per project: one `solid({ ssr: true })` shared by both makes
+the client tests load Solid's server build, and they fail with "Client-only API
+called on the server side". A `Stepper.Root` assumes it has triggers until it mounts, so server HTML of a
+flow without triggers still says `tabpanel`; see
+[Server rendering](/docs/v9/solid/guides/ssr#tabs-without-triggers).
+
+## What to cover
+
+- A move that is refused: the step does not change and the reason is shown.
+- Each branch of the `next` map, and that Back returns along it.
+- The finishing move, including the failure path if `onFinish` makes a request.
+- Resuming from a saved snapshot.
+- An async check: the stepper is busy, and a second click does nothing.

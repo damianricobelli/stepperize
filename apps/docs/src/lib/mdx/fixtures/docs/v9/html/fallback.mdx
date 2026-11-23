@@ -1,0 +1,23 @@
+---
+title: Fallback
+---
+
+<FrameworkCode>
+
+```ts framework="react vue"
+const stepper = checkout.useStepper();
+```
+
+```ts framework="core"
+const flow = createStepper([{ id: "a" }]);
+```
+
+</FrameworkCode>
+
+<FrameworkOnly is="react">
+Only React.
+</FrameworkOnly>
+
+<FrameworkOnly not="react">
+Not for React.
+</FrameworkOnly>

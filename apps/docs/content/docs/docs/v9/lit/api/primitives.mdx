@@ -1,0 +1,146 @@
+---
+title: Primitives
+description: The element directives of the controller.
+---
+
+Every primitive is a method of the controller that returns an element
+directive. Write it inside an opening tag; using it anywhere else throws
+[SZ001](/docs/v9/core/errors#sz001). The directives add attributes and never
+remove one they did not set; where you set the same one, see
+[Your attributes](/docs/v9/lit/guides/primitives#your-attributes).
+
+All of them must be inside the element that has `root()`, in your template or
+in a child component's. `root()` itself must be in the host's own template.
+Without one the controller throws [SZ100](/docs/v9/core/errors#sz100); a part
+outside it gets the same code as a development warning, since its clicks never
+reach the root.
+
+## root
+
+```ts
+html`<div ${s.root({ orientation: "vertical" })}>…</div>`;
+```
+
+| Option | Type | Description |
+| --- | --- | --- |
+| `orientation` | `"horizontal" \| "vertical"` | Default `"horizontal"`. |
+
+The element gets `role="group"` and the name "Stepper", unless you give it a
+`role` or a name (`aria-label`, `aria-labelledby`) of your own. While an async
+check or `onFinish` runs it has `aria-busy` and `data-pending`; once the flow
+has finished it has `data-finished`. A visually hidden live region is appended
+to it for announcements, styled through its `style` property, so a Content
+Security Policy that forbids inline style attributes does not block it. It is
+cleared once the flow finishes.
+
+The flow's options (`linear`, `guard`, `onFinish`...) go to
+[`controller`](/docs/v9/lit/api/define-stepper#controller), not here.
+
+## list
+
+```ts
+html`<ol ${s.list()}>…</ol>`;
+```
+
+| Option | Type | Description |
+| --- | --- | --- |
+| `orientation` | `"horizontal" \| "vertical"` | Defaults to the root's. |
+
+A `tablist` when the flow is not linear and the template has triggers; a flow
+the controller follows says whether it is linear itself. Handles the arrow keys
+(left and right, or up and down when vertical), Home and End, mirrored in
+right-to-left layouts.
+
+## item
+
+```ts
+html`<li ${s.item(step.id)}>…</li>`;
+```
+
+One step: `data-state`, `data-invalid`, `data-disabled`. An id that is not in
+the definition is a type error, and throws
+[SZ102](/docs/v9/core/errors#sz102) at runtime.
+
+## trigger
+
+```ts
+html`<button ${s.trigger(step.id)}>${step.title}</button>`;
+html`<button ${s.trigger(step.id, { disabled: this.locked })}>…</button>`;
+```
+
+Goes to its step when pressed. It is disabled when `linear` does not allow
+reaching the step, with `disabled: true`, or with a `disabled` attribute of
+yours. In a flow that is not linear it is
+a `tab`; in a linear flow it is a plain button, with `aria-current="step"` on
+the current one. A `button` gets `type="button"` unless you wrote a `type`.
+
+## indicator
+
+```ts
+html`<span ${s.indicator(step.id)}></span>`;
+```
+
+A decorative mark: `aria-hidden`, `data-state`, `data-invalid`.
+
+## content
+
+```ts
+html`<div ${s.content("payment")}>…</div>`;
+```
+
+The panel of a step: `hidden` unless its step is current. It is the `tabpanel`
+of its trigger in a flow rendered as tabs, and otherwise a `group` named after
+the step's `title`. A `role`, name or `tabindex` of yours wins; its `id` is the
+stepper's, because tabs and focus find the panel by it.
+
+## prev and next
+
+```ts
+html`<button ${s.prev()}>Back</button> <button ${s.next()}>Continue</button>`;
+```
+
+| Option | Type | Description |
+| --- | --- | --- |
+| `disabled` | `boolean` | Disable it on top of what the flow decides. A `disabled` attribute of yours adds up the same way. |
+
+- `next()` calls the flow's `next()` with no argument, which validates the data
+  stored for the current step. On the last step it finishes the flow; it is
+  never disabled for being at the end.
+- `prev()` calls `prev()`, and is disabled when there is nowhere to go back to.
+
+While an async check or `onFinish` runs, both are `aria-disabled` and ignore
+clicks, and have `data-pending`. Once the flow has finished, the next button is
+`aria-disabled` and ignores clicks, so the flow is not submitted twice.
+
+Your own `@click` runs first. Call `event.preventDefault()` in it to handle the
+move yourself.
+
+## at
+
+`s.at(id)` returns a step as its item sees it. It reads the flow, so it works
+in `render()` on the server too.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `step` | `StepOf<S, I>` | The step with that id, with all its fields typed. |
+| `index` | `number` | Its position. |
+| `state` | `"pending" \| "current" \| "complete"` | |
+| `invalid` | `boolean` | Its last validation failed and its data has not changed since. |
+| `disabled` | `boolean` | `goTo` would be refused right now. |
+| `pending` | `boolean` | A move is running. Every step is `disabled` meanwhile. |
+
+## Titles and descriptions
+
+There are no `title` or `description` directives: write `${step.title}` in your
+template. The step is already in scope where you map over the steps, the text
+renders on the server (a directive could only fill it in on hydration), and an
+element with only text needs no role or state.
+
+## Diagnostics
+
+In development the primitives warn about a trigger without an accessible name
+([SZ002](/docs/v9/core/errors#sz002)), a trigger outside a list
+([SZ003](/docs/v9/core/errors#sz003)), a trigger or panel in a different
+shadow root than the root, where ids cannot reach it
+([SZ004](/docs/v9/core/errors#sz004)), and a trigger that is not a button
+([SZ005](/docs/v9/core/errors#sz005)).

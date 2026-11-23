@@ -1,0 +1,401 @@
+---
+title: VeeValidate
+description: A three-step Vue checkout with VeeValidate and a Zod schema per step, from validation on Continue to the order sent in onFinish.
+---
+
+VeeValidate owns the fields of each step: their values, their errors, when
+they are checked. Stepperize owns the flow: which step is current, what each
+step saved, and the order sent at the end. They meet in one call,
+`next(values)`.
+
+The code on this page is checked against VeeValidate 4.15, Zod 4.6 and Vue 3.5.
+
+## Install
+
+```bash
+npm install @stepperize/vue vee-validate zod
+```
+
+VeeValidate 4 does not read [Standard Schema](https://standardschema.dev)
+on its own, and its Zod adapter, `@vee-validate/zod`, only supports Zod 3. The
+few lines in [A typed schema from any library](#a-typed-schema-from-any-library)
+turn any Standard Schema (Zod 4, Valibot, ArkType) into what VeeValidate
+expects, so the form and the step share one schema.
+
+## The flow
+
+Three steps, each with the schema of its fields. The review step has none: it
+only reads what the others saved.
+
+```ts title="checkout.ts"
+import { defineStepper, type FlowOutput, type Issue } from "@stepperize/vue";
+import { z } from "zod";
+
+export const personalSchema = z.object({
+  name: z.string().trim().min(1, "Enter your name"),
+  email: z.email("Enter a valid email"),
+});
+
+export const shippingSchema = z.object({
+  address: z.string().trim().min(1, "Enter your address"),
+  zip: z.string().regex(/^\d{5}$/, "Enter a 5-digit ZIP"),
+});
+
+export const checkout = defineStepper(
+  [
+    { id: "personal", title: "Personal", schema: personalSchema },
+    { id: "shipping", title: "Shipping", schema: shippingSchema },
+    { id: "review", title: "Review" },
+  ],
+  { linear: true },
+);
+
+export type Order = FlowOutput<typeof checkout.steps>;
+
+/** The first message of each field, keyed by its path: "email", "address.zip". */
+export function fieldErrors(issues: ReadonlyArray<Issue> = []) {
+  const errors: Record<string, string> = {};
+  for (const issue of issues) {
+    const key = (issue.path ?? [])
+      .map((part) => String(typeof part === "object" ? part.key : part))
+      .join(".");
+    errors[key] ??= issue.message;
+  }
+  return errors;
+}
+```
+
+`fieldErrors` turns the issues a step returns into the
+`{ field: message }` object `setErrors` takes.
+
+## A typed schema from any library
+
+```ts title="typed-schema.ts"
+import type { StandardSchemaV1 } from "@stepperize/vue";
+import type { TypedSchema } from "vee-validate";
+
+/** Any Standard Schema (Zod 4, Valibot, ArkType...) as a VeeValidate typed schema. */
+export function toTypedSchema<Input, Output>(
+  schema: StandardSchemaV1<Input, Output>,
+): TypedSchema<Input, Output> {
+  return {
+    __type: "VVTypedSchema",
+    async parse(values) {
+      const result = await schema["~standard"].validate(values);
+      if (!result.issues) return { value: result.value, errors: [] };
+
+      const errors = new Map<string, string[]>();
+      for (const issue of result.issues) {
+        const path = (issue.path ?? [])
+          .map((part) => String(typeof part === "object" ? part.key : part))
+          .join(".");
+        errors.set(path, [...(errors.get(path) ?? []), issue.message]);
+      }
+      return { errors: [...errors].map(([path, messages]) => ({ path, errors: messages })) };
+    },
+  };
+}
+```
+
+It runs the schema's own validation and hands VeeValidate one entry per field.
+The values and the output stay typed from the schema, so `defineField("emial")`
+does not compile.
+
+## Complete example
+
+`Checkout.vue` owns the flow and the request; every step below it reads the flow
+with `useStepperContext()`.
+
+```vue title="Checkout.vue"
+<script setup lang="ts">
+import { checkout, type Order } from "./checkout";
+import CheckoutSteps from "./CheckoutSteps.vue";
+
+const { Provider } = checkout;
+
+// Return the promise: the flow stays pending while it runs, and unfinished if it rejects.
+async function placeOrder(order: Order) {
+  const response = await fetch("/api/orders", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(order),
+  });
+  if (!response.ok) throw new Error("Could not place the order");
+}
+</script>
+
+<template>
+  <Provider @finish="placeOrder">
+    <CheckoutSteps />
+  </Provider>
+</template>
+```
+
+```vue title="CheckoutSteps.vue"
+<script setup lang="ts">
+import { checkout } from "./checkout";
+import PersonalStep from "./PersonalStep.vue";
+import ReviewStep from "./ReviewStep.vue";
+import ShippingStep from "./ShippingStep.vue";
+
+const stepper = checkout.useStepperContext();
+</script>
+
+<template>
+  <p v-if="stepper.isFinished" role="status">Order placed.</p>
+  <section v-else>
+    <h2>{{ stepper.current.title }}</h2>
+    <PersonalStep v-if="stepper.current.id === 'personal'" />
+    <ShippingStep v-else-if="stepper.current.id === 'shipping'" />
+    <ReviewStep v-else />
+  </section>
+</template>
+```
+
+```vue title="PersonalStep.vue"
+<script setup lang="ts">
+import { useForm } from "vee-validate";
+import { checkout, fieldErrors, personalSchema } from "./checkout";
+import { toTypedSchema } from "./typed-schema";
+
+const stepper = checkout.useStepperContext();
+
+const { defineField, errors, handleSubmit, isSubmitting, setErrors } = useForm({
+  validationSchema: toTypedSchema(personalSchema),
+  // What the step saved: Back and a restored draft open the form filled in.
+  initialValues: stepper.data.personal ?? { name: "", email: "" },
+});
+const [name, nameAttrs] = defineField("name");
+const [email, emailAttrs] = defineField("email");
+
+// Only runs once VeeValidate's validation passed.
+const onSubmit = handleSubmit(async (values) => {
+  const result = await stepper.next(values);
+  // Rules only the step knows about come back as issues.
+  if (!result.accepted && result.issues) setErrors(fieldErrors(result.issues));
+});
+</script>
+
+<template>
+  <form novalidate @submit="onSubmit">
+    <label for="name">Name</label>
+    <input
+      id="name"
+      v-model="name"
+      v-bind="nameAttrs"
+      autocomplete="name"
+      :aria-invalid="!!errors.name"
+      :aria-describedby="errors.name ? 'name-error' : undefined"
+    />
+    <p v-if="errors.name" id="name-error" role="alert">{{ errors.name }}</p>
+
+    <label for="email">Email</label>
+    <input
+      id="email"
+      v-model="email"
+      v-bind="emailAttrs"
+      type="email"
+      autocomplete="email"
+      :aria-invalid="!!errors.email"
+      :aria-describedby="errors.email ? 'email-error' : undefined"
+    />
+    <p v-if="errors.email" id="email-error" role="alert">{{ errors.email }}</p>
+
+    <button type="submit" :disabled="isSubmitting">Continue</button>
+  </form>
+</template>
+```
+
+```vue title="ShippingStep.vue"
+<script setup lang="ts">
+import { useForm } from "vee-validate";
+import { checkout, fieldErrors, shippingSchema } from "./checkout";
+import { toTypedSchema } from "./typed-schema";
+
+const stepper = checkout.useStepperContext();
+
+const { defineField, errors, handleSubmit, isSubmitting, meta, setErrors, values } = useForm({
+  validationSchema: toTypedSchema(shippingSchema),
+  initialValues: stepper.data.shipping ?? { address: "", zip: "" },
+});
+const [address, addressAttrs] = defineField("address");
+const [zip, zipAttrs] = defineField("zip");
+
+const onSubmit = handleSubmit(async (values) => {
+  const result = await stepper.next(values);
+  if (!result.accepted && result.issues) setErrors(fieldErrors(result.issues));
+});
+
+function back() {
+  // Keep what was typed here, without validating it. Only when something
+  // changed: a new object would make a complete step incomplete.
+  if (meta.value.dirty) stepper.setData("shipping", { address: values.address, zip: values.zip });
+  stepper.prev();
+}
+</script>
+
+<template>
+  <form novalidate @submit="onSubmit">
+    <label for="address">Address</label>
+    <input
+      id="address"
+      v-model="address"
+      v-bind="addressAttrs"
+      autocomplete="street-address"
+      :aria-invalid="!!errors.address"
+      :aria-describedby="errors.address ? 'address-error' : undefined"
+    />
+    <p v-if="errors.address" id="address-error" role="alert">{{ errors.address }}</p>
+
+    <label for="zip">ZIP</label>
+    <input
+      id="zip"
+      v-model="zip"
+      v-bind="zipAttrs"
+      inputmode="numeric"
+      autocomplete="postal-code"
+      :aria-invalid="!!errors.zip"
+      :aria-describedby="errors.zip ? 'zip-error' : undefined"
+    />
+    <p v-if="errors.zip" id="zip-error" role="alert">{{ errors.zip }}</p>
+
+    <button type="button" @click="back">Back</button>
+    <button type="submit" :disabled="isSubmitting">Review</button>
+  </form>
+</template>
+```
+
+```vue title="ReviewStep.vue"
+<script setup lang="ts">
+import { ref } from "vue";
+import { checkout } from "./checkout";
+
+const stepper = checkout.useStepperContext();
+const error = ref("");
+
+async function placeOrder() {
+  error.value = "";
+  try {
+    // On the last step, next() runs onFinish and waits for it.
+    await stepper.next();
+  } catch {
+    error.value = "Could not place the order. Try again.";
+  }
+}
+</script>
+
+<template>
+  <dl>
+    <dt>Personal</dt>
+    <dd>{{ stepper.data.personal?.name }} · {{ stepper.data.personal?.email }}</dd>
+    <dt>Shipping</dt>
+    <dd>{{ stepper.data.shipping?.address }}, {{ stepper.data.shipping?.zip }}</dd>
+  </dl>
+  <p v-if="error" role="alert">{{ error }}</p>
+
+  <button type="button" :disabled="stepper.isPending" @click="stepper.goTo('personal')">
+    Edit details
+  </button>
+  <button type="button" :disabled="stepper.isPending" @click="stepper.prev()">Back</button>
+  <button type="button" :disabled="stepper.isPending" @click="placeOrder">
+    {{ stepper.isPending ? "Placing order…" : "Place order" }}
+  </button>
+</template>
+```
+
+## Why this works
+
+- **One form per step.** Each step component creates its own `useForm`, so
+  each step validates only its own fields and nothing is left registered when
+  it unmounts.
+- **The same schema on both sides.** VeeValidate checks the fields as it is
+  configured to, and `handleSubmit` only calls you once they pass. The step's
+  schema runs again inside `next()`: with the same schema it passes, and it
+  still blocks every other way forward, such as `Stepper.Next` or code that
+  calls `next()`.
+- **`next(values)` saves and moves in one update.** The values are stored under
+  the step's id and the next step renders.
+- **Back fills the form.** A step reads `stepper.data` as its
+  `initialValues`, so going back, or resuming a draft, shows what was saved.
+- **The request is part of the last move.** `@finish` is the `onFinish`
+  option. It returns the promise of the request, so `stepper.isPending` is
+  `true` while it runs and a second press is refused. If it rejects, `next()`
+  rejects, the flow is not finished and the person can try again.
+
+## Which side validates
+
+| | Runs | When it fails |
+| --- | --- | --- |
+| **VeeValidate** | On submit, and on blur or change as you configure it | `handleSubmit` does not call you, so `next()` is never called |
+| **The step's `schema`** | Inside every `next()` | `next()` stays on the step and returns `issues` |
+
+Keep both. VeeValidate gives immediate feedback next to the fields; the step's
+schema is the gate that holds whatever triggered the move.
+
+## Errors that come from the step
+
+A rule can live on the step only: an async check against your server, or one
+that reads another step. Then VeeValidate sees valid fields, `next()` refuses,
+and the issues come back from the call. `setErrors(fieldErrors(result.issues))`
+in the example puts them on their fields, and VeeValidate clears each one when
+its field is validated again.
+
+```ts title="checkout.ts"
+export const checkout = defineStepper(
+  [
+    {
+      id: "personal",
+      title: "Personal",
+      // The form keeps `personalSchema`; only the step asks the server.
+      schema: personalSchema.refine(async ({ email }) => !(await isRegistered(email)), {
+        message: "That email already has an account",
+        path: ["email"],
+      }),
+    },
+    { id: "shipping", title: "Shipping", schema: shippingSchema },
+    { id: "review", title: "Review" },
+  ],
+  { linear: true },
+);
+```
+
+`isRegistered` is your own request. The form keeps `personalSchema`, so
+typing never calls it; Continue does, once. While the check runs, `stepper.isPending` is `true`.
+
+## Drafts and Back
+
+- **What the step saved is the form's start.** `initialValues` is read once, when
+  the step mounts, and that is the only time the form needs it.
+- **Back keeps what was typed, without validating it.** `setData` stores a
+  draft. Only write it when `meta.dirty` is `true`: a complete step whose data
+  changes is no longer complete, and in a `linear` flow neither are the steps
+  after it. Writing the same values back would clear those check marks for
+  nothing.
+- **Hand the flow plain objects.** `values` from `useForm` is reactive; copy
+  it, as `back()` does, so the flow never holds VeeValidate's own object.
+- **Across a reload,** save the snapshot from `@change` and give it back as
+  `snapshot`. See [Saving and resuming](/docs/v9/vue/guides/persistence)
+  (the options are the same in Vue).
+
+## Pitfalls
+
+- **`useForm` above the steps.** One form for the whole flow validates every
+  field on every submit, including those of steps not shown yet. Keep one form
+  per step, or validate only the current step's fields with
+  `validateField` before calling `next()`.
+- **A Continue button outside the form.** `Stepper.Next` calls `next()` without
+  values, so VeeValidate's values are never handed over. Use a submit button
+  inside the form, as above.
+- **`@vee-validate/zod` with Zod 4.** It declares Zod 3 as its peer. Use the
+  adapter above, or `toTypedSchema` from `@vee-validate/zod` if you are on
+  Zod 3. VeeValidate 5, in beta while this was written, reads Standard Schema
+  directly, so the adapter can be dropped then.
+
+## Links
+
+- [VeeValidate: `useForm`](https://vee-validate.logaretm.com/v4/api/use-form/)
+- [VeeValidate: typed schemas](https://vee-validate.logaretm.com/v4/guide/composition-api/typed-schema/)
+- [Standard Schema](https://standardschema.dev)
+- The same flow with [TanStack Form](/docs/v9/vue/forms/tanstack-form) and
+  [FormKit](/docs/v9/vue/forms/formkit), or without a library:
+  [Forms](/docs/v9/vue/guides/forms).

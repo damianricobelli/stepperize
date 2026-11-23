@@ -1,0 +1,174 @@
+---
+title: Accessibility
+description: What the Lit parts handle for you, what shadow DOM changes, and the few things only you can provide.
+---
+
+The parts make your elements accessible without configuration. This page lists
+what they do, so you know what is covered and what is left to you.
+
+## The pattern follows the flow
+
+There is no single correct markup for a stepper, so the parts pick it from how
+the flow behaves.
+
+| Flow | Markup |
+| --- | --- |
+| `linear` | An ordered list of steps. The triggers are plain buttons; the current one has `aria-current="step"`, and steps that are not reachable yet are disabled. Each panel is a `group` named after the step's `title`. |
+| Free navigation, with triggers | Tabs: `tablist`, `tab` and `tabpanel`, linked with `aria-controls` and `aria-labelledby`. Each tab has `aria-posinset` and `aria-setsize`; the `li` around it is `presentation`. |
+| No triggers | No tabs either: each panel is a `group` named after the step's `title`. |
+
+A linear flow is not a set of tabs: its steps cannot be opened in any order,
+and announcing them as tabs would promise that they can.
+
+The controller decides on every update, from the flow's `isLinear` and the
+`trigger()` parts in the template at that moment. A trigger that a later
+render adds or removes, or one that a child component renders, changes the
+pattern once its template is in place.
+
+## Why directives and not custom elements
+
+ARIA links elements by id, and ids do not cross shadow roots. A
+`<stepper-trigger>` element would put its button in a shadow root of its own,
+where `aria-controls` could not reach the panel and `aria-labelledby` on the
+panel could not reach the tab. The directives leave every element in your
+template, in one root, so the tabs and panels can name each other.
+
+For the same reason, render the panels, and the triggers of a flow shown as
+tabs, in the same shadow root as `root()`. The list, items, indicators and the
+prev and next buttons can live in a child component's shadow root; a trigger
+or panel that cannot reach the root's ids is reported in development as
+[SZ004](/docs/v9/core/errors#sz004).
+
+## What is handled
+
+| Behavior | Detail |
+| --- | --- |
+| Keyboard | In tabs, arrow keys, `Home` and `End` move between steps, and the selected tab is the list's single tab stop. Left and right swap in right-to-left layouts, up and down apply with `root({ orientation: "vertical" })`. With `Alt`, `Ctrl` or `Meta` held, the keys are left to the browser. A tab you disabled is skipped. The keys work for a list in a child component's shadow root too. |
+| Focus | If focus would be lost after a step change (a field in a panel that was hidden or removed, a button that became disabled), it moves to the new panel, in the shadow root the stepper renders in. Focus outside the stepper is never moved. |
+| Announcements | When the step changes while focus stays put, for example on Continue, a polite live region that `root()` appends to its element announces the new step's `title`. When focus is already on the new step's tab or panel, which reads it anyway, nothing is announced. Once the flow finishes, the region is emptied. |
+| Async checks | While a schema, guard or `onFinish` runs, the buttons keep focus: they are `aria-disabled` rather than `disabled`, and the root has `aria-busy`. |
+| Decorative marks | `indicator(id)` sets `aria-hidden`. |
+| Buttons | A `<button>` part gets `type="button"` unless you wrote a `type`, so it never submits a form by accident. |
+
+## What only you can provide
+
+- **A name for every trigger.** The text inside a trigger is its name, and the
+  indicator is hidden from screen readers. If a trigger only shows a number or
+  an icon, name it:
+
+  ```ts
+  ${s.steps.map(
+    (step, index) => html`
+      <li ${s.item(step.id)}>
+        <button ${s.trigger(step.id)} aria-label=${step.title}>
+          <span ${s.indicator(step.id)}>${index + 1}</span>
+        </button>
+      </li>
+    `,
+  )}
+  ```
+
+- **A name for the stepper.** The root is a `group` labelled "Stepper". Write
+  `aria-label` or `aria-labelledby` on the root's element to describe the
+  flow, and to translate it: on the root, yours replaces the stepper's.
+
+  ```ts
+  html`
+    <h2 id="checkout-title">Checkout</h2>
+    <div ${s.root()} aria-labelledby="checkout-title">…</div>
+  `;
+  ```
+
+  The heading has to be in the same shadow root as the root's element.
+
+- **Completion beyond color.** `data-state` is for styling. Add text for screen
+  readers, in your language, from `s.at(id)`:
+
+  ```ts
+  html`
+    <button ${s.trigger(step.id)}>
+      <span ${s.indicator(step.id)}></span>
+      ${step.title}
+      ${s.at(step.id).state === "complete" ? html`<span class="sr-only">(completed)</span>` : nothing}
+    </button>
+  `;
+  ```
+
+  `.sr-only` has to be defined in your `static styles`: a utility class from
+  the page does not reach a shadow root.
+
+- **A string `title` on every step.** Announcements and the names of panels
+  without triggers come from it. A step without one is not announced.
+
+- **Error messages next to their fields.** `s.value.issues()` gives you the
+  messages; connect them to the inputs with `aria-describedby` and
+  `aria-invalid`, in the same shadow root:
+
+  ```ts
+  render() {
+    const s = this.stepper;
+    const issues = s.value.issues("account");
+
+    return html`
+      <div ${s.content("account")}>
+        <label>
+          Email
+          <input
+            type="email"
+            aria-invalid=${issues ? "true" : nothing}
+            aria-describedby=${issues ? "account-error" : nothing}
+          />
+        </label>
+        ${issues ? html`<p id="account-error" role="alert">${issues[0]?.message}</p>` : nothing}
+      </div>
+    `;
+  }
+  ```
+
+  An id only has to be unique within its shadow root, so a fixed one is fine
+  there. The stepper's own live region only announces step changes. A message
+  that appears on a rejected Continue needs `role="alert"` (or a live region of
+  yours) to be heard, because focus stays on the button.
+
+- **What a finished flow says.** `data-finished` on the root is styling only.
+  When `onFinish` settles, show a confirmation and move focus to it, or put it
+  in a live region.
+
+## Your attributes
+
+A directive never removes an attribute it did not set. Where you and the
+directive both set one:
+
+- **On the structure (root, list, item, panel, indicator)**, your `role`,
+  `aria-label`, `aria-labelledby` and `tabindex` win. That is how you name a
+  panel by its heading
+  (`<section ${s.content("payment")} aria-labelledby="payment-heading">`). It
+  also means a `role` or `tabindex` you write there replaces the one the
+  pattern needs.
+- **On the controls (trigger, prev, next)**, the stepper's ids and ARIA win:
+  they are what make the tabs, the keyboard and focus work. Only your `type`
+  is kept.
+- **`disabled` and `hidden` add up.** A button is disabled if you or the flow
+  say so. Prefer the option, `s.next({ disabled: this.saving })`, over a
+  `?disabled` binding.
+
+## Before hydration
+
+With [server rendering](/docs/v9/lit/guides/ssr), the directives run when the
+element hydrates, so the server HTML has none of the roles and ARIA. Do not
+write them by hand: until the page hydrates the tabs cannot be operated, and
+announcing them as tabs would promise a keyboard that does not work yet.
+Hidden panels and `type="button"` are worth writing as bindings, as that guide
+shows.
+
+## Development checks
+
+Mistakes that can be detected are reported with a code. A part used outside an
+opening tag throws. In development, a trigger without an accessible name, a
+trigger outside its list, a trigger that is not a button and a trigger or panel
+in another shadow root than `root()` are warned about. See
+[Errors and warnings](/docs/v9/core/errors).
+
+Run an automated checker such as `chai-a11y-axe` or
+[axe-core](https://github.com/dequelabs/axe-core) in your tests to catch the
+rest; the [testing guide](/docs/v9/lit/guides/testing) shows how.

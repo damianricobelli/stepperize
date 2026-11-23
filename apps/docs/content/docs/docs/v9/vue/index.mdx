@@ -1,0 +1,113 @@
+---
+title: Introduction
+description: Typed multi-step flows for Vue, from one definition.
+---
+
+Stepperize is for flows where someone moves through named steps: checkout,
+onboarding, surveys, import wizards, approval flows and multi-step forms.
+
+You describe the steps once. The definition gives you a typed composable, a
+provider and a set of accessible, unstyled components that all share the same
+step ids.
+
+```ts title="checkout.ts"
+import { defineStepper } from "@stepperize/vue";
+import { z } from "zod";
+
+export const checkout = defineStepper([
+  { id: "shipping", title: "Shipping", schema: z.object({ address: z.string().min(1) }) },
+  { id: "payment", title: "Payment", schema: z.object({ card: z.string().length(16) }) },
+  { id: "review", title: "Review" },
+]);
+```
+
+```vue title="Checkout.vue"
+<script setup lang="ts">
+import { checkout } from "./checkout";
+
+const stepper = checkout.useStepper({ onFinish: (output) => placeOrder(output) });
+</script>
+
+<template>
+  <section>
+    <h2>{{ stepper.current.title }}</h2>
+
+    <ShippingForm v-if="stepper.current.id === 'shipping'" />
+    <PaymentForm v-else-if="stepper.current.id === 'payment'" />
+    <Review v-else :data="stepper.data" />
+
+    <button type="button" :disabled="stepper.isFirst" @click="stepper.prev()">Back</button>
+    <button type="button" @click="stepper.next(readForm())">
+      {{ stepper.isLast ? "Place order" : "Continue" }}
+    </button>
+  </section>
+</template>
+```
+
+A flow built with the primitives, running:
+
+<FrameworkDemo framework="vue" />
+
+## Is it a form library?
+
+No. Stepperize owns the **flow**: which step is current, moving between steps,
+what each step saved and which steps are complete. `v-model`, or your form
+library, owns the fields. See [Forms](/docs/v9/vue/guides/forms).
+
+## What you get
+
+- **One call moves forward.** `next(data)` saves the step's data, validates it
+  against the step's schema and moves on. It resolves with what happened
+  instead of throwing.
+- **Typed everywhere.** Step ids, each step's data and your own fields
+  (`title`, `icon`, anything) are inferred from the definition, in `<script>`
+  and in templates.
+- **Reactive without ceremony.** The stepper is a reactive, read-only object:
+  templates, `computed` and `watch(() => stepper.index, ...)` follow it, with
+  no `.value`.
+- **Branching as data.** A `next` map decides where each step leads from its
+  validated data, and a flow can have more than one ending.
+- **Resumable.** One `snapshot` goes in, one `onChange` comes out. The current
+  step can follow the route with a single option.
+- **Accessible primitives.** Roles, keyboard navigation, focus and
+  announcements are handled for you.
+- **Server rendering.** It renders in Nuxt and hydrates without changing the
+  HTML.
+- **Small.** About 3.4 KiB for the composables and 7.4 KiB with the primitives,
+  min + gzip, with no third-party dependencies.
+
+## The same flow as every other binding
+
+The state machine is [`@stepperize/core`](/docs/v9/core), shared by every
+binding, so the concepts are the same everywhere. Each has its own page,
+with Vue code: [steps](/docs/v9/vue/concepts/steps),
+[the lifecycle of a move](/docs/v9/vue/concepts/moves),
+[step state](/docs/v9/vue/concepts/step-state),
+[validation](/docs/v9/vue/guides/validation),
+[branching](/docs/v9/vue/guides/branching) and
+[persistence](/docs/v9/vue/guides/persistence).
+
+## Next
+
+<Cards>
+	<Card
+		href="/docs/v9/vue/installation"
+		title="Installation"
+		description="Add the package to a Vue 3.5 project."
+	/>
+	<Card
+		href="/docs/v9/vue/first-stepper"
+		title="Your first stepper"
+		description="A working flow, built in four small steps."
+	/>
+	<Card
+		href="/docs/v9/vue/guides/primitives"
+		title="Primitives"
+		description="Accessible components bound to your steps."
+	/>
+	<Card
+		href="/docs/v9/core"
+		title="Without Vue"
+		description="The same state machine in tests, servers and agents."
+	/>
+</Cards>

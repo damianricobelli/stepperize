@@ -1,0 +1,340 @@
+---
+title: FormKit
+description: A three-step Vue checkout with FormKit's inputs and rules, a Zod schema per step as the gate, and the step's issues shown on its inputs.
+---
+
+FormKit renders the inputs of each step, with their labels, messages and
+rules. Stepperize owns the flow: which step is current, what each step saved,
+and the order sent at the end. They meet in FormKit's submit handler, which
+calls `next(values)`.
+
+The code on this page is checked against FormKit 2.9, Zod 4.6 and Vue 3.5.
+
+## Install
+
+```bash
+npm install @stepperize/vue @formkit/vue @formkit/core zod
+```
+
+Register FormKit once, as usual:
+
+```ts title="main.ts"
+import { defaultConfig, plugin } from "@formkit/vue";
+import { createApp } from "vue";
+import Checkout from "./Checkout.vue";
+
+createApp(Checkout).use(plugin, defaultConfig).mount("#app");
+```
+
+`@formkit/core` is already a dependency of `@formkit/vue`; it is listed so the
+`FormKitNode` type can be imported from it.
+
+## Who validates
+
+FormKit validates with its own rules, written on each input
+(`validation="required|email"`). FormKit's Zod plugin, `@formkit/zod`, only
+supports Zod 3, so with Zod 4 the schema stays on the step:
+
+- **FormKit's rules** give immediate, accessible messages and keep the submit
+  handler from running until they pass.
+- **The step's `schema`** runs inside every `next()`. When it refuses, the
+  submit handler puts its issues on FormKit's inputs with `setErrors`.
+
+Simple rules can live in both places. Anything the rules cannot say (trimming,
+a rule that reads another step, a request to your server) lives in the schema
+only, and still shows up on the right input.
+
+## The flow
+
+```ts title="checkout.ts"
+import { defineStepper, type FlowOutput, type Issue } from "@stepperize/vue";
+import { z } from "zod";
+
+export const personalSchema = z.object({
+  name: z.string().trim().min(1, "Enter your name"),
+  email: z.email("Enter a valid email"),
+});
+
+export const shippingSchema = z.object({
+  address: z.string().trim().min(1, "Enter your address"),
+  zip: z.string().regex(/^\d{5}$/, "Enter a 5-digit ZIP"),
+});
+
+export const checkout = defineStepper(
+  [
+    { id: "personal", title: "Personal", schema: personalSchema },
+    { id: "shipping", title: "Shipping", schema: shippingSchema },
+    { id: "review", title: "Review" },
+  ],
+  { linear: true },
+);
+
+export type Order = FlowOutput<typeof checkout.steps>;
+
+/** The first message of each field, keyed by its path: "email", "address.zip". */
+export function fieldErrors(issues: ReadonlyArray<Issue> = []) {
+  const errors: Record<string, string> = {};
+  for (const issue of issues) {
+    const key = (issue.path ?? [])
+      .map((part) => String(typeof part === "object" ? part.key : part))
+      .join(".");
+    errors[key] ??= issue.message;
+  }
+  return errors;
+}
+```
+
+## Complete example
+
+```vue title="Checkout.vue"
+<script setup lang="ts">
+import { checkout, type Order } from "./checkout";
+import CheckoutSteps from "./CheckoutSteps.vue";
+
+const { Provider } = checkout;
+
+// Return the promise: the flow stays pending while it runs, and unfinished if it rejects.
+async function placeOrder(order: Order) {
+  const response = await fetch("/api/orders", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(order),
+  });
+  if (!response.ok) throw new Error("Could not place the order");
+}
+</script>
+
+<template>
+  <Provider @finish="placeOrder">
+    <CheckoutSteps />
+  </Provider>
+</template>
+```
+
+```vue title="CheckoutSteps.vue"
+<script setup lang="ts">
+import { checkout } from "./checkout";
+import PersonalStep from "./PersonalStep.vue";
+import ReviewStep from "./ReviewStep.vue";
+import ShippingStep from "./ShippingStep.vue";
+
+const stepper = checkout.useStepperContext();
+</script>
+
+<template>
+  <p v-if="stepper.isFinished" role="status">Order placed.</p>
+  <section v-else>
+    <h2>{{ stepper.current.title }}</h2>
+    <PersonalStep v-if="stepper.current.id === 'personal'" />
+    <ShippingStep v-else-if="stepper.current.id === 'shipping'" />
+    <ReviewStep v-else />
+  </section>
+</template>
+```
+
+```vue title="PersonalStep.vue"
+<script setup lang="ts">
+import type { FormKitNode } from "@formkit/core";
+import { FormKit } from "@formkit/vue";
+import { checkout, fieldErrors } from "./checkout";
+
+const stepper = checkout.useStepperContext();
+// A copy: FormKit writes into the object it is given.
+const initial = { name: "", email: "", ...stepper.data.personal };
+
+// FormKit only calls this once its own rules pass, and shows the form as
+// loading until the promise settles.
+async function submit(values: Record<string, unknown>, form: FormKitNode) {
+  const result = await stepper.next(values);
+  // Rules only the step knows about come back as issues: show them on their inputs.
+  if (!result.accepted && result.issues) form.setErrors([], fieldErrors(result.issues));
+}
+</script>
+
+<template>
+  <FormKit type="form" :value="initial" submit-label="Continue" @submit="submit">
+    <FormKit type="text" name="name" label="Name" autocomplete="name" validation="required" />
+    <FormKit
+      type="email"
+      name="email"
+      label="Email"
+      autocomplete="email"
+      validation="required|email"
+    />
+  </FormKit>
+</template>
+```
+
+```vue title="ShippingStep.vue"
+<script setup lang="ts">
+import type { FormKitNode } from "@formkit/core";
+import { FormKit } from "@formkit/vue";
+import type { z } from "zod";
+import { checkout, fieldErrors, type shippingSchema } from "./checkout";
+
+const stepper = checkout.useStepperContext();
+const initial = { address: "", zip: "", ...stepper.data.shipping };
+
+let form: FormKitNode | undefined;
+
+async function submit(values: Record<string, unknown>, node: FormKitNode) {
+  const result = await stepper.next(values);
+  if (!result.accepted && result.issues) node.setErrors([], fieldErrors(result.issues));
+}
+
+function back() {
+  // Keep what was typed here, without validating it. Only when something
+  // changed: a new object would make a complete step incomplete.
+  if (form?.context?.state.dirty) {
+    stepper.setData("shipping", { ...(form.value as z.input<typeof shippingSchema>) });
+  }
+  stepper.prev();
+}
+</script>
+
+<template>
+  <FormKit
+    type="form"
+    :value="initial"
+    :actions="false"
+    @node="(node: FormKitNode) => (form = node)"
+    @submit="submit"
+  >
+    <FormKit
+      type="text"
+      name="address"
+      label="Address"
+      autocomplete="street-address"
+      validation="required"
+    />
+    <FormKit
+      type="text"
+      name="zip"
+      label="ZIP"
+      inputmode="numeric"
+      autocomplete="postal-code"
+      validation="required|matches:/^\d{5}$/"
+      :validation-messages="{ matches: 'Enter a 5-digit ZIP' }"
+    />
+
+    <button type="button" @click="back">Back</button>
+    <FormKit type="submit" label="Review" />
+  </FormKit>
+</template>
+```
+
+```vue title="ReviewStep.vue"
+<script setup lang="ts">
+import { ref } from "vue";
+import { checkout } from "./checkout";
+
+const stepper = checkout.useStepperContext();
+const error = ref("");
+
+async function placeOrder() {
+  error.value = "";
+  try {
+    // On the last step, next() runs onFinish and waits for it.
+    await stepper.next();
+  } catch {
+    error.value = "Could not place the order. Try again.";
+  }
+}
+</script>
+
+<template>
+  <dl>
+    <dt>Personal</dt>
+    <dd>{{ stepper.data.personal?.name }} · {{ stepper.data.personal?.email }}</dd>
+    <dt>Shipping</dt>
+    <dd>{{ stepper.data.shipping?.address }}, {{ stepper.data.shipping?.zip }}</dd>
+  </dl>
+  <p v-if="error" role="alert">{{ error }}</p>
+
+  <button type="button" :disabled="stepper.isPending" @click="stepper.goTo('personal')">
+    Edit details
+  </button>
+  <button type="button" :disabled="stepper.isPending" @click="stepper.prev()">Back</button>
+  <button type="button" :disabled="stepper.isPending" @click="placeOrder">
+    {{ stepper.isPending ? "Placing order…" : "Place order" }}
+  </button>
+</template>
+```
+
+## Why this works
+
+- **FormKit's submit is the move.** `@submit` only runs once every rule
+  passes, and FormKit disables the form while the promise it returns is
+  pending, which covers an async rule of the step.
+- **The step has the last word.** A name of only spaces passes `required` but
+  not the step's `trim().min(1)`: `next()` refuses, and
+  `form.setErrors([], fieldErrors(result.issues))` shows "Enter your name" on
+  the name input. FormKit removes it as soon as the input changes.
+- **Back fills the form.** `:value` gives the form what the step saved.
+  `initial` is a copy, because FormKit writes into the object it is given.
+- **The request is part of the last move.** `@finish` returns the promise of
+  the request: `stepper.isPending` is `true` while it runs, a second press is
+  refused, and a failure leaves the flow open for another try.
+
+## Errors that come from the step
+
+The second argument of `setErrors` takes one message (or a list) per input
+name, which is what `fieldErrors` returns. The first is for messages about the
+whole form, such as a failed request:
+
+```ts
+form.setErrors(["We could not check your email. Try again."]);
+```
+
+A rule that only the step has, here an async check against your server:
+
+```ts title="checkout.ts"
+export const checkout = defineStepper(
+  [
+    {
+      id: "personal",
+      title: "Personal",
+      // The form keeps `personalSchema`; only the step asks the server.
+      schema: personalSchema.refine(async ({ email }) => !(await isRegistered(email)), {
+        message: "That email already has an account",
+        path: ["email"],
+      }),
+    },
+    { id: "shipping", title: "Shipping", schema: shippingSchema },
+    { id: "review", title: "Review" },
+  ],
+  { linear: true },
+);
+```
+
+`isRegistered` is your own request. FormKit's rules run on every change; this
+one only runs on Continue.
+
+## Drafts and Back
+
+- **Back keeps what was typed, without validating it.** The `@node` event hands
+  you the form's node; `back()` reads its value and stores it with `setData`.
+  Only when `context.state.dirty` is `true`: a complete step whose data changes
+  is no longer complete, and in a `linear` flow neither are the steps after it.
+- **One form per step.** Each step mounts its own `type="form"`, so its rules
+  and messages are only about the fields on screen.
+
+## Pitfalls
+
+- **FormKit's own multi-step input.** `@formkit/addons` has a multi-step plugin
+  that also owns which step is shown. Use one or the other for a flow, not both:
+  with Stepperize, each step is a plain `type="form"`.
+- **Passing `stepper.data` directly as `:value`.** FormKit writes into that
+  object as the person types, so the flow's data would change without
+  `setData`. Pass a copy.
+- **`@formkit/zod` with Zod 4.** It declares Zod 3 as its peer. Keep the Zod 4
+  schema on the step and map its issues, as above.
+
+## Links
+
+- [FormKit: forms](https://formkit.com/inputs/form)
+- [FormKit: validation](https://formkit.com/essentials/validation)
+- [FormKit: submitting forms and errors](https://formkit.com/essentials/forms)
+- The same flow with [VeeValidate](/docs/v9/vue/forms/vee-validate) and
+  [TanStack Form](/docs/v9/vue/forms/tanstack-form), or without a library:
+  [Forms](/docs/v9/vue/guides/forms).

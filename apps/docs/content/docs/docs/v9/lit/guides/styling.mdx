@@ -1,0 +1,296 @@
+---
+title: Styling
+description: Style your elements through the data attributes the parts set, with static styles, ::part or custom properties.
+---
+
+The parts ship no styles, and they render no elements: each directive goes on
+an element of your template and sets its state there as `data-*` attributes.
+You style against them in `static styles`, and decide what the page outside
+your element may style.
+
+## Attributes
+
+| Attribute | Set on | Values |
+| --- | --- | --- |
+| `data-component` | Every part's element | `stepper`, `stepper-list`, `stepper-item`, `stepper-trigger`, `stepper-indicator`, `stepper-content`, `stepper-prev`, `stepper-next` |
+| `data-state` | item, trigger, indicator | `pending`, `current`, `complete` |
+| `data-invalid` | item, trigger, indicator | Present after a rejected `next()` or `validate()`, until the step's data changes |
+| `data-disabled` | item, trigger, prev, next | Present when the action is not available |
+| `data-pending` | root, prev, next | Present while an async schema, guard or `onFinish` runs |
+| `data-finished` | root | Present once the flow has finished, until it changes |
+| `data-orientation` | root, list | `horizontal`, `vertical` |
+| `data-step` | item, trigger, content | The step id |
+
+There are no title or description parts: the text of a step is yours, in
+whatever element you choose.
+
+## data-state: the workhorse
+
+`data-state` is the state of the step:
+
+- **`current`**: the step being shown.
+- **`complete`**: `next()` validated it and moved on, and its data has not changed since.
+- **`pending`**: everything else.
+
+## Static styles
+
+The parts are elements of your template, in your shadow root, so
+`static styles` reach them directly:
+
+```ts title="checkout-steps.ts"
+import { css, html, LitElement } from "lit";
+import { checkout } from "./checkout";
+
+export class CheckoutSteps extends LitElement {
+  static styles = css`
+    :host {
+      display: block;
+    }
+    [data-component="stepper-list"] {
+      display: flex;
+      gap: 1rem;
+    }
+    [data-component="stepper-list"][data-orientation="vertical"] {
+      flex-direction: column;
+    }
+    [data-component="stepper-trigger"][data-state="current"] {
+      font-weight: 600;
+    }
+    [data-component="stepper-indicator"][data-state="complete"] {
+      background: var(--stepper-accent, royalblue);
+    }
+    [data-component="stepper-next"][data-pending] {
+      cursor: progress;
+    }
+  `;
+
+  stepper = checkout.controller(this);
+
+  render() {
+    const s = this.stepper;
+    return html`
+      <div ${s.root()}>
+        <ol ${s.list()}>
+          ${s.steps.map(
+            (step) => html`
+              <li ${s.item(step.id)}>
+                <button ${s.trigger(step.id)}><span ${s.indicator(step.id)}></span>${step.title}</button>
+              </li>
+            `,
+          )}
+        </ol>
+        <div ${s.content("shipping")}><shipping-form></shipping-form></div>
+        <div ${s.content("payment")}><payment-form></payment-form></div>
+        <button ${s.prev()}>Back</button>
+        <button ${s.next()}>Continue</button>
+      </div>
+    `;
+  }
+}
+```
+
+A class of yours works as well as the `data-component` selector:
+`.trigger[data-state="current"]`. The directives add attributes; your `class`,
+`style` and other attributes stay as you wrote them.
+
+## Styling from the page
+
+Page styles do not cross into a shadow root. Two ways let them in, both under
+your element's control.
+
+### Custom properties
+
+Custom properties inherit through the shadow boundary. Read them in
+`static styles`, with a default, and the page themes the stepper without
+knowing its markup:
+
+```css title="app.css"
+checkout-steps {
+  --stepper-accent: rebeccapurple;
+}
+```
+
+### `::part`
+
+Name the elements the page may style with `part`. `::part()` cannot be
+combined with an attribute selector, so put the state in the part names, from
+`s.at(id)`:
+
+```ts
+${s.steps.map(
+  (step) => html`
+    <li ${s.item(step.id)}>
+      <button ${s.trigger(step.id)} part="trigger ${s.at(step.id).state}">${step.title}</button>
+    </li>
+  `,
+)}
+```
+
+```css title="app.css"
+checkout-steps::part(trigger) {
+  padding: 0.5rem 1rem;
+}
+checkout-steps::part(trigger current) {
+  font-weight: 600;
+}
+checkout-steps::part(trigger complete) {
+  color: green;
+}
+```
+
+`::part(trigger current)` matches an element with both names. The element
+renders again on every change of the flow, so the names follow it.
+
+## Tailwind and the light DOM
+
+Tailwind's classes live in a global stylesheet, which a shadow root does not
+see. The simplest way to use them is to render the element into the light DOM:
+
+```ts
+class CheckoutSteps extends LitElement {
+  protected createRenderRoot() {
+    return this;
+  }
+}
+```
+
+The parts work the same in the light DOM, and the `data-[…]` variants apply:
+
+```ts
+html`
+  <button
+    ${s.trigger(step.id)}
+    class="flex items-center gap-2 text-muted-foreground data-[state=current]:text-foreground data-disabled:opacity-50"
+  >
+    <span
+      ${s.indicator(step.id)}
+      class="size-6 rounded-full border data-[state=complete]:bg-primary data-invalid:border-destructive"
+    ></span>
+    ${step.title}
+  </button>
+`;
+```
+
+`group` and `group-data-[state=complete]:` work too, to swap a number for a
+check mark once a step is complete. In the light DOM, the page's own styles
+apply to the stepper as well, so scope global rules to your element's tag.
+
+## Parts in a child component
+
+A part rendered by a child component (see
+[Parts in a child component](/docs/v9/lit/guides/primitives#parts-in-a-child-component))
+is in the child's shadow root, so the child's `static styles` style it, not
+the parent's.
+
+## Classes from the item's state
+
+When a rule needs more than an attribute selector, read the item with
+`s.at(id)` and bind a class with `classMap`:
+
+```ts
+import { classMap } from "lit/directives/class-map.js";
+
+${s.steps.map((step) => {
+  const item = s.at(step.id);
+  return html`
+    <li ${s.item(step.id)}>
+      <button ${s.trigger(step.id)} class=${classMap({ done: item.state === "complete", locked: item.disabled })}>
+        ${step.title}
+      </button>
+    </li>
+  `;
+})}
+```
+
+The `data-*` attributes stay the simpler choice: they need no binding. With
+[server rendering](/docs/v9/lit/guides/ssr#make-the-first-paint-right),
+though, bindings are in the server HTML and the directives' attributes are not
+until the element hydrates.
+
+## data-invalid
+
+Present on the item, trigger and indicator of a step whose last `next()` was
+rejected by its schema, until that step's data changes.
+
+```css
+[data-component="stepper-indicator"][data-invalid] {
+  border-color: var(--destructive, crimson);
+}
+```
+
+## Disabled and pending
+
+A button that cannot be used right now gets `data-disabled`. Style that
+attribute rather than `:disabled`: while an async check runs, the buttons are
+`aria-disabled` instead of `disabled`, so the one that was pressed keeps
+keyboard focus.
+
+## Hidden panels
+
+`content(id)` hides the panels of other steps with the `hidden` attribute, and
+a `display` rule of yours beats the browser's `[hidden] { display: none }`.
+Restore it next to your rule:
+
+```css
+[data-component="stepper-content"] {
+  display: grid;
+}
+[data-component="stepper-content"][hidden] {
+  display: none;
+}
+```
+
+## Animating panels
+
+A panel that becomes current goes from hidden to shown, which
+`@starting-style` animates in CSS alone:
+
+```css
+[data-component="stepper-content"] {
+  transition: opacity 150ms ease;
+  @starting-style {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-component="stepper-content"] {
+    transition: none;
+  }
+}
+```
+
+## Lines between steps
+
+There is no separator part. Draw the line with CSS on the items, which keeps
+the list a clean list of steps for screen readers.
+
+```css
+[data-component="stepper-item"]:not(:last-child)::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--border, #ddd);
+}
+[data-component="stepper-item"][data-state="complete"]::after {
+  background: var(--stepper-accent, royalblue);
+}
+```
+
+## State is not position
+
+`data-state="complete"` means the step was validated, not that it is before
+the current one. A step that was skipped is `pending` even if it is earlier in
+the list. To style by position, compare indexes:
+
+```ts
+${s.steps.map(
+  (step, index) => html`<li ${s.item(step.id)} ?data-passed=${index < s.value.index}>…</li>`,
+)}
+```
+
+## Where to go next
+
+- [Primitives API](/docs/v9/lit/api/primitives): the parts that set these
+  attributes.
+- [Accessibility](/docs/v9/lit/guides/accessibility): what the attributes do
+  not say to assistive technology, and how to add it.

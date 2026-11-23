@@ -4,13 +4,15 @@ import browserCollections from "collections/browser";
 import { useFumadocsLoader } from "fumadocs-core/source/client";
 import { DocsLayout } from "fumadocs-ui/layouts/docs";
 import { type DocsPageProps, renderDocsPage } from "@/components/docs-page";
+import { DocsSwitcher } from "@/components/docs-switcher";
 import {
 	getCanonicalDocsPath,
 	getDocsFramework,
 	getDocsPageSlugs,
-	getDocsTabs,
 	getDocsTree,
 	getDocsVersion,
+	getFrameworkOptions,
+	getVersionOptions,
 	hasDocsVersion,
 	LEGACY_DOCS_VERSION,
 } from "@/lib/docs-tree";
@@ -18,13 +20,27 @@ import { isDocsFramework } from "@/lib/frameworks";
 import { baseOptions } from "@/lib/layout.shared";
 import { retiredReactPage } from "@/lib/legacy-redirects";
 import {
+	frameworkLlmsFullTxt,
+	frameworkLlmsTxt,
+	MARKDOWN_HEADERS,
+	pageMarkdown,
+	TEXT_HEADERS,
+} from "@/lib/llms";
+import { docsTextRequest } from "@/lib/llms-index";
+import { editableSource } from "@/lib/mdx/editable-source";
+import { ogImageUrl } from "@/lib/og";
+import {
 	breadcrumbLd,
+	compactSeoText,
 	docKeywords,
 	docsBreadcrumb,
+	docsPageSeo,
 	faqFromMarkdown,
 	faqPageLd,
 	jsonLdScript,
+	SOCIAL_DESCRIPTION_MAX,
 	seo,
+	sharedDocsFields,
 	techArticleLd,
 } from "@/lib/seo";
 import { serializeLoaderData } from "@/lib/serialize-loader-data";
@@ -81,18 +97,41 @@ export const Route = createFileRoute("/docs/$")({
 		return data;
 	},
 	head: ({ params, loaderData }) => {
-		const splat = params._splat ?? "";
-		const title = loaderData?.title ?? "Documentation";
-		const description = loaderData?.description;
-		const canonical = `/docs/${splat}`;
+		const segments = (params._splat ?? "").split("/").filter(Boolean);
+		// Redirects run first, so this is the URL being served; resolved anyway, so the canonical never carries a trailing slash or a missing version.
+		const canonical = getCanonicalDocsPath(segments);
+		const splat = canonical.slice("/docs/".length);
+		const page = docsPageSeo({
+			slugs: getDocsPageSlugs(segments),
+			title: loaderData?.title ?? "Documentation",
+			description: loaderData?.description,
+			shared: loaderData?.shared,
+		});
+		const keywords = docKeywords(splat);
 		const lastModified =
 			typeof loaderData?.lastModified === "string"
 				? loaderData.lastModified
 				: undefined;
+		const socialImageUrl = ogImageUrl({
+			title: page.socialTitle,
+			description: compactSeoText(page.description, SOCIAL_DESCRIPTION_MAX),
+			section: page.socialSection,
+			variant: "article",
+		});
 
 		const scripts = [
 			jsonLdScript(
-				techArticleLd({ title, description, url: canonical, lastModified }),
+				techArticleLd({
+					// "Vue: Forms": the page name alone is shared by several frameworks.
+					title: page.socialTitle,
+					description: page.description,
+					url: canonical,
+					lastModified,
+					image: socialImageUrl,
+					keywords,
+					framework: page.framework,
+					version: page.version,
+				}),
 			),
 		];
 		if (loaderData?.breadcrumb) {
@@ -103,9 +142,11 @@ export const Route = createFileRoute("/docs/$")({
 		}
 
 		const head = seo({
-			fullTitle: title,
-			description,
-			keywords: docKeywords(splat),
+			fullTitle: page.title,
+			description: page.description,
+			socialTitle: page.socialTitle,
+			socialImageUrl,
+			keywords,
 			canonical,
 			type: "article",
 		});
@@ -117,11 +158,39 @@ export const Route = createFileRoute("/docs/$")({
 				{
 					rel: "alternate",
 					type: "text/markdown",
-					href: `/llms.mdx/${getDocsPageSlugs(splat.split("/").filter(Boolean)).join("/")}`,
+					href: `${canonical}.md`,
 				},
 			],
 			scripts,
 		};
+	},
+	server: {
+		handlers: {
+			// `{page}.md` and a framework's `llms.txt` and `llms-full.txt` are text; everything else renders the page.
+			GET: async ({ params, next }) => {
+				const request = docsTextRequest(params._splat ?? "");
+				if (!request) return next();
+				if (request.kind !== "page") {
+					const text =
+						request.kind === "llms"
+							? await frameworkLlmsTxt(request.framework)
+							: await frameworkLlmsFullTxt(request.framework);
+					return new Response(text, { headers: TEXT_HEADERS });
+				}
+				const page = source.getPage(
+					getDocsPageSlugs(request.path.split("/").filter(Boolean)),
+				);
+				if (!page) {
+					return new Response("Not found. See /llms.txt for every page.", {
+						status: 404,
+						headers: { "Content-Type": "text/plain; charset=utf-8" },
+					});
+				}
+				return new Response(await pageMarkdown(page), {
+					headers: MARKDOWN_HEADERS,
+				});
+			},
+		},
 	},
 });
 
@@ -173,7 +242,21 @@ const loadDocsPage = createServerFn({ method: "GET" })
 				hasPage,
 			),
 			description: page.data.description,
-			editPath: `apps/docs/content/docs/${page.path}`,
+			// Whether the head copy needs to tell this page apart from a sibling.
+			shared: sharedDocsFields(
+				{
+					slugs: page.slugs,
+					title: page.data.title,
+					description: page.data.description,
+				},
+				source.getPages().map((other) => ({
+					slugs: other.slugs,
+					title: other.data.title,
+					description: other.data.description,
+				})),
+			),
+			// A page that includes a shared concept is edited there.
+			editPath: `apps/docs/${editableSource(page.path, await page.data.getText("raw"))}`,
 			// Every version names its FAQ page `faq`.
 			faq:
 				pageSlugs.at(-1) === "faq"
@@ -184,6 +267,10 @@ const loadDocsPage = createServerFn({ method: "GET" })
 			pageTree: await source.serializePageTree(pageTree),
 			version: getDocsVersion(data.slugs),
 			path: page.path,
+			switcher: {
+				frameworks: getFrameworkOptions(data.slugs, hasPage),
+				versions: getVersionOptions(data.slugs),
+			},
 			title: page.data.title,
 			toc: [],
 		} satisfies DocsPageProps & {
@@ -191,6 +278,11 @@ const loadDocsPage = createServerFn({ method: "GET" })
 			faq: ReturnType<typeof faqFromMarkdown> | undefined;
 			pageTree: Awaited<ReturnType<typeof source.serializePageTree>>;
 			path: string;
+			switcher: {
+				frameworks: ReturnType<typeof getFrameworkOptions>;
+				versions: ReturnType<typeof getVersionOptions>;
+			};
+			shared: ReturnType<typeof sharedDocsFields>;
 			version: string;
 		});
 	});
@@ -205,8 +297,8 @@ function Page() {
 	return (
 		<DocsLayout
 			{...baseOptions()}
-			tabMode="auto"
-			tabs={getDocsTabs(data.version)}
+			sidebar={{ banner: <DocsSwitcher {...data.switcher} /> }}
+			tabs={false}
 			tree={data.pageTree}
 		>
 			{clientLoader.useContent(data.path, data)}

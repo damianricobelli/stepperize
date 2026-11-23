@@ -1,0 +1,196 @@
+---
+title: Primitives
+description: Unstyled components that handle roles, keyboard, focus and announcements.
+---
+
+Every definition comes with a `Stepper` object: components bound to your steps.
+They render plain elements with no styles, and take care of the parts that are
+easy to get wrong: roles, ids, keyboard navigation, focus and announcements.
+
+For a simple flow, your own buttons and an `{#if}` are enough.
+
+## Basic structure
+
+```svelte title="CheckoutSteps.svelte"
+<script lang="ts">
+  import { checkout } from "./checkout";
+
+  const { Stepper } = checkout;
+</script>
+
+<Stepper.Root linear onFinish={placeOrder}>
+  <Stepper.List>
+    {#snippet item()}
+      <Stepper.Item>
+        <Stepper.Trigger>
+          <Stepper.Indicator />
+          <Stepper.Title />
+          <Stepper.Description />
+        </Stepper.Trigger>
+      </Stepper.Item>
+    {/snippet}
+  </Stepper.List>
+
+  <Stepper.Content step="shipping"><ShippingForm /></Stepper.Content>
+  <Stepper.Content step="payment"><PaymentForm /></Stepper.Content>
+  <Stepper.Content step="review"><Review /></Stepper.Content>
+
+  <Stepper.Prev>Back</Stepper.Prev>
+  <Stepper.Next>Continue</Stepper.Next>
+</Stepper.Root>
+```
+
+<FrameworkDemo framework="svelte" />
+
+## How the pieces connect
+
+1. `Stepper.Root` creates the flow and provides it. It takes the options as
+   props.
+2. `Stepper.List` renders the list and handles arrow keys.
+3. Its `item` snippet is rendered once per step.
+4. `Stepper.Item` is one step. Everything inside it knows which one.
+5. `Stepper.Trigger` goes to that step when pressed.
+6. `Stepper.Content` renders while its `step` is current.
+7. `Stepper.Prev` and `Stepper.Next` call `prev()` and `next()`.
+
+`step` is typed: `<Stepper.Content step="shiping">` is an error in the editor
+and in `svelte-check`.
+
+## Reading the flow in markup
+
+The `children` snippet of `Root` receives the stepper, the `item` snippet of
+`List` receives each step, and the `children` snippet of `Item` receives that
+item:
+
+```svelte
+<Stepper.Root>
+  {#snippet children(stepper)}
+    <p>Step {stepper.index + 1} of {stepper.steps.length}</p>
+
+    <Stepper.List>
+      {#snippet item(step, index)}
+        <Stepper.Item>
+          {#snippet children(item)}
+            <Stepper.Trigger>
+              {item.state === "complete" ? "✓" : index + 1} {step.title}
+            </Stepper.Trigger>
+          {/snippet}
+        </Stepper.Item>
+      {/snippet}
+    </Stepper.List>
+  {/snippet}
+</Stepper.Root>
+```
+
+In a child component, `checkout.useStepperContext()` and `Stepper.useItem()`
+return the same things.
+
+## Three patterns, chosen for you
+
+| The flow | What is rendered |
+| --- | --- |
+| Not `linear`, with triggers | A `tablist`: triggers are tabs with roving focus and arrow keys, panels are `tabpanel`s. |
+| `linear` | An ordered list of buttons with `aria-current="step"`. Steps that cannot be reached yet are disabled. |
+| No triggers | Panels are `group`s named by the step's `title`. |
+
+On every step change the new step is announced to screen readers by its
+`title`, and if the focused element disappeared, focus moves to the new panel
+instead of being lost.
+
+## Styling
+
+Nothing is styled. Every element has a `data-component` and the state it shows:
+
+| Attribute | On | Values |
+| --- | --- | --- |
+| `data-state` | `Item`, `Trigger`, `Indicator` | `pending`, `current`, `complete` |
+| `data-invalid` | `Item`, `Trigger`, `Indicator` | Present after a failed validation. |
+| `data-disabled` | `Item`, `Trigger`, `Prev`, `Next` | Present when it cannot be used. |
+| `data-pending` | `Root`, `Prev`, `Next` | Present while an async check or `onFinish` runs. |
+| `data-finished` | `Root` | Present once the flow has finished. |
+| `data-orientation` | `Root`, `List` | `horizontal`, `vertical` |
+
+```css
+:global([data-component="stepper-trigger"][data-state="current"]) { font-weight: 600; }
+```
+
+`class`, `style` and any other attribute you pass go to the element. On
+`Root`, `List`, `Item`, `Content` and `Indicator` yours win over the
+primitive's, but do not pass `id` to `Content`: the trigger's `aria-controls`
+points at the id the primitive gives it. On `Trigger`, `Prev` and `Next` the
+ids, roles, `tabindex`, `disabled`, ARIA and `data-*` attributes the primitive
+manages take precedence; only the default `type="button"` gives way to yours.
+
+Scoped styles do not reach inside components, so use `class` with your utility
+framework, or `:global(...)`.
+
+## Rendering your own element
+
+Pass a `child` snippet and spread `props` onto your element or component. They
+carry the ARIA attributes, ids and handlers:
+
+```svelte
+<Stepper.Next>
+  {#snippet child({ props })}
+    <MyButton {...props} variant="primary">Continue</MyButton>
+  {/snippet}
+</Stepper.Next>
+```
+
+`props` is typed, so `props.onclick` can be called from your own handler. A
+component you spread it onto must pass its rest props to its element, as
+`MyButton` would with `let { variant, children, ...rest } = $props()` and
+`<button {...rest}>{@render children?.()}</button>`. In development, a `child` snippet that drops the props is
+reported ([SZ001](/docs/v9/core/errors#sz001)).
+
+## Reaching the element
+
+`bind:ref` gives you the element a primitive rendered, whether it is the
+default tag or the one in your `child` snippet. `bind:this` would give you the
+component instead.
+
+```svelte
+<script lang="ts">
+  import { checkout } from "./checkout";
+
+  const { Stepper } = checkout;
+  let panel: HTMLDivElement | null = $state(null);
+
+  $effect(() => {
+    panel?.scrollIntoView({ block: "nearest" });
+  });
+</script>
+
+<Stepper.Content step="payment" bind:ref={panel}>…</Stepper.Content>
+```
+
+[Attachments](https://svelte.dev/docs/svelte/@attach) work too: like any other
+attribute, `{@attach}` on a primitive reaches its element, through a `child`
+snippet as well.
+
+```svelte
+<Stepper.Trigger {@attach tooltip("Go to this step")}>…</Stepper.Trigger>
+```
+
+## Handling the move yourself
+
+Call `preventDefault()` in your own handler to take over, for example to pass
+form values:
+
+```svelte
+<Stepper.Next
+  onclick={(event) => {
+    event.preventDefault();
+    stepper.next($state.snapshot(values));
+  }}
+>
+  Continue
+</Stepper.Next>
+```
+
+## Keeping panels mounted
+
+`<Stepper.Content step="payment" forceMount>` stays in the DOM, `hidden`, while
+its step is not current, so the state of the fields inside survives.
+
+See the [primitives reference](/docs/v9/svelte/api/primitives) for every prop.

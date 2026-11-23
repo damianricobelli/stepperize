@@ -1,0 +1,64 @@
+---
+title: The URL as the current step
+description: Keep the step in the URL with Solid Router, in both directions.
+---
+
+The `step` option makes the flow follow a value that lives somewhere else. Pass
+the options as a function so they are read again when the route changes.
+
+```tsx title="src/routes/checkout/[step].tsx"
+import { useNavigate, useParams } from "@solidjs/router";
+import { checkout } from "~/checkout";
+
+export default function CheckoutPage() {
+  const params = useParams();
+  const navigate = useNavigate();
+
+  const stepper = checkout.useStepper(() => ({
+    linear: true,
+    // The URL moves (a link, the back button): the flow follows.
+    step: params.step,
+    // The flow moves: push the new step.
+    onChange: (snapshot) => {
+      if (snapshot.step !== params.step) navigate(`/checkout/${snapshot.step}`);
+    },
+    // The URL asks for a step the flow cannot be on: correct it without a history entry.
+    onInvalidStep: (current) => navigate(`/checkout/${current}`, { replace: true }),
+  }));
+
+  return <CheckoutSteps stepper={stepper} />;
+}
+```
+
+With the primitives, pass the same options as props. Props are reactive, so
+nothing else is needed:
+
+```tsx
+<checkout.Stepper.Root
+  linear
+  step={params.step}
+  onChange={(snapshot) => {
+    if (snapshot.step !== params.step) navigate(`/checkout/${snapshot.step}`);
+  }}
+  onInvalidStep={(current) => navigate(`/checkout/${current}`, { replace: true })}
+>
+  ...
+</checkout.Stepper.Root>
+```
+
+- Following the URL is a `goTo`. With `linear`, a deep link cannot open a
+  step before the ones in front of it are complete. Without `linear`, any step
+  can be opened, as with `goTo`.
+- The `guard` runs when the URL changes after the page is mounted. It does not run for
+  the step the page first loads on.
+- `onInvalidStep` is called for unknown ids, for steps `linear` does not allow
+  yet and for URL changes the guard refused.
+- On the server the flow starts on the URL's step when that is allowed, and no
+  callback runs until the page is mounted.
+
+A query parameter works the same way with `useSearchParams`. Its values can be
+arrays, so narrow it first:
+`step: typeof search.step === "string" ? search.step : undefined`.
+
+These examples need `@solidjs/router` 0.16. The 2.x line requires Solid 2,
+which this package does not support yet.

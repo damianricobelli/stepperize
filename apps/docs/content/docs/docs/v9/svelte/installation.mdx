@@ -1,0 +1,73 @@
+---
+title: Installation
+description: Add Stepperize to a Svelte project.
+---
+
+<Tabs items={["pnpm", "npm", "yarn", "bun"]}>
+<Tab value="pnpm">
+
+```bash
+pnpm add @stepperize/svelte
+```
+
+</Tab>
+<Tab value="npm">
+
+```bash
+npm install @stepperize/svelte
+```
+
+</Tab>
+<Tab value="yarn">
+
+```bash
+yarn add @stepperize/svelte
+```
+
+</Tab>
+<Tab value="bun">
+
+```bash
+bun add @stepperize/svelte
+```
+
+</Tab>
+</Tabs>
+
+## Requirements
+
+- Svelte 5.33.5 or newer, with runes. Svelte 4 is not supported.
+- TypeScript 5.0 or newer for the typed ids. Nothing needs to be configured;
+  `svelte-check` and the Svelte language tools check step ids in markup.
+
+The package ships Svelte source, like every Svelte library, so your bundler
+needs the Svelte plugin it already has (`@sveltejs/vite-plugin-svelte`, or
+SvelteKit).
+
+`@stepperize/core` is installed with it. You only import from it directly to
+run a flow [without Svelte](/docs/v9/core).
+
+## Validation libraries
+
+Step schemas use [Standard Schema](https://standardschema.dev), so Zod,
+Valibot, ArkType and any other compliant library work without an adapter.
+Stepperize does not depend on any of them.
+
+## The stepper without the components
+
+The default entry includes the `Stepper` primitives. If you render your own
+markup, import from `/headless` to leave them out of your bundle:
+
+```ts
+import { defineStepper } from "@stepperize/svelte/headless";
+```
+
+The definition is the same, without the `Stepper` property.
+
+## SvelteKit
+
+Nothing to configure. See [Server rendering](/docs/v9/svelte/guides/ssr).
+
+The examples use SvelteKit 3, which imports from `src/lib` with the `#lib`
+subpath import. On SvelteKit 2, write `$lib/checkout` where they write
+`#lib/checkout.js`.

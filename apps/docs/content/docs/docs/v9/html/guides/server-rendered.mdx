@@ -1,0 +1,206 @@
+---
+title: Server-rendered pages
+description: Rails, Laravel, Django and Astro, with one small script.
+---
+
+The pattern is the same in every server framework: the template renders the
+steps, a script binds them.
+
+## The script
+
+Keep the steps next to the markup, as data, so the template is the single
+source of truth:
+
+```html
+<div
+  data-component="stepper"
+  id="checkout"
+  data-linear
+  data-steps='[{"id":"shipping","title":"Shipping"},{"id":"payment","title":"Payment"}]'
+>
+  …
+</div>
+```
+
+```ts title="stepper.ts"
+import { createStepper } from "@stepperize/core";
+import { bindStepper } from "@stepperize/core/dom";
+
+for (const root of document.querySelectorAll<HTMLElement>('[data-component="stepper"][data-steps]')) {
+  const flow = createStepper(JSON.parse(root.dataset.steps ?? "[]"), {
+    // `data-linear` is this page's own convention: bindStepper reads `isLinear` from the flow.
+    linear: root.hasAttribute("data-linear"),
+  });
+  bindStepper(root, flow);
+}
+```
+
+Without a bundler, import both modules in a `<script type="module">` from a
+CDN. [esm.sh](https://esm.sh) prepares packages for the browser; it builds them
+for production, and `?dev` keeps the development warnings:
+
+```html
+<script type="module">
+  import { createStepper } from "https://esm.sh/@stepperize/core";
+  import { bindStepper } from "https://esm.sh/@stepperize/core/dom";
+</script>
+```
+
+A CDN that serves the published files untouched, such as jsDelivr or unpkg,
+works too. Point at the files in `dist`, and pin the version you tested:
+
+```html
+<script type="module">
+  import { createStepper } from "https://cdn.jsdelivr.net/npm/@stepperize/core/dist/index.js";
+  import { bindStepper } from "https://cdn.jsdelivr.net/npm/@stepperize/core/dist/dom.js";
+</script>
+```
+
+Those files leave out development warnings by reading `process.env.NODE_ENV`,
+which bundlers replace. A browser has no `process`, so there they run as in
+production: no warnings, and nothing breaks.
+
+## Templates
+
+Loop over your steps and write the parts. `hidden` on the panels that are not
+first avoids a flash before the script runs.
+
+<Tabs items={["Rails", "Laravel", "Django", "Astro"]}>
+<Tab value="Rails">
+
+```erb
+<div data-component="stepper" id="checkout" data-linear data-steps="<%= @steps.to_json %>">
+  <ol data-component="stepper-list">
+    <% @steps.each do |step| %>
+      <li data-component="stepper-item" data-step="<%= step[:id] %>">
+        <button data-component="stepper-trigger"><%= step[:title] %></button>
+      </li>
+    <% end %>
+  </ol>
+
+  <% @steps.each_with_index do |step, index| %>
+    <div data-component="stepper-content" data-step="<%= step[:id] %>" <%= "hidden" unless index.zero? %>>
+      <%= render "checkout/#{step[:id]}" %>
+    </div>
+  <% end %>
+
+  <button data-component="stepper-prev">Back</button>
+  <button data-component="stepper-next">Continue</button>
+</div>
+```
+
+</Tab>
+<Tab value="Laravel">
+
+```blade
+<div data-component="stepper" id="checkout" data-linear data-steps='@json($steps)'>
+  <ol data-component="stepper-list">
+    @foreach ($steps as $step)
+      <li data-component="stepper-item" data-step="{{ $step['id'] }}">
+        <button data-component="stepper-trigger">{{ $step['title'] }}</button>
+      </li>
+    @endforeach
+  </ol>
+
+  @foreach ($steps as $step)
+    <div data-component="stepper-content" data-step="{{ $step['id'] }}" @if (!$loop->first) hidden @endif>
+      @include("checkout.{$step['id']}")
+    </div>
+  @endforeach
+
+  <button data-component="stepper-prev">Back</button>
+  <button data-component="stepper-next">Continue</button>
+</div>
+```
+
+</Tab>
+<Tab value="Django">
+
+```jinja
+{{ steps|json_script:"checkout-steps" }}
+
+<div data-component="stepper" id="checkout" data-linear>
+  <ol data-component="stepper-list">
+    {% for step in steps %}
+      <li data-component="stepper-item" data-step="{{ step.id }}">
+        <button data-component="stepper-trigger">{{ step.title }}</button>
+      </li>
+    {% endfor %}
+  </ol>
+
+  {% for step in steps %}
+    <div data-component="stepper-content" data-step="{{ step.id }}" {% if not forloop.first %}hidden{% endif %}>
+      {% include step.template %}
+    </div>
+  {% endfor %}
+
+  <button data-component="stepper-prev">Back</button>
+  <button data-component="stepper-next">Continue</button>
+</div>
+```
+
+With `json_script`, read the steps from that element instead of `data-steps`:
+`JSON.parse(document.getElementById("checkout-steps").textContent)`, and bind
+the root by its id, `document.getElementById("checkout")`, instead of the
+`[data-steps]` loop above, which would not find it.
+
+</Tab>
+<Tab value="Astro">
+
+```astro
+---
+const steps = [
+  { id: "shipping", title: "Shipping" },
+  { id: "payment", title: "Payment" },
+];
+// Each step's fields come from the slot named after it: <Fragment slot="shipping">…</Fragment>
+const panels = await Promise.all(steps.map((step) => Astro.slots.render(step.id)));
+---
+
+<div data-component="stepper" id="checkout" data-linear data-steps={JSON.stringify(steps)}>
+  <ol data-component="stepper-list">
+    {steps.map((step) => (
+      <li data-component="stepper-item" data-step={step.id}>
+        <button data-component="stepper-trigger">{step.title}</button>
+      </li>
+    ))}
+  </ol>
+
+  {steps.map((step, index) => (
+    <div data-component="stepper-content" data-step={step.id} hidden={index > 0}>
+      <Fragment set:html={panels[index]} />
+    </div>
+  ))}
+
+  <button data-component="stepper-prev">Back</button>
+  <button data-component="stepper-next">Continue</button>
+</div>
+
+<script>
+  import "../scripts/stepper.ts";
+</script>
+```
+
+`hidden={index > 0}` writes a bare `hidden` and leaves it out on the first
+panel. No client directive and no framework integration are needed: Astro
+bundles the `<script>` and loads it as a module.
+
+</Tab>
+</Tabs>
+
+## Resuming where the user was
+
+A snapshot is plain JSON. Have the server write the saved one next to the steps
+and save the new one on every change:
+
+```ts
+const flow = createStepper(steps, {
+  snapshot: JSON.parse(root.dataset.snapshot ?? "{}"),
+  onChange: (snapshot) => {
+    navigator.sendBeacon("/checkout/draft", JSON.stringify(snapshot));
+  },
+});
+```
+
+The server can then render the right panel without `hidden`, so the first HTML
+is already on the saved step.

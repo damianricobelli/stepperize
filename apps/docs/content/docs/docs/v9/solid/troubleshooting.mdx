@@ -1,0 +1,455 @@
+---
+title: Troubleshooting
+description: Errors and surprises in the Solid binding, with the cause and the fix for each.
+---
+
+Most problems come from a few causes, and several of them are about how Solid
+tracks what you read. Find your symptom below. Errors and warnings from the
+library carry a code; [Errors and warnings](/docs/v9/core/errors) explains
+each one.
+
+## Runtime errors
+
+### SZ100: Missing Provider
+
+`useStepperContext()` reads a flow that a `Provider` or a `Stepper.Root` above
+it created, through Solid's context. It throws when it cannot find one:
+
+- There is no `Provider` or `Stepper.Root` of the **same definition** above.
+  A provider of another definition does not count, and neither does a second
+  `defineStepper` with the same steps. Import the same `checkout` object
+  everywhere.
+- It was called outside the component's setup: in an event handler, a
+  `setTimeout` or after an `await`. Solid's context is only there while the
+  component runs. Call it once at the top of the component.
+
+```tsx
+// Wrong: the handler runs with no owner, so there is no context.
+<button type="button" onClick={() => checkout.useStepperContext().next()}>
+  Continue
+</button>;
+
+// Right
+function Actions() {
+  const stepper = checkout.useStepperContext();
+  return (
+    <button type="button" onClick={() => stepper.next()}>
+      Continue
+    </button>
+  );
+}
+```
+
+`Stepper.List`, `Stepper.Trigger` and `Stepper.Content` throw the same code
+with "Missing Stepper.Root": render them inside one. `Stepper.Item`,
+`Stepper.Prev` and `Stepper.Next` only need the flow, so a `Provider` is
+enough for them. If the component only needs its own flow, call `useStepper()`
+instead.
+
+### SZ101: Missing Stepper.Item
+
+`Stepper.Trigger`, `Stepper.Indicator` and `Stepper.useItem()` belong to a
+step, which they get from the `Stepper.Item` around them. An item gets its
+step from the `Stepper.List` function, or from its `step` prop.
+
+In Solid the usual cause is a `List` function without a parameter. It is
+treated as content, not called once per step, so its items have no step.
+
+```tsx
+// Wrong: no parameter, so the items get no step.
+<Stepper.List>{() => <Stepper.Item>…</Stepper.Item>}</Stepper.List>
+
+// Right
+<Stepper.List>{(_step) => <Stepper.Item>…</Stepper.Item>}</Stepper.List>
+
+<Stepper.Item step="payment">…</Stepper.Item>
+```
+
+### SZ102: Step "…" not found
+
+An id that is not in the definition reached `goTo`, `setData`, a `next`
+branch, a `Stepper.Item` or a `Stepper.Content`. TypeScript rejects this at
+compile time, so it usually means a cast, or a value from outside. For URL
+values use the [`step` option](/docs/v9/solid/guides/url), which ignores
+unknown ids and calls `onInvalidStep`.
+
+A `Stepper.Content` checks its step when it is created, whether its step is
+current or not and with or without `forceMount`: one with an unknown step
+would never be current, so it would never show.
+
+```tsx
+// Throws: "paymnet" is not a step.
+<Stepper.Content step={"paymnet" as "payment"}>…</Stepper.Content>
+```
+
+### SZ103: Invalid step list
+
+The list of steps is empty, or two steps share an `id`. `defineStepper` does
+not check it: the first flow created from the definition throws, through
+`useStepper()`, a `Provider`, a `Stepper.Root` or `create()`.
+
+```tsx
+const checkout = defineStepper([{ id: "cart" }, { id: "cart" }]);
+checkout.create(); // throws SZ103: Duplicate step id "cart".
+```
+
+### SZ001: An as component did not spread its props
+
+**Warning, development only.** A primitive rendered an `as` component, and the
+component never put the ARIA attributes, ids, handlers and `ref` it received on
+an element. TypeScript already rejects a component whose props cannot take a
+`ref`; this warning catches one that accepts the props and then drops them.
+
+```tsx
+// Wrong: the props, ref included, never reach the button.
+function MyButton(props: JSX.ButtonHTMLAttributes<HTMLButtonElement>) {
+  return <button class="btn">{props.children}</button>;
+}
+
+// Right: take out what you need with splitProps, spread the rest.
+function MyButton(props: JSX.ButtonHTMLAttributes<HTMLButtonElement>) {
+  const [local, rest] = splitProps(props, ["class"]);
+  return <button class={`btn ${local.class ?? ""}`} {...rest} />;
+}
+```
+
+### SZ002: Trigger without an accessible name
+
+**Warning, development only.** A `Stepper.Trigger` has no text, `aria-label`
+or `aria-labelledby`. `Stepper.Indicator` is hidden from screen readers, so a
+trigger that only contains one is announced as an unnamed button.
+
+```tsx
+<Stepper.Trigger aria-label={step.title}>
+  <Stepper.Indicator />
+</Stepper.Trigger>
+```
+
+### SZ003: Trigger outside Stepper.List
+
+**Warning, development only.** A `Stepper.Trigger` is rendered outside a
+`Stepper.List`. Keyboard navigation and the list semantics depend on it. Move
+the trigger inside the list, or use a plain button that calls `goTo`.
+
+```tsx
+<button type="button" onClick={() => stepper.goTo("payment")}>
+  Edit payment
+</button>
+```
+
+### SZ005: Trigger is not a button
+
+**Warning, development only.** The element a `Stepper.Trigger` rendered is not
+a `<button>`: an `as="div"`, an `as="span"`, or a link without `href`. Enter
+and Space do not press it and it cannot be disabled. Keep the default button,
+or render a link with an `href`.
+
+```tsx
+// Wrong
+<Stepper.Trigger as="div"><Stepper.Title /></Stepper.Trigger>
+
+// Right
+<Stepper.Trigger as="a" href={`#${step.id}`}><Stepper.Title /></Stepper.Trigger>
+```
+
+### SZ104: useStepper() ran without an owner
+
+**Warning, development only.** `useStepper()` ran with no owner: at module
+scope, in an event handler, in a `setTimeout`, or after an `await`. Nothing
+will ever destroy that flow, so nothing cancels a running move. Solid adds its
+own warning, "computations created outside a `createRoot`", for the effect the
+flow uses. Call `useStepper()` in a component, run it under a `createRoot`
+that you dispose, or use `checkout.create()`, which needs no owner.
+
+```tsx
+const { stepper, dispose } = createRoot((dispose) => ({
+  stepper: checkout.useStepper(),
+  dispose,
+}));
+```
+
+## Common surprises
+
+### The page stops updating after destructuring
+
+`stepper` works like props: each field is read when you use it. Destructuring
+copies the values once, and so does `{ ...stepper }`. Read the fields where
+you use them. The actions are safe to destructure.
+
+```tsx
+// Wrong: `current` is the step at the time of this line.
+const { current } = stepper;
+<h2>{current.title}</h2>;
+
+// Right
+<h2>{stepper.current.title}</h2>;
+```
+
+### A value read in a render function never updates
+
+The function children of `Stepper.Root`, `Stepper.List` and `Stepper.Item` run
+once and are not tracked, like the children of `<Show>`. What they read at
+their top level is read once; only the expressions inside their JSX follow the
+flow. Destructuring the item, `({ state }) =>`, has the same effect. See
+[Reading the flow in JSX](/docs/v9/solid/guides/primitives#reading-the-flow-in-jsx).
+
+```tsx
+// Wrong: both are read once.
+{(stepper) => {
+  const title = stepper.current.title;
+  return <h2>{title}</h2>;
+}}
+<Stepper.Item>{({ state }) => <span data-state={state} />}</Stepper.Item>
+
+// Right
+{(stepper) => <h2>{stepper.current.title}</h2>}
+<Stepper.Item>{(item) => <span data-state={item.state} />}</Stepper.Item>
+```
+
+### The flow does not follow the URL
+
+The options were passed as an object. `useStepper({ step: params.step })`
+reads `params.step` once: the flow starts on that step and ignores later
+changes. Pass a function, which is read again when the params change. The
+props of a `Provider` or a `Stepper.Root` are already reactive.
+
+```tsx
+// Wrong
+const stepper = checkout.useStepper({ step: params.step });
+
+// Right
+const stepper = checkout.useStepper(() => ({ step: params.step }));
+```
+
+### Two components show different steps
+
+Each `useStepper()` call creates its own flow. Two components that should move
+together need one `Provider` above them and `useStepperContext()` inside. See
+[Shared state](/docs/v9/solid/guides/shared-state).
+
+```tsx
+<checkout.Provider>
+  <CheckoutHeader />
+  <CheckoutBody />
+</checkout.Provider>
+```
+
+### A snapshot that loads later is ignored
+
+`snapshot` is read once, when the flow is created. A flow that renders before
+`createAsync` or `createResource` has the data starts empty and stays that way.
+Render the flow once the data is there, or call `stepper.restore(snapshot)`
+when it arrives.
+
+```tsx
+<Show when={saved() !== undefined}>
+  <checkout.Provider snapshot={saved() ?? undefined}>
+    <CheckoutSteps />
+  </checkout.Provider>
+</Show>
+```
+
+### The flow does not follow step while a Suspense boundary is loading
+
+`linear` and `step` are pushed to the flow by an effect, and Solid holds
+effects until the `<Suspense>` boundary around them resolves. The flow catches
+up once it has. Callbacks are not affected: `onChange`, `onFinish`, `guard`
+and the others are read when the flow calls them, so the latest one always
+runs.
+
+### Stepper.Next does nothing on a form step
+
+`Stepper.Next` calls `next()` without values, so it validates what the step
+already has stored. If the fields live in a store that has not handed its
+values over, the step's data is empty and validation fails. Take over the
+click and pass the values. See
+[Handling the move yourself](/docs/v9/solid/guides/primitives#handling-the-move-yourself).
+
+```tsx
+<Stepper.Next
+  onClick={(event) => {
+    event.preventDefault();
+    stepper.next({ ...values });
+  }}
+>
+  Continue
+</Stepper.Next>
+```
+
+### A failed submit shows no error in the page
+
+When `onFinish` rejects, the flow stays unfinished and the button works again.
+`Stepper.Next` reports the error as one thrown by any click handler: the
+console shows it as uncaught, and `window.onerror` and error trackers receive
+it (see [Errors from a click](/docs/v9/core/errors#errors-from-a-click)). An
+`ErrorBoundary` does not catch it, since no component threw it. To tell the
+person, report it inside `onFinish`, then rethrow so the flow is not finished.
+
+```tsx
+const [error, setError] = createSignal<string>();
+
+<Stepper.Root
+  onFinish={async (output) => {
+    setError(undefined);
+    try {
+      await placeOrder(output);
+    } catch (cause) {
+      setError("Could not place the order. Try again.");
+      throw cause;
+    }
+  }}
+>
+  <Show when={error()}>{(message) => <p role="alert">{message()}</p>}</Show>
+  <Stepper.Next>Place order</Stepper.Next>
+</Stepper.Root>
+```
+
+With your own button, `await stepper.next()` rejects with the error instead.
+
+### A complete step becomes incomplete when its panel mounts
+
+An effect saves the draft with `setData` and runs on mount, writing a new
+object that holds the same values. New data makes a complete step incomplete.
+Pass `{ defer: true }` to `on` so the effect only runs when the values change.
+See [Keeping drafts](/docs/v9/solid/guides/forms#keeping-drafts) and
+[What undoes completion](/docs/v9/solid/concepts/step-state#what-undoes-completion).
+
+```tsx
+createEffect(
+  on(
+    () => ({ ...values }),
+    (draft) => stepper.setData("shipping", draft),
+    { defer: true },
+  ),
+);
+```
+
+### The fields are empty when going back to a step
+
+`<Switch>`, `<Show>` and `Stepper.Content` unmount a step that is not current,
+and the signals created inside it go with it. Keep the panel mounted with
+`forceMount`, or keep the draft in the flow and read it back from
+`stepper.data` when the step mounts.
+
+```tsx
+<Stepper.Content step="shipping" forceMount>
+  <ShippingForm />
+</Stepper.Content>
+```
+
+### stepper.data changes without onChange
+
+A store was passed to `next()` or `setData`. The flow keeps the store itself,
+so later edits change its data behind its back: no `onChange`, and the step
+stays complete with an output that no longer matches. Pass a plain copy.
+
+```tsx
+stepper.next(address); // Wrong: the store itself.
+stepper.next({ ...address }); // Right: a copy.
+```
+
+For a nested store, use `structuredClone(unwrap(address))`.
+
+### console.log(stepper) shows an empty object
+
+The stepper is a proxy over an empty object: every field is read through it,
+which is what makes it reactive. Log a field, or the snapshot.
+
+```tsx
+console.log(stepper.snapshot());
+createEffect(() => console.log(stepper.current.id, stepper.data));
+```
+
+### After hydration the page shows another step
+
+The client created the flow from something the server did not have, usually
+`localStorage`. Hydration adopts the server's HTML without a warning, so the
+page shows the server's step while the flow is on another. Start from a value
+the server also knows, and apply the saved snapshot in `onMount` with
+`restore`.
+
+```tsx
+const stepper = checkout.useStepper();
+
+onMount(() => {
+  const saved = localStorage.getItem("checkout");
+  if (saved) stepper.restore(JSON.parse(saved));
+});
+```
+
+## TypeScript
+
+### Step ids are typed as string
+
+The array was created before it reached `defineStepper`, so its ids widened
+and `goTo("anything")` compiles. Write it inline or add `as const`. See
+[Keep ids literal](/docs/v9/solid/concepts/steps#keep-ids-literal).
+
+### A field exists on the current step, but TypeScript complains
+
+`stepper.current` is the union of every step, and a `<Match>` or a `<Show>`
+condition does not narrow it inside its children. Use `match`, or hand
+`<Show>` the narrowed step.
+
+```tsx
+<Show when={stepper.current.id === "payment" ? stepper.current : undefined}>
+  {(step) => <p>Fee: {step().fee}</p>}
+</Show>
+```
+
+### An as component is not assignable
+
+TypeScript reports that the component is not assignable to the type "Stepper:
+an `as` component must accept `ref` and spread its props onto an element". Its
+props cannot take a `ref`, as with `(props: { label: string }) => …` or a
+component with no props, so it could not put the ARIA attributes on an
+element. Type its props with the element's attributes, which include `ref`,
+and spread them.
+
+```tsx
+function MyButton(props: JSX.ButtonHTMLAttributes<HTMLButtonElement>) {
+  return <button {...props} />;
+}
+```
+
+### A selector's result is not a boolean
+
+With a selector, `useStepperContext()` returns an accessor, a memo of the
+result. `disabled={isLast}` fails with
+`Type 'Accessor<boolean>' is not assignable to type 'boolean | undefined'`.
+Call it.
+
+```tsx
+const isLast = checkout.useStepperContext((stepper) => stepper.isLast);
+
+<button type="submit">{isLast() ? "Place order" : "Continue"}</button>;
+```
+
+### onChange on Stepper.Root has no event
+
+`onChange` on `Stepper.Root` is the flow's option, not the DOM event: it
+receives the snapshot. `event.currentTarget` does not exist on it. To listen to
+the inputs, put the handler on the form inside.
+
+```tsx
+<Stepper.Root onChange={(snapshot) => save(snapshot)}>
+  <form onChange={(event) => console.log(event.target)}>…</form>
+</Stepper.Root>
+```
+
+### The type of a stepper
+
+The stepper is typed from the definition's steps. Use it for props of
+components that receive one.
+
+```tsx
+import type { Id, Stepper } from "@stepperize/solid";
+
+type CheckoutStepper = Stepper<typeof checkout.steps>;
+type StepId = Id<typeof checkout.steps>;
+```
+
+<Callout type="info">
+Still stuck? Check the [FAQ](/docs/v9/solid/faq), or open an issue with a
+minimal reproduction.
+</Callout>

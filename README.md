@@ -1,12 +1,16 @@
 <p align="center">
-  <img src="https://www.stepperize.com/api/og?title=The+type-safe+way+to+build+multi-step+experiences.&description=Build+type-safe+wizards%2C+forms%2C+and+onboarding+flows+in+React.&section=Documentation&variant=website" alt="Stepperize Logo" />
+  <img src="https://www.stepperize.com/api/og?title=The+type-safe+way+to+build+multi-step+experiences.&description=Build+type-safe+wizards%2C+forms%2C+and+onboarding+flows.&section=Documentation&variant=website" alt="Stepperize Logo" />
 </p>
 
 [![Build Size](https://img.shields.io/bundlephobia/minzip/@stepperize/react@latest?label=bundle%20size&style=flat&colorA=000000&colorB=000000)](https://bundlephobia.com/result?p=@stepperize/react@latest)
 [![Version](https://img.shields.io/npm/v/@stepperize/react?style=flat&colorA=000000&colorB=000000)](https://www.npmjs.com/package/@stepperize/react)
 [![Downloads](https://img.shields.io/npm/dt/@stepperize/react.svg?style=flat&colorA=000000&colorB=000000)](https://www.npmjs.com/package/@stepperize/react)
 
-Stepperize is a type-safe toolkit for building step-by-step workflows in React.
+Stepperize is a type-safe toolkit for building step-by-step workflows. It has
+bindings for React, Vue, Svelte, Solid, Angular and Lit, and binds plain HTML
+without a framework. The examples below use React; every other binding takes
+the same definition and options and has the same accessible primitives, in its
+own terms.
 
 Define steps once, consume a flat stepper everywhere. Steps are plain objects,
 custom fields stay typed, and the UI is fully yours.
@@ -17,7 +21,10 @@ custom fields stay typed, and the UI is fully yours.
 npm install @stepperize/react
 ```
 
-Requires React 18 or 19. The documentation is at
+Requires React 18 or 19. For another framework, install `@stepperize/vue`,
+`@stepperize/svelte`, `@stepperize/solid`, `@stepperize/angular` or
+`@stepperize/lit`; for plain HTML, `@stepperize/core` and its
+`@stepperize/core/dom` entry. The documentation is at
 [stepperize.com](https://stepperize.com/docs).
 
 ## Quick start
@@ -45,7 +52,7 @@ function Checkout() {
         review: () => <Review data={stepper.data} />,
       })}
 
-      {stepper.issues()?.map((issue) => <p key={issue.message}>{issue.message}</p>)}
+      {stepper.issues()?.map((issue, index) => <p key={index}>{issue.message}</p>)}
 
       <button type="button" disabled={stepper.isFirst} onClick={() => stepper.prev()}>
         Back
@@ -95,7 +102,7 @@ checkout.useStepper({
   linear: true,
   // Branch on a step's validated data.
   next: { shipping: (data) => (data.address === "pickup" ? "review" : "payment") },
-  // Runs before every move. Return false to cancel it. May be async.
+  // Runs before every move. Return false to refuse it. May be async.
   guard: ({ direction }) => direction !== "prev" || confirm("Discard changes?"),
   // Resume a saved flow, and save it on every change.
   snapshot: JSON.parse(localStorage.getItem("checkout") ?? "{}"),
@@ -212,8 +219,19 @@ This repository is a pnpm workspace managed with Turbo.
   step-based workflows.
 - `packages/react` - React and React Native bindings, including
   `defineStepper` and unstyled primitives.
-- `apps/docs` - the Stepperize documentation site, block gallery, changelog,
-  and shadcn-compatible registry.
+- `packages/vue` - Vue 3 binding: composables, a provider and the same
+  accessible primitives. See [`packages/vue`](packages/vue/README.md).
+- `packages/svelte` - Svelte 5 binding: a reactive stepper, a provider and
+  the same accessible primitives. See [`packages/svelte`](packages/svelte/README.md).
+- `packages/solid` - Solid binding: a reactive stepper, a provider and the
+  same accessible primitives. See [`packages/solid`](packages/solid/README.md).
+- `packages/angular` - Angular binding: a signals API and the same accessible
+  primitives as standalone directives. See [`packages/angular`](packages/angular/README.md).
+- `packages/lit` - Lit binding: a reactive controller and the same accessible
+  primitives as element directives. See [`packages/lit`](packages/lit/README.md).
+- `apps/docs` - the Stepperize documentation site and changelog, plus the
+  block gallery, shadcn-compatible registry and Stepper Studio, which are
+  React only (built with React and shadcn/ui).
 
 ## Development
 
@@ -251,7 +269,7 @@ Read the full docs at [stepperize.com](https://stepperize.com).
 
 The docs app lives in `apps/docs` and is built with TanStack Start, TanStack
 Router, Fumadocs, MDX, Tailwind CSS, and a generated shadcn registry for the
-example blocks.
+example blocks (React only).
 
 ## Contributing
 

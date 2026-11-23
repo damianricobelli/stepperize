@@ -1,0 +1,307 @@
+`next`, `prev` and `goTo` are the three moves. They follow the same sequence,
+commit once, and resolve with what happened.
+
+<FrameworkOnly is="angular">
+On this page, `stepper` is the value of the signal `injectStepper()` returns:
+`this.stepper()` in a class, `stepper()` in a template.
+</FrameworkOnly>
+
+<FrameworkOnly is="lit">
+On this page, `stepper` is the controller's `value`: `this.stepper.value`.
+</FrameworkOnly>
+
+## The sequence of next(data)
+
+1. **Gate.** If the flow already finished, resolve
+   `{ accepted: false, reason: "finished" }`. If another move is still running,
+   resolve `{ accepted: false, reason: "pending" }`. Either way, stop.
+2. **Validate.** Run the data against the current step's schema. `data` is the
+   argument you passed, or what the step already has stored. Steps without a
+   schema pass.
+   If validation fails: store the data and the issues, stay on the step and
+   resolve `{ accepted: false, reason: "invalid", issues }`. A step that was
+   complete is no longer.
+3. **Pick the target.** The step's entry in the [`next` map](/docs/v9/:framework/guides/branching),
+   or the following step in the list, or the end of the flow.
+4. **Guard.** Call your `guard`, if there is one, with where the move is going
+   and the data as it will be. If it returns `false`: change nothing and
+   resolve `{ accepted: false, reason: "guard" }`.
+5. **Commit.** In one update: save the data, mark the step complete, keep the
+   schema's output in `stepper.output`, extend the history and change the
+   step. Your UI updates once.
+6. **Notify.** Call `onChange` with the new snapshot.
+7. **Finish.** If the flow ended, call `onFinish(output, data)` and wait for
+   it when it returns a promise. Then `isFinished` becomes `true`.
+8. Resolve `{ accepted: true, to, data }`.
+
+<FrameworkCode>
+
+```ts framework="react vue svelte solid"
+const result = await stepper.next(values);
+
+if (result.accepted) {
+  result.to; // the new step id, or null when the flow finished
+} else {
+  result.reason; // "invalid" | "guard" | "policy" | "pending" | "boundary" | "finished" | "cancelled"
+}
+```
+
+```ts framework="angular"
+const result = await this.stepper().next(values);
+
+if (result.accepted) {
+  result.to; // the new step id, or null when the flow finished
+} else {
+  result.reason; // "invalid" | "guard" | "policy" | "pending" | "boundary" | "finished" | "cancelled"
+}
+```
+
+```ts framework="lit"
+const result = await this.stepper.value.next(values);
+
+if (result.accepted) {
+  result.to; // the new step id, or null when the flow finished
+} else {
+  result.reason; // "invalid" | "guard" | "policy" | "pending" | "boundary" | "finished" | "cancelled"
+}
+```
+
+```ts framework="core"
+const result = await flow.next(values);
+
+if (result.accepted) {
+  result.to; // the new step id, or null when the flow finished
+} else {
+  result.reason; // "invalid" | "guard" | "policy" | "pending" | "boundary" | "finished" | "cancelled"
+}
+```
+
+</FrameworkCode>
+
+### What happens to the data when a move is refused
+
+| Refused by | The data you passed |
+| --- | --- |
+| Validation (`invalid`) | Kept as the step's data, with its issues, so the form still shows what was typed. |
+| The guard (`guard`) | Discarded. The flow is exactly as it was. |
+| Another move running (`pending`) | Discarded. |
+| A finished flow (`finished`) | Discarded. |
+
+If you need the data saved no matter what, write it with `setData` first.
+
+## prev() and goTo(id)
+
+They skip validation and go straight to the guard.
+
+| Move | Target | Refused with |
+| --- | --- | --- |
+| `prev()` | The step you came from. Without a path to walk back, the previous step in the list. | `boundary` when there is nowhere to go. |
+| `goTo(id)` | The step you name. | `policy` when the flow is [`linear`](/docs/v9/:framework/guides/navigation#linear-flows) and the step is not reachable yet. |
+
+`goTo` to the step you are already on resolves as accepted and does nothing.
+`goTo` with an id that is not in the definition throws
+[SZ102](/docs/v9/core/errors#sz102).
+
+### The path, and how prev() uses it
+
+The flow remembers the steps walked to reach the current one. `next` and
+`goTo` add the step being left; going back to a step that is on the path
+removes everything after it. A flow made with `create()` shows it without a
+component, and behaves the same in every framework:
+
+```ts
+const flow = checkout.create(); // shipping, payment, review
+
+await flow.next(); // at payment   path: shipping
+await flow.next(); // at review    path: shipping, payment
+await flow.goTo("shipping"); // at shipping  path: (empty)
+await flow.goTo("review"); // at review    path: shipping
+await flow.prev(); // at shipping: where you came from, not "payment"
+```
+
+This is what makes Back correct in a [branching](/docs/v9/:framework/guides/branching)
+flow: it returns along the branch the person actually took.
+
+## Writes that are not moves
+
+| Call | What it does | Validation and guard |
+| --- | --- | --- |
+| `setData(id, data)` | Replaces the data of a step, right away. A complete step whose data changes is [no longer complete](/docs/v9/:framework/concepts/step-state#what-undoes-completion). | None. |
+| `validate(id?)` | Runs a step's schema on its stored data and remembers the issues. Changes nothing else. | The schema only. |
+| `restore(snapshot)` | Replaces any part of the state. | None. Cancels a running move. |
+| `reset()` | Back to the snapshot the flow started with. | None. Cancels a running move. |
+
+`setData`, `restore` and `reset` call `onChange`; `validate` does not. None of
+them calls the guard.
+
+## Pending and cancellation
+
+A move is synchronous unless something in it is not. When the schema, the
+guard or `onFinish` returns a promise:
+
+- `stepper.isPending` is `true` until it settles.
+- Any other move resolves with `reason: "pending"`, so a double click cannot
+  run the same check twice.
+- `canGoTo(id)` is `false`, and the primitives mark their buttons as disabled.
+- `reset()`, `restore()` or destroying the flow (unmounting the component that
+  owns it) cancels it. The `signal` your guard received is aborted, and the
+  move resolves with `reason: "cancelled"` at once, even if the schema, guard
+  or `onFinish` it was waiting on never settles; their outcome is dropped.
+
+<FrameworkCode>
+
+```tsx framework="react"
+const stepper = checkout.useStepper({
+  guard: async ({ from, data, signal }) => {
+    if (from.id !== "payment") return;
+    const response = await fetch("/api/authorize", {
+      method: "POST",
+      body: JSON.stringify(data.payment),
+      signal,
+    });
+    return response.ok;
+  },
+});
+```
+
+```vue framework="vue"
+<script setup lang="ts">
+import { checkout } from "./checkout";
+
+const stepper = checkout.useStepper({
+  guard: async ({ from, data, signal }) => {
+    if (from.id !== "payment") return;
+    const response = await fetch("/api/authorize", {
+      method: "POST",
+      body: JSON.stringify(data.payment),
+      signal,
+    });
+    return response.ok;
+  },
+});
+</script>
+```
+
+```svelte framework="svelte"
+<script lang="ts">
+  import { checkout } from "./checkout";
+
+  const stepper = checkout.useStepper({
+    guard: async ({ from, data, signal }) => {
+      if (from.id !== "payment") return;
+      const response = await fetch("/api/authorize", {
+        method: "POST",
+        body: JSON.stringify(data.payment),
+        signal,
+      });
+      return response.ok;
+    },
+  });
+</script>
+```
+
+```tsx framework="solid"
+const stepper = checkout.useStepper({
+  guard: async ({ from, data, signal }) => {
+    if (from.id !== "payment") return;
+    const response = await fetch("/api/authorize", {
+      method: "POST",
+      body: JSON.stringify(data.payment),
+      signal,
+    });
+    return response.ok;
+  },
+});
+```
+
+```ts framework="angular"
+export class Checkout {
+  readonly stepper = checkout.injectStepper({
+    guard: async ({ from, data, signal }) => {
+      if (from.id !== "payment") return;
+      const response = await fetch("/api/authorize", {
+        method: "POST",
+        body: JSON.stringify(data.payment),
+        signal,
+      });
+      return response.ok;
+    },
+  });
+}
+```
+
+```ts framework="lit"
+class CheckoutSteps extends LitElement {
+  stepper = checkout.controller(this, {
+    guard: async ({ from, data, signal }) => {
+      if (from.id !== "payment") return;
+      const response = await fetch("/api/authorize", {
+        method: "POST",
+        body: JSON.stringify(data.payment),
+        signal,
+      });
+      return response.ok;
+    },
+  });
+}
+```
+
+</FrameworkCode>
+
+With synchronous schemas and guards nothing is ever pending: the step has
+already changed when `next()` returns its promise, and there is no flicker of
+a loading state.
+
+## Errors
+
+A refused move is not an error: the promise resolves. If your schema or guard
+throws, the promise rejects with that error, the flow stays where it was, and
+`isPending` goes back to `false`.
+
+`onFinish` is the one callback that runs after the commit. If it throws or its
+promise rejects, `next()` rejects too: the final step stays complete, but
+`isFinished` stays `false`, and calling `next()` again runs `onFinish` again.
+
+A promise is always truthy, so check the result, not the call:
+
+<FrameworkCode>
+
+```ts framework="react vue svelte solid"
+// Wrong: always true.
+if (stepper.next()) showConfetti();
+
+// Right
+const result = await stepper.next();
+if (result.accepted) showConfetti();
+```
+
+```ts framework="angular"
+// Wrong: always true.
+if (this.stepper().next()) showConfetti();
+
+// Right
+const result = await this.stepper().next();
+if (result.accepted) showConfetti();
+```
+
+```ts framework="lit"
+// Wrong: always true.
+if (this.stepper.value.next()) showConfetti();
+
+// Right
+const result = await this.stepper.value.next();
+if (result.accepted) showConfetti();
+```
+
+```ts framework="core"
+// Wrong: always true.
+if (flow.next()) showConfetti();
+
+// Right
+const result = await flow.next();
+if (result.accepted) showConfetti();
+```
+
+</FrameworkCode>
+
+Next: [step state](/docs/v9/:framework/concepts/step-state).

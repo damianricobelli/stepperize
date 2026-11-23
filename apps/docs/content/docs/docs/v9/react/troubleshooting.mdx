@@ -34,6 +34,11 @@ A provider of another definition does not count, and neither does a second
 definition created from the same steps. Import the same `checkout` object
 everywhere.
 
+`Stepper.List`, `Stepper.Trigger` and `Stepper.Content` need a `Stepper.Root`
+above them; the `Provider` alone is not enough for them ("Missing
+Stepper.Root"). `Stepper.Item`, `Stepper.Prev` and `Stepper.Next` only need
+the flow, so either one does.
+
 If the component only needs its own flow, call `useStepper()` instead.
 
 ### SZ101: Missing Stepper.Item
@@ -58,9 +63,11 @@ step from the `Stepper.List` function, or from its `step` prop.
 
 ### SZ102: Step "…" not found
 
-An id that is not in the definition reached `goTo`, `setData`, a `next` branch
-or a `Stepper.Item`. TypeScript rejects this at compile time, so it usually
-means a cast, or a value from outside. For URL values use the
+An id that is not in the definition reached `goTo`, `setData`, a `next` branch,
+a `Stepper.Item` or a `Stepper.Content`. A `Stepper.Content` throws whether its
+step is current or not: no step is ever current under an unknown id, so it
+would never show. TypeScript rejects this at compile time, so it usually means
+a cast, or a value from outside. For URL values use the
 [`step` option](/docs/v9/react/guides/url), which ignores unknown ids.
 
 ### A match handler is missing
@@ -175,10 +182,21 @@ only react when `snapshot.step` changes.
 ### onFinish does not run again
 
 `onFinish` runs once. After the flow has finished, `next()` resolves with
-`reason: "finished"` until the flow changes: any move, a `setData` with a new
-value, `reset()` or `restore()`. If a request inside it can fail, return its
+`reason: "finished"` until the flow changes: any move to another step, a
+`setData` with a new value, `reset()` or `restore()`. If a request inside it can fail, return its
 promise: when it rejects the flow is not finished and `next()` can be called
 again. See [When submitting can fail](/docs/v9/react/guides/navigation#when-submitting-can-fail).
+
+### Pressing Next logs an uncaught error
+
+`onFinish` rejected, or a `guard` or schema threw, in a move started by
+`Stepper.Next`, `Stepper.Prev` or a trigger. Nothing awaits a click, so the
+error is reported as one thrown by any event handler: the console shows it as
+uncaught, and `window.onerror` and error trackers receive it. The flow is idle
+again, so the button works on the next press. To tell the person, catch the
+error in `onFinish` and rethrow it so the flow is not finished, or call
+`stepper.next()` yourself and handle the promise. See
+[Errors from a click](/docs/v9/core/errors#errors-from-a-click).
 
 ### onFinish receives transformed values, not what was typed
 

@@ -1,0 +1,175 @@
+---
+title: Markup and options
+description: The parts of a stepper, what bindStepper reads from them and what it writes.
+---
+
+```ts
+import { bindStepper } from "@stepperize/core/dom";
+
+const unbind = bindStepper(root, flow, options?);
+```
+
+| Argument | Description |
+| --- | --- |
+| `root` | The element with `data-component="stepper"`. |
+| `flow` | A flow from [`createStepper`](/docs/v9/core/create-stepper), or `definition.create()` from a binding. |
+| `options.orientation` | `"horizontal"` or `"vertical"`. Defaults to the root's `data-orientation` attribute, then `"horizontal"`. |
+
+Whether the flow is `linear` comes from the flow itself
+([`isLinear`](/docs/v9/core/create-stepper)): a linear flow is an ordered list
+of steps, any other a set of tabs. Change it with
+[`flow.setOptions`](/docs/v9/core/create-stepper#options-that-change) and the
+markup follows.
+
+It returns a function that undoes the binding: it removes the listeners and
+the live region, stops following the flow, and puts back every attribute and
+text it changed, so the markup is what the server sent. An attribute someone
+else changed since is left as it is. It does not destroy the flow: call
+`flow.destroy()` if you are done with it. Binding the same root again undoes
+the previous binding first.
+
+The binding records what it changed on each element, in a `data-stepperize`
+attribute, and marks its live region the same way. A copy of bound markup (a
+Turbo or htmx snapshot, `cloneNode`) carries that record, so binding the copy
+puts the server's markup back first and starts clean: no attribute of the old
+binding is taken for yours, and there is one live region. Unbinding removes
+the record.
+
+## Parts
+
+A part is an element with a `data-component` attribute. These are the same
+names the framework primitives render, so one stylesheet fits both.
+
+| `data-component` | Element | Needs `data-step` | What it becomes |
+| --- | --- | --- | --- |
+| `stepper` | Any, usually `div` | | The root: `role="group"`, `aria-busy`, `data-pending`, `data-finished`. |
+| `stepper-list` | `ol` | | The list of steps. A `tablist` when the flow is not linear and has triggers. Handles arrow keys. |
+| `stepper-item` | `li` | Yes | One step: `data-state`, `data-invalid`, `data-disabled`. |
+| `stepper-trigger` | `button` | On it or on its item | Goes to its step. A `tab`, or a button with `aria-current="step"`. A link with an `href` works too; see [Link triggers](#link-triggers). Any other element gets a development warning ([SZ005](/docs/v9/core/errors#sz005)): Enter and Space would not press it and it could not be disabled. |
+| `stepper-indicator` | `span` | On it or on its item | A decorative mark: `aria-hidden`, `data-state`. |
+| `stepper-title`, `stepper-description` | `span` | No | Left as written. When empty, filled with the `title` or `description` of its step: the one of its own `data-step`, or of its item. Without either, or with an unknown id, it is left as written. |
+| `stepper-content` | `div` | Yes | The panel of a step: `hidden` unless its step is current. A `tabpanel`, or a `group` named by the step's `title`. |
+| `stepper-prev`, `stepper-next` | `button` | | Call `prev()` and `next()`. |
+
+`data-step` is a step id. When `bindStepper` is called, an id that is not in
+the flow throws [SZ102](/docs/v9/core/errors#sz102), and a part that needs one
+and has none throws [SZ101](/docs/v9/core/errors#sz101); the markup is left as
+it was. A bad part that arrives later, in a swap, is skipped with the same code
+as a development warning, and the rest of the stepper keeps following the
+flow.
+
+## Link triggers
+
+A trigger can be a link, so the page also works without JavaScript. What a
+click does depends on where the link goes:
+
+- **To another page** (`href="?step=plan"`, `href="/signup/plan"`): it is
+  navigation. The browser follows the link and the binding does not move the
+  flow; the page at that URL shows its step, as it would without JavaScript.
+  Create the flow there with the step from the URL (the `step` option). A
+  click with a modifier key, or on a link with a `target` or `download`, is
+  left to the browser too.
+- **Within this page** (`href="#plan"`): it stands in for a button. The flow
+  moves, and the browser does not jump to the fragment.
+
+A link whose step cannot be reached (`aria-disabled="true"`, or a move is
+running) goes nowhere, as a disabled button does nothing. Arrow keys between
+tabs move the flow either way. To move without loading a page, use a
+`<button>`.
+
+```html
+<li data-component="stepper-item" data-step="plan">
+  <a data-component="stepper-trigger" href="?step=plan">Plan</a>
+</li>
+```
+
+## What you control
+
+What you write on a part wins over what the binding would add, except for the
+state it keeps in sync (below):
+
+- **Names, roles and tab stops.** On the root, lists, items, panels and
+  indicators, your `role`, `aria-label`, `aria-labelledby` and `tabindex` are
+  kept. The root is named "Stepper" unless it has `aria-label` or
+  `aria-labelledby`; a panel you named gets no name from the binding.
+- **Ids.** A trigger or panel keeps the `id` you wrote, and `aria-controls` and
+  `aria-labelledby` point at it. Ids the binding makes up are built from the
+  root's `id` (`signup-trigger-account`), so they are the same on every page
+  load; without an `id` on the root one is made up.
+- **Button types.** Buttons get `type="button"` unless you wrote a `type`.
+- **Next.** `disabled` on a `stepper-next` button is yours: the binding never
+  disables Next itself, reads it on every change, and follows you when you
+  toggle it (`next.disabled = !terms.checked`). `aria-disabled="true"` written
+  on Prev or Next keeps the button focusable but does nothing when pressed.
+- **Everything else.** Your classes, `aria-describedby`, `data-*` attributes
+  and any attribute the binding does not set are never touched.
+- **Your own handlers.** A listener you add to a button runs first. Call
+  `event.preventDefault()` in it to handle the move yourself, for example to
+  pass form values to `flow.next(values)`.
+
+```ts
+const next = document.querySelector<HTMLButtonElement>('#signup [data-component="stepper-next"]')!;
+
+next.addEventListener("click", (event) => {
+  event.preventDefault();
+  flow.next(Object.fromEntries(new FormData(next.form!)));
+});
+```
+
+Handle the button, not the form's `submit` event. A `stepper-next` button is a
+`type="button"`, so it never submits the form; and if you make it
+`type="submit"`, the click moves the flow once and your submit handler moves
+it again.
+
+The binding owns the state it keeps in sync: `hidden` on panels, `disabled` on
+triggers and Prev, `data-state` and the other `data-*` state, and the ARIA of
+triggers (`role`, `tabindex`, `aria-selected`, `aria-current`, `aria-controls`).
+Write them on the server to avoid a flash, as below; the binding takes them over
+from there. To keep a step out of reach, use the flow's
+[`guard`](/docs/v9/core/create-stepper) or `linear`, not `disabled` on its
+trigger.
+
+## Showing issues and other state
+
+`bindStepper` does not render text for you. Subscribe to the flow for anything
+beyond the parts:
+
+```ts
+flow.subscribe(() => {
+  const issues = flow.issues() ?? [];
+  document.querySelector("#errors")!.textContent = issues.map((issue) => issue.message).join(", ");
+});
+```
+
+## Styling
+
+```css
+[data-component="stepper-trigger"][data-state="current"] { font-weight: 600; }
+[data-component="stepper-indicator"][data-state="complete"] { background: green; }
+[data-component="stepper"][data-pending] { opacity: 0.6; }
+```
+
+See [Styling](/docs/v9/react/guides/styling) for every attribute; they are the
+same here.
+
+## Markup that changes
+
+Elements added or removed later (an htmx swap, an Alpine `x-if`, Turbo) are
+followed without another call, but only when they are, or contain, parts of
+this stepper. Text, form fields, messages and the parts of a stepper nested in
+a panel do not make it render again, and several changes in a row render once.
+Parts copied from markup another binding changed start clean, as a bound copy
+does (above).
+
+## Avoiding a flash before the script runs
+
+Every panel is in the HTML, so all of them show until `bindStepper` runs. Have
+the server write `hidden` on the panels that are not current, and `disabled` on
+Prev on the first step; `bindStepper` takes them from there.
+
+```html
+<div data-component="stepper-content" data-step="account">…</div>
+<div data-component="stepper-content" data-step="plan" hidden>…</div>
+
+<button data-component="stepper-prev" disabled>Back</button>
+```

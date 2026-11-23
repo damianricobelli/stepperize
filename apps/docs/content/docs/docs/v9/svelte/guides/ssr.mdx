@@ -1,0 +1,61 @@
+---
+title: Server rendering
+description: SvelteKit and any other Svelte SSR setup, with no configuration.
+---
+
+The stepper and the primitives render on the server and hydrate in place.
+
+- The flow is created while the component initialises, so the server renders
+  the right step: the first one, the one in `snapshot`, or the one in `step`.
+- Ids come from `$props.id()`, so `aria-controls` and `aria-labelledby` match
+  between the server and the client.
+- No callback runs on the server. `onChange`, `onFinish`, `onInvalidStep` and
+  the `guard` only run in the browser.
+
+## Resuming from a cookie or the database
+
+Load the snapshot on the server and pass it in; the first HTML is already on
+the right step.
+
+```ts title="src/routes/onboarding/+page.server.ts"
+export function load({ cookies }) {
+  const saved = cookies.get("onboarding");
+  return { snapshot: saved ? JSON.parse(saved) : undefined };
+}
+```
+
+```svelte title="src/routes/onboarding/+page.svelte"
+<script lang="ts">
+  import { onboarding } from "#lib/onboarding.js";
+
+  let { data } = $props();
+
+  const stepper = onboarding.useStepper(() => ({
+    snapshot: data.snapshot,
+    onChange: (snapshot) => {
+      document.cookie = `onboarding=${encodeURIComponent(JSON.stringify(snapshot))}; path=/`;
+    },
+  }));
+</script>
+```
+
+`snapshot` is read once, when the flow is created. To replace the state later,
+call `stepper.restore(snapshot)`.
+
+## Flows in a module
+
+A flow created at module scope and read with
+[`fromFlow`](/docs/v9/svelte/api/define-stepper#fromflow) exists once per
+server process, so every request would render, and could change, the same
+one. On the server, create the flow in a component (`useStepper()`,
+`Provider` or `Stepper.Root`) so each request gets its own, and pass it down
+with context. Keep module-level flows for state that only lives in the
+browser.
+
+## Tabs without triggers
+
+A `Stepper.Root` assumes it will have triggers and renders its panels as tab
+panels. When it mounts with none, it switches to groups named by each step's
+`title`. If your flow never has triggers and you want the server HTML to say so
+from the start, pass `linear` or render your own markup with the headless
+entry.

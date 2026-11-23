@@ -44,4 +44,41 @@ describe("toPlainMarkdown", () => {
 			].join("\n"),
 		);
 	});
+
+	it("shows a framework demo's source, drops heading ids, and keeps Vue and Svelte fences", () => {
+		const input = [
+			"## Forms [#forms]",
+			"",
+			'<FrameworkDemo framework="vue" />',
+			"",
+			"```vue",
+			"<template><Stepper.Root /></template>",
+			"```",
+			"",
+			"```svelte",
+			'<FrameworkDemo framework="svelte" />',
+			"```",
+		].join("\n");
+		expect(
+			toPlainMarkdown(input, {
+				frameworkDemo: (framework) => `Demo of ${framework}`,
+			}),
+		).toBe(
+			[
+				"## Forms",
+				"",
+				"Demo of vue",
+				"",
+				"```vue",
+				"<template><Stepper.Root /></template>",
+				"```",
+				"",
+				"```svelte",
+				'<FrameworkDemo framework="svelte" />',
+				"```",
+			].join("\n"),
+		);
+		// Without a source, the demo is dropped like other interactive examples.
+		expect(toPlainMarkdown('<FrameworkDemo framework="vue" />')).toBe("");
+	});
 });

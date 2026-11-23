@@ -10,7 +10,9 @@ const root = fileURLToPath(new URL("../", import.meta.url));
 const installed = (name) =>
 	JSON.parse(readFileSync(join(root, "packages/react/node_modules", name, "package.json"), "utf8"));
 const versions = {
-	18: { react: "18.3.1", types: "18.3.28", domTypes: "18.3.7" },
+	// The floor of the peer range, `^18.0.0`. Typings are not part of it: the source uses `React.JSX`,
+	// which `@types/react` has since 18.2.7, so they stay on the last 18.x.
+	18: { react: "18.0.0", types: "18.3.28", domTypes: "18.3.7" },
 	19: {
 		react: installed("react").version,
 		types: installed("@types/react").version,

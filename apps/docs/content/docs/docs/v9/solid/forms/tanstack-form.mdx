@@ -1,0 +1,398 @@
+---
+title: TanStack Form
+description: A three-step checkout with TanStack Form for Solid, where the form and the step validate with the same Standard Schema.
+---
+
+TanStack Form owns the fields of each step; Stepperize owns the flow, what each
+step saved and the order sent at the end. TanStack Form takes
+[Standard Schema](https://standardschema.dev) validators directly, so the
+schema of a step is also its form's validator, with no adapter.
+
+The code on this page is checked against `@tanstack/solid-form` 1.33,
+Solid 1.9 and Zod 4.6.
+
+## Install
+
+```bash
+npm install @stepperize/solid @tanstack/solid-form zod
+```
+
+## The flow
+
+```ts title="checkout.ts"
+import { defineStepper, type FlowOutput, type Issue } from "@stepperize/solid";
+import { z } from "zod";
+
+export const personalSchema = z.object({
+  name: z.string().trim().min(1, "Enter your name"),
+  email: z.email("Enter a valid email"),
+});
+
+export const shippingSchema = z.object({
+  address: z.string().trim().min(1, "Enter your address"),
+  zip: z.string().regex(/^\d{5}$/, "Enter a 5-digit ZIP"),
+});
+
+export const checkout = defineStepper(
+  [
+    { id: "personal", title: "Personal", schema: personalSchema },
+    { id: "shipping", title: "Shipping", schema: shippingSchema },
+    { id: "review", title: "Review" },
+  ],
+  { linear: true },
+);
+
+export type Order = FlowOutput<typeof checkout.steps>;
+
+/** The first issue of each field, keyed by its path: "email", "address.zip". */
+export function issuesByField(issues: ReadonlyArray<Issue>) {
+  const fields: Record<string, Issue> = {};
+  for (const issue of issues) {
+    const key = (issue.path ?? [])
+      .map((part) => String(typeof part === "object" ? part.key : part))
+      .join(".");
+    fields[key] ??= issue;
+  }
+  return fields;
+}
+```
+
+`issuesByField` keeps whole issues, not just their messages: the schema's own
+errors are issues too, so the JSX reads `error.message` for both.
+
+## Complete example
+
+```tsx title="CheckoutForm.tsx"
+import { createForm } from "@tanstack/solid-form";
+import { createSignal, For, Match, Show, Switch } from "solid-js";
+import { checkout, issuesByField, type Order, personalSchema, shippingSchema } from "./checkout";
+
+// Return the promise: the flow stays pending while it runs, and unfinished if it rejects.
+async function placeOrder(order: Order) {
+  const response = await fetch("/api/orders", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(order),
+  });
+  if (!response.ok) throw new Error("Could not place the order");
+}
+
+export function CheckoutForm() {
+  return (
+    <checkout.Provider onFinish={placeOrder}>
+      <CheckoutSteps />
+    </checkout.Provider>
+  );
+}
+
+function CheckoutSteps() {
+  const stepper = checkout.useStepperContext();
+
+  return (
+    <Show when={!stepper.isFinished} fallback={<p role="status">Order placed.</p>}>
+      <section>
+        <h2>{stepper.current.title}</h2>
+        <Switch>
+          <Match when={stepper.current.id === "personal"}>
+            <PersonalStep />
+          </Match>
+          <Match when={stepper.current.id === "shipping"}>
+            <ShippingStep />
+          </Match>
+          <Match when={stepper.current.id === "review"}>
+            <ReviewStep />
+          </Match>
+        </Switch>
+      </section>
+    </Show>
+  );
+}
+
+function PersonalStep() {
+  const stepper = checkout.useStepperContext();
+  // What the step saved: Back and a restored draft open the form filled in.
+  // Read once, so the options below do not follow the flow's data.
+  const initial = stepper.data.personal ?? { name: "", email: "" };
+
+  const form = createForm(() => ({
+    defaultValues: initial,
+    validators: {
+      // The form checks its fields first, with the step's own schema...
+      onSubmit: personalSchema,
+      // ...and only then hands them to the step, which saves, validates and moves.
+      onSubmitAsync: async ({ value }) => {
+        const result = await stepper.next(value);
+        if (result.accepted || !result.issues) return;
+        // Shaped like the schema's errors, so the JSX reads `.message` for both.
+        return { fields: issuesByField(result.issues) };
+      },
+    },
+  }));
+  const isSubmitting = form.useStore((state) => state.isSubmitting);
+
+  return (
+    <form
+      novalidate
+      onSubmit={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        void form.handleSubmit();
+      }}
+    >
+      <form.Field name="name">
+        {(field) => (
+          <div>
+            <label for={field().name}>Name</label>
+            <input
+              id={field().name}
+              name={field().name}
+              autocomplete="name"
+              value={field().state.value}
+              aria-invalid={field().state.meta.errors.length > 0}
+              onBlur={field().handleBlur}
+              onInput={(event) => field().handleChange(event.currentTarget.value)}
+            />
+            <For each={field().state.meta.errors}>
+              {(error) => <p role="alert">{error?.message}</p>}
+            </For>
+          </div>
+        )}
+      </form.Field>
+
+      <form.Field name="email">
+        {(field) => (
+          <div>
+            <label for={field().name}>Email</label>
+            <input
+              id={field().name}
+              name={field().name}
+              type="email"
+              autocomplete="email"
+              value={field().state.value}
+              aria-invalid={field().state.meta.errors.length > 0}
+              onBlur={field().handleBlur}
+              onInput={(event) => field().handleChange(event.currentTarget.value)}
+            />
+            <For each={field().state.meta.errors}>
+              {(error) => <p role="alert">{error?.message}</p>}
+            </For>
+          </div>
+        )}
+      </form.Field>
+
+      <button type="submit" disabled={isSubmitting()}>
+        Continue
+      </button>
+    </form>
+  );
+}
+
+function ShippingStep() {
+  const stepper = checkout.useStepperContext();
+  const initial = stepper.data.shipping ?? { address: "", zip: "" };
+
+  const form = createForm(() => ({
+    defaultValues: initial,
+    validators: {
+      onSubmit: shippingSchema,
+      onSubmitAsync: async ({ value }) => {
+        const result = await stepper.next(value);
+        if (result.accepted || !result.issues) return;
+        return { fields: issuesByField(result.issues) };
+      },
+    },
+  }));
+  const isSubmitting = form.useStore((state) => state.isSubmitting);
+
+  function back() {
+    // Keep what was typed here, without validating it. Only when something
+    // changed: a new object would make a complete step incomplete.
+    if (form.state.isDirty) stepper.setData("shipping", { ...form.state.values });
+    void stepper.prev();
+  }
+
+  return (
+    <form
+      novalidate
+      onSubmit={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        void form.handleSubmit();
+      }}
+    >
+      <form.Field name="address">
+        {(field) => (
+          <div>
+            <label for={field().name}>Address</label>
+            <input
+              id={field().name}
+              name={field().name}
+              autocomplete="street-address"
+              value={field().state.value}
+              aria-invalid={field().state.meta.errors.length > 0}
+              onBlur={field().handleBlur}
+              onInput={(event) => field().handleChange(event.currentTarget.value)}
+            />
+            <For each={field().state.meta.errors}>
+              {(error) => <p role="alert">{error?.message}</p>}
+            </For>
+          </div>
+        )}
+      </form.Field>
+
+      <form.Field name="zip">
+        {(field) => (
+          <div>
+            <label for={field().name}>ZIP</label>
+            <input
+              id={field().name}
+              name={field().name}
+              inputmode="numeric"
+              autocomplete="postal-code"
+              value={field().state.value}
+              aria-invalid={field().state.meta.errors.length > 0}
+              onBlur={field().handleBlur}
+              onInput={(event) => field().handleChange(event.currentTarget.value)}
+            />
+            <For each={field().state.meta.errors}>
+              {(error) => <p role="alert">{error?.message}</p>}
+            </For>
+          </div>
+        )}
+      </form.Field>
+
+      <button type="button" onClick={back}>
+        Back
+      </button>
+      <button type="submit" disabled={isSubmitting()}>
+        Review
+      </button>
+    </form>
+  );
+}
+
+function ReviewStep() {
+  const stepper = checkout.useStepperContext();
+  const [error, setError] = createSignal("");
+
+  async function confirm() {
+    setError("");
+    try {
+      // On the last step, next() runs onFinish and waits for it.
+      await stepper.next();
+    } catch {
+      setError("Could not place the order. Try again.");
+    }
+  }
+
+  return (
+    <>
+      <dl>
+        <dt>Personal</dt>
+        <dd>
+          {stepper.data.personal?.name} · {stepper.data.personal?.email}
+        </dd>
+        <dt>Shipping</dt>
+        <dd>
+          {stepper.data.shipping?.address}, {stepper.data.shipping?.zip}
+        </dd>
+      </dl>
+      <Show when={error()}>
+        <p role="alert">{error()}</p>
+      </Show>
+
+      <button type="button" disabled={stepper.isPending} onClick={() => stepper.goTo("personal")}>
+        Edit details
+      </button>
+      <button type="button" disabled={stepper.isPending} onClick={() => stepper.prev()}>
+        Back
+      </button>
+      <button type="button" disabled={stepper.isPending} onClick={confirm}>
+        {stepper.isPending ? "Placing order…" : "Place order"}
+      </button>
+    </>
+  );
+}
+```
+
+## Why this works
+
+- **The move is the form's last validator.** `onSubmit` runs the schema first;
+  `onSubmitAsync` only runs when it passed, and calls `next(value)`. When the
+  step accepts, the next step renders. When it refuses, the issues are
+  returned as field errors and the form stays.
+- **`isSubmitting` covers the move.** It is `true` until `onSubmitAsync`
+  settles, so the button is disabled while an async rule of the step runs.
+- **Back fills the form.** `initial` comes from `stepper.data`, so going back,
+  or resuming a draft, shows what was saved.
+- **The request is part of the last move.** `onFinish` returns the promise of
+  the request: `stepper.isPending` is `true` while it runs, a second press is
+  refused, and a failure leaves the flow open for another try.
+
+## Which side validates
+
+| | Runs | When it fails |
+| --- | --- | --- |
+| **TanStack Form** | `validators.onSubmit` on submit; add `onChange` or `onBlur` for earlier feedback | `onSubmitAsync` does not run, so `next()` is never called |
+| **The step's `schema`** | Inside every `next()` | `next()` returns `issues`; `onSubmitAsync` returns them as field errors |
+
+## Errors that come from the step
+
+A rule that only the step knows, such as an async check against your server,
+reaches the form through `onSubmitAsync`: it returns
+`{ fields: issuesByField(result.issues) }` and TanStack Form shows each issue
+under its field.
+
+```ts title="checkout.ts"
+export const checkout = defineStepper(
+  [
+    {
+      id: "personal",
+      title: "Personal",
+      // The form keeps `personalSchema`; only the step asks the server.
+      schema: personalSchema.refine(async ({ email }) => !(await isRegistered(email)), {
+        message: "That email already has an account",
+        path: ["email"],
+      }),
+    },
+    { id: "shipping", title: "Shipping", schema: shippingSchema },
+    { id: "review", title: "Review" },
+  ],
+  { linear: true },
+);
+```
+
+`isRegistered` is your own request. The form keeps `personalSchema`, so typing
+never calls it; Continue does, once.
+
+## Drafts and Back
+
+- **Read the saved values once, outside the options.** `createForm` takes a
+  function and runs it again, in a computation, when a signal it reads
+  changes. Reading `stepper.data` inside it would tie the form's options to the
+  flow's data; `const initial = ...` in the component body reads it once.
+- **Back keeps what was typed, without validating it.** `setData` stores a
+  draft. Only write it when `form.state.isDirty`: a complete step whose data
+  changes is no longer complete, and in a `linear` flow neither are the steps
+  after it.
+- **Hand the flow a copy.** `{ ...form.state.values }` is a plain object of its
+  own.
+
+## Pitfalls
+
+- **`field` is an accessor.** In Solid, `form.Field` hands its children a
+  function: read `field().state.value`, not `field.state.value`.
+- **Calling `next()` from `onSubmit` instead.** It works for the happy path,
+  but `onSubmit` has no way to return errors: when the step refuses, nothing
+  is shown unless you write them into the form yourself.
+- **A file named like the definition.** `checkout.ts` next to `Checkout.tsx`
+  differ only in case, and on macOS and Windows TypeScript resolves
+  `./Checkout` to the definition. Give the component file another name, as
+  `CheckoutForm.tsx` here.
+
+## Links
+
+- [TanStack Form for Solid](https://tanstack.com/form/latest/docs/framework/solid/quick-start)
+- [TanStack Form: validation](https://tanstack.com/form/latest/docs/framework/solid/guides/validation)
+- The same flow with [Formisch](/docs/v9/solid/forms/formisch), or without a
+  library: [Forms](/docs/v9/solid/guides/forms).

@@ -1,15 +1,21 @@
 # https://www.robotstxt.org/robotstxt.html
 User-agent: *
 Allow: /
+# Search results are not pages. Social images (/api/og) stay allowed, so
+# link previews can fetch them.
+Disallow: /api/search
 
-# AI crawlers — allowed. Machine-readable docs: /llms.txt (index), /llms-full.txt
-# (every current page), /llms.mdx/<docs path> (one page) and /studio.md (Stepper
-# Studio guide for agents).
+# AI crawlers: allowed. Machine-readable docs (https://llmstxt.org):
+#   /llms.txt                               index of every framework, Stepper Studio and the Blocks
+#   /docs/v9/<framework>/llms.txt           one framework: react, vue, svelte, solid, angular, lit, html, core
+#   /docs/v9/<framework>/llms-full.txt      every page of one framework in one file
+#   /llms-full.txt                          every current page of every framework
+#   /docs/<any page>.md                     one page as markdown
+#   /studio.md                              Stepper Studio guide for agents (React only)
 User-agent: GPTBot
 Allow: /
 
 User-agent: ClaudeBot
 Allow: /
 
-Host: https://stepperize.com
 Sitemap: https://stepperize.com/sitemap.xml

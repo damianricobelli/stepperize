@@ -1,0 +1,186 @@
+---
+title: Primitives
+description: Props and snippets of every Stepper component.
+---
+
+All primitives pass `class`, `style`, every other attribute and your
+[attachments](https://svelte.dev/docs/svelte/@attach) to the element they
+render. On `Root`, `List`, `Item`, `Content` and `Indicator`, an attribute you
+pass replaces the one the primitive would set. On `Trigger`, `Prev` and `Next`,
+the ids, roles, `tabindex`, `disabled`, ARIA and `data-*` attributes the
+primitive manages take precedence, so the buttons stay in step with the flow;
+only the default `type="button"` gives way to yours.
+
+All except `Root` accept a `child` snippet to
+[use your own element](/docs/v9/svelte/guides/primitives#rendering-your-own-element).
+
+Every primitive has a bindable `ref`: `bind:ref` gives you its element, typed
+as the tag it renders by default (`HTMLDivElement` for `Root`,
+`HTMLButtonElement` for `Trigger`, and so on). With a `child` snippet it is the
+element you spread the props onto. It goes back to `null` when the element
+unmounts, as a `Content` does when its step stops being current.
+
+```svelte
+<script lang="ts">
+  let next: HTMLButtonElement | null = $state(null);
+</script>
+
+<Stepper.Next bind:ref={next}>Continue</Stepper.Next>
+```
+
+`bind:this` on a primitive gives you the component, not the element: use
+`bind:ref`.
+
+## Root
+
+Renders a `div`. Creates the flow and provides it.
+
+| Prop | Type | Description |
+| --- | --- | --- |
+| Every [option](/docs/v9/svelte/api/options) | | `linear`, `next`, `guard`, `snapshot`, `step`, `onChange`, `onFinish`, `onInvalidStep`. |
+| `orientation` | `"horizontal" \| "vertical"` | Default `"horizontal"`. |
+| `ref` | `HTMLDivElement \| null` | Bindable. |
+| `children` | `Snippet<[stepper]>` | Receives the stepper. Reactive: it only updates for what it reads. |
+
+`onChange` is the flow's callback; the DOM event is `onchange`.
+
+The element has `role="group"` and the name "Stepper"; pass `aria-label` or
+`aria-labelledby` to describe your flow. While an async check or `onFinish`
+runs it has `aria-busy` and `data-pending`; once the flow has finished it has
+`data-finished`.
+
+## List
+
+Renders an `ol`.
+
+| Prop | Type | Description |
+| --- | --- | --- |
+| `orientation` | `"horizontal" \| "vertical"` | Defaults to the root's. |
+| `item` | `Snippet<[step, index]>` | Rendered once per step; items inside it need no `step` prop. |
+| `children` | `Snippet` | Used when there is no `item` snippet: write the items yourself. |
+
+## Item
+
+Renders an `li`.
+
+| Prop | Type | Description |
+| --- | --- | --- |
+| `step` | Step id | Required outside the `item` snippet of a `List`. |
+| `children` | `Snippet<[item]>` | Receives the [item](#useitem). |
+
+## Trigger
+
+Renders a `button` that calls `goTo` for its step. Must be inside an `Item`,
+and should be inside a `List`.
+
+It is disabled when `linear` does not allow reaching the step, or when you pass
+`disabled`. A trigger you disable is skipped by the arrow keys. In a flow that
+is not linear it is a `tab`; in a linear flow it is a plain button, with
+`aria-current="step"` on the current one.
+
+While a move runs, every trigger is `aria-disabled` and ignores clicks, but
+keeps its native `disabled` state from before the move, so the one you clicked
+keeps focus.
+
+## Title and Description
+
+Render a `span` with the step's `title` or `description` field. Children
+replace it.
+
+## Indicator
+
+Renders a `span` with `aria-hidden`. Empty by default: style it, or pass
+children.
+
+## Content
+
+Renders a `div` while its step is current. It is the `tabpanel` of its trigger
+in a flow rendered as tabs, and otherwise a `group` named after the step's
+`title`.
+
+| Prop | Type | Description |
+| --- | --- | --- |
+| `step` | Step id | Required. |
+| `forceMount` | `boolean` | Keep it mounted and `hidden` while its step is not current. |
+
+Do not pass `id`: the trigger's `aria-controls` points at the id `Content`
+is given.
+
+## Prev and Next
+
+Render a `button`.
+
+- `Next` calls `next()` with no argument, which validates the data stored for
+  the current step. On the last step it finishes the flow; it is never
+  disabled for being at the end.
+- `Prev` calls `prev()`, and is disabled when there is nowhere to go back to.
+
+While an async check or `onFinish` runs, both are `aria-disabled` and ignore
+clicks, and have `data-pending`.
+
+Once the flow has finished, `Next` is `aria-disabled` with `data-disabled` and
+ignores clicks, so the flow is not submitted twice. It becomes available again
+when the flow changes.
+
+Pass `disabled` to disable either one yourself, for example until a form is
+valid.
+
+Your own `onclick` runs first. Call `event.preventDefault()` in it to handle
+the move yourself.
+
+## The child snippet
+
+```ts
+child?: Snippet<[{ props: ChildProps }]>
+```
+
+When present it is rendered instead of the default element, and `children` is
+ignored. Spread `props` onto exactly one element: they carry the ids, ARIA and
+`data-*` attributes, the handlers, the attributes you passed and the
+attachment that fills `ref`.
+
+`props` is typed for any element, so it spreads onto an `<a>` as well as a
+`<button>`, and its handlers can be called or wrapped:
+
+| Primitive | `props` |
+| --- | --- |
+| `Trigger`, `Prev`, `Next` | `ButtonChildProps`: `onclick` is always there, plus `disabled`, and `type` only if you passed one. |
+| `List` | `ListChildProps`: `onkeydown` is always there. |
+| The others | `ChildProps`, which is `HTMLAttributes<HTMLElement>` from `svelte/elements`. |
+
+```svelte
+<Stepper.Next>
+  {#snippet child({ props })}
+    <a href="#review" {...props} onclick={(event) => { track("next"); props.onclick(event); }}>
+      Continue
+    </a>
+  {/snippet}
+</Stepper.Next>
+```
+
+The attributes you pass to the primitive are typed for its default tag, and
+your handlers receive the event of the element you rendered.
+
+## useItem
+
+`Stepper.useItem()` returns the enclosing item as a reactive object. Call it
+while the component initialises.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `step` | `Step` | The step, with all its fields. |
+| `index` | `number` | Its position. |
+| `state` | `"pending" \| "current" \| "complete"` | |
+| `invalid` | `boolean` | Its last validation failed and its data has not changed since. |
+| `disabled` | `boolean` | `goTo` would be refused right now. |
+| `pending` | `boolean` | A move is running. Every step is `disabled` meanwhile. |
+
+Outside an `Item` it throws [SZ101](/docs/v9/core/errors#sz101).
+
+## Diagnostics
+
+In development the primitives warn about a `child` snippet that does not
+spread its props ([SZ001](/docs/v9/core/errors#sz001)), a trigger without an
+accessible name ([SZ002](/docs/v9/core/errors#sz002)), a trigger outside a
+`List` ([SZ003](/docs/v9/core/errors#sz003)) and a trigger that is not a
+button ([SZ005](/docs/v9/core/errors#sz005)).

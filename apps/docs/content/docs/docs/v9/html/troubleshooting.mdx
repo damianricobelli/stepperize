@@ -1,0 +1,373 @@
+---
+title: Troubleshooting
+description: Errors and surprises when binding server-rendered HTML, with the cause and the fix for each.
+---
+
+Most problems come from a few causes. Find your symptom below. Errors thrown
+by the library carry a code; [Errors and warnings](/docs/v9/core/errors)
+explains each one.
+
+## Runtime errors
+
+### SZ101: A stepper part needs a `data-step` attribute
+
+`bindStepper` throws this when an item, a trigger, an indicator or a panel has
+no `data-step`, and is not inside a `stepper-item` that has one. The list, the
+titles, the descriptions, Prev and Next need none. A title or description
+without a step is left as the server wrote it.
+
+```html
+<!-- Wrong: the panel does not say which step it shows. -->
+<div data-component="stepper-content">…</div>
+
+<!-- Right -->
+<div data-component="stepper-content" data-step="account">…</div>
+
+<!-- A trigger inside an item takes the item's step. -->
+<li data-component="stepper-item" data-step="account">
+  <button data-component="stepper-trigger">Account</button>
+</li>
+```
+
+When `bindStepper` throws, it leaves nothing behind: the markup stays as the
+server sent it, and the flow keeps working. A part without a step that
+arrives later, in a swap, is skipped instead, with a development warning.
+
+### SZ102: Step "…" not found
+
+A `data-step` is not one of the flow's step ids. Usually the template and the
+script list different steps, or an id differs in spelling or case. Render the
+markup and create the flow from the same list, for example the JSON on the
+root shown in [The script](/docs/v9/html/guides/server-rendered#the-script).
+
+When the markup is wrong from the start, `bindStepper` throws. When a bad part
+arrives later, in an htmx swap or an Alpine template, that part is skipped,
+with this code as a development warning, and the rest of the stepper keeps
+following the flow. The part gets its roles and state once its `data-step`
+names a step of the flow.
+
+### SZ103: A flow needs at least one step
+
+`createStepper` received an empty list, or two steps with the same `id`. With
+the steps written as JSON on the page, the attribute is missing or empty, or
+the script reads the wrong element.
+
+```ts
+const steps = JSON.parse(root.dataset.steps ?? "[]"); // [] when data-steps is missing
+const flow = createStepper(steps);
+```
+
+### SZ002: A trigger has no accessible name
+
+A development warning: a `stepper-trigger` has no text, `aria-label` or
+`aria-labelledby`, so a screen reader announces an unnamed button. A trigger
+that only holds an indicator is the usual case. An empty `stepper-title` inside
+it counts, when its step has a `title`: the check runs after the binding fills
+it in. Write its text on the server, which also shows before the script runs,
+or name it:
+
+```html
+<button data-component="stepper-trigger" aria-label="Account">
+  <span data-component="stepper-indicator"></span>
+</button>
+```
+
+### SZ003: A trigger is outside the list
+
+A development warning: a `stepper-trigger` is not inside the
+`stepper-list`. Keyboard navigation and the list semantics depend on the
+list. Move the trigger inside it, or use a plain button that calls
+`flow.goTo(id)`.
+
+### SZ005: A trigger is not a button
+
+A development warning: a `stepper-trigger` is a `<span>`, a `<div>` or a link
+without an `href`. Enter and Space do not press it, and it cannot be disabled.
+Use a `<button>`.
+
+```html
+<!-- Wrong -->
+<span data-component="stepper-trigger">Account</span>
+
+<!-- Right -->
+<button data-component="stepper-trigger">Account</button>
+```
+
+You see the development warnings only through a bundler in development, or
+from esm.sh with `?dev`. The files a CDN serves untouched leave them out.
+
+### TypeError: Cannot read properties of null (reading 'ownerDocument')
+
+`bindStepper` received `null` (other browsers word the error differently): the
+script looked for the root before the markup was parsed, or the id or selector
+does not match. A `<script type="module">` runs after the page is parsed; a
+classic script needs `defer`, or a `DOMContentLoaded` listener. Check the
+element before binding:
+
+```ts
+const root = document.getElementById("signup");
+if (root) bindStepper(root, flow);
+```
+
+## Common surprises
+
+### Every panel shows until the script runs
+
+All the panels are in the HTML, and the binding hides them only once it runs.
+Have the server write `hidden` on the panels that are not current, and
+`disabled` on Prev on the first step. The binding takes them over from there.
+
+```html
+<div data-component="stepper-content" data-step="account">…</div>
+<div data-component="stepper-content" data-step="plan" hidden>…</div>
+
+<button data-component="stepper-prev" type="button" disabled>Back</button>
+```
+
+### A panel stays visible although it has `hidden`
+
+Your CSS sets `display` on the panel (`display: flex`, `display: grid`), and
+that beats the browser's own rule for `hidden`. Restore it for panels:
+
+```css
+[data-component="stepper-content"][hidden] { display: none; }
+```
+
+### Next does nothing on a step with fields
+
+The step has a `schema`, and the `stepper-next` button calls `next()` without
+values: it validates what the step already stored, which is nothing unless you
+stored it. The item and trigger get `data-invalid`, and `flow.issues()` says
+why. Pass the fields' values, as in
+[How do I pass form values to next()?](/docs/v9/html/faq#how-do-i-pass-form-values-to-next).
+
+```ts
+next.addEventListener("click", (event) => {
+  event.preventDefault();
+  const form = root.querySelector<HTMLFormElement>(`form[data-step="${flow.current.id}"]`)!;
+  flow.next(Object.fromEntries(new FormData(form)));
+});
+```
+
+### `required` fields are not checked
+
+Prev, Next and the triggers are `type="button"`, so the form is never
+submitted and the browser checks nothing. Call `form.reportValidity()` on the
+current panel's form before `flow.next(values)`; see
+[Can I use the browser's own validation?](/docs/v9/html/faq#can-i-use-the-browsers-own-validation).
+
+### The page reloads when a button is pressed
+
+A `<button>` inside a form is a submit button until the binding gives it
+`type="button"`, so a click before the script has run submits the form. Enter
+in a field can submit a step's form at any time. Write `type="button"` in the
+HTML, and turn a submit into Next:
+
+```html
+<button data-component="stepper-next" type="button">Continue</button>
+```
+
+```ts
+root.addEventListener("submit", (event) => {
+  event.preventDefault();
+  next.click();
+});
+```
+
+### Next moves two steps at a time
+
+Your own click listener calls `flow.next()`, and so does the binding. Call
+`event.preventDefault()` in your listener: the binding then leaves the move to
+you. A `stepper-next` you made `type="submit"` does the same with a `submit`
+handler that calls `next()`.
+
+```ts
+next.addEventListener("click", (event) => {
+  event.preventDefault();
+  flow.next(values());
+});
+```
+
+### A button does nothing
+
+Check, in order:
+
+- A listener of yours on it calls `event.preventDefault()` or
+  `event.stopPropagation()`. The binding listens on the root, after yours.
+- It has `aria-disabled="true"` in the HTML, or `disabled` on Next. Both are
+  yours: the binding keeps them.
+- A move is running: the root has `data-pending`, and every button waits.
+- The flow finished: the root has `data-finished`, and Next does nothing until
+  the flow changes.
+
+### Clicking a step skips validation
+
+In a free flow the triggers are tabs that call `goTo`, which does not
+validate. Make the flow `linear`: the triggers become an ordered list of
+steps, and only `next()`, which validates, moves forward. The later triggers
+are `disabled` until their step is reached.
+
+```ts
+const flow = createStepper(steps, { linear: true });
+```
+
+### A link trigger loads a page instead of moving the flow
+
+A link to another page (`href="?step=plan"`) is navigation: the browser
+follows it and the binding leaves the flow alone, so the page at that URL shows
+the step, as it does without JavaScript. Create the flow there with the step
+from the URL. To move in place, point the link within the page
+(`href="#plan"`), which moves the flow and does not jump, or use a `<button>`.
+See [Link triggers](/docs/v9/html/markup#link-triggers).
+
+```ts
+const flow = createStepper(steps, { step: new URLSearchParams(location.search).get("step") ?? undefined });
+```
+
+### The last Next does nothing
+
+`onFinish` threw or rejected. The flow is not finished, so Next can be pressed
+again. The error is reported as one thrown by any click handler: it shows in
+the console as uncaught, and `window.onerror` and error trackers receive it
+(see [Errors from a click](/docs/v9/core/errors#errors-from-a-click)). The
+same goes for a guard or schema that throws. To tell the person, show it from
+`onFinish`:
+
+```ts
+const flow = createStepper(steps, {
+  onFinish: async (output) => {
+    try {
+      await submit(output);
+    } catch (error) {
+      errors.textContent = "Could not send. Try again.";
+      throw error;
+    }
+  },
+});
+```
+
+### The form does not submit: "An invalid form control is not focusable"
+
+One `<form>` holds every panel, and a `required` field sits in a hidden panel,
+usually a step the flow skipped. The browser cannot show its message, so it
+refuses to submit. Disable the fields of skipped steps before submitting:
+disabled fields are neither checked nor sent. Their items still have
+`data-state="pending"` when `onFinish` runs.
+
+```ts
+onFinish: () => {
+  for (const item of root.querySelectorAll<HTMLElement>('[data-component="stepper-item"][data-state="pending"]')) {
+    const panel = `[data-component="stepper-content"][data-step="${item.dataset.step}"]`;
+    const fields = root.querySelector<HTMLFieldSetElement>(`${panel} fieldset`);
+    if (fields) fields.disabled = true;
+  }
+  form.requestSubmit();
+},
+```
+
+### A title stays empty
+
+A `stepper-title` or `stepper-description` is filled from the step only when
+it is empty, and only when the step in the flow has a `title` or
+`description` string. A space or a line break inside the element counts as
+content. Write the text on the server, or leave the element truly empty:
+
+```html
+<span data-component="stepper-title"></span>
+```
+
+### Nothing is announced when the step changes
+
+The announcement is the new step's `title`, from the flow. Steps without a
+`title` in `createStepper` are not announced. Nothing is announced either when
+focus is on the new step's trigger or panel, since a screen reader already
+reads it there.
+
+```ts
+const flow = createStepper([
+  { id: "account", title: "Account" },
+  { id: "plan", title: "Plan" },
+]);
+```
+
+### After an htmx swap, the buttons do nothing
+
+The swap replaced the root element itself (`hx-swap="outerHTML"` on the
+stepper, or on an element around it, or `hx-boost`). The binding belonged to
+the old element. Bind the roots htmx brings in, and clean up the ones it took
+away. Swaps inside the root need none of this.
+
+```ts
+const bound = new Map<HTMLElement, () => void>();
+
+htmx.onLoad(() => {
+  for (const [root, cleanup] of bound) {
+    if (!root.isConnected) {
+      cleanup();
+      bound.delete(root);
+    }
+  }
+  for (const root of document.querySelectorAll<HTMLElement>('[data-component="stepper"][data-steps]')) {
+    if (bound.has(root)) continue;
+    const flow = createStepper(JSON.parse(root.dataset.steps ?? "[]"));
+    const unbind = bindStepper(root, flow);
+    bound.set(root, () => {
+      unbind();
+      flow.destroy();
+    });
+  }
+});
+```
+
+To keep the user's progress across the swap, bind the new root to the flow you
+already have instead of creating one.
+
+### After Back, the buttons do nothing
+
+Turbo and htmx save a copy of the page when they navigate away, and show it on
+Back. The copy is new elements, which no binding follows yet. Bind the root
+again when the copy is shown: on `turbo:load` with Turbo, in `htmx.onLoad`
+with htmx, as above. The copy starts clean: the binding marks what it wrote
+(`data-stepperize`), so a new binding does not take the old roles and ids for
+yours, and keeps one live region. See
+[Does it work with Turbo?](/docs/v9/html/faq#does-it-work-with-turbo).
+
+Unbind the old root when it leaves the page, so its binding stops following
+the flow:
+
+```ts
+document.addEventListener("turbo:before-cache", () => unbind());
+```
+
+## TypeScript
+
+### Argument of type 'HTMLElement | null' is not assignable
+
+`bindStepper` needs an `HTMLElement`. `getElementById` may return `null`, and
+`querySelector` without a type argument returns an `Element`. Check the result,
+or pass the element type:
+
+```ts
+const root = document.querySelector<HTMLElement>("#signup");
+if (root) bindStepper(root, flow);
+```
+
+### Step ids are typed as string
+
+The steps came from JSON on the page, or from an array declared before
+`createStepper` without `as const`, so their ids widened to `string`. Write
+them inline or add `as const` to get typed ids in `goTo`, `match` and
+`flow.data`. Ids read from the HTML (`data-step`) are plain strings either way,
+and are checked when the page runs.
+
+```ts
+const steps = [
+  { id: "account", title: "Account" },
+  { id: "plan", title: "Plan" },
+] as const;
+```
+
+<Callout type="info">
+Still stuck? Check the [FAQ](/docs/v9/html/faq), or open an issue with a
+minimal reproduction.
+</Callout>

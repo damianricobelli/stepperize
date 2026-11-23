@@ -1,0 +1,114 @@
+---
+title: Shared state
+description: One flow read by several components, through dependency injection.
+---
+
+`injectStepper()` gives one component its own flow. When the step list, the
+current panel and the buttons are different components, provide one flow and
+inject it where it is needed.
+
+## provideStepper
+
+```ts title="checkout.component.ts"
+import { Component } from "@angular/core";
+import { checkout } from "./checkout";
+
+@Component({
+  selector: "app-checkout",
+  imports: [CheckoutHeader, CheckoutBody],
+  providers: [checkout.provideStepper({ linear: true, onFinish: placeOrder })],
+  template: `
+    <app-checkout-header />
+    <app-checkout-body />
+  `,
+})
+export class Checkout {}
+```
+
+The flow belongs to that component: one per instance, destroyed with it. Put
+`provideStepper()` in a route's `providers` to share it across the pages of the
+route, or in the application's to keep it for the whole session.
+
+Pass a function when an option depends on something else. It runs in the
+provider's injection context, so it can `inject()`, and it is read again when
+a signal it reads changes:
+
+```ts
+providers: [
+  checkout.provideStepper(() => ({ linear: inject(CheckoutSettings).linear() })),
+]
+```
+
+## injectStepperContext
+
+```ts title="checkout-header.component.ts"
+@Component({
+  selector: "app-checkout-header",
+  template: `<p>Step {{ stepper().index + 1 }} of {{ stepper().steps.length }}</p>`,
+})
+export class CheckoutHeader {
+  readonly stepper = checkout.injectStepperContext();
+}
+```
+
+It returns a `StepperRef`, like `injectStepper()`. The providing component can
+inject it too. Without a `provideStepper()` or a `[stepperRoot]` of the same
+definition above, it throws [SZ100](/docs/v9/core/errors#sz100).
+
+## Inside the primitives
+
+`[stepperRoot]` shares its stepper the same way. A component rendered inside it
+reads that stepper with `injectStepperContext()`, with no provider to add:
+
+```ts
+@Component({
+  selector: "app-checkout",
+  imports: [STEPPER_PRIMITIVES, CheckoutSummary],
+  template: `
+    <div [stepperRoot]="stepper">
+      <app-checkout-summary />
+      …
+    </div>
+  `,
+})
+export class Checkout {
+  readonly stepper = checkout.injectStepper({ linear: true });
+}
+
+@Component({
+  selector: "app-checkout-summary",
+  template: `<p>{{ stepper().current.title }}</p>`,
+})
+export class CheckoutSummary {
+  readonly stepper = checkout.injectStepperContext();
+}
+```
+
+The nearest provider or root of the same definition wins; those of other
+definitions, such as a nested stepper, are skipped.
+
+## Reading only what you need
+
+Wrap what you need in `computed`. It only notifies when its result changes:
+
+```ts
+readonly isLast = computed(() => this.stepper().isLast);
+```
+
+Components are OnPush by default, so a component that reads the stepper in its
+template is checked when the stepper changes. Read what it needs through
+`computed`, and it is checked only when that value changes.
+
+## In a service
+
+`injectStepper()` works in any injection context, so a service can own a flow:
+
+```ts
+@Injectable({ providedIn: "root" })
+export class CheckoutFlow {
+  readonly stepper = checkout.injectStepper({ linear: true });
+}
+```
+
+Outside Angular altogether, `checkout.create()` returns the same state machine
+with `get()` and `subscribe()`, for tests and servers.

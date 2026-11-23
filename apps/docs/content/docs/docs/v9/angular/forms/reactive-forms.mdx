@@ -1,0 +1,443 @@
+---
+title: Reactive Forms
+description: A three-step checkout with typed Reactive Forms, a component per step, Angular validators for feedback and a Zod schema per step as the gate.
+---
+
+Reactive Forms own the fields of each step: their values, their validators,
+touched and dirty state. Stepperize owns the flow: which step is current, what
+each step saved, and the order sent at the end. They meet in the submit handler
+of each step, which calls `next(form.getRawValue())`.
+
+The code on this page is checked against Angular 22.3 (`ngc` with
+`strictTemplates`) and Zod 4.6. For the signal-based API, see
+[Signal Forms](/docs/v9/angular/forms/signal-forms).
+
+## Install
+
+```bash
+npm install @stepperize/angular zod
+```
+
+`@angular/forms` is already part of an Angular application.
+
+## Who validates
+
+Reactive Forms validate with `ValidatorFn`s, not with schemas. Each side does
+what it is good at:
+
+- **Angular validators** (`Validators.required`, `Validators.email`...) give
+  feedback as the person types, and keep the submit handler from calling
+  `next()` while a field is invalid.
+- **The step's `schema`** runs inside every `next()`. It is the gate for every
+  way forward, and the only place for rules the validators cannot say:
+  trimming, a rule that reads another step, a request to your server. When it
+  refuses, its issues are put on the controls as a `step` error.
+
+## The flow
+
+```ts title="checkout.ts"
+import type { AbstractControl } from "@angular/forms";
+import { defineStepper, type FlowOutput, type Issue } from "@stepperize/angular";
+import { z } from "zod";
+
+export const personalSchema = z.object({
+  name: z.string().trim().min(1, "Enter your name"),
+  email: z.email("Enter a valid email"),
+});
+
+export const shippingSchema = z.object({
+  address: z.string().trim().min(1, "Enter your address"),
+  zip: z.string().regex(/^\d{5}$/, "Enter a 5-digit ZIP"),
+});
+
+export const checkout = defineStepper(
+  [
+    { id: "personal", title: "Personal", schema: personalSchema },
+    { id: "shipping", title: "Shipping", schema: shippingSchema },
+    { id: "review", title: "Review" },
+  ],
+  { linear: true },
+);
+
+export type Order = FlowOutput<typeof checkout.steps>;
+
+/** Puts each issue the step returned on its control, as a `step` error. */
+export function showIssues(form: AbstractControl, issues: ReadonlyArray<Issue>) {
+  for (const issue of issues) {
+    const path = (issue.path ?? []).map((part) => String(typeof part === "object" ? part.key : part));
+    const control = path.length ? form.get(path) : form;
+    control?.setErrors({ ...control.errors, step: issue.message });
+  }
+}
+
+/** The message to show under a control once it was touched, or `null`. */
+export function errorText(control: AbstractControl, messages: Record<string, string>) {
+  if (!control.touched || !control.errors) return null;
+  const errors = control.errors;
+  if (typeof errors["step"] === "string") return errors["step"];
+  const kind = Object.keys(errors)[0];
+  return (kind && messages[kind]) ?? "Check this field";
+}
+```
+
+`showIssues` adds the step's message to the control it names. Angular replaces
+a control's errors whenever it validates it again, so the message goes away as
+soon as the person edits the field.
+
+## Complete example
+
+`Checkout` provides one flow to itself and to the steps it renders.
+
+```ts title="checkout.component.ts"
+import { HttpClient } from "@angular/common/http";
+import { Component, inject } from "@angular/core";
+import { firstValueFrom } from "rxjs";
+import { checkout, type Order } from "./checkout";
+import { PersonalStep } from "./personal-step.component";
+import { ReviewStep } from "./review-step.component";
+import { ShippingStep } from "./shipping-step.component";
+
+@Component({
+  selector: "app-checkout",
+  imports: [PersonalStep, ShippingStep, ReviewStep],
+  // One flow for this component and the steps inside it.
+  providers: [
+    checkout.provideStepper(() => {
+      const http = inject(HttpClient);
+      return {
+        // Return the promise: the flow stays pending while it runs, and unfinished if it rejects.
+        onFinish: (order: Order) => firstValueFrom(http.post("/api/orders", order)),
+      };
+    }),
+  ],
+  template: `
+    @if (stepper().isFinished) {
+      <p role="status">Order placed.</p>
+    } @else {
+      <h2>{{ stepper().current.title }}</h2>
+      @switch (stepper().current.id) {
+        @case ("personal") { <app-personal-step /> }
+        @case ("shipping") { <app-shipping-step /> }
+        @case ("review") { <app-review-step /> }
+      }
+    }
+  `,
+})
+export class Checkout {
+  readonly stepper = checkout.injectStepperContext();
+}
+```
+
+```ts title="personal-step.component.ts"
+import { Component, inject } from "@angular/core";
+import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from "@angular/forms";
+import { checkout, errorText, showIssues } from "./checkout";
+
+@Component({
+  selector: "app-personal-step",
+  imports: [ReactiveFormsModule],
+  template: `
+    <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+      <label for="name">Name</label>
+      <input
+        id="name"
+        formControlName="name"
+        autocomplete="name"
+        [attr.aria-invalid]="nameError() ? true : null"
+        [attr.aria-describedby]="nameError() ? 'name-error' : null"
+      />
+      @if (nameError(); as message) {
+        <p id="name-error" role="alert">{{ message }}</p>
+      }
+
+      <label for="email">Email</label>
+      <input
+        id="email"
+        type="email"
+        formControlName="email"
+        autocomplete="email"
+        [attr.aria-invalid]="emailError() ? true : null"
+        [attr.aria-describedby]="emailError() ? 'email-error' : null"
+      />
+      @if (emailError(); as message) {
+        <p id="email-error" role="alert">{{ message }}</p>
+      }
+
+      <button type="submit" [disabled]="stepper().isPending">Continue</button>
+    </form>
+  `,
+})
+export class PersonalStep {
+  readonly stepper = checkout.injectStepperContext();
+  // What the step saved: Back and a restored draft open the form filled in.
+  readonly #saved = this.stepper().data.personal;
+
+  readonly form = inject(NonNullableFormBuilder).group({
+    name: [this.#saved?.name ?? "", Validators.required],
+    email: [this.#saved?.email ?? "", [Validators.required, Validators.email]],
+  });
+
+  nameError() {
+    return errorText(this.form.controls.name, { required: "Enter your name" });
+  }
+
+  emailError() {
+    return errorText(this.form.controls.email, {
+      required: "Enter your email",
+      email: "Enter a valid email",
+    });
+  }
+
+  async submit() {
+    this.form.markAllAsTouched();
+    if (this.form.invalid) return;
+    // Typed: { name: string; email: string }, what the step's schema takes.
+    const result = await this.stepper().next(this.form.getRawValue());
+    // Rules only the step knows about come back as issues: show them on their controls.
+    if (!result.accepted && result.issues) showIssues(this.form, result.issues);
+  }
+}
+```
+
+```ts title="shipping-step.component.ts"
+import { Component, inject } from "@angular/core";
+import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from "@angular/forms";
+import { checkout, errorText, showIssues } from "./checkout";
+
+@Component({
+  selector: "app-shipping-step",
+  imports: [ReactiveFormsModule],
+  template: `
+    <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+      <label for="address">Address</label>
+      <input
+        id="address"
+        formControlName="address"
+        autocomplete="street-address"
+        [attr.aria-invalid]="addressError() ? true : null"
+        [attr.aria-describedby]="addressError() ? 'address-error' : null"
+      />
+      @if (addressError(); as message) {
+        <p id="address-error" role="alert">{{ message }}</p>
+      }
+
+      <label for="zip">ZIP</label>
+      <input
+        id="zip"
+        formControlName="zip"
+        inputmode="numeric"
+        autocomplete="postal-code"
+        [attr.aria-invalid]="zipError() ? true : null"
+        [attr.aria-describedby]="zipError() ? 'zip-error' : null"
+      />
+      @if (zipError(); as message) {
+        <p id="zip-error" role="alert">{{ message }}</p>
+      }
+
+      <button type="button" (click)="back()">Back</button>
+      <button type="submit" [disabled]="stepper().isPending">Review</button>
+    </form>
+  `,
+})
+export class ShippingStep {
+  readonly stepper = checkout.injectStepperContext();
+  readonly #saved = this.stepper().data.shipping;
+
+  readonly form = inject(NonNullableFormBuilder).group({
+    address: [this.#saved?.address ?? "", Validators.required],
+    zip: [this.#saved?.zip ?? "", [Validators.required, Validators.pattern(/^\d{5}$/)]],
+  });
+
+  addressError() {
+    return errorText(this.form.controls.address, { required: "Enter your address" });
+  }
+
+  zipError() {
+    return errorText(this.form.controls.zip, {
+      required: "Enter your ZIP",
+      pattern: "Enter a 5-digit ZIP",
+    });
+  }
+
+  async submit() {
+    this.form.markAllAsTouched();
+    if (this.form.invalid) return;
+    const result = await this.stepper().next(this.form.getRawValue());
+    if (!result.accepted && result.issues) showIssues(this.form, result.issues);
+  }
+
+  back() {
+    // Keep what was typed here, without validating it. Only when something
+    // changed: a new object would make a complete step incomplete.
+    if (this.form.dirty) this.stepper().setData("shipping", this.form.getRawValue());
+    void this.stepper().prev();
+  }
+}
+```
+
+```ts title="review-step.component.ts"
+import { Component, signal } from "@angular/core";
+import { checkout } from "./checkout";
+
+@Component({
+  selector: "app-review-step",
+  template: `
+    @let data = stepper().data;
+    <dl>
+      <dt>Personal</dt>
+      <dd>{{ data.personal?.name }} · {{ data.personal?.email }}</dd>
+      <dt>Shipping</dt>
+      <dd>{{ data.shipping?.address }}, {{ data.shipping?.zip }}</dd>
+    </dl>
+    @if (error()) {
+      <p role="alert">{{ error() }}</p>
+    }
+
+    <button type="button" [disabled]="stepper().isPending" (click)="stepper().goTo('personal')">
+      Edit details
+    </button>
+    <button type="button" [disabled]="stepper().isPending" (click)="stepper().prev()">Back</button>
+    <button type="button" [disabled]="stepper().isPending" (click)="placeOrder()">
+      {{ stepper().isPending ? "Placing order…" : "Place order" }}
+    </button>
+  `,
+})
+export class ReviewStep {
+  readonly stepper = checkout.injectStepperContext();
+  readonly error = signal("");
+
+  async placeOrder() {
+    this.error.set("");
+    try {
+      // On the last step, next() runs onFinish and waits for it.
+      await this.stepper().next();
+    } catch {
+      this.error.set("Could not place the order. Try again.");
+    }
+  }
+}
+```
+
+## Why this works
+
+- **Typed forms match the step.** `NonNullableFormBuilder` gives controls that
+  are never `null`, so `getRawValue()` is `{ name: string; email: string }`:
+  the input type of the step's schema. `setData("shipping", form.getRawValue())`
+  type-checks, and `stepper().data.personal` has the shape the form starts
+  from.
+- **One component per step, one form per component.** A step's `FormGroup` is
+  created when the step renders and dropped when it leaves, so it only ever
+  validates the fields on screen.
+- **The saved data is the form's start.** The controls are built from
+  `stepper().data`, so going back, or resuming a draft, shows what was saved.
+- **The request is part of the last move.** `onFinish` returns the promise of
+  the `HttpClient` request (`firstValueFrom`), so `isPending` is `true` while it
+  runs and a second press is refused. If it fails, `next()` rejects and the flow
+  is not finished.
+- **No change detection to trigger.** The templates read `stepper()`, a signal,
+  so the view updates when a move settles.
+
+## Errors that come from the step
+
+The example already handles them: a name of only spaces passes
+`Validators.required`, but not the step's `trim().min(1)`, so `next()` refuses
+and `showIssues` shows "Enter your name" under the field. The same path carries
+an async rule that only the step has:
+
+```ts title="checkout.ts"
+export const checkout = defineStepper(
+  [
+    {
+      id: "personal",
+      title: "Personal",
+      // The form keeps `personalSchema`; only the step asks the server.
+      schema: personalSchema.refine(async ({ email }) => !(await isRegistered(email)), {
+        message: "That email already has an account",
+        path: ["email"],
+      }),
+    },
+    { id: "shipping", title: "Shipping", schema: shippingSchema },
+    { id: "review", title: "Review" },
+  ],
+  { linear: true },
+);
+```
+
+`isRegistered` is your own request. It runs once, on Continue, and
+`stepper().isPending` is `true` meanwhile. Prefer this to an Angular async
+validator for checks that should only run when the person continues.
+
+## Drafts and Back
+
+- **Back keeps what was typed, without validating it.** `setData` stores a
+  draft. Only write it when `form.dirty`: a complete step whose data changes is
+  no longer complete, and in a `linear` flow neither are the steps after it.
+- **Saving as the person types.** To keep a draft across a reload, write it
+  from `valueChanges` and persist the flow's snapshot from `onChange`:
+
+```ts
+constructor() {
+  // Only what the person types: valueChanges does not fire before the first edit.
+  this.form.valueChanges
+    .pipe(debounceTime(300), takeUntilDestroyed())
+    .subscribe(() => this.stepper().setData("shipping", this.form.getRawValue()));
+}
+```
+
+## One form for the whole flow
+
+Some teams keep a single `FormGroup` with a group per step, in the component
+that owns the flow. That works too: check and hand over only the current
+step's group.
+
+```ts
+readonly #fb = inject(NonNullableFormBuilder);
+readonly form = this.#fb.group({
+  personal: this.#fb.group({
+    name: ["", Validators.required],
+    email: ["", [Validators.required, Validators.email]],
+  }),
+  shipping: this.#fb.group({
+    address: ["", Validators.required],
+    zip: ["", [Validators.required, Validators.pattern(/^\d{5}$/)]],
+  }),
+});
+
+async submit() {
+  const stepper = this.stepper();
+  if (stepper.current.id === "review") return stepper.next();
+  // Only the group of the current step is checked and handed over.
+  const group = this.form.controls[stepper.current.id];
+  group.markAllAsTouched();
+  if (group.invalid) return;
+  const result = await stepper.next(group.getRawValue());
+  if (!result.accepted && result.issues) showIssues(group, result.issues);
+}
+```
+
+The form survives every move, so Back keeps what was typed without `setData`.
+The cost is one template for every step, or passing the group of each step to
+its component as an input.
+
+## Pitfalls
+
+- **Async validators and `invalid`.** While an Angular async validator runs,
+  the form is `pending`, and `invalid` is `false`. Check `form.valid` instead,
+  which is `false` while pending, or keep async rules on the step's schema.
+- **`form.value` instead of `getRawValue()`.** `value` leaves out disabled
+  controls, so its type has every field optional. `getRawValue()` matches the
+  step's input.
+- **A Continue button outside the form.** The `stepperNext` primitive calls
+  `next()` without values, so the form's values are never handed over. Use a
+  submit button inside the form, as above.
+- **`(ngSubmit)` without `[formGroup]`.** With only `ReactiveFormsModule`
+  imported, `ngSubmit` comes from the `[formGroup]` directive. Without it on the
+  `<form>`, the browser submits the form and reloads the page.
+
+## Links
+
+- [Angular: typed forms](https://angular.dev/guide/forms/typed-forms)
+- [Angular: reactive forms](https://angular.dev/guide/forms/reactive-forms)
+- [Angular: form validation](https://angular.dev/guide/forms/form-validation)
+- The same flow with [Signal Forms](/docs/v9/angular/forms/signal-forms), or
+  the short version: [Forms](/docs/v9/angular/guides/forms).

@@ -1,0 +1,402 @@
+---
+title: Formisch
+description: A three-step checkout with Formisch, the successor of Modular Forms, and a Valibot schema per step shared by the form and the flow.
+---
+
+[Formisch](https://formisch.dev) is the successor of Modular Forms, by the
+same author: Modular Forms is in maintenance mode and its site recommends
+Formisch for new projects. It is schema-first and built on
+[Valibot](https://valibot.dev), which implements
+[Standard Schema](https://standardschema.dev), so a step's Valibot schema is
+also its form's schema.
+
+Formisch owns the fields of each step; Stepperize owns the flow, what each step
+saved and the order sent at the end. The code on this page is checked against
+`@formisch/solid` 1.3, Valibot 1.5 and Solid 1.9.
+
+## Install
+
+```bash
+npm install @stepperize/solid @formisch/solid valibot
+```
+
+Formisch only takes Valibot schemas. The steps can use any Standard Schema
+library, but sharing one schema between the form and the step means Valibot
+here.
+
+## The flow
+
+```ts title="checkout.ts"
+import { defineStepper, type FlowOutput, type Issue } from "@stepperize/solid";
+import * as v from "valibot";
+
+export const personalSchema = v.object({
+  name: v.pipe(v.string(), v.trim(), v.nonEmpty("Enter your name")),
+  email: v.pipe(v.string(), v.email("Enter a valid email")),
+});
+
+export const shippingSchema = v.object({
+  address: v.pipe(v.string(), v.trim(), v.nonEmpty("Enter your address")),
+  zip: v.pipe(v.string(), v.regex(/^\d{5}$/, "Enter a 5-digit ZIP")),
+});
+
+export const checkout = defineStepper(
+  [
+    { id: "personal", title: "Personal", schema: personalSchema },
+    { id: "shipping", title: "Shipping", schema: shippingSchema },
+    { id: "review", title: "Review" },
+  ],
+  { linear: true },
+);
+
+export type Order = FlowOutput<typeof checkout.steps>;
+
+/** The field an issue belongs to: the first part of its path. */
+export function fieldOf(issue: Issue) {
+  const part = issue.path?.[0];
+  return typeof part === "object" ? part.key : part;
+}
+```
+
+## Complete example
+
+```tsx title="CheckoutForm.tsx"
+import { createForm, Field, Form, getInput, setErrors } from "@formisch/solid";
+import { createSignal, Match, Show, Switch } from "solid-js";
+import type * as v from "valibot";
+import { checkout, fieldOf, type Order, personalSchema, shippingSchema } from "./checkout";
+
+// Return the promise: the flow stays pending while it runs, and unfinished if it rejects.
+async function placeOrder(order: Order) {
+  const response = await fetch("/api/orders", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(order),
+  });
+  if (!response.ok) throw new Error("Could not place the order");
+}
+
+export function CheckoutForm() {
+  return (
+    <checkout.Provider onFinish={placeOrder}>
+      <CheckoutSteps />
+    </checkout.Provider>
+  );
+}
+
+function CheckoutSteps() {
+  const stepper = checkout.useStepperContext();
+
+  return (
+    <Show when={!stepper.isFinished} fallback={<p role="status">Order placed.</p>}>
+      <section>
+        <h2>{stepper.current.title}</h2>
+        <Switch>
+          <Match when={stepper.current.id === "personal"}>
+            <PersonalStep />
+          </Match>
+          <Match when={stepper.current.id === "shipping"}>
+            <ShippingStep />
+          </Match>
+          <Match when={stepper.current.id === "review"}>
+            <ReviewStep />
+          </Match>
+        </Switch>
+      </section>
+    </Show>
+  );
+}
+
+function PersonalStep() {
+  const stepper = checkout.useStepperContext();
+  const form = createForm({
+    schema: personalSchema,
+    // What the step saved: Back and a restored draft open the form filled in.
+    initialInput: stepper.data.personal,
+  });
+
+  // Formisch only calls this once its schema passed.
+  async function submit(output: v.InferOutput<typeof personalSchema>) {
+    const result = await stepper.next(output);
+    if (result.accepted || !result.issues) return;
+    // Rules only the step knows about come back as issues: show them on their fields.
+    for (const issue of result.issues) {
+      const field = fieldOf(issue);
+      if (field === "name" || field === "email") {
+        setErrors(form, { path: [field], errors: [issue.message] });
+      }
+    }
+  }
+
+  return (
+    <Form of={form} onSubmit={submit}>
+      <Field of={form} path={["name"]}>
+        {(field) => (
+          <div>
+            <label for="name">Name</label>
+            <input
+              {...field.props}
+              id="name"
+              autocomplete="name"
+              value={field.input ?? ""}
+              aria-invalid={!!field.errors}
+              aria-describedby={field.errors ? "name-error" : undefined}
+            />
+            <Show when={field.errors}>
+              {(errors) => (
+                <p id="name-error" role="alert">
+                  {errors()[0]}
+                </p>
+              )}
+            </Show>
+          </div>
+        )}
+      </Field>
+
+      <Field of={form} path={["email"]}>
+        {(field) => (
+          <div>
+            <label for="email">Email</label>
+            <input
+              {...field.props}
+              id="email"
+              type="email"
+              autocomplete="email"
+              value={field.input ?? ""}
+              aria-invalid={!!field.errors}
+              aria-describedby={field.errors ? "email-error" : undefined}
+            />
+            <Show when={field.errors}>
+              {(errors) => (
+                <p id="email-error" role="alert">
+                  {errors()[0]}
+                </p>
+              )}
+            </Show>
+          </div>
+        )}
+      </Field>
+
+      <button type="submit" disabled={form.isSubmitting}>
+        Continue
+      </button>
+    </Form>
+  );
+}
+
+function ShippingStep() {
+  const stepper = checkout.useStepperContext();
+  const form = createForm({
+    schema: shippingSchema,
+    initialInput: stepper.data.shipping,
+  });
+
+  async function submit(output: v.InferOutput<typeof shippingSchema>) {
+    const result = await stepper.next(output);
+    if (result.accepted || !result.issues) return;
+    for (const issue of result.issues) {
+      const field = fieldOf(issue);
+      if (field === "address" || field === "zip") {
+        setErrors(form, { path: [field], errors: [issue.message] });
+      }
+    }
+  }
+
+  function back() {
+    // Keep what was typed here, without validating it. Only when something
+    // changed: a new object would make a complete step incomplete.
+    if (form.isDirty) {
+      const { address = "", zip = "" } = getInput(form);
+      stepper.setData("shipping", { address, zip });
+    }
+    void stepper.prev();
+  }
+
+  return (
+    <Form of={form} onSubmit={submit}>
+      <Field of={form} path={["address"]}>
+        {(field) => (
+          <div>
+            <label for="address">Address</label>
+            <input
+              {...field.props}
+              id="address"
+              autocomplete="street-address"
+              value={field.input ?? ""}
+              aria-invalid={!!field.errors}
+              aria-describedby={field.errors ? "address-error" : undefined}
+            />
+            <Show when={field.errors}>
+              {(errors) => (
+                <p id="address-error" role="alert">
+                  {errors()[0]}
+                </p>
+              )}
+            </Show>
+          </div>
+        )}
+      </Field>
+
+      <Field of={form} path={["zip"]}>
+        {(field) => (
+          <div>
+            <label for="zip">ZIP</label>
+            <input
+              {...field.props}
+              id="zip"
+              inputmode="numeric"
+              autocomplete="postal-code"
+              value={field.input ?? ""}
+              aria-invalid={!!field.errors}
+              aria-describedby={field.errors ? "zip-error" : undefined}
+            />
+            <Show when={field.errors}>
+              {(errors) => (
+                <p id="zip-error" role="alert">
+                  {errors()[0]}
+                </p>
+              )}
+            </Show>
+          </div>
+        )}
+      </Field>
+
+      <button type="button" onClick={back}>
+        Back
+      </button>
+      <button type="submit" disabled={form.isSubmitting}>
+        Review
+      </button>
+    </Form>
+  );
+}
+
+function ReviewStep() {
+  const stepper = checkout.useStepperContext();
+  const [error, setError] = createSignal("");
+
+  async function confirm() {
+    setError("");
+    try {
+      // On the last step, next() runs onFinish and waits for it.
+      await stepper.next();
+    } catch {
+      setError("Could not place the order. Try again.");
+    }
+  }
+
+  return (
+    <>
+      <dl>
+        <dt>Personal</dt>
+        <dd>
+          {stepper.data.personal?.name} · {stepper.data.personal?.email}
+        </dd>
+        <dt>Shipping</dt>
+        <dd>
+          {stepper.data.shipping?.address}, {stepper.data.shipping?.zip}
+        </dd>
+      </dl>
+      <Show when={error()}>
+        <p role="alert">{error()}</p>
+      </Show>
+
+      <button type="button" disabled={stepper.isPending} onClick={() => stepper.goTo("personal")}>
+        Edit details
+      </button>
+      <button type="button" disabled={stepper.isPending} onClick={() => stepper.prev()}>
+        Back
+      </button>
+      <button type="button" disabled={stepper.isPending} onClick={confirm}>
+        {stepper.isPending ? "Placing order…" : "Place order"}
+      </button>
+    </>
+  );
+}
+```
+
+## Why this works
+
+- **One schema, two checks.** `createForm({ schema })` validates the fields,
+  and `<Form onSubmit>` only calls `submit` once they pass, with the schema's
+  output. `next(output)` runs the same schema again as the gate: it passes, and
+  it still blocks every other way forward.
+- **Back fills the form.** `initialInput` comes from `stepper.data`, so going
+  back, or resuming a draft, shows what was saved.
+- **Errors from the step land on their fields.** `setErrors(form, { path, errors })`
+  sets a field's messages from outside the schema, and `fieldOf` finds the
+  field an issue is about.
+- **The request is part of the last move.** `onFinish` returns the promise of
+  the request: `stepper.isPending` is `true` while it runs, a second press is
+  refused, and a failure leaves the flow open for another try.
+
+## Which side validates
+
+| | Runs | When it fails |
+| --- | --- | --- |
+| **Formisch** | On submit, then on input (its default `validate` and `revalidate`) | `submit` is not called, so `next()` never runs |
+| **The step's `schema`** | Inside every `next()` | `next()` returns `issues`; `submit` sets them on their fields |
+
+## Errors that come from the step
+
+Keep the form's schema synchronous and put the slow rule on the step only. With
+Valibot, an async rule about one field is a `partialCheckAsync`, forwarded to
+that field so its issue carries the right path:
+
+```ts title="checkout.ts"
+export const checkout = defineStepper(
+  [
+    {
+      id: "personal",
+      title: "Personal",
+      // The form keeps `personalSchema`; only the step asks the server.
+      schema: v.pipeAsync(
+        personalSchema,
+        v.forwardAsync(
+          v.partialCheckAsync(
+            [["email"]],
+            async ({ email }) => !(await isRegistered(email)),
+            "That email already has an account",
+          ),
+          ["email"],
+        ),
+      ),
+    },
+    { id: "shipping", title: "Shipping", schema: shippingSchema },
+    { id: "review", title: "Review" },
+  ],
+  { linear: true },
+);
+```
+
+`isRegistered` is your own request. The step's data keeps the type of the
+form's values, and the form never sends a request while the person types.
+
+## Drafts and Back
+
+- **Back keeps what was typed, without validating it.** `getInput(form)`
+  returns what is in the fields, possibly incomplete. Only write it with
+  `setData` when `form.isDirty`: a complete step whose data changes is no
+  longer complete, and in a `linear` flow neither are the steps after it.
+- **What `next()` stores.** The example passes the schema's output, here the
+  trimmed values. That is also valid input for the step's schema, so it is a
+  safe thing to store and to show again.
+
+## Pitfalls
+
+- **Input names are paths.** Formisch names each input after its path
+  (`["email"]`), so the browser's `FormData` is not the form's value. Read values
+  from Formisch (`getInput`, the `submit` argument), not from the DOM.
+- **Zod with Formisch.** Formisch needs Valibot. If your steps use Zod, keep
+  Zod on the step and use [TanStack Form](/docs/v9/solid/forms/tanstack-form),
+  which takes any Standard Schema.
+- **`@modular-forms/solid` in new code.** It still works, but it is in
+  maintenance mode; Formisch is where new features go.
+
+## Links
+
+- [Formisch for Solid](https://formisch.dev/solid/guides/introduction/)
+- [Formisch: create your form](https://formisch.dev/solid/guides/create-your-form/)
+- [Valibot: async validation](https://valibot.dev/guides/async-validation/)
+- The same flow with [TanStack Form](/docs/v9/solid/forms/tanstack-form), or
+  without a library: [Forms](/docs/v9/solid/guides/forms).

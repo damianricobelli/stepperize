@@ -1,0 +1,148 @@
+---
+title: Shared state
+description: One flow followed by several elements.
+---
+
+`checkout.controller(this, options)` gives one element its own flow. When the
+step list, the current panel and the buttons are different elements, create the
+flow once and let each element follow it.
+
+A controller is given either options, and owns a new flow, or a flow, which it
+follows.
+Either can be a function, read again before every render of the host:
+
+```ts
+stepper = checkout.controller(this, { linear: true });     // owns a flow
+stepper = checkout.controller(this, checkoutFlow);         // follows one
+stepper = checkout.controller(this, () => this.flow);      // follows whatever `flow` holds now
+```
+
+A follower updates its host on every change and unsubscribes when the host is
+disconnected, exactly like an owner. It never replaces the flow's options and
+never destroys it.
+
+## A flow in a module
+
+For a flow that lives as long as the page, create it in a module and import it
+wherever it is needed:
+
+```ts title="checkout-flow.ts"
+import { checkout } from "./checkout";
+
+export const checkoutFlow = checkout.create({ linear: true, onFinish: placeOrder });
+```
+
+```ts title="checkout-header.ts"
+import { html, LitElement } from "lit";
+import { checkout } from "./checkout";
+import { checkoutFlow } from "./checkout-flow";
+
+class CheckoutHeader extends LitElement {
+  stepper = checkout.controller(this, checkoutFlow);
+
+  render() {
+    const stepper = this.stepper.value;
+    return html`<p>Step ${stepper.index + 1} of ${stepper.steps.length}</p>`;
+  }
+}
+customElements.define("checkout-header", CheckoutHeader);
+```
+
+## A flow from a parent element
+
+When each instance of a parent needs its own flow, let the parent own it and
+hand it down as a property. The child passes a function, so it follows the
+property as it is on every render:
+
+```ts
+import type { Flow } from "@stepperize/lit";
+
+class CheckoutPage extends LitElement {
+  stepper = checkout.controller(this, { linear: true });
+
+  render() {
+    return html`
+      <checkout-header .flow=${this.stepper.flow}></checkout-header>
+      <checkout-body .flow=${this.stepper.flow}></checkout-body>
+    `;
+  }
+}
+
+class CheckoutHeader extends LitElement {
+  static properties = { flow: { attribute: false } };
+  declare flow?: Flow<typeof checkout.steps>;
+
+  stepper = checkout.controller(this, () => this.flow);
+
+  render() {
+    const stepper = this.stepper.value;
+    return html`<p>Step ${stepper.index + 1} of ${stepper.steps.length}</p>`;
+  }
+}
+```
+
+When the property changes to another flow, the controller follows the new one
+from that render on.
+
+Until a flow arrives the function returns `undefined`, and the controller gives
+the host a flow of its own, at the first step, so `render()` never has to
+check. Once a flow arrives, that stand-in flow is destroyed. If the first render must not
+show anything before the flow arrives, check the property yourself:
+`if (!this.flow) return nothing;`.
+
+## With @lit/context
+
+[`@lit/context`](https://lit.dev/docs/data/context/) hands a flow to every
+element below a provider, at any depth and across shadow roots. Provide the
+flow the parent owns, and follow what the consumer holds:
+
+```ts title="checkout-context.ts"
+import { createContext } from "@lit/context";
+import type { Flow } from "@stepperize/lit";
+import { checkout } from "./checkout";
+
+export const checkoutContext = createContext<Flow<typeof checkout.steps>>("checkout");
+```
+
+```ts
+import { ContextConsumer, ContextProvider } from "@lit/context";
+
+class CheckoutPage extends LitElement {
+  stepper = checkout.controller(this, { linear: true });
+  #provider = new ContextProvider(this, { context: checkoutContext, initialValue: this.stepper.flow });
+}
+
+class CheckoutHeader extends LitElement {
+  #flow = new ContextConsumer(this, { context: checkoutContext, subscribe: true });
+  stepper = checkout.controller(this, () => this.#flow.value);
+}
+```
+
+The consumer updates its host when the value arrives or changes, and the
+controller reads it before that render. Stepperize does not depend on
+`@lit/context`. With decorators, `@consume({ context: checkoutContext, subscribe: true })`
+on a `flow` property and `controller(this, () => this.flow)` do the same.
+
+## Ending a flow
+
+Disconnecting the host does not end anything: an element can be moved, and its
+controller picks up where it left off when it is connected again. To end it for
+good, call `destroy()`:
+
+```ts
+this.stepper.destroy();
+```
+
+It stops updating the host and removes the controller from it. A flow the host
+owns is destroyed too, which cancels a running move (its promise resolves with
+`reason: "cancelled"`). A flow it follows is left running for everyone else.
+
+## Reading only what you need
+
+A Lit element re-renders as a whole and only touches the DOM that changed, so
+there is no selector argument. For a derived value, compute it in `render()`.
+
+## Outside an element
+
+`checkout.create()` returns the same state machine with `get()` and
+`subscribe()`, for tests, servers and plain custom elements.

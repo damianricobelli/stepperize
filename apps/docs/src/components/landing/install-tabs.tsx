@@ -2,28 +2,56 @@
 
 import { Check, Copy } from "lucide-react";
 import { useRef, useState } from "react";
+import { FrameworkIcon } from "@/components/framework-icon";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import {
+	CHOICE_LABELS,
+	CHOICES,
+	setFramework,
+	useFramework,
+} from "./framework-choice";
 
 const MANAGERS = {
-	npm: "npm i @stepperize/react",
-	pnpm: "pnpm add @stepperize/react",
-	yarn: "yarn add @stepperize/react",
-	bun: "bun add @stepperize/react",
+	npm: "npm i",
+	pnpm: "pnpm add",
+	yarn: "yarn add",
+	bun: "bun add",
 } as const;
+
+/**
+ * One entry per framework, React first, then the core. `@stepperize/core/dom`
+ * is an entry of `@stepperize/core`: what you install is the package.
+ */
+const PACKAGES = CHOICES.map((entry) => ({
+	id: entry.id,
+	label: entry.title,
+	package: entry.package.split("/").slice(0, 2).join("/"),
+}));
 
 type Manager = keyof typeof MANAGERS;
 const MANAGER_IDS = Object.keys(MANAGERS) as Manager[];
 
 /**
- * Copy-ready install command with a switch per package manager. Meeting the
- * developer at whichever tool they already use removes a tiny but real
- * friction point on the path to a first install.
+ * Copy-ready install command with a switch per package manager and a choice
+ * of framework: the visitor's, shared with the rest of the page (React until
+ * they pick one). Meeting the developer at whichever
+ * tools they already use removes a tiny but real friction point on the path
+ * to a first install.
  */
 export function InstallTabs({ className }: { className?: string }) {
 	const [manager, setManager] = useState<Manager>("npm");
+	const framework = useFramework();
 	const [copied, setCopied] = useState(false);
 	const resetTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
-	const cmd = MANAGERS[manager];
+	const pkg = PACKAGES.find((entry) => entry.id === framework) ?? PACKAGES[0];
+	const cmd = `${MANAGERS[manager]} ${pkg.package}`;
 	const activeIndex = MANAGER_IDS.indexOf(manager);
 
 	const copy = async () => {
@@ -44,9 +72,12 @@ export function InstallTabs({ className }: { className?: string }) {
 				className,
 			)}
 		>
-			<div className="flex items-center justify-between border-b bg-muted/40 px-1.5 py-1.5">
-				<fieldset className="relative grid grid-cols-4">
-					<legend className="sr-only">Package manager</legend>
+			<div className="flex items-center justify-between gap-2 border-b bg-muted/40 px-1.5 py-1.5">
+				{/* Named on the group itself: a grid fieldset's legend is easy to lose. */}
+				<fieldset
+					aria-label="Package manager"
+					className="relative grid grid-cols-4"
+				>
 					{/* One sliding pill instead of four background swaps. */}
 					<span
 						aria-hidden
@@ -70,6 +101,34 @@ export function InstallTabs({ className }: { className?: string }) {
 						</button>
 					))}
 				</fieldset>
+				<Select
+					items={CHOICE_LABELS}
+					value={framework}
+					onValueChange={(id) => {
+						if (id) setFramework(id);
+					}}
+				>
+					<SelectTrigger
+						size="sm"
+						aria-label="Framework"
+						className="hit-44 h-7 gap-1.5 border-transparent bg-transparent pr-1.5 pl-2 text-xs font-medium text-muted-foreground hover:text-foreground dark:bg-transparent dark:hover:bg-transparent"
+					>
+						<FrameworkIcon id={pkg.id} className="size-3.5" />
+						<SelectValue />
+					</SelectTrigger>
+					<SelectContent
+						align="end"
+						alignItemWithTrigger={false}
+						aria-label="Framework"
+					>
+						{PACKAGES.map((entry) => (
+							<SelectItem key={entry.id} value={entry.id}>
+								<FrameworkIcon id={entry.id} />
+								{entry.label}
+							</SelectItem>
+						))}
+					</SelectContent>
+				</Select>
 			</div>
 			<div className="flex items-center gap-3 py-1.5 pr-1.5 pl-4">
 				<code className="min-w-0 flex-1 truncate font-mono text-[13px]">

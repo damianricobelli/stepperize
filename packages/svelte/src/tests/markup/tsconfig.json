@@ -1,0 +1,5 @@
+{
+	"extends": "../../../tsconfig.json",
+	"include": ["./**/*.svelte", "../fixtures/flow.ts"],
+	"exclude": []
+}

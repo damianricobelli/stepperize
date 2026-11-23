@@ -1,0 +1,52 @@
+---
+title: The route as the current step
+description: Keep the step in the URL with the Angular router, in both directions.
+---
+
+The `step` option makes the flow follow a value that lives somewhere else. Pass
+the options as a function: it is read again whenever a signal it uses changes.
+
+With `withComponentInputBinding()` the router hands the route parameter to an
+input, which is already a signal:
+
+```ts title="checkout.page.ts"
+import { Component, inject, input } from "@angular/core";
+import { Router } from "@angular/router";
+import { checkout } from "./checkout";
+
+@Component({ selector: "app-checkout-page", template: `…` })
+export class CheckoutPage {
+  readonly #router = inject(Router);
+  /** Bound from the route `checkout/:step`. */
+  readonly step = input.required<string>();
+
+  readonly stepper = checkout.injectStepper(() => ({
+    linear: true,
+    // The route moves (a link, the back button): the flow follows.
+    step: this.step(),
+    // The flow moves: push the new step.
+    onChange: (snapshot) => {
+      if (snapshot.step !== this.step()) void this.#router.navigate(["/checkout", snapshot.step]);
+    },
+    // The route asks for a step the flow cannot be on: correct it without a history entry.
+    onInvalidStep: (current) => void this.#router.navigate(["/checkout", current], { replaceUrl: true }),
+  }));
+}
+```
+
+Without input binding, turn the parameter into a signal with
+`toSignal(route.paramMap)` and read that in the function.
+
+- Following the route is a `goTo`. With `linear`, a deep link cannot open a
+  step before the ones in front of it are complete. Without `linear`, any step
+  can be opened, as with `goTo`.
+- The `guard` runs when the route changes after the component is created. It does not run for
+  the step the page first loads on.
+- `onInvalidStep` is called for unknown ids, for steps `linear` does not allow
+  yet and for route changes the guard refused.
+- The flow is created before the component first renders, when its inputs are
+  already set, so the flow starts on the route's step, on the server too.
+- A route change is followed before the next render, in the browser only.
+  Nothing moves the flow on the server, so no callback runs there.
+- `onChange` and `onInvalidStep` are read when they are called, so the arrow
+  functions above always see the current `step()`.

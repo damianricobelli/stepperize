@@ -1,0 +1,194 @@
+---
+title: Primitives
+description: Inputs of every stepper directive.
+---
+
+Standalone attribute directives. Import the ones you use, or all of them with
+`STEPPER_PRIMITIVES`, in a standalone component's `imports` or an `NgModule`'s.
+They add host attributes, and a static attribute you write on the root, the
+list, an item, a panel or an indicator wins over theirs.
+
+Every directive except `stepperRoot` must be inside an element that has it;
+otherwise it throws [SZ100](/docs/v9/core/errors#sz100).
+
+`StepId` below is the union of the step ids of every definition in your
+[`StepperRegistry`](#stepperregistry), or `string` when nothing is registered.
+
+## stepperRoot
+
+```html
+<div [stepperRoot]="stepper" orientation="vertical" aria-label="Checkout">…</div>
+```
+
+| Input | Type | Description |
+| --- | --- | --- |
+| `stepperRoot` | `StepperRef` | Required. What `injectStepper()` or `injectStepperContext()` returned. Bind another stepper and everything follows it. |
+| `orientation` | `"horizontal" \| "vertical"` | Default `"horizontal"`. |
+| `aria-label` | `string` | The name of the stepper. Default "Stepper". |
+
+The element gets `role="group"`. While an async check or `onFinish` runs it has
+`aria-busy` and `data-pending`; once the flow has finished it has
+`data-finished`. In the browser, a visually hidden live region is appended to
+it for announcements.
+
+Components inside it get its stepper from `injectStepperContext()`, as they
+would from `provideStepper()`.
+
+The flow's options (`linear`, `guard`, `onFinish`...) go to
+[`injectStepper`](/docs/v9/angular/api/define-stepper#injectstepper), not here;
+the root reads `linear` from the stepper, so a flow owned by a service or
+another component renders with its own policy. Exported as `stepperRoot`.
+
+## stepperList
+
+```html
+<ol stepperList>…</ol>
+```
+
+| Input | Type | Description |
+| --- | --- | --- |
+| `orientation` | `"horizontal" \| "vertical"` | Defaults to the root's. |
+
+A `tablist` when the flow is not linear and the template has triggers. Handles
+the arrow keys, Home and End, mirrored in right-to-left layouts, after your own
+`(keydown)` on the list: call `$event.preventDefault()` there to keep a key.
+
+## stepperItem
+
+```html
+<li [stepperItem]="step" #item="stepperItem">…</li>
+<li stepperItem="payment">…</li>
+```
+
+| Input | Type | Description |
+| --- | --- | --- |
+| `stepperItem` | `StepId \| Step` | Required. A step of `stepper.steps`, or its id. |
+
+One step: `data-state`, `data-invalid`, `data-disabled`, and
+`role="presentation"` inside a tablist. Exported as `stepperItem`; its
+`value()` signal has the fields below, and only changes when they do.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `step` | The bound step | The step, with all its fields: typed when you bind the step, or a registered id. |
+| `index` | `number` | Its position. |
+| `state` | `"pending" \| "current" \| "complete"` | |
+| `invalid` | `boolean` | Its last validation failed and its data has not changed since. |
+| `disabled` | `boolean` | `goTo` would be refused right now. |
+| `pending` | `boolean` | A move is running. Every step is `disabled` meanwhile. |
+
+## stepperTrigger
+
+```html
+<button stepperTrigger>{{ step.title }}</button>
+<button stepperTrigger="review">Review</button>
+```
+
+| Input | Type | Description |
+| --- | --- | --- |
+| `stepperTrigger` | `StepId` | A step id. Optional inside a `stepperItem`. |
+| `disabled` | `boolean` | Disable it on top of what the flow decides. |
+
+Goes to its step when pressed. It is disabled when `linear` does not allow
+reaching the step. In a flow that is not linear it is a `tab`; in a linear flow
+it is a plain button, with `aria-current="step"` on the current one.
+
+The flow decides its attributes, except `type`: a `<button>` gets
+`type="button"` unless you wrote one. On an element without a native
+`disabled` (a link, a `div`), a disabled trigger gets `aria-disabled` only and
+ignores clicks.
+
+Without an id and outside an item it throws
+[SZ101](/docs/v9/core/errors#sz101).
+
+## stepperIndicator
+
+```html
+<span stepperIndicator></span>
+```
+
+| Input | Type | Description |
+| --- | --- | --- |
+| `stepperIndicator` | `StepId` | A step id. Optional inside a `stepperItem`. |
+
+A decorative mark: `aria-hidden`, `data-state`, `data-invalid`.
+
+## stepperContent
+
+```html
+<div stepperContent="payment" #panel="stepperContent">
+  @if (panel.active()) { <app-payment-form /> }
+</div>
+```
+
+| Input | Type | Description |
+| --- | --- | --- |
+| `stepperContent` | `StepId` | Required. A step id. |
+
+The panel of a step. While its step is not current it stays in the page with
+`hidden` and an inline `display: none`, which a `display` rule of yours does
+not override unless it is marked `!important`. It
+is the `tabpanel` of its trigger in a flow rendered as tabs, and otherwise a
+`group` named after the step's `title`.
+
+Exported as `stepperContent`, with an `active()` signal: whether its step is
+current. Use it with `@if` or `@defer (when …)` to render the content only
+then.
+
+## stepperPrev and stepperNext
+
+```html
+<button stepperPrev>Back</button>
+<button stepperNext>Continue</button>
+```
+
+| Input | Type | Description |
+| --- | --- | --- |
+| `disabled` | `boolean` | Disable it on top of what the flow decides. |
+
+- `stepperNext` calls `next()` with no argument, which validates the data
+  stored for the current step. On the last step it finishes the flow; it is
+  never disabled for being at the end.
+- `stepperPrev` calls `prev()`, and is disabled when there is nowhere to go
+  back to.
+
+While an async check or `onFinish` runs, both are `aria-disabled` and ignore
+clicks, and have `data-pending`. Once the flow has finished, the next button is
+`aria-disabled` and ignores clicks, so the flow is not submitted twice.
+
+Like the trigger, only `type` is yours, and on an element without a native
+`disabled` they use `aria-disabled` alone.
+
+## Clicks
+
+Each part acts once every `(click)` on its own element has run. Call
+`$event.preventDefault()` there to handle the move yourself.
+`$event.stopPropagation()` does not stop the part. Clicks made before
+hydration are replayed with Angular's event replay.
+
+## StepperRegistry
+
+```ts
+declare module "@stepperize/angular" {
+  interface StepperRegistry {
+    checkout: typeof checkout;
+    onboarding: typeof onboarding;
+  }
+}
+```
+
+Empty by default. Each entry is a definition (or a step array); `StepId`
+becomes the union of their ids, and the template type-checker reports any
+other id given to `stepperContent`, `stepperItem`, `stepperTrigger` or
+`stepperIndicator`. See [typed step ids](/docs/v9/angular/guides/primitives#typed-step-ids).
+
+## Titles and descriptions
+
+There are no title or description directives: write `{{ step.title }}`.
+
+## Diagnostics
+
+In development the trigger warns when it has no accessible name
+([SZ002](/docs/v9/core/errors#sz002)), is outside a list
+([SZ003](/docs/v9/core/errors#sz003)) or is not a button
+([SZ005](/docs/v9/core/errors#sz005)). Production builds leave the checks out.

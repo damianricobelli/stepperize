@@ -1,0 +1,139 @@
+---
+title: Your first stepper
+description: Define the steps, render the current one, move between them, and finish.
+---
+
+This page builds a three-step checkout from nothing. It takes about five
+minutes, and every later page builds on it.
+
+## 1. Define the steps
+
+A step needs an `id`. Every other field is yours and stays typed.
+
+```ts title="checkout.ts"
+import { defineStepper } from "@stepperize/vue";
+
+export const checkout = defineStepper([
+  { id: "shipping", title: "Shipping" },
+  { id: "payment", title: "Payment" },
+  { id: "review", title: "Review" },
+]);
+```
+
+Create the definition once, in its own module, outside your components. It is
+not state: it is the typed description of the flow, with a composable and
+components bound to it. Calling `defineStepper` inside `<script setup>` would
+create a new definition for every instance of the component.
+
+## 2. Render the current step
+
+`useStepper()` creates a flow owned by the component. What it returns is
+reactive: read it in the template and the template follows the flow.
+
+```vue title="Checkout.vue"
+<script setup lang="ts">
+import { checkout } from "./checkout";
+
+const stepper = checkout.useStepper();
+</script>
+
+<template>
+  <section>
+    <h2>{{ stepper.current.title }}</h2>
+
+    <p v-if="stepper.current.id === 'shipping'">Where should we send it?</p>
+    <p v-else-if="stepper.current.id === 'payment'">How would you like to pay?</p>
+    <p v-else>Check everything before placing the order.</p>
+  </section>
+</template>
+```
+
+`stepper.current` is the step object you defined, so `title` is typed, and
+`stepper.current.id` is the union of your ids: a typo in the `v-if` does not
+compile.
+
+<Callout title="Read it, do not destructure or watch the whole object">
+	`stepper` works like a `reactive()` object or a Pinia store: `stepper.current`
+	is always the latest, but `const { current } = stepper` is a copy that never
+	changes. The actions (`next`, `prev`, `goTo`...) are safe to destructure.
+
+	It is read-only: `stepper.index = 2` is a type error, and is refused at
+	runtime. Change the flow with its actions.
+
+	To react to a change, watch a getter of what you need:
+	`watch(() => stepper.current.id, ...)`. `watch(stepper, ...)` never fires
+	(Vue warns "Invalid watch source"). To see every change, use the `onChange`
+	option.
+</Callout>
+
+## 3. Move
+
+```vue
+<button type="button" :disabled="stepper.isFirst" @click="stepper.prev()">Back</button>
+<button type="button" @click="stepper.next()">
+  {{ stepper.isLast ? "Place order" : "Continue" }}
+</button>
+```
+
+`next()` moves forward and `prev()` goes back. `isFirst` and `isLast` are
+derived for you, so there is no index arithmetic.
+
+## 4. Finish
+
+`next()` on the last step finishes the flow and calls `onFinish`, once. From
+then on `stepper.isFinished` is `true`, until the flow changes again.
+
+```ts
+const stepper = checkout.useStepper({
+  onFinish: () => alert("Order placed"),
+});
+```
+
+```vue
+<p v-if="stepper.isFinished">Thanks for your order.</p>
+```
+
+## The whole thing
+
+With `checkout.ts` from step 1:
+
+```vue title="Checkout.vue"
+<script setup lang="ts">
+import { checkout } from "./checkout";
+
+const stepper = checkout.useStepper({
+  onFinish: () => alert("Order placed"),
+});
+</script>
+
+<template>
+  <p v-if="stepper.isFinished">Thanks for your order.</p>
+  <section v-else>
+    <p>Step {{ stepper.index + 1 }} of {{ stepper.steps.length }}</p>
+    <h2>{{ stepper.current.title }}</h2>
+
+    <p v-if="stepper.current.id === 'shipping'">Where should we send it?</p>
+    <p v-else-if="stepper.current.id === 'payment'">How would you like to pay?</p>
+    <p v-else>Check everything before placing the order.</p>
+
+    <button type="button" :disabled="stepper.isFirst" @click="stepper.prev()">Back</button>
+    <button type="button" @click="stepper.next()">
+      {{ stepper.isLast ? "Place order" : "Continue" }}
+    </button>
+  </section>
+</template>
+```
+
+## What you did not write
+
+- No index `ref`, and no clamping at the edges.
+- No comparing against untyped strings: a typo in a step id does not compile.
+- No "is this the last step?" logic.
+
+## Where to go next
+
+- Collect data and validate it: [Forms](/docs/v9/vue/guides/forms).
+- Read the flow from several components: [Shared state](/docs/v9/vue/guides/shared-state).
+- Use ready-made accessible components: [Primitives](/docs/v9/vue/guides/primitives).
+- Skip steps depending on the answers: [Branching](/docs/v9/vue/guides/branching)
+  (the options are the same in every binding).

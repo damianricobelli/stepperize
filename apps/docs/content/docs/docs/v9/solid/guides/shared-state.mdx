@@ -1,0 +1,71 @@
+---
+title: Shared state
+description: One flow read by several components, with a Provider and useStepperContext.
+---
+
+`useStepper()` gives one component its own flow. When the step list, the
+current panel and the buttons live in different components, share one flow
+instead.
+
+## Provider
+
+```tsx title="CheckoutFlow.tsx"
+import { checkout } from "./checkout";
+
+export function Checkout() {
+  return (
+    <checkout.Provider linear onFinish={placeOrder}>
+      <CheckoutHeader />
+      <CheckoutBody />
+    </checkout.Provider>
+  );
+}
+```
+
+`Provider` takes every [option](/docs/v9/solid/api/options) as a prop and
+renders no element.
+
+`Stepper.Root` is a `Provider` too: components inside it can call
+`useStepperContext()`.
+
+Providers nest. A component reads the nearest `Provider` of its own
+definition, so a flow inside another flow's step keeps its own state.
+
+## useStepperContext
+
+```tsx title="CheckoutHeader.tsx"
+import { checkout } from "./checkout";
+
+export function CheckoutHeader() {
+  const stepper = checkout.useStepperContext();
+
+  return (
+    <p>
+      Step {stepper.index + 1} of {stepper.steps.length}
+    </p>
+  );
+}
+```
+
+It returns the same reactive stepper as `useStepper()`. Outside the flow's own
+`Provider` it throws [SZ100](/docs/v9/core/errors#sz100).
+
+## Selectors
+
+Pass a function to get a memo with just what you need:
+
+```ts
+const isLast = checkout.useStepperContext((stepper) => stepper.isLast);
+// Accessor<boolean>
+```
+
+JSX already tracks what it reads, so selectors are not needed for performance
+the way they are in React. They are convenient when a computation is expensive
+or you want an accessor to pass along.
+
+## Outside a component
+
+A flow does not need a component. `checkout.create()` returns the same state
+machine with `get()` and `subscribe()`, for stores, tests and servers; and
+`useStepper()` works under any owner, such as `createRoot`, which destroys the
+flow when it is disposed.

@@ -6,6 +6,7 @@ import {
 	jsonLdScript,
 	seo,
 	softwareApplicationLd,
+	softwareSourceCodeLd,
 	webSiteLd,
 } from "@/lib/seo";
 
@@ -19,12 +20,14 @@ export const Route = createFileRoute("/")({
 				description: meta.description,
 				socialTitle: meta.socialTitle,
 				socialDescription: meta.socialDescription,
+				socialSection: meta.socialSection,
 				keywords: homeKeywords(),
 				canonical: "/",
 				type: "website",
 			}),
 			scripts: [
 				jsonLdScript(softwareApplicationLd()),
+				jsonLdScript(softwareSourceCodeLd()),
 				jsonLdScript(webSiteLd()),
 			],
 		};

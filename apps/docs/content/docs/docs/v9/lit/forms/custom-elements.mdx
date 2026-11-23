@@ -1,0 +1,340 @@
+---
+title: Form-associated elements
+description: Fields in their own shadow root that still belong to the form, so FormData, validity and focus work in a multi-step Lit flow.
+---
+
+Lit has no dominant form library: the platform is the form library. A
+`<form>`, `FormData` and the step's schema are enough, as
+[Forms](/docs/v9/lit/guides/forms) shows. This page is about the one place
+that breaks: fields that are custom elements.
+
+The code on this page is checked against Lit 3.3 and Zod 4.6. Form-associated
+custom elements work in every current browser (Safari since 16.4).
+
+## Why a custom field disappears from the form
+
+A design system usually wraps an input with its label and error in an element
+of its own, `<text-field>`, with the input inside its shadow root. The `<form>`
+around it cannot see into that shadow root, so:
+
+- `new FormData(form)` does not contain the field, and `next(values)` receives
+  an object without it;
+- the browser does not count it when it checks the form, and it cannot focus
+  it as an invalid field.
+
+A form-associated custom element fixes all three. It declares
+`static formAssociated = true` and reports to the form through
+[`ElementInternals`](https://developer.mozilla.org/en-US/docs/Web/API/ElementInternals):
+`setFormValue` puts its value in `FormData`, and `setValidity` gives it a
+validity like a native input.
+
+## A field that belongs to the form
+
+```ts title="text-field.ts"
+import { css, html, LitElement, type PropertyValues } from "lit";
+
+/**
+ * A labelled input in its own shadow root that still belongs to the `<form>`
+ * around it: its value is in `FormData`, and its error is its validity.
+ */
+export class TextField extends LitElement {
+  static formAssociated = true;
+  static properties = {
+    name: { reflect: true },
+    label: {},
+    type: {},
+    autocomplete: {},
+    value: {},
+    error: {},
+  };
+  // Focusing the element focuses its input, as `focus()` on an invalid field should.
+  static shadowRootOptions = { ...LitElement.shadowRootOptions, delegatesFocus: true };
+  static styles = css`
+    :host { display: grid; gap: 0.25rem; }
+  `;
+
+  declare name: string;
+  declare label: string;
+  declare type: string;
+  declare autocomplete: string;
+  declare value: string;
+  /** The message to show, from the step's issues. Empty when the field is valid. */
+  declare error: string;
+
+  readonly #internals = this.attachInternals();
+  #initial = "";
+
+  constructor() {
+    super();
+    this.name = "";
+    this.label = "";
+    this.type = "text";
+    this.autocomplete = "off";
+    this.value = "";
+    this.error = "";
+  }
+
+  override firstUpdated() {
+    this.#initial = this.value;
+  }
+
+  override updated(changed: PropertyValues<this>) {
+    if (changed.has("value")) this.#internals.setFormValue(this.value);
+    if (changed.has("error")) {
+      const input = this.renderRoot.querySelector("input") ?? undefined;
+      this.#internals.setValidity(this.error ? { customError: true } : {}, this.error, input);
+    }
+  }
+
+  /** Called when the form is reset. */
+  formResetCallback() {
+    this.value = this.#initial;
+  }
+
+  /** Called when the browser restores the form, after Back/Forward navigation. */
+  formStateRestoreCallback(state: string | File | FormData | null) {
+    if (typeof state === "string") this.value = state;
+  }
+
+  render() {
+    return html`
+      <label for="input">${this.label}</label>
+      <input
+        id="input"
+        .type=${this.type}
+        autocomplete=${this.autocomplete}
+        .value=${this.value}
+        aria-invalid=${this.error ? "true" : "false"}
+        aria-describedby="error"
+        @input=${(event: InputEvent) => {
+          this.value = (event.target as HTMLInputElement).value;
+        }}
+      />
+      <p id="error" role="alert">${this.error}</p>
+    `;
+  }
+}
+customElements.define("text-field", TextField);
+
+declare global {
+  interface HTMLElementTagNameMap {
+    "text-field": TextField;
+  }
+}
+```
+
+- **`setFormValue`** runs whenever `value` changes, so `FormData` always holds
+  what is in the input, under the field's `name`.
+- **`setValidity`** turns the step's message into the field's validity. The
+  element matches `:invalid`, and the third argument tells the browser which
+  inner element to point at.
+- **`delegatesFocus`** makes `field.focus()` focus the input.
+- **`formResetCallback` and `formStateRestoreCallback`** keep the field right
+  when the form is reset, or when the browser restores it after Back/Forward
+  navigation.
+
+## The flow
+
+```ts title="checkout.ts"
+import { defineStepper, type FlowOutput, type Issue } from "@stepperize/lit";
+import { z } from "zod";
+
+export const checkout = defineStepper(
+  [
+    {
+      id: "personal",
+      title: "Personal",
+      schema: z.object({
+        name: z.string().trim().min(1, "Enter your name"),
+        email: z.email("Enter a valid email"),
+      }),
+    },
+    {
+      id: "shipping",
+      title: "Shipping",
+      schema: z.object({
+        address: z.string().trim().min(1, "Enter your address"),
+        zip: z.string().regex(/^\d{5}$/, "Enter a 5-digit ZIP"),
+      }),
+    },
+    { id: "review", title: "Review" },
+  ],
+  { linear: true },
+);
+
+export type Order = FlowOutput<typeof checkout.steps>;
+
+/** The first message of each field, keyed by its path: "email", "address.zip". */
+export function fieldErrors(issues: ReadonlyArray<Issue> = []) {
+  const errors: Record<string, string> = {};
+  for (const issue of issues) {
+    const key = (issue.path ?? [])
+      .map((part) => String(typeof part === "object" ? part.key : part))
+      .join(".");
+    errors[key] ??= issue.message;
+  }
+  return errors;
+}
+```
+
+## Complete example
+
+```ts title="checkout-steps.ts"
+import { html, LitElement } from "lit";
+import { checkout, fieldErrors, type Order } from "./checkout";
+import "./text-field";
+
+async function placeOrder(order: Order) {
+  const response = await fetch("/api/orders", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(order),
+  });
+  if (!response.ok) throw new Error("Could not place the order");
+}
+
+export class CheckoutSteps extends LitElement {
+  static properties = { orderError: { state: true } };
+  declare orderError: string;
+
+  // Return the promise: the flow stays pending while it runs, and unfinished if it rejects.
+  stepper = checkout.controller(this, { onFinish: placeOrder });
+
+  constructor() {
+    super();
+    this.orderError = "";
+  }
+
+  get #form() {
+    return this.renderRoot.querySelector("form");
+  }
+
+  async #submit(event: SubmitEvent) {
+    event.preventDefault();
+    const stepper = this.stepper.value;
+    if (stepper.isLast) return this.#placeOrder();
+
+    // The text fields are form-associated: their values are in FormData.
+    const values = Object.fromEntries(new FormData(event.target as HTMLFormElement));
+    const result = await stepper.next(values);
+    if (!result.accepted && result.issues) {
+      await this.updateComplete;
+      // Each field set its validity from its message: focus the first one.
+      this.#form?.querySelector<HTMLElement>(":invalid")?.focus();
+    }
+  }
+
+  async #placeOrder() {
+    this.orderError = "";
+    try {
+      await this.stepper.value.next();
+    } catch {
+      this.orderError = "Could not place the order. Try again.";
+    }
+  }
+
+  #back() {
+    const stepper = this.stepper.value;
+    const form = this.#form;
+    if (stepper.current.id === "shipping" && form) {
+      // Keep what was typed here, without validating it. Only when something
+      // changed: a new object would make a complete step incomplete.
+      const { address = "", zip = "" } = Object.fromEntries(new FormData(form)) as Record<string, string>;
+      const saved = stepper.data.shipping;
+      if (address !== saved?.address || zip !== saved?.zip) stepper.setData("shipping", { address, zip });
+    }
+    void stepper.prev();
+  }
+
+  render() {
+    const stepper = this.stepper.value;
+    if (stepper.isFinished) return html`<p role="status">Order placed.</p>`;
+    const errors = fieldErrors(stepper.issues());
+
+    return html`
+      <h2>${stepper.current.title}</h2>
+      <form novalidate @submit=${this.#submit}>
+        ${stepper.match({
+          personal: (_step, data) => html`
+            <text-field name="name" label="Name" autocomplete="name"
+              .value=${data?.name ?? ""} .error=${errors.name ?? ""}></text-field>
+            <text-field name="email" label="Email" type="email" autocomplete="email"
+              .value=${data?.email ?? ""} .error=${errors.email ?? ""}></text-field>
+          `,
+          shipping: (_step, data) => html`
+            <text-field name="address" label="Address" autocomplete="street-address"
+              .value=${data?.address ?? ""} .error=${errors.address ?? ""}></text-field>
+            <text-field name="zip" label="ZIP" autocomplete="postal-code"
+              .value=${data?.zip ?? ""} .error=${errors.zip ?? ""}></text-field>
+          `,
+          review: () => html`
+            <dl>
+              <dt>Personal</dt>
+              <dd>${stepper.data.personal?.name} · ${stepper.data.personal?.email}</dd>
+              <dt>Shipping</dt>
+              <dd>${stepper.data.shipping?.address}, ${stepper.data.shipping?.zip}</dd>
+            </dl>
+            ${this.orderError ? html`<p role="alert">${this.orderError}</p>` : null}
+          `,
+        })}
+
+        <button type="button" ?disabled=${stepper.isFirst || stepper.isPending} @click=${this.#back}>
+          Back
+        </button>
+        <button ?disabled=${stepper.isPending}>
+          ${stepper.isLast ? (stepper.isPending ? "Placing order…" : "Place order") : "Continue"}
+        </button>
+      </form>
+    `;
+  }
+}
+customElements.define("checkout-steps", CheckoutSteps);
+```
+
+## Why this works
+
+- **The step validates; the field shows.** The form has `novalidate`, so the
+  schema is the only judge and its messages are the ones shown. `fieldErrors`
+  turns the issues of `stepper.issues()` into one message per field, and each
+  `<text-field>` turns its message into its validity.
+- **The first invalid field gets focus.** After a refused move, the host waits
+  for the fields to render their new validity and focuses the first one that
+  matches `:invalid`, inside the form's own shadow root.
+- **Back keeps values.** `match` hands each step the data it saved, and every
+  field takes it as its `value`. Back on the shipping step writes the typed
+  values with `setData` first, only when they differ from what was saved: a
+  complete step whose data changes is no longer complete.
+- **The request is part of the last move.** `onFinish` returns the promise of
+  the request: `stepper.isPending` is `true` while it runs, a second press is
+  refused, and a failure leaves the flow open for another try.
+
+## One element per step
+
+The other way to split a flow is an element per step, each with its own
+`<form>`. A step element then calls `next()` itself, on the flow its parent
+owns, and form association is not needed for its own inputs. Pass the flow
+down as a property, or through `@lit/context`, and follow it with
+`checkout.controller(this, () => this.flow)`; see
+[Shared state](/docs/v9/lit/guides/shared-state#a-flow-from-a-parent-element).
+
+Fields that are custom elements still need `formAssociated` to be in that
+step's `FormData`.
+
+## Pitfalls
+
+- **`setFormValue` only on input.** A value set from a property (Back, a
+  restored draft) never typed by the person would be missing from `FormData`.
+  Call it whenever `value` changes, as `updated()` does above.
+- **Clearing the message inside the field.** Lit only sets a property again
+  when the value it is bound to changes. If the field clears its own `error`,
+  the same message coming back from the next refusal is not set again. Let the
+  step's issues decide; they clear on the next `next()` or `setData`.
+- **`attachInternals()` twice.** It throws the second time. Call it once, in a
+  field initializer or the constructor.
+
+## Links
+
+- [MDN: `ElementInternals`](https://developer.mozilla.org/en-US/docs/Web/API/ElementInternals)
+- [web.dev: more capable form controls](https://web.dev/articles/more-capable-form-controls)
+- [Lit: shadow DOM](https://lit.dev/docs/components/shadow-dom/)
+- The same flow with native inputs: [Forms](/docs/v9/lit/guides/forms).

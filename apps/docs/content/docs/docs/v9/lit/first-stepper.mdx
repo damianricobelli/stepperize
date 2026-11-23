@@ -1,0 +1,143 @@
+---
+title: Your first stepper
+description: Define the steps, render the current one, move between them, and finish.
+---
+
+This page builds a three-step checkout from nothing. It takes about five
+minutes, and every later page builds on it.
+
+## 1. Define the steps
+
+A step needs an `id`. Every other field is yours and stays typed.
+
+```ts title="checkout.ts"
+import { defineStepper } from "@stepperize/lit";
+
+export const checkout = defineStepper([
+  { id: "shipping", title: "Shipping" },
+  { id: "payment", title: "Payment" },
+  { id: "review", title: "Review" },
+]);
+```
+
+Create the definition once, in a module. It is not state: it is the typed
+description of the flow.
+
+## 2. Render the current step
+
+`checkout.controller(this)` gives the element a flow of its own and updates the
+element on every change. `value` is the current stepper, and `match` runs the
+handler of the current step: forget a step and TypeScript tells you.
+
+```ts title="checkout-steps.ts"
+import { html, LitElement } from "lit";
+import { checkout } from "./checkout";
+
+export class CheckoutSteps extends LitElement {
+  stepper = checkout.controller(this);
+
+  render() {
+    const stepper = this.stepper.value;
+
+    return html`
+      <h2>${stepper.current.title}</h2>
+
+      ${stepper.match({
+        shipping: () => html`<p>Where should we send it?</p>`,
+        payment: () => html`<p>How would you like to pay?</p>`,
+        review: () => html`<p>Check everything before placing the order.</p>`,
+      })}
+    `;
+  }
+}
+customElements.define("checkout-steps", CheckoutSteps);
+```
+
+`stepper.current` is the step object you defined, so `title` is typed.
+
+<Callout title="Read value in render">
+	`this.stepper.value` is a new immutable object after every change. Read it
+	inside `render()` (or a method `render()` calls) so each update sees the
+	latest one, rather than keeping it in a field.
+</Callout>
+
+## 3. Move
+
+```ts
+html`
+  <button ?disabled=${stepper.isFirst} @click=${() => stepper.prev()}>Back</button>
+  <button @click=${() => stepper.next()}>${stepper.isLast ? "Place order" : "Continue"}</button>
+`;
+```
+
+`next()` moves forward and `prev()` goes back. `isFirst` and `isLast` are
+derived for you, so there is no index arithmetic.
+
+## 4. Finish
+
+`next()` on the last step finishes the flow and calls `onFinish`, once. From
+then on `stepper.isFinished` is `true`, until the flow changes again.
+
+```ts
+stepper = checkout.controller(this, {
+  onFinish: () => alert("Order placed"),
+});
+```
+
+```ts
+if (stepper.isFinished) return html`<p>Thanks for your order.</p>`;
+```
+
+## The whole thing
+
+```ts title="checkout-steps.ts"
+import { defineStepper } from "@stepperize/lit";
+import { html, LitElement } from "lit";
+
+const checkout = defineStepper([
+  { id: "shipping", title: "Shipping" },
+  { id: "payment", title: "Payment" },
+  { id: "review", title: "Review" },
+]);
+
+export class CheckoutSteps extends LitElement {
+  stepper = checkout.controller(this, {
+    onFinish: () => alert("Order placed"),
+  });
+
+  render() {
+    const stepper = this.stepper.value;
+    if (stepper.isFinished) return html`<p>Thanks for your order.</p>`;
+
+    return html`
+      <p>Step ${stepper.index + 1} of ${stepper.steps.length}</p>
+      <h2>${stepper.current.title}</h2>
+
+      ${stepper.match({
+        shipping: () => html`<p>Where should we send it?</p>`,
+        payment: () => html`<p>How would you like to pay?</p>`,
+        review: () => html`<p>Check everything before placing the order.</p>`,
+      })}
+
+      <button ?disabled=${stepper.isFirst} @click=${() => stepper.prev()}>Back</button>
+      <button @click=${() => stepper.next()}>${stepper.isLast ? "Place order" : "Continue"}</button>
+    `;
+  }
+}
+customElements.define("checkout-steps", CheckoutSteps);
+```
+
+## What you did not write
+
+- No index property, and no clamping at the edges.
+- No `switch` over strings: a typo in a step id does not compile.
+- No "is this the last step?" logic.
+- No subscription to clean up: the controller follows the element's lifecycle.
+
+## Where to go next
+
+- Collect data and validate it: [Forms](/docs/v9/lit/guides/forms).
+- Read the flow from several elements: [Shared state](/docs/v9/lit/guides/shared-state).
+- Use accessible directives in your template: [Primitives](/docs/v9/lit/guides/primitives).
+- Skip steps depending on the answers: [Branching](/docs/v9/lit/guides/branching)
+  (the options are the same in every binding).

@@ -33,6 +33,7 @@ export const Route = createFileRoute("/blocks/$blockId")({
 				title: meta.title,
 				description: meta.description,
 				keywords: meta.keywords,
+				socialSection: "React block · shadcn/ui",
 				canonical: `/blocks/${block.id}`,
 				type: "article",
 			}),

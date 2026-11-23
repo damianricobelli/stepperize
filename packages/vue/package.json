@@ -1,0 +1,78 @@
+{
+	"name": "@stepperize/vue",
+	"version": "0.0.0",
+	"private": false,
+	"publishConfig": {
+		"access": "public"
+	},
+	"description": "Type-safe steppers, wizards and multi-step forms for Vue 3: composables and accessible, unstyled components.",
+	"keywords": [
+		"vue",
+		"vue3",
+		"nuxt",
+		"stepper",
+		"wizard",
+		"multi-step form",
+		"composables",
+		"headless",
+		"accessible"
+	],
+	"author": "damianricobelli",
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/damianricobelli/stepperize.git",
+		"directory": "packages/vue"
+	},
+	"homepage": "https://stepperize.com/docs/v9/vue",
+	"sideEffects": false,
+	"files": [
+		"dist"
+	],
+	"type": "module",
+	"main": "./dist/index.js",
+	"module": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js",
+			"default": "./dist/index.js"
+		},
+		"./headless": {
+			"types": "./dist/headless.d.ts",
+			"import": "./dist/headless.js",
+			"default": "./dist/headless.js"
+		}
+	},
+	"scripts": {
+		"build": "tsup",
+		"dev": "tsup --watch",
+		"lint": "biome lint src",
+		"prepublishOnly": "pnpm run build",
+		"clean": "rm -rf .turbo && rm -rf node_modules dist",
+		"test": "vitest run",
+		"typecheck": "tsc --noEmit && tsc -p tsconfig.test.json && vue-tsc -p tsconfig.vue.json"
+	},
+	"dependencies": {
+		"@stepperize/core": "workspace:*"
+	},
+	"peerDependencies": {
+		"vue": "^3.5.4"
+	},
+	"devDependencies": {
+		"@typescript/native": "catalog:",
+		"@vitejs/plugin-vue": "^6.0.11",
+		"@vitejs/plugin-vue-jsx": "^5.1.6",
+		"@vitest/browser-playwright": "catalog:",
+		"axe-core": "4.14.0",
+		"playwright": "catalog:",
+		"tsup": "catalog:",
+		"typescript": "catalog:legacy-tooling",
+		"vite": "catalog:",
+		"vitest": "catalog:",
+		"vitest-browser-vue": "^3.1.0",
+		"vue": "^3.5.46",
+		"vue-tsc": "^3.3.14"
+	}
+}

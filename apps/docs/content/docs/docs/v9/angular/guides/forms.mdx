@@ -1,0 +1,137 @@
+---
+title: Forms
+description: Collect each step's data with Angular forms, validate it with a schema, and submit at the end.
+---
+
+Stepperize owns the flow; Angular's forms own the fields. The two meet in one
+call: `next(data)`.
+
+## A schema per step
+
+Give a step a `schema` and its data is typed and validated. Any
+[Standard Schema](https://standardschema.dev) library works.
+
+```ts title="signup.ts"
+import { defineStepper } from "@stepperize/angular";
+import { z } from "zod";
+
+export const signup = defineStepper([
+  { id: "account", title: "Account", schema: z.object({ email: z.email() }) },
+  { id: "profile", title: "Profile", schema: z.object({ name: z.string().min(1) }) },
+  { id: "done", title: "Done" },
+]);
+```
+
+## Validate on Continue
+
+One form, with a group per step. `next(data)` saves the data for the current step,
+validates it and only moves when it is valid; `stepper().issues()` holds the
+reasons until the step's data in the flow changes, through the next
+`next(data)` or a `setData`.
+
+```ts title="signup.component.ts"
+import { Component, inject } from "@angular/core";
+import { FormBuilder, ReactiveFormsModule } from "@angular/forms";
+import { signup } from "./signup";
+
+@Component({
+  selector: "app-signup",
+  imports: [ReactiveFormsModule],
+  template: `
+    <form [formGroup]="form" (ngSubmit)="submit()">
+      @switch (stepper().current.id) {
+        @case ("account") {
+          <fieldset formGroupName="account">
+            <label>Email <input type="email" formControlName="email" /></label>
+          </fieldset>
+        }
+        @case ("profile") {
+          <fieldset formGroupName="profile">
+            <label>Name <input formControlName="name" /></label>
+          </fieldset>
+        }
+        @case ("done") {
+          <p>Create the account for {{ stepper().output.profile?.name }}?</p>
+        }
+      }
+
+      @for (issue of stepper().issues(); track $index) {
+        <p role="alert">{{ issue.message }}</p>
+      }
+
+      <button type="button" [disabled]="stepper().isFirst" (click)="stepper().prev()">Back</button>
+      <button [disabled]="stepper().isPending">
+        {{ stepper().isLast ? "Create account" : "Continue" }}
+      </button>
+    </form>
+  `,
+})
+export class Signup {
+  readonly #forms = inject(FormBuilder).nonNullable;
+  // `ngSubmit` only exists on a form that has `[formGroup]`.
+  readonly form = this.#forms.group({
+    account: this.#forms.group({ email: "" }),
+    profile: this.#forms.group({ name: "" }),
+  });
+
+  readonly stepper = signup.injectStepper({
+    onFinish: (output) => createAccount(output),
+  });
+
+  submit() {
+    const stepper = this.stepper();
+    return stepper.match({
+      account: () => stepper.next(this.form.controls.account.getRawValue()),
+      profile: () => stepper.next(this.form.controls.profile.getRawValue()),
+      done: () => stepper.next(),
+    });
+  }
+}
+```
+
+- `match` is exhaustive: add a step and the compiler asks for its handler.
+- `stepper().data` is what each step holds as it was typed; `stepper().output`
+  is what each schema produced, with transforms and defaults applied.
+- `onFinish(output, data)` runs once, when `next()` completes the last step.
+  Return a promise and `stepper().isPending` stays `true` until it settles.
+
+## Keeping drafts
+
+To persist what is being typed, write the draft as the form changes:
+
+```ts
+import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
+
+constructor() {
+  const { account } = this.form.controls;
+
+  account.valueChanges
+    .pipe(takeUntilDestroyed())
+    .subscribe(() => this.stepper().setData("account", account.getRawValue()));
+}
+```
+
+`setData` does not validate. A step that was complete stops being complete when
+its data changes.
+
+## Checking one step without moving
+
+`stepper().validate()` checks the current step and resolves with its issues, or
+`undefined` when it is valid. It checks the data the flow holds, not the live
+form values: for "validate on blur", write the draft with `setData` first.
+
+## In depth
+
+The same checkout as a component per step, with everything a real form needs:
+errors from the step on their controls, Back that keeps what was typed, and
+the order sent from `onFinish`.
+
+- [Reactive Forms](/docs/v9/angular/forms/reactive-forms): typed forms,
+  Angular validators for feedback, the step's schema as the gate.
+- [Signal Forms](/docs/v9/angular/forms/signal-forms): stable since Angular 22,
+  validating with the step's own Standard Schema.
+
+## More
+
+[Schemas and validation](/docs/v9/angular/guides/validation) covers async
+schemas, guards and cross-step rules. The options are the same here.

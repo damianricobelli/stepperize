@@ -2,24 +2,56 @@
 
 import { Link } from "@tanstack/react-router";
 import { ArrowLeft, ArrowRight } from "lucide-react";
-import { type ComponentType, useRef, useState } from "react";
+import { type ComponentType, lazy, Suspense, useEffect, useState } from "react";
+import { FrameworkIcon } from "@/components/framework-icon";
 import { cta } from "@/components/site/cta";
 // Import the plain catalog, not `@/lib/blocks`: that barrel also inlines every
 // block's raw source for the gallery's code view, which the homepage never needs.
 import { BLOCKS, CATEGORIES } from "@/lib/blocks/catalog.mjs";
-import { AiWorkflowBlock } from "../blocks/ai-workflow";
-import { ApprovalTimelineBlock } from "../blocks/approval-timeline";
-import { CicdPipelineBlock } from "../blocks/cicd-pipeline";
-import { PlanPickerBlock } from "../blocks/plan-picker";
-import { TwoFactorBlock } from "../blocks/two-factor";
-import { SectionHeading } from "./shared";
+import { DemoPlaceholder, SectionHeading, useNearViewport } from "./shared";
 
+/** Live blocks, loaded when the rail nears the screen: not in the first bundle. */
 const FEATURED: { id: string; Block: ComponentType }[] = [
-	{ id: "approval-timeline", Block: ApprovalTimelineBlock },
-	{ id: "plan-picker", Block: PlanPickerBlock },
-	{ id: "ai-workflow", Block: AiWorkflowBlock },
-	{ id: "two-factor", Block: TwoFactorBlock },
-	{ id: "cicd-pipeline", Block: CicdPipelineBlock },
+	{
+		id: "approval-timeline",
+		Block: lazy(() =>
+			import("../blocks/approval-timeline").then((m) => ({
+				default: m.ApprovalTimelineBlock,
+			})),
+		),
+	},
+	{
+		id: "plan-picker",
+		Block: lazy(() =>
+			import("../blocks/plan-picker").then((m) => ({
+				default: m.PlanPickerBlock,
+			})),
+		),
+	},
+	{
+		id: "ai-workflow",
+		Block: lazy(() =>
+			import("../blocks/ai-workflow").then((m) => ({
+				default: m.AiWorkflowBlock,
+			})),
+		),
+	},
+	{
+		id: "two-factor",
+		Block: lazy(() =>
+			import("../blocks/two-factor").then((m) => ({
+				default: m.TwoFactorBlock,
+			})),
+		),
+	},
+	{
+		id: "cicd-pipeline",
+		Block: lazy(() =>
+			import("../blocks/cicd-pipeline").then((m) => ({
+				default: m.CicdPipelineBlock,
+			})),
+		),
+	},
 ];
 
 const BLOCK_BY_ID = new Map(BLOCKS.map((block) => [block.id, block]));
@@ -38,8 +70,25 @@ const CARD_GAP = 20;
  * never has to squeeze into a frame narrower than it was built for.
  */
 export function BlocksRail() {
-	const railRef = useRef<HTMLDivElement>(null);
+	const [railRef, near] = useNearViewport<HTMLDivElement>();
 	const [edges, setEdges] = useState({ start: true, end: false });
+
+	// A card scrolled out of the rail, or the rail off screen, gets
+	// `data-offscreen`: looping animations in it pause (see styles.css).
+	// Set on the element directly, so scrolling never re-renders the rail.
+	useEffect(() => {
+		const rail = railRef.current;
+		if (!near || !rail || typeof IntersectionObserver === "undefined") return;
+		const observer = new IntersectionObserver((entries) => {
+			for (const entry of entries) {
+				entry.target.toggleAttribute("data-offscreen", !entry.isIntersecting);
+			}
+		});
+		for (const card of rail.querySelectorAll("[data-rail-card]")) {
+			observer.observe(card);
+		}
+		return () => observer.disconnect();
+	}, [near, railRef]);
 
 	const syncEdges = () => {
 		const rail = railRef.current;
@@ -68,17 +117,31 @@ export function BlocksRail() {
 	return (
 		<section className="border-t bg-muted/30 [contain-intrinsic-size:auto_60rem] [content-visibility:auto]">
 			<div className="mx-auto flex w-full max-w-7xl flex-col justify-between gap-6 px-4 pt-16 sm:px-6 sm:pt-20 md:flex-row md:items-end lg:pt-28">
+				{/*
+				 * The blocks are shadcn/ui components, and shadcn/ui is React: the
+				 * section says so in its first words, whatever framework the visitor
+				 * picked, rather than presenting them as theirs.
+				 */}
 				<SectionHeading
-					eyebrow="Own your UI"
+					eyebrow={
+						<>
+							<FrameworkIcon
+								id="react"
+								className="size-3.5 text-primary dark:text-primary"
+							/>
+							For React, with shadcn/ui
+						</>
+					}
 					title={`${BLOCKS.length} blocks. Copy, paste, own every line.`}
 				>
-					Headless core, optional unstyled primitives, and production-ready
-					blocks built with Tailwind and shadcn/ui. Install one from the
-					registry and it is your code, with nothing to eject.
+					Production-ready flows built with Tailwind and shadcn/ui, installed
+					with the shadcn CLI. Each one is your code, with nothing to eject.
+					They are React because shadcn/ui is; the headless core they run on
+					works in every framework.
 				</SectionHeading>
 				<div className="flex shrink-0 items-center gap-2">
 					<Link to="/blocks" className={cta({ variant: "secondary" })}>
-						Browse all blocks
+						Browse React blocks
 						<ArrowRight aria-hidden />
 					</Link>
 					<div className="hidden gap-1 pointer-fine:flex">
@@ -126,7 +189,9 @@ export function BlocksRail() {
 									className="pointer-events-none absolute inset-0 bg-[radial-gradient(var(--color-border)_1px,transparent_1px)] bg-size-[16px_16px] mask-[radial-gradient(ellipse_75%_70%_at_50%_50%,black,transparent)]"
 								/>
 								<div className="relative flex w-full justify-center">
-									<Block />
+									<Suspense fallback={<DemoPlaceholder />}>
+										{near ? <Block /> : <DemoPlaceholder />}
+									</Suspense>
 								</div>
 							</div>
 							<figcaption className="flex items-center justify-between gap-3 border-t px-5 py-4">

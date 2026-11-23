@@ -1,0 +1,76 @@
+---
+title: Installation
+description: Add Stepperize to an Angular project.
+---
+
+<Tabs items={["pnpm", "npm", "yarn", "bun"]}>
+<Tab value="pnpm">
+
+```bash
+pnpm add @stepperize/angular
+```
+
+</Tab>
+<Tab value="npm">
+
+```bash
+npm install @stepperize/angular
+```
+
+</Tab>
+<Tab value="yarn">
+
+```bash
+yarn add @stepperize/angular
+```
+
+</Tab>
+<Tab value="bun">
+
+```bash
+bun add @stepperize/angular
+```
+
+</Tab>
+</Tabs>
+
+## Requirements
+
+- Angular 22. The package is built and tested against it. Angular 21 and
+  earlier are not supported.
+- The TypeScript version your Angular version requires. Nothing else needs to
+  be configured.
+- `strictTemplates`, on by default in new projects, for step ids checked in
+  templates. See [typed step ids](/docs/v9/angular/guides/primitives#typed-step-ids).
+
+The package is published in the Angular Package Format, partially compiled,
+like every Angular library: the Angular CLI links it when it builds your
+application. Everything in it is standalone; there is no NgModule to import.
+An `NgModule` of yours can import `STEPPER_PRIMITIVES` like any standalone
+directive.
+
+`@stepperize/core` is installed with it. You only import from it directly to
+run a flow [without Angular](/docs/v9/core).
+
+## Zoneless
+
+Nothing to do. The stepper is a signal and the directives use signals and host
+bindings, so they work with zoneless change detection, which is the default,
+and with zone.js.
+
+## Validation libraries
+
+Step schemas use [Standard Schema](https://standardschema.dev), so Zod,
+Valibot, ArkType and any other compliant library work without an adapter.
+Stepperize does not depend on any of them.
+
+## The signals API without the directives
+
+Import from `/headless` if you write all the markup and ARIA yourself:
+
+```ts
+import { defineStepper } from "@stepperize/angular/headless";
+```
+
+The definition is the same. Directives you do not import are left out of your
+bundle either way; the headless entry makes that explicit.

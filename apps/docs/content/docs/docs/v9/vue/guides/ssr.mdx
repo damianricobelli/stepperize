@@ -1,0 +1,64 @@
+---
+title: Server rendering
+description: Nuxt and any other Vue SSR setup, with no configuration.
+---
+
+The composables and the primitives render on the server and hydrate without
+changing the HTML.
+
+- The flow is created in `setup`, so the server renders the right step:
+  the first one, the one in `snapshot`, or the one in `step`.
+- Ids come from Vue's `useId`, so `aria-controls` and `aria-labelledby` match
+  between the server and the client.
+- No callback runs on the server. `onChange`, `onFinish`, `onInvalidStep` and
+  the `guard` only run in the browser.
+
+## Resuming from a cookie or the database
+
+Read the snapshot on the server and pass it in; the first HTML is already on
+the right step.
+
+```vue title="pages/onboarding.vue"
+<script setup lang="ts">
+import type { Snapshot } from "@stepperize/vue";
+import { onboarding } from "~/flows/onboarding";
+
+const saved = useCookie<Snapshot<typeof onboarding.steps> | null>("onboarding");
+
+const stepper = onboarding.useStepper({
+  snapshot: saved.value ?? undefined,
+  onChange: (snapshot) => {
+    saved.value = snapshot;
+  },
+});
+</script>
+```
+
+`snapshot` is read once, when the flow is created. To replace the state later,
+call `stepper.restore(snapshot)`.
+
+## Awaiting data first
+
+A top-level `await` in `<script setup>` (`await useFetch(...)` in Nuxt) can
+come before `useStepper()`: Vue restores the component after it, so the flow
+is still owned by the page and destroyed with it.
+
+```vue title="pages/onboarding.vue"
+<script setup lang="ts">
+import { onboarding } from "~/flows/onboarding";
+
+const { data: saved } = await useFetch("/api/onboarding");
+const stepper = onboarding.useStepper({ snapshot: saved.value ?? undefined });
+</script>
+```
+
+In a hand-written `async setup()` there is no component after an `await`:
+call `useStepper()` before it.
+
+## Tabs without triggers
+
+A `Stepper.Root` assumes it will have triggers and renders its panels as tab
+panels. When it mounts with none, it switches to groups named by each step's
+`title`. If your flow never has triggers and you want the server HTML to say so
+from the start, pass `linear` or render your own markup with the headless
+entry.

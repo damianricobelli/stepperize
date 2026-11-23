@@ -7,14 +7,18 @@ import {
 } from "@tanstack/react-router";
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
 import { RootProvider } from "fumadocs-ui/provider/tanstack";
+import { lazy } from "react";
 import { THEME_COLORS, ThemeColorSync } from "@/components/site/theme-color";
 import { VersionBanner } from "@/components/site/version-banner";
-import { getDocsVersion } from "@/lib/docs-tree";
+import { searchTagForPath, searchTagOptions } from "@/lib/search";
 import { seo } from "@/lib/seo";
 
 import appCss from "../styles.css?url";
 
 const defaultSeo = seo();
+
+// Lazy, like the Fumadocs default it replaces: kept out of the first bundle.
+const SearchDialog = lazy(() => import("@/components/search-dialog"));
 
 export const Route = createRootRoute({
 	head: () => ({
@@ -54,7 +58,6 @@ export const Route = createRootRoute({
 
 function RootDocument({ children }: { children: React.ReactNode }) {
 	const pathname = useLocation({ select: (location) => location.pathname });
-	const version = getDocsVersion(pathname.split("/").filter(Boolean).slice(1));
 	return (
 		<html lang="en" suppressHydrationWarning>
 			<head>
@@ -76,7 +79,18 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 				/>
 			</head>
 			<body className="flex min-h-screen flex-col">
-				<RootProvider search={{ options: { defaultTag: version } }}>
+				<RootProvider
+					search={{
+						// Fumadocs' dialog with the framework tags inside it, not in a
+						// footer that renders on the page while search is closed.
+						SearchDialog,
+						// The framework being read comes first; the tags switch it. See `lib/search.ts`.
+						options: {
+							defaultTag: searchTagForPath(pathname),
+							tags: searchTagOptions(pathname),
+						},
+					}}
+				>
 					<ThemeColorSync />
 					{(pathname === "/" || pathname.startsWith("/docs/")) && (
 						<VersionBanner />

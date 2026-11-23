@@ -47,7 +47,12 @@ function index(steps: readonly Step[]) {
 }
 
 /** A running move. The `AbortController` only exists when a guard was handed its signal. */
-type Move = { cancelled?: boolean; controller?: AbortController };
+type Move = {
+	cancelled?: boolean;
+	controller?: AbortController;
+	/** Settles the move's promise as cancelled at once, whatever it is still waiting on. */
+	settle?: () => void;
+};
 
 /**
  * Create a flow. This is the whole state machine: the React hooks, tests and
@@ -94,6 +99,7 @@ export function createStepper<const S extends readonly Step[]>(steps: S, options
 		if (running) {
 			running.cancelled = true;
 			running.controller?.abort();
+			running.settle?.();
 			running = undefined;
 		}
 	}
@@ -157,15 +163,37 @@ export function createStepper<const S extends readonly Step[]>(steps: S, options
 	/**
 	 * Every move goes through here: optional validation, the guard, then one commit.
 	 */
-	async function move(
+	/**
+	 * A move resolves as soon as it is cancelled, even if its schema or guard never settles: the
+	 * work goes on in the background (the guard's `signal` is aborted) and its outcome is dropped.
+	 */
+	function move(
 		direction: GuardContext<S>["direction"],
 		target: (output: unknown, data: FlowData<S>) => number | null,
 		validate = false,
 		...write: [value?: unknown]
 	): Promise<Result<S>> {
-		if (running) return { accepted: false, reason: "pending" };
+		if (running) return Promise.resolve({ accepted: false, reason: "pending" });
 		const self: Move = {};
 		running = self;
+		const work = run(self, direction, target, validate, ...write);
+		// Nothing was awaited: the move is already over, and no promise is needed to race it.
+		if (running !== self) return work;
+		return new Promise<Result<S>>((resolve, reject) => {
+			self.settle = () => resolve({ accepted: false, reason: "cancelled" });
+			work.then(resolve, (error) =>
+				self.cancelled ? resolve({ accepted: false, reason: "cancelled" }) : reject(error),
+			);
+		});
+	}
+
+	async function run(
+		self: Move,
+		direction: GuardContext<S>["direction"],
+		target: (output: unknown, data: FlowData<S>) => number | null,
+		validate = false,
+		...write: [value?: unknown]
+	): Promise<Result<S>> {
 		const from = state.index;
 		const id: I = steps[from].id;
 		const merge = (): FlowData<S> => (write.length ? { ...state.data, [id]: write[0] } : state.data);
@@ -251,6 +279,11 @@ export function createStepper<const S extends readonly Step[]>(steps: S, options
 				set({ ...state, pending: false, finished: true }, false);
 			}
 			return { accepted: true, to: to === null ? null : steps[to].id, data };
+		} catch (error) {
+			// A guard that passes `signal` to `fetch` rejects with `AbortError` when the move is
+			// cancelled. That is the cancellation, not a failure of the caller's.
+			if (self.cancelled) return { accepted: false, reason: "cancelled" };
+			throw error;
 		} finally {
 			if (running === self) {
 				running = undefined;
@@ -327,6 +360,7 @@ export function createStepper<const S extends readonly Step[]>(steps: S, options
 			current,
 			index,
 			isFirst: !index,
+			isLinear: !!options.linear,
 			isLast:
 				options.next?.[current.id as I] === null || (index === steps.length - 1 && !options.next?.[current.id as I]),
 			progress: steps.length > 1 ? index / (steps.length - 1) : 1,
@@ -365,6 +399,8 @@ export function createStepper<const S extends readonly Step[]>(steps: S, options
 		},
 		destroy() {
 			cancel();
+			// A move it interrupted no longer reaches its `finally`: the last view must not stay pending.
+			if (state.pending) set({ ...state, pending: false }, false);
 			listeners.clear();
 		},
 	};

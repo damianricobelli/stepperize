@@ -7,7 +7,17 @@
 		}
 	],
 	"commit": false,
-	"fixed": [],
+	"fixed": [
+		[
+			"@stepperize/core",
+			"@stepperize/react",
+			"@stepperize/vue",
+			"@stepperize/svelte",
+			"@stepperize/solid",
+			"@stepperize/angular",
+			"@stepperize/lit"
+		]
+	],
 	"linked": [],
 	"access": "public",
 	"baseBranch": "main",

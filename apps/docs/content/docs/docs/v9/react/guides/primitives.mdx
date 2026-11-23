@@ -4,7 +4,8 @@ description: Unstyled components that handle roles, keyboard, focus and announce
 ---
 
 <Callout title="Looking for finished UI?">
-	Every block in the [Blocks gallery](/blocks) is built from these primitives.
+	Every block in the [Blocks gallery](/blocks), built with React and shadcn/ui,
+	is made from these primitives.
 	Browse them live, copy the code, or install one from the registry.
 </Callout>
 
@@ -58,6 +59,8 @@ function CheckoutSteps() {
   );
 }
 ```
+
+<FrameworkDemo framework="react" />
 
 <Preview>
 	<UserOnboardingBlock />
@@ -133,7 +136,7 @@ function Mark() {
 
 ## Rendering your own element
 
-Every primitive takes a `render` function. Spread the props you receive: they
+Every primitive except `Root` takes a `render` function. Spread the props you receive: they
 carry the ARIA attributes, ids, handlers and the `ref`.
 
 ```tsx

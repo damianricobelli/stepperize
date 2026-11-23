@@ -4,7 +4,12 @@ import {
 	getDocsFramework,
 	getDocsVersion,
 } from "./docs-tree";
-import { FRAMEWORKS } from "./frameworks";
+import {
+	BINDINGS,
+	type DocsFramework,
+	FRAMEWORKS,
+	LEGACY_FRAMEWORK,
+} from "./frameworks";
 /**
  * Centralized SEO helpers for the docs site.
  *
@@ -30,7 +35,7 @@ type HeadMeta =
 type HeadLink = { rel: string; href: string; [key: string]: string };
 
 const SOCIAL_TITLE_MAX = 58;
-const SOCIAL_DESCRIPTION_MAX = 118;
+export const SOCIAL_DESCRIPTION_MAX = 118;
 
 export type SeoInput = {
 	/** Page title without the brand suffix. Falls back to the site default. */
@@ -47,6 +52,8 @@ export type SeoInput = {
 	canonical?: string;
 	/** Fully resolved social image URL. Defaults to the OG API image for this content. */
 	socialImageUrl?: string;
+	/** The badge of the default social image, such as "Vue docs · v9". */
+	socialSection?: string;
 	type?: "website" | "article";
 };
 
@@ -78,6 +85,7 @@ export function seo(input: SeoInput = {}): {
 		ogImageUrl({
 			title: socialTitle,
 			description: socialDescription,
+			section: input.socialSection,
 			variant: input.type ?? "website",
 		});
 	const url = input.canonical ? absoluteUrl(input.canonical) : undefined;
@@ -139,26 +147,120 @@ export function jsonLdScript(data: unknown): {
 	};
 }
 
-/** SoftwareApplication / SoftwareSourceCode listing for the landing page. */
+const REPOSITORY = "https://github.com/damianricobelli/stepperize";
+const LICENSE = "https://opensource.org/licenses/MIT";
+const TYPESCRIPT = { "@type": "ComputerLanguage", name: "TypeScript" } as const;
+
+/**
+ * How each framework is named to search engines. A `Record` over every
+ * framework, so a new one cannot ship without its copy.
+ */
+export const FRAMEWORK_SEO: Record<
+	DocsFramework,
+	{
+		/** The `<title>` of the framework's introduction, which is only "Introduction" in the sidebar. */
+		headline: string;
+		/** Added to a description that does not name the framework: "For Vue 3". */
+		audience: string;
+		/** schema.org `runtimePlatform`. */
+		runtimePlatform: string;
+	}
+> = {
+	react: {
+		headline: "React multi-step forms and wizards",
+		audience: "For React",
+		runtimePlatform: "React",
+	},
+	vue: {
+		headline: "Vue multi-step forms and wizards",
+		audience: "For Vue 3",
+		runtimePlatform: "Vue",
+	},
+	svelte: {
+		headline: "Svelte multi-step forms and wizards",
+		audience: "For Svelte 5",
+		runtimePlatform: "Svelte",
+	},
+	solid: {
+		headline: "SolidJS multi-step forms and wizards",
+		audience: "For SolidJS",
+		runtimePlatform: "SolidJS",
+	},
+	angular: {
+		headline: "Angular multi-step forms and wizards",
+		audience: "For Angular",
+		runtimePlatform: "Angular",
+	},
+	lit: {
+		headline: "Lit and web component steppers",
+		audience: "For Lit and web components",
+		runtimePlatform: "Lit",
+	},
+	html: {
+		headline: "Accessible steppers for plain HTML",
+		audience: "For plain HTML (no framework)",
+		runtimePlatform: "Web browser",
+	},
+	core: {
+		headline: "Core: framework-agnostic stepper state machine",
+		audience: "For any JavaScript runtime",
+		runtimePlatform: "JavaScript",
+	},
+};
+
+/** Every platform the library runs on, the main binding first. */
+const RUNTIME_PLATFORMS = [
+	...BINDINGS.map((entry) => FRAMEWORK_SEO[entry.id].runtimePlatform),
+	"Node.js",
+];
+
+/** The library as a product, for the landing page. */
 export function softwareApplicationLd() {
 	return {
 		"@context": "https://schema.org",
 		"@type": "SoftwareApplication",
 		name: SITE.name,
 		applicationCategory: "DeveloperApplication",
-		operatingSystem: "Web, Node.js",
+		applicationSubCategory: "JavaScript library",
+		operatingSystem: "Any (browser, Node.js, Deno, Bun)",
 		description: SITE.defaultDescription,
 		url: SITE.url,
 		image: ogImageUrl({
 			title: SITE.homeOgTitle,
 			description: SITE.homeOgDescription,
+			section: SITE.homeOgSection,
 			variant: "website",
 		}),
 		offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
-		license: "https://opensource.org/licenses/MIT",
-		programmingLanguage: "TypeScript",
+		license: LICENSE,
 		keywords: HOME_KEYWORDS.join(", "),
-		sameAs: ["https://github.com/damianricobelli/stepperize"],
+		sameAs: [REPOSITORY],
+	};
+}
+
+/**
+ * The library as source code, for the landing page: one package per platform,
+ * React first.
+ */
+export function softwareSourceCodeLd() {
+	return {
+		"@context": "https://schema.org",
+		"@type": "SoftwareSourceCode",
+		name: SITE.name,
+		description: SITE.defaultDescription,
+		url: SITE.url,
+		codeRepository: REPOSITORY,
+		license: LICENSE,
+		programmingLanguage: TYPESCRIPT,
+		runtimePlatform: RUNTIME_PLATFORMS,
+		hasPart: FRAMEWORKS.map((entry) => ({
+			"@type": "SoftwareSourceCode",
+			name: entry.package,
+			description: `${entry.title}: ${entry.description}.`,
+			url: absoluteUrl(`/docs/${CURRENT_DOCS_VERSION}/${entry.id}`),
+			programmingLanguage: TYPESCRIPT,
+			runtimePlatform: FRAMEWORK_SEO[entry.id].runtimePlatform,
+		})),
 	};
 }
 
@@ -179,23 +281,178 @@ export function techArticleLd(opts: {
 	description?: string;
 	url: string;
 	lastModified?: string;
+	/** The page's social image, so both say the same. Defaults to one built from the title. */
+	image?: string;
+	keywords?: readonly string[];
+	/** The framework the page documents. Versions before the split document React. */
+	framework?: DocsFramework;
+	version?: string;
 }) {
+	const framework = FRAMEWORKS.find((entry) => entry.id === opts.framework);
 	return {
 		"@context": "https://schema.org",
 		"@type": "TechArticle",
 		headline: opts.title,
 		description: opts.description ?? SITE.defaultDescription,
 		url: absoluteUrl(opts.url),
+		mainEntityOfPage: absoluteUrl(opts.url),
+		inLanguage: "en",
 		...(opts.lastModified ? { dateModified: opts.lastModified } : {}),
-		image: ogImageUrl({
-			title: opts.title,
-			description: opts.description,
-			variant: "article",
-		}),
+		...(opts.keywords?.length ? { keywords: opts.keywords.join(", ") } : {}),
+		image:
+			opts.image ??
+			ogImageUrl({
+				title: opts.title,
+				description: opts.description,
+				variant: "article",
+			}),
+		...(framework
+			? {
+					// The package the reader installs to follow the page.
+					dependencies: framework.package,
+					about: {
+						"@type": "SoftwareSourceCode",
+						name: framework.package,
+						...(opts.version
+							? { version: opts.version.replace(/^v/, "") }
+							: {}),
+						codeRepository: REPOSITORY,
+						programmingLanguage: TYPESCRIPT,
+						runtimePlatform: FRAMEWORK_SEO[framework.id].runtimePlatform,
+					},
+				}
+			: {}),
 		author: { "@type": "Organization", name: SITE.name, url: SITE.url },
 		publisher: { "@type": "Organization", name: SITE.name, url: SITE.url },
 		isPartOf: { "@type": "WebSite", name: SITE.name, url: SITE.url },
 	};
+}
+
+/** What a docs page is called in `<head>`: the title, description and social copy. */
+export type DocsPageSeo = {
+	/** The full `<title>`. */
+	title: string;
+	description: string;
+	socialTitle: string;
+	/** The badge of the social image: "Vue docs · v9". */
+	socialSection: string;
+	version: string;
+	/** The framework the page documents; React for the versions before the split. */
+	framework: DocsFramework;
+};
+
+/**
+ * The head copy of a docs page. Most v9 page names exist for several
+ * frameworks ("Forms", "Installation", "Primitives"), and v7 and v8 share
+ * their pages, so the title always says which framework or version it is
+ * about, and a description that does not name the framework says it.
+ *
+ * `slugs` are the page's Fumadocs slugs: `["docs", "v9", "vue", "guides", "forms"]`.
+ */
+export function docsPageSeo(page: {
+	slugs: string[];
+	title: string;
+	description?: string;
+	/**
+	 * What this page shares with another page of the same framework and
+	 * version: "Primitives" is both a guide and an API reference, and the form
+	 * library pages share a description. See {@link sharedDocsFields}.
+	 */
+	shared?: { title?: boolean; description?: boolean };
+}): DocsPageSeo {
+	const segments = page.slugs[0] === "docs" ? page.slugs.slice(1) : page.slugs;
+	const version = getDocsVersion(segments);
+	const split = getDocsFramework(segments);
+	const framework = split ?? LEGACY_FRAMEWORK;
+	const entry = FRAMEWORKS.find((item) => item.id === framework);
+	const copy = FRAMEWORK_SEO[framework];
+	const name = entry?.title ?? framework;
+	// The folder the page is in, past the version and framework: `api` in `v9/vue/api/primitives`.
+	const folder = segments.slice(split ? 2 : 1, -1)[0];
+	const title =
+		page.shared?.title && folder
+			? `${page.title} (${FOLDER_LABELS[folder] ?? humanize(folder)})`
+			: page.title;
+	const written = page.description?.trim() || SITE.defaultDescription;
+	const description = page.shared?.description
+		? `${page.title}: ${written.charAt(0).toLowerCase()}${written.slice(1)}`
+		: written;
+
+	if (!split) {
+		// Before the split every page is React, and v7 and v8 have the same pages.
+		return {
+			title: `${title} — ${SITE.name} ${version}`,
+			description: mentions(description, version)
+				? description
+				: `${withStop(description)} ${SITE.name} ${version}, for React.`,
+			socialTitle: `React ${version}: ${title}`,
+			socialSection: `React docs · ${version}`,
+			version,
+			framework,
+		};
+	}
+
+	const isHome = segments.length <= 2;
+	const brand =
+		framework === "core" ? `${SITE.name} Core` : `${SITE.name} for ${name}`;
+	return {
+		title: isHome ? `${copy.headline} — ${SITE.name}` : `${title} — ${brand}`,
+		description:
+			mentions(description, name) || mentions(description, entry?.package)
+				? description
+				: `${withStop(description)} ${copy.audience}, with ${entry?.package}.`,
+		socialTitle: isHome ? copy.headline : `${name}: ${title}`,
+		socialSection: `${name} docs · ${version}`,
+		version,
+		framework,
+	};
+}
+
+/** How a folder qualifies a page title that another page of the same docs has too. */
+const FOLDER_LABELS: Record<string, string> = {
+	api: "API reference",
+	guides: "guide",
+	concepts: "concept",
+	"core-concepts": "concept",
+	forms: "forms",
+	"getting-started": "getting started",
+	migration: "migration",
+	production: "production",
+};
+
+/**
+ * Whether a page's title or description is also another page's in the same
+ * version and framework. `pages` are every docs page's Fumadocs slugs, title
+ * and description.
+ */
+export function sharedDocsFields(
+	page: { slugs: string[]; title?: string; description?: string },
+	pages: { slugs: string[]; title?: string; description?: string }[],
+): { title: boolean; description: boolean } {
+	const scope = (slugs: string[]) => {
+		const segments = slugs[0] === "docs" ? slugs.slice(1) : slugs;
+		return `${getDocsVersion(segments)}/${getDocsFramework(segments) ?? ""}`;
+	};
+	const own = scope(page.slugs);
+	const others = pages.filter(
+		(other) =>
+			other.slugs.join("/") !== page.slugs.join("/") &&
+			scope(other.slugs) === own,
+	);
+	return {
+		title: !!page.title && others.some((other) => other.title === page.title),
+		description:
+			!!page.description &&
+			others.some((other) => other.description === page.description),
+	};
+}
+
+const withStop = (text: string) => (/[.!?]$/.test(text) ? text : `${text}.`);
+
+function mentions(text: string, word: string | undefined): boolean {
+	if (!word) return false;
+	const escaped = word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+	return new RegExp(`(^|[^\\w@/-])${escaped}(?![\\w-])`, "i").test(text);
 }
 
 /** BreadcrumbList from `[{name, url}]` trail. */
@@ -231,13 +488,16 @@ export type HomeMeta = {
 	description: string;
 	socialTitle: string;
 	socialDescription: string;
+	/** The social image's badge; the default ("Documentation") when unset. */
+	socialSection?: string;
 };
 
 const HOME_META: HomeMeta = {
-	title: SITE.defaultTitle,
+	title: SITE.homeTitle,
 	description: SITE.defaultDescription,
 	socialTitle: SITE.homeOgTitle,
 	socialDescription: SITE.homeOgDescription,
+	socialSection: SITE.homeOgSection,
 };
 
 /** Resolve landing-page metadata. */
@@ -263,6 +523,14 @@ export const HOME_KEYWORDS = [
 	"React wizard library",
 	"type-safe multi-step form",
 	"stepper component React",
+	"framework-agnostic stepper",
+	"Vue stepper",
+	"Svelte stepper",
+	"Solid stepper",
+	"Angular stepper",
+	"Lit stepper",
+	"web component stepper",
+	"vanilla JavaScript stepper",
 ] as const;
 
 /** Resolve the home keyword set. */
@@ -272,28 +540,42 @@ export function homeKeywords(): readonly string[] {
 
 /* ────────────────────────────── Blocks SEO ──────────────────────────────── */
 
+/*
+ * The Blocks and Stepper Studio are React only: they are built on
+ * `@stepperize/react` and shadcn/ui for React. Their copy and structured data
+ * say so, so neither search engines nor agents offer them for Vue, Svelte or
+ * the other bindings.
+ */
+
+/** Said wherever the Blocks or the Studio are listed. */
+export const REACT_ONLY_NOTE =
+	"React only: built on @stepperize/react and shadcn/ui for React.";
+
+/** schema.org `runtimePlatform` of everything the Blocks and the Studio generate. */
+const REACT_SHADCN_PLATFORM = ["React", "shadcn/ui"];
+
 /** High-intent search targets for the Blocks gallery. */
 export const BLOCKS_KEYWORDS = [
-	"stepper blocks",
+	"React stepper blocks",
 	"React stepper examples",
-	"multi-step form examples",
-	"wizard UI blocks",
 	"shadcn stepper blocks",
+	"React multi-step form examples",
+	"shadcn/ui wizard",
 	"Stepperize registry",
 	"React wizard patterns",
-	"copy paste stepper",
-	"headless stepper components",
+	"copy paste React stepper",
+	"Tailwind stepper React",
 ] as const;
 
 /** Title/description/OG copy for the Blocks gallery index. */
 export function blocksMeta(): HomeMeta {
 	return {
-		title: "Stepper Blocks",
+		title: "React Stepper Blocks for shadcn/ui",
 		description:
-			"Production-ready, accessible stepper blocks built with Stepperize and shadcn/ui. Preview them live, copy the code, open them in v0, or install from the registry.",
-		socialTitle: "Production-ready stepper blocks",
+			"Production-ready, accessible React stepper blocks built with @stepperize/react and shadcn/ui. Preview them live, copy the code, open them in v0, or install from the registry.",
+		socialTitle: "Production-ready React stepper blocks",
 		socialDescription:
-			"Complete, accessible, customizable stepper flows. Preview live, copy the code, or install from the registry.",
+			"Accessible stepper flows for React and shadcn/ui. Preview live, copy the code, or install from the registry.",
 	};
 }
 
@@ -304,8 +586,8 @@ export function blockSeoMeta(block: BlockMeta): {
 	keywords: string[];
 } {
 	return {
-		title: `${block.title} — Stepper Block`,
-		description: block.description,
+		title: `${block.title} — React Stepper Block`,
+		description: `${withStop(block.description)} React and shadcn/ui.`,
 		keywords: [
 			block.title.toLowerCase(),
 			...block.tags,
@@ -319,7 +601,7 @@ export function blocksCollectionLd() {
 	return {
 		"@context": "https://schema.org",
 		"@type": "CollectionPage",
-		name: "Stepper Blocks",
+		name: blocksMeta().title,
 		description: blocksMeta().description,
 		url: absoluteUrl("/blocks"),
 		isPartOf: { "@type": "WebSite", name: SITE.name, url: SITE.url },
@@ -328,8 +610,8 @@ export function blocksCollectionLd() {
 			name: block.title,
 			description: block.description,
 			url: absoluteUrl(`/blocks/${block.id}`),
-			programmingLanguage: "TypeScript",
-			runtimePlatform: "React",
+			programmingLanguage: TYPESCRIPT,
+			runtimePlatform: REACT_SHADCN_PLATFORM,
 		})),
 	};
 }
@@ -342,15 +624,65 @@ export function blockSourceCodeLd(block: BlockMeta) {
 		name: block.title,
 		description: block.description,
 		url: absoluteUrl(`/blocks/${block.id}`),
-		programmingLanguage: "TypeScript",
-		runtimePlatform: "React",
-		codeSampleType: "code snippet",
+		programmingLanguage: TYPESCRIPT,
+		runtimePlatform: REACT_SHADCN_PLATFORM,
+		dependencies: "@stepperize/react, shadcn/ui",
+		codeSampleType: "full solution",
+		license: LICENSE,
 		author: { "@type": "Organization", name: SITE.name, url: SITE.url },
 		isPartOf: {
 			"@type": "CollectionPage",
-			name: "Stepper Blocks",
+			name: blocksMeta().title,
 			url: absoluteUrl("/blocks"),
 		},
+	};
+}
+
+/* ────────────────────────────── Studio SEO ──────────────────────────────── */
+
+export const STUDIO_KEYWORDS = [
+	"React stepper generator",
+	"shadcn multi-step form builder",
+	"React wizard generator",
+	"shadcn/ui stepper",
+	"React Hook Form wizard generator",
+	"multi-step form code generator",
+] as const;
+
+/** Title/description/OG copy for Stepper Studio. */
+export function studioMeta(): HomeMeta {
+	return {
+		title: "Stepper Studio: React and shadcn/ui flow builder",
+		description:
+			"Design a multi-step React flow, pick Next.js, TanStack Start, React Router or Vite and your form and validation libraries, and install the generated @stepperize/react and shadcn/ui code with the shadcn CLI.",
+		socialTitle: "Stepper Studio for React and shadcn/ui",
+		socialDescription:
+			"Design a multi-step React flow and install the generated shadcn/ui code with one command.",
+	};
+}
+
+/** WebApplication JSON-LD for Stepper Studio. */
+export function studioApplicationLd() {
+	const meta = studioMeta();
+	return {
+		"@context": "https://schema.org",
+		"@type": "WebApplication",
+		name: "Stepper Studio",
+		description: meta.description,
+		url: absoluteUrl("/studio"),
+		applicationCategory: "DeveloperApplication",
+		operatingSystem: "Any (web browser)",
+		browserRequirements: "Requires JavaScript",
+		offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+		keywords: STUDIO_KEYWORDS.join(", "),
+		// What it generates.
+		about: {
+			"@type": "SoftwareSourceCode",
+			name: "@stepperize/react",
+			programmingLanguage: TYPESCRIPT,
+			runtimePlatform: REACT_SHADCN_PLATFORM,
+		},
+		isPartOf: { "@type": "WebSite", name: SITE.name, url: SITE.url },
 	};
 }
 
@@ -530,10 +862,727 @@ export const DOC_KEYWORDS: Record<string, readonly string[]> = {
 		"accessible multi-step form",
 		"SSR stepper",
 	],
+	"current/vue": [
+		"Vue stepper",
+		"Vue wizard",
+		"multi-step flow Vue",
+		"headless stepper Vue",
+	],
+	"current/vue/installation": [
+		"install Vue stepper",
+		"@stepperize/vue",
+		"Vue 3 wizard package",
+	],
+	"current/vue/first-stepper": [
+		"Vue stepper tutorial",
+		"Vue multi-step example",
+		"useStepper Vue",
+	],
+	"current/vue/concepts/steps": [
+		"typed steps Vue",
+		"stepper step ids",
+		"Vue wizard steps",
+	],
+	"current/vue/concepts/moves": [
+		"Vue stepper navigation",
+		"next prev goTo Vue",
+		"navigation guard Vue",
+	],
+	"current/vue/guides/forms": [
+		"Vue multi-step form",
+		"v-model stepper",
+		"Vue form wizard validation",
+	],
+	"current/vue/guides/shared-state": [
+		"Vue stepper provide inject",
+		"useStepperContext Vue",
+		"Vue shared stepper state",
+	],
+	"current/vue/guides/url": [
+		"Vue Router stepper",
+		"step in URL Vue",
+		"Vue wizard URL sync",
+	],
+	"current/vue/guides/ssr": [
+		"Nuxt stepper",
+		"Vue SSR wizard",
+		"Vue stepper hydration",
+	],
+	"current/vue/guides/primitives": [
+		"Vue stepper components",
+		"accessible stepper Vue",
+		"unstyled stepper Vue",
+	],
+	"current/vue/api/define-stepper": [
+		"defineStepper Vue",
+		"useStepper composable",
+		"Stepperize Vue API",
+	],
+	"current/vue/api/primitives": [
+		"Vue stepper props",
+		"Stepper slots",
+		"as-child stepper",
+	],
+	"current/svelte": [
+		"Svelte stepper",
+		"Svelte 5 wizard",
+		"multi-step flow Svelte",
+		"headless stepper Svelte",
+	],
+	"current/svelte/installation": [
+		"install Svelte stepper",
+		"@stepperize/svelte",
+		"Svelte 5 wizard package",
+	],
+	"current/svelte/first-stepper": [
+		"Svelte stepper tutorial",
+		"Svelte multi-step example",
+		"runes stepper",
+	],
+	"current/svelte/concepts/steps": [
+		"typed steps Svelte",
+		"stepper step ids",
+		"Svelte wizard steps",
+	],
+	"current/svelte/concepts/moves": [
+		"Svelte stepper navigation",
+		"next prev goTo Svelte",
+		"navigation guard Svelte",
+	],
+	"current/svelte/guides/forms": [
+		"Svelte multi-step form",
+		"bind:value stepper",
+		"Svelte form wizard validation",
+	],
+	"current/svelte/guides/shared-state": [
+		"Svelte stepper context",
+		"useStepperContext Svelte",
+		"Svelte shared stepper state",
+	],
+	"current/svelte/guides/url": [
+		"SvelteKit stepper",
+		"step in URL SvelteKit",
+		"Svelte wizard URL sync",
+	],
+	"current/svelte/guides/ssr": [
+		"SvelteKit SSR wizard",
+		"Svelte stepper hydration",
+		"server rendered stepper",
+	],
+	"current/svelte/guides/primitives": [
+		"Svelte stepper components",
+		"accessible stepper Svelte",
+		"unstyled stepper Svelte",
+	],
+	"current/svelte/api/define-stepper": [
+		"defineStepper Svelte",
+		"useStepper Svelte",
+		"Stepperize Svelte API",
+	],
+	"current/svelte/api/primitives": [
+		"Svelte stepper props",
+		"Stepper snippets",
+		"child snippet stepper",
+	],
+	"current/solid": [
+		"Solid stepper",
+		"SolidJS wizard",
+		"multi-step flow Solid",
+		"headless stepper Solid",
+	],
+	"current/solid/installation": [
+		"install Solid stepper",
+		"@stepperize/solid",
+		"SolidJS wizard package",
+	],
+	"current/solid/first-stepper": [
+		"Solid stepper tutorial",
+		"SolidJS multi-step example",
+		"useStepper Solid",
+	],
+	"current/solid/concepts/steps": [
+		"typed steps Solid",
+		"stepper step ids",
+		"SolidJS wizard steps",
+	],
+	"current/solid/concepts/moves": [
+		"Solid stepper navigation",
+		"next prev goTo Solid",
+		"navigation guard Solid",
+	],
+	"current/solid/guides/forms": [
+		"Solid multi-step form",
+		"createStore stepper",
+		"SolidJS form wizard validation",
+	],
+	"current/solid/guides/shared-state": [
+		"Solid stepper context",
+		"useStepperContext Solid",
+		"Solid shared stepper state",
+	],
+	"current/solid/guides/url": [
+		"Solid Router stepper",
+		"step in URL SolidStart",
+		"Solid wizard URL sync",
+	],
+	"current/solid/guides/ssr": [
+		"SolidStart stepper",
+		"Solid SSR wizard",
+		"Solid stepper hydration",
+	],
+	"current/solid/guides/primitives": [
+		"Solid stepper components",
+		"accessible stepper Solid",
+		"unstyled stepper Solid",
+	],
+	"current/solid/api/define-stepper": [
+		"defineStepper Solid",
+		"useStepper Solid",
+		"Stepperize Solid API",
+	],
+	"current/solid/api/primitives": [
+		"Solid stepper props",
+		"Stepper as prop",
+		"polymorphic stepper Solid",
+	],
+	"current/angular": [
+		"Angular stepper",
+		"Angular wizard",
+		"multi-step flow Angular",
+		"headless stepper Angular",
+	],
+	"current/angular/installation": [
+		"install Angular stepper",
+		"@stepperize/angular",
+		"Angular 22 wizard package",
+	],
+	"current/angular/first-stepper": [
+		"Angular stepper tutorial",
+		"Angular signals stepper",
+		"injectStepper",
+	],
+	"current/angular/concepts/steps": [
+		"typed steps Angular",
+		"stepper step ids",
+		"Angular wizard steps",
+	],
+	"current/angular/concepts/moves": [
+		"Angular stepper navigation",
+		"next prev goTo Angular",
+		"navigation guard Angular",
+	],
+	"current/angular/guides/forms": [
+		"Angular multi-step form",
+		"reactive forms wizard",
+		"Angular form stepper validation",
+	],
+	"current/angular/guides/shared-state": [
+		"Angular stepper dependency injection",
+		"provideStepper",
+		"Angular shared stepper state",
+	],
+	"current/angular/guides/url": [
+		"Angular router stepper",
+		"step in URL Angular",
+		"Angular wizard URL sync",
+	],
+	"current/angular/guides/ssr": [
+		"Angular SSR stepper",
+		"Angular hydration wizard",
+		"zoneless stepper",
+	],
+	"current/angular/guides/primitives": [
+		"Angular stepper directives",
+		"accessible stepper Angular",
+		"unstyled stepper Angular",
+	],
+	"current/angular/api/define-stepper": [
+		"defineStepper Angular",
+		"injectStepper API",
+		"Stepperize Angular API",
+	],
+	"current/angular/api/primitives": [
+		"Angular stepper directive inputs",
+		"stepperRoot",
+		"stepperContent",
+	],
+	"current/lit": [
+		"Lit stepper",
+		"web component wizard",
+		"multi-step flow Lit",
+		"headless stepper web components",
+	],
+	"current/lit/installation": [
+		"install Lit stepper",
+		"@stepperize/lit",
+		"Lit 3 wizard package",
+	],
+	"current/lit/first-stepper": [
+		"Lit stepper tutorial",
+		"LitElement multi-step example",
+		"reactive controller stepper",
+	],
+	"current/lit/concepts/steps": [
+		"typed steps Lit",
+		"stepper step ids",
+		"web component wizard steps",
+	],
+	"current/lit/concepts/moves": [
+		"Lit stepper navigation",
+		"next prev goTo Lit",
+		"navigation guard Lit",
+	],
+	"current/lit/guides/forms": [
+		"Lit multi-step form",
+		"web component form wizard",
+		"Lit form validation",
+	],
+	"current/lit/guides/shared-state": [
+		"Lit shared state stepper",
+		"reactive controller shared flow",
+		"Lit context stepper",
+	],
+	"current/lit/guides/url": [
+		"Lit router stepper",
+		"step in URL web component",
+		"Lit wizard URL sync",
+	],
+	"current/lit/guides/ssr": [
+		"Lit SSR stepper",
+		"@lit-labs/ssr wizard",
+		"declarative shadow DOM stepper",
+	],
+	"current/lit/guides/primitives": [
+		"Lit stepper directives",
+		"accessible stepper web component",
+		"shadow DOM tabs ARIA",
+	],
+	"current/lit/api/define-stepper": [
+		"defineStepper Lit",
+		"StepperController",
+		"Stepperize Lit API",
+	],
+	"current/lit/api/primitives": [
+		"Lit element directives stepper",
+		"stepper directive options",
+		"Lit tablist directive",
+	],
+	"current/html": [
+		"vanilla JavaScript stepper",
+		"stepper without framework",
+		"server-rendered wizard",
+		"progressive enhancement stepper",
+	],
+	"current/html/markup": [
+		"stepper HTML markup",
+		"data attributes stepper",
+		"bindStepper",
+	],
+	"current/html/guides/server-rendered": [
+		"Rails stepper",
+		"Laravel multi-step form",
+		"Django wizard",
+		"Astro stepper",
+	],
+	"current/html/guides/alpine": [
+		"Alpine.js stepper",
+		"Alpine multi-step form",
+		"Alpine wizard",
+	],
+	"current/html/guides/htmx": [
+		"htmx stepper",
+		"htmx multi-step form",
+		"htmx wizard",
+	],
+	"current/angular/api/options": [
+		"Angular stepper options",
+		"injectStepper options",
+		"onFinish guard Angular",
+	],
+	"current/angular/api/stepper": [
+		"Angular stepper API",
+		"StepperRef Angular",
+		"stepper methods Angular",
+	],
+	"current/angular/concepts/step-state": [
+		"Angular stepper step state",
+		"step completion Angular",
+		"completed steps Angular",
+	],
+	"current/angular/concepts/stepper": [
+		"injectStepper Angular",
+		"reactive stepper Angular",
+		"Angular stepper state",
+	],
+	"current/angular/faq": [
+		"Angular stepper FAQ",
+		"Angular SSR multi-step form questions",
+		"Angular wizard library",
+	],
+	"current/angular/forms/reactive-forms": [
+		"Angular Reactive Forms multi-step",
+		"Angular form wizard",
+		"typed reactive forms stepper",
+	],
+	"current/angular/forms/signal-forms": [
+		"Angular Signal Forms multi-step",
+		"Angular signal forms wizard",
+		"Standard Schema Angular forms",
+	],
+	"current/angular/guides/accessibility": [
+		"accessible Angular stepper",
+		"Angular stepper ARIA",
+		"keyboard navigation Angular wizard",
+	],
+	"current/angular/guides/branching": [
+		"branching flow Angular",
+		"conditional steps Angular",
+		"skip steps Angular wizard",
+	],
+	"current/angular/guides/navigation": [
+		"linear stepper Angular",
+		"Angular wizard navigation",
+		"finish multi-step form Angular",
+	],
+	"current/angular/guides/persistence": [
+		"save and resume form Angular",
+		"Angular SSR persist multi-step form",
+		"Angular stepper snapshot",
+	],
+	"current/angular/guides/styling": [
+		"style Angular stepper",
+		"Tailwind Angular stepper",
+		"Angular stepper data attributes",
+	],
+	"current/angular/guides/testing": [
+		"test Angular stepper",
+		"Angular multi-step form tests",
+		"Vitest Angular wizard",
+	],
+	"current/angular/guides/validation": [
+		"Angular stepper validation",
+		"Zod multi-step form Angular",
+		"Standard Schema Angular",
+	],
+	"current/angular/troubleshooting": [
+		"Angular stepper errors",
+		"Angular multi-step form bugs",
+		"Angular stepper not working",
+	],
+	"current/html/faq": [
+		"vanilla JavaScript stepper FAQ",
+		"htmx multi-step form questions",
+		"progressive enhancement wizard",
+	],
+	"current/html/troubleshooting": [
+		"bindStepper errors",
+		"vanilla JavaScript stepper not working",
+		"htmx wizard bugs",
+	],
+	"current/lit/api/options": [
+		"Lit stepper options",
+		"controller options Lit",
+		"onFinish guard Lit",
+	],
+	"current/lit/api/stepper": [
+		"Lit stepper API",
+		"controller value Lit",
+		"stepper methods Lit",
+	],
+	"current/lit/concepts/step-state": [
+		"Lit stepper step state",
+		"step completion Lit",
+		"completed steps Lit",
+	],
+	"current/lit/concepts/stepper": [
+		"Lit stepper controller",
+		"reactive stepper Lit",
+		"Lit stepper state",
+	],
+	"current/lit/faq": [
+		"Lit stepper FAQ",
+		"web components multi-step form questions",
+		"Lit wizard library",
+	],
+	"current/lit/forms/custom-elements": [
+		"form-associated custom elements",
+		"ElementInternals form wizard",
+		"Lit multi-step form",
+	],
+	"current/lit/guides/accessibility": [
+		"accessible Lit stepper",
+		"Lit stepper ARIA",
+		"keyboard navigation Lit wizard",
+	],
+	"current/lit/guides/branching": [
+		"branching flow Lit",
+		"conditional steps Lit",
+		"skip steps Lit wizard",
+	],
+	"current/lit/guides/navigation": [
+		"linear stepper Lit",
+		"Lit wizard navigation",
+		"finish multi-step form Lit",
+	],
+	"current/lit/guides/persistence": [
+		"save and resume form Lit",
+		"web components persist multi-step form",
+		"Lit stepper snapshot",
+	],
+	"current/lit/guides/styling": [
+		"style Lit stepper",
+		"Tailwind Lit stepper",
+		"Lit stepper data attributes",
+	],
+	"current/lit/guides/testing": [
+		"test Lit stepper",
+		"Lit multi-step form tests",
+		"Vitest Lit wizard",
+	],
+	"current/lit/guides/validation": [
+		"Lit stepper validation",
+		"Zod multi-step form Lit",
+		"Standard Schema Lit",
+	],
+	"current/lit/troubleshooting": [
+		"Lit stepper errors",
+		"Lit multi-step form bugs",
+		"Lit stepper not working",
+	],
+	"current/solid/api/options": [
+		"Solid stepper options",
+		"useStepper options",
+		"onFinish guard Solid",
+	],
+	"current/solid/api/stepper": [
+		"Solid stepper API",
+		"useStepper return Solid",
+		"stepper methods Solid",
+	],
+	"current/solid/concepts/step-state": [
+		"Solid stepper step state",
+		"step completion Solid",
+		"completed steps Solid",
+	],
+	"current/solid/concepts/stepper": [
+		"useStepper Solid",
+		"reactive stepper Solid",
+		"Solid stepper state",
+	],
+	"current/solid/faq": [
+		"Solid stepper FAQ",
+		"SolidStart multi-step form questions",
+		"Solid wizard library",
+	],
+	"current/solid/forms/formisch": [
+		"Formisch multi-step form",
+		"Modular Forms Solid wizard",
+		"Valibot Solid form",
+	],
+	"current/solid/forms/tanstack-form": [
+		"TanStack Form Solid",
+		"TanStack Form Solid multi-step",
+		"Solid form wizard",
+	],
+	"current/solid/guides/accessibility": [
+		"accessible Solid stepper",
+		"Solid stepper ARIA",
+		"keyboard navigation Solid wizard",
+	],
+	"current/solid/guides/branching": [
+		"branching flow Solid",
+		"conditional steps Solid",
+		"skip steps Solid wizard",
+	],
+	"current/solid/guides/navigation": [
+		"linear stepper Solid",
+		"Solid wizard navigation",
+		"finish multi-step form Solid",
+	],
+	"current/solid/guides/persistence": [
+		"save and resume form Solid",
+		"SolidStart persist multi-step form",
+		"Solid stepper snapshot",
+	],
+	"current/solid/guides/styling": [
+		"style Solid stepper",
+		"Tailwind Solid stepper",
+		"Solid stepper data attributes",
+	],
+	"current/solid/guides/testing": [
+		"test Solid stepper",
+		"Solid multi-step form tests",
+		"Vitest Solid wizard",
+	],
+	"current/solid/guides/validation": [
+		"Solid stepper validation",
+		"Zod multi-step form Solid",
+		"Standard Schema Solid",
+	],
+	"current/solid/troubleshooting": [
+		"Solid stepper errors",
+		"Solid multi-step form bugs",
+		"Solid stepper not working",
+	],
+	"current/svelte/api/options": [
+		"Svelte stepper options",
+		"useStepper options",
+		"onFinish guard Svelte",
+	],
+	"current/svelte/api/stepper": [
+		"Svelte stepper API",
+		"useStepper return Svelte",
+		"stepper methods Svelte",
+	],
+	"current/svelte/concepts/step-state": [
+		"Svelte stepper step state",
+		"step completion Svelte",
+		"completed steps Svelte",
+	],
+	"current/svelte/concepts/stepper": [
+		"useStepper Svelte",
+		"reactive stepper Svelte",
+		"Svelte stepper state",
+	],
+	"current/svelte/faq": [
+		"Svelte stepper FAQ",
+		"SvelteKit multi-step form questions",
+		"Svelte wizard library",
+	],
+	"current/svelte/forms/superforms": [
+		"Superforms multi-step form",
+		"SvelteKit form actions wizard",
+		"Superforms wizard",
+	],
+	"current/svelte/forms/tanstack-form": [
+		"TanStack Form Svelte",
+		"TanStack Form Svelte multi-step",
+		"Svelte form wizard",
+	],
+	"current/svelte/guides/accessibility": [
+		"accessible Svelte stepper",
+		"Svelte stepper ARIA",
+		"keyboard navigation Svelte wizard",
+	],
+	"current/svelte/guides/branching": [
+		"branching flow Svelte",
+		"conditional steps Svelte",
+		"skip steps Svelte wizard",
+	],
+	"current/svelte/guides/navigation": [
+		"linear stepper Svelte",
+		"Svelte wizard navigation",
+		"finish multi-step form Svelte",
+	],
+	"current/svelte/guides/persistence": [
+		"save and resume form Svelte",
+		"SvelteKit persist multi-step form",
+		"Svelte stepper snapshot",
+	],
+	"current/svelte/guides/styling": [
+		"style Svelte stepper",
+		"Tailwind Svelte stepper",
+		"Svelte stepper data attributes",
+	],
+	"current/svelte/guides/testing": [
+		"test Svelte stepper",
+		"Svelte multi-step form tests",
+		"Vitest Svelte wizard",
+	],
+	"current/svelte/guides/validation": [
+		"Svelte stepper validation",
+		"Zod multi-step form Svelte",
+		"Standard Schema Svelte",
+	],
+	"current/svelte/troubleshooting": [
+		"Svelte stepper errors",
+		"Svelte multi-step form bugs",
+		"Svelte stepper not working",
+	],
+	"current/vue/api/options": [
+		"Vue stepper options",
+		"useStepper options",
+		"onFinish guard Vue",
+	],
+	"current/vue/api/stepper": [
+		"Vue stepper API",
+		"useStepper return Vue",
+		"stepper methods Vue",
+	],
+	"current/vue/concepts/step-state": [
+		"Vue stepper step state",
+		"step completion Vue",
+		"completed steps Vue",
+	],
+	"current/vue/concepts/stepper": [
+		"useStepper Vue",
+		"reactive stepper Vue",
+		"Vue stepper state",
+	],
+	"current/vue/faq": [
+		"Vue stepper FAQ",
+		"Nuxt multi-step form questions",
+		"Vue wizard library",
+	],
+	"current/vue/forms/formkit": [
+		"FormKit multi-step form",
+		"FormKit wizard",
+		"Vue form wizard",
+	],
+	"current/vue/forms/tanstack-form": [
+		"TanStack Form Vue",
+		"TanStack Form Vue multi-step",
+		"Vue form wizard",
+	],
+	"current/vue/forms/vee-validate": [
+		"VeeValidate multi-step form",
+		"VeeValidate wizard",
+		"Vue form wizard validation",
+	],
+	"current/vue/guides/accessibility": [
+		"accessible Vue stepper",
+		"Vue stepper ARIA",
+		"keyboard navigation Vue wizard",
+	],
+	"current/vue/guides/branching": [
+		"branching flow Vue",
+		"conditional steps Vue",
+		"skip steps Vue wizard",
+	],
+	"current/vue/guides/navigation": [
+		"linear stepper Vue",
+		"Vue wizard navigation",
+		"finish multi-step form Vue",
+	],
+	"current/vue/guides/persistence": [
+		"save and resume form Vue",
+		"Nuxt persist multi-step form",
+		"Vue stepper snapshot",
+	],
+	"current/vue/guides/styling": [
+		"style Vue stepper",
+		"Tailwind Vue stepper",
+		"Vue stepper data attributes",
+	],
+	"current/vue/guides/testing": [
+		"test Vue stepper",
+		"Vue multi-step form tests",
+		"Vitest Vue wizard",
+	],
+	"current/vue/guides/validation": [
+		"Vue stepper validation",
+		"Zod multi-step form Vue",
+		"Standard Schema Vue",
+	],
+	"current/vue/troubleshooting": [
+		"Vue stepper errors",
+		"Vue multi-step form bugs",
+		"Vue stepper not working",
+	],
 	"current/core": [
 		"@stepperize/core",
 		"framework-agnostic stepper",
-		"stepper state machine",
+		"JavaScript stepper state machine",
 	],
 	"current/core/create-stepper": [
 		"createStepper",
@@ -754,7 +1803,15 @@ export function docKeywords(splat: string): readonly string[] | undefined {
 	const normalized = splat
 		.replace(CURRENT_VERSION_PREFIX, "current")
 		.replace(/^(v8|v7)(?=\/|$)/, "latest");
-	return DOC_KEYWORDS[normalized];
+	const keywords = DOC_KEYWORDS[normalized];
+	const segments = splat.split("/").filter(Boolean);
+	const framework = FRAMEWORKS.find(
+		(entry) => entry.id === getDocsFramework(segments),
+	);
+	// Every page of a framework also names the package it documents.
+	if (!keywords || !framework || keywords.includes(framework.package))
+		return keywords;
+	return [...keywords, framework.package];
 }
 
 const SECTION_LABELS: Record<string, string> = {
@@ -802,7 +1859,8 @@ export function docsBreadcrumb(
 	return [
 		{ name: "Stepperize", url: "/" },
 		...levels.filter((level) => level.url !== page && hasPage(level.url)),
-		{ name: pageTitle, url: page },
+		// A framework's introduction is its home: named "Vue v9", not "Introduction".
+		{ name: title && page === home ? levels[0].name : pageTitle, url: page },
 	];
 }
 

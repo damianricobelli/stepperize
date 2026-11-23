@@ -1,0 +1,169 @@
+---
+title: Accessibility
+description: What the Angular directives handle for you, and the few things only you can provide.
+---
+
+The directives make your elements accessible without configuration. This page
+lists what they do, so you know what is covered and what is left to you.
+
+## The pattern follows the flow
+
+There is no single correct markup for a stepper, so the directives pick it from
+how the flow behaves.
+
+| Flow | Markup |
+| --- | --- |
+| `linear` | An ordered list of steps. The triggers are plain buttons; the current one has `aria-current="step"`, and steps that are not reachable yet are disabled. Each panel is a `group` named after the step's `title`. |
+| Free navigation, with triggers | Tabs: `tablist`, `tab` and `tabpanel`, linked with `aria-controls` and `aria-labelledby`. Each tab has `aria-posinset` and `aria-setsize`; the `li` around it is `presentation`. |
+| No triggers | No tabs either: each panel is a `group` named after the step's `title`. |
+
+A linear flow is not a set of tabs: its steps cannot be opened in any order,
+and announcing them as tabs would promise that they can.
+
+`[stepperRoot]` decides from the flow's `isLinear` and from the
+`stepperTrigger`s that exist in its template right now. Each trigger counts
+itself in when it is created, on the server too, so the server HTML already
+has the right roles. A trigger inside an `@if` that turns on makes the list a
+tablist; when the last one leaves, the panels become groups again. Triggers in
+an `@defer (hydrate …)` block that has not hydrated yet still count.
+
+## What is handled
+
+| Behavior | Detail |
+| --- | --- |
+| Keyboard | In tabs, arrow keys, `Home` and `End` move between steps, and the selected tab is the list's single tab stop. Left and right swap in right-to-left layouts, up and down apply with `orientation="vertical"`. With `Alt`, `Ctrl` or `Meta` held, the keys are left to the browser. A tab you disabled is skipped. In a linear flow the triggers are ordinary buttons in the tab order. |
+| Focus | If focus would be lost after a step change (a field in a panel that was hidden or removed, a button that became disabled), it moves to the new panel. Focus outside the stepper is never moved. |
+| Announcements | When the step changes while focus stays put, for example on Continue, a polite live region inside the root announces the new step's `title`. When focus is already on the new step's tab or panel, which reads it anyway, nothing is announced. |
+| Async checks | While a schema, guard or `onFinish` runs, the buttons keep focus: they are `aria-disabled` rather than `disabled`, and the root has `aria-busy`. |
+| Hidden panels | Panels of other steps stay in the page with `hidden` and `display: none`: their fields keep their state, are out of the tab order, and every tab's `aria-controls` points at a panel that exists. |
+| Decorative marks | `stepperIndicator` sets `aria-hidden`. |
+| Ids | Built from `APP_ID` and a per-application counter, so they match between the server and the browser, and two steppers on a page never share one. |
+
+Focus and announcements run in the `write` phase of Angular's after-render
+hooks, once the DOM shows the new step, and only in the browser. The live
+region is added after the first render, so it is not in the server HTML and
+hydration leaves your markup untouched.
+
+## What only you can provide
+
+- **A name for every trigger.** The text inside a `stepperTrigger` is its
+  name, and the indicator is hidden from screen readers. If a trigger only
+  shows a number or an icon, name it:
+
+  ```html
+  @for (step of stepper.steps; track step.id; let index = $index) {
+    <li [stepperItem]="step">
+      <button stepperTrigger [attr.aria-label]="step.title">
+        <span stepperIndicator>{{ index + 1 }}</span>
+      </button>
+    </li>
+  }
+  ```
+
+- **A name for the stepper.** The root is a `group` labelled "Stepper". Pass
+  `aria-label` to describe the flow, and to translate it, or point
+  `aria-labelledby` at a visible heading:
+
+  ```html
+  <h2 id="checkout-title">Checkout</h2>
+  <div [stepperRoot]="stepper" aria-labelledby="checkout-title">…</div>
+  ```
+
+- **Completion beyond color.** `data-state` is for styling. Add text for screen
+  readers, in your language, inside the trigger:
+
+  ```html
+  <li [stepperItem]="step" #item="stepperItem">
+    <button stepperTrigger>
+      <span stepperIndicator></span>
+      {{ step.title }}
+      @if (item.value().state === "complete") {
+        <span class="sr-only">(completed)</span>
+      }
+    </button>
+  </li>
+  ```
+
+- **A string `title` on every step.** Announcements and the names of panels
+  without triggers come from it. A step without one is not announced.
+
+- **Error messages next to their fields.** `stepper().issues()` gives you the
+  messages; connect them to the inputs with `aria-describedby` and
+  `aria-invalid`:
+
+  ```ts title="account-step.ts"
+  import { ChangeDetectionStrategy, Component, computed } from "@angular/core";
+  import { signup } from "./signup";
+
+  let nextId = 0;
+
+  @Component({
+    selector: "app-account-step",
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    template: `
+      <label>
+        Email
+        <input
+          type="email"
+          [attr.aria-invalid]="issues() ? 'true' : null"
+          [attr.aria-describedby]="issues() ? errorId : null"
+        />
+      </label>
+      @if (issues(); as issues) {
+        <p [id]="errorId" role="alert">{{ issues[0]?.message }}</p>
+      }
+    `,
+  })
+  export class AccountStep {
+    readonly stepper = signup.injectStepperContext();
+    protected readonly issues = computed(() => this.stepper().issues("account"));
+    protected readonly errorId = `account-error-${nextId++}`;
+  }
+  ```
+
+  The stepper's own live region only announces step changes. A message that
+  appears on a rejected Continue needs `role="alert"` (or a live region of
+  yours) to be heard, because focus stays on the button.
+
+- **What a finished flow says.** `data-finished` on the root is styling only.
+  When `onFinish` settles, show a confirmation and move focus to it, or put it
+  in a live region.
+
+## Your elements, your attributes
+
+The directives go on elements you choose. Keep these in mind:
+
+- **Triggers, prev and next stay buttons.** On a `<button>`, the directives set
+  `type="button"` unless you wrote one, so they never submit a form by
+  accident. `<a stepperTrigger href="…">` works but cannot be disabled: it
+  gets `aria-disabled` only. A trigger that is neither is reported in
+  development, because `Enter` and `Space` do not press it.
+- **Static attributes win on the structure.** On the root, the list, an item,
+  a panel and an indicator, an attribute you write replaces the directive's.
+  That is how you name a panel by its heading
+  (`<section stepperContent="payment" aria-labelledby="payment-heading">`).
+  It also means a `role` or `tabindex` you write there replaces the one the
+  pattern needs: `role="list"` on the list of a free flow is no longer a
+  tablist.
+- **The flow decides on the controls.** On triggers and the prev and next
+  buttons, ids, roles, `tabindex`, `disabled` and ARIA follow the flow. To
+  disable one on top of what the flow says, bind the directive's input:
+  `<button stepperNext [disabled]="saving()">`.
+- **Your handlers run first.** A directive acts after every `(click)` or
+  `(keydown)` on its element has run. `$event.preventDefault()` takes over;
+  `$event.stopPropagation()` does not stop it.
+
+## Development checks
+
+In development, mistakes that can be detected are reported with a code: a
+trigger without an accessible name, a trigger outside `stepperList`, a trigger
+that is not a button or a link. A step id that does not exist throws
+[SZ102](/docs/v9/core/errors#sz102). See
+[Errors and warnings](/docs/v9/core/errors).
+
+Register your definitions in `StepperRegistry` so a wrong step id fails the
+build instead (see [Typed step ids](/docs/v9/angular/guides/primitives#typed-step-ids)),
+and run an automated checker such as
+[axe-core](https://github.com/dequelabs/axe-core) in your component tests; the
+[testing guide](/docs/v9/angular/guides/testing) shows how to query the roles
+above.

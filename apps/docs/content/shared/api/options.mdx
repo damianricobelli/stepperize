@@ -1,0 +1,360 @@
+<FrameworkOnly is="react">
+The same options are accepted by `defineStepper` (as defaults), `useStepper`,
+`Provider`, `Stepper.Root` and `create`.
+</FrameworkOnly>
+
+<FrameworkOnly is="vue">
+The same options are accepted by `defineStepper` (as defaults), `useStepper`,
+`Provider`, `Stepper.Root` and `create`. On `Provider` and `Stepper.Root` they
+are props, and `@change`, `@finish` and `@invalid-step` are the `onChange`,
+`onFinish` and `onInvalidStep` options.
+</FrameworkOnly>
+
+<FrameworkOnly is="svelte solid">
+The same options are accepted by `defineStepper` (as defaults), `useStepper`,
+`Provider`, `Stepper.Root` and `create`. On `Provider` and `Stepper.Root` they
+are props.
+</FrameworkOnly>
+
+<FrameworkOnly is="angular">
+The same options are accepted by `defineStepper` (as defaults),
+`injectStepper`, `provideStepper` and `create`. `[stepperRoot]` takes no
+options: it is bound to a stepper that already has them.
+</FrameworkOnly>
+
+<FrameworkOnly is="lit">
+The same options are accepted by `defineStepper` (as defaults),
+`controller(this, options)` and `create`.
+</FrameworkOnly>
+
+| Option | Type | Description |
+| --- | --- | --- |
+| [`linear`](#linear) | `boolean` | Only move forward through `next()`. Default `false`. |
+| [`next`](#next) | `object` | Where each step leads. |
+| [`guard`](#guard) | `function` | Runs before every move and can refuse it. |
+| [`snapshot`](#snapshot) | `Partial<Snapshot>` | Where the flow starts. Read once. |
+| [`step`](#step) | `string \| null` | An outside value the flow follows, such as the URL. |
+| [`onChange`](#onchange) | `(snapshot) => void` | Called after the step, the data or the completion changes. |
+| [`onFinish`](#onfinish) | `(output, data) => void \| Promise` | Called once when the flow ends. |
+| [`onInvalidStep`](#oninvalidstep) | `(current) => void` | Called when the flow cannot follow `step`. |
+
+Options passed to a flow are merged over the definition's defaults, one
+option at a time.
+
+<FrameworkCode>
+
+```ts framework="react vue svelte solid"
+const checkout = defineStepper(steps, { linear: true });
+
+checkout.useStepper(); // linear
+checkout.useStepper({ linear: false }); // not linear
+```
+
+```ts framework="angular"
+const checkout = defineStepper(steps, { linear: true });
+
+checkout.injectStepper(); // linear
+checkout.injectStepper({ linear: false }); // not linear
+```
+
+```ts framework="lit"
+const checkout = defineStepper(steps, { linear: true });
+
+checkout.controller(this); // linear
+checkout.controller(this, { linear: false }); // not linear
+```
+
+</FrameworkCode>
+
+<FrameworkOnly is="solid">
+An option that is `undefined` keeps the definition's default, like an absent
+prop.
+</FrameworkOnly>
+
+## Options that change
+
+<FrameworkOnly is="react">
+Pass options as you would props: they are applied after every render, so a
+value that comes from props or state is always current, and callbacks see your
+latest props. There is nothing to memoize. `snapshot` is read once, when the
+flow is created.
+</FrameworkOnly>
+
+<FrameworkOnly is="vue">
+
+Pass an object, a getter or a ref. A getter or a ref is read again when the
+reactive state it uses changes, and the flow gets the new options before the
+component renders; an action called right after the change already sees them.
+A plain object is read as it is: reactive state you read while writing it is
+not followed. `snapshot` is read once, when the flow is created.
+
+```ts
+const props = defineProps<{ linear: boolean }>();
+
+const stepper = checkout.useStepper(() => ({ linear: props.linear }));
+```
+
+The props of `Provider` and `Stepper.Root` are followed the same way.
+Callbacks and `next` are read when the flow calls them, so the latest ones
+always run.
+
+</FrameworkOnly>
+
+<FrameworkOnly is="svelte">
+
+Pass an object or a function. A function is read again when the state it
+uses changes, and the flow gets the new options before the effects of the
+components below run. An object is read once. `snapshot` is read once, when
+the flow is created.
+
+```ts
+let { linear }: { linear: boolean } = $props();
+
+const stepper = checkout.useStepper(() => ({ linear }));
+```
+
+The props of `Provider` and `Stepper.Root` are followed the same way.
+
+</FrameworkOnly>
+
+<FrameworkOnly is="solid">
+
+Pass an object or a function. Pass a function when an option depends on a
+signal or on props: it is read one option at a time, so props work as they
+are. `linear` and `step` are followed when they change, once the component is
+mounted. Callbacks and `next` are read when the flow calls them, so the latest
+ones always run, even when they change in the same `batch` as the action.
+`snapshot` is read once, when the flow is created.
+
+```ts
+const stepper = checkout.useStepper(() => ({ linear: props.linear }));
+```
+
+The props of `Provider` and `Stepper.Root` are reactive already: nothing else
+is needed.
+
+</FrameworkOnly>
+
+<FrameworkOnly is="angular">
+
+Pass an object or a function. A function runs in the caller's injection
+context, so it can `inject()`, and is read again when the signals it uses
+change. Callbacks and `next` are read when the flow calls them, so the latest
+ones always run. `linear` applies before the next render, and as soon as you
+read the stepper. `snapshot` is read once, when the flow is created.
+
+```ts
+readonly linear = input(false);
+
+readonly stepper = checkout.injectStepper(() => ({ linear: this.linear() }));
+```
+
+`provideStepper()` takes the same object or function.
+
+</FrameworkOnly>
+
+<FrameworkOnly is="lit">
+
+Pass an object or a function. A function is read again before every render of
+the element, so options follow its properties, and a move that `step` causes
+is part of that same render. `snapshot` is read once, when the flow is
+created, which is no later than the element's first update.
+
+```ts
+static properties = { linear: { type: Boolean } };
+declare linear: boolean;
+
+stepper = checkout.controller(this, () => ({ linear: this.linear }));
+```
+
+</FrameworkOnly>
+
+## linear
+
+In a linear flow, `goTo` and the triggers only reach the current step and the
+steps already [complete](/docs/v9/:framework/concepts/step-state). Everything else
+is reached through `next()`, which validates. `prev()` is always allowed.
+
+Editing a complete step with `setData` makes it, and the steps completed after
+it, not complete: nothing past an edited step can be reached without
+validating it again.
+
+Without `linear`, any step can be opened at any time.
+
+See [Linear flows](/docs/v9/:framework/guides/navigation#linear-flows).
+
+## next
+
+A map from step id to where it leads. See
+[Branching](/docs/v9/:framework/guides/branching).
+
+```ts
+next: {
+  account: (data) => (data.type === "team" ? "team" : "payment"),
+  profile: (_data, flow) => (flow.account?.type === "team" ? "invite" : "done"),
+  rejected: null,
+}
+```
+
+- A function receives the step's validated data, then the data of every
+  step, and returns a step id, or `null` to end the flow.
+- `null` ends the flow at that step.
+- No entry: the following step in the list, or the end after the last one.
+
+A branch that returns an id that is not in the definition makes `next()`
+reject with [SZ102](/docs/v9/core/errors#sz102).
+
+## guard
+
+```ts
+guard: async ({ from, to, direction, data, signal }) => {
+  if (direction !== "next") return;
+  const response = await fetch("/api/check", {
+    method: "POST",
+    body: JSON.stringify(data),
+    signal,
+  });
+  return response.ok;
+}
+```
+
+Runs after validation and before every `next`, `prev` and `goTo`. Return
+`false` to refuse the move (`reason: "guard"`); anything else, including
+nothing, allows it. It may be async.
+
+| Field | Description |
+| --- | --- |
+| `from` | The step being left. |
+| `to` | The step being entered, or `null` when the flow is finishing. |
+| `direction` | `"next"`, `"prev"` or `"goTo"`. |
+| `data` | The data of every step as it will be if the move is accepted. |
+| `signal` | Aborted if the move is cancelled by `reset`, `restore` or destroying the flow. |
+
+It is not called by `setData`, `reset` or `restore`. See
+[Guard a move](/docs/v9/:framework/guides/navigation#guard-a-move).
+
+## snapshot
+
+```ts
+type Snapshot = {
+  step: string; // the current step
+  history: string[]; // the path taken, which prev() walks back
+  data: object; // the data of every step, by id
+  complete: string[]; // the steps next() has validated, in that order
+};
+```
+
+Pass any part of it. It is read when the flow is created; to apply one later,
+call `stepper.restore(snapshot)`. Ids that are not in the definition are
+dropped from `step`, `history` and `complete`.
+
+A snapshot does not carry `output`. Steps restored as complete get theirs when
+the flow finishes: see [onFinish](#onfinish).
+
+`reset()` returns to this snapshot. See
+[Saving and resuming](/docs/v9/:framework/guides/persistence).
+
+## step
+
+A step id that lives somewhere else, typically the URL. The flow starts on it
+and goes to it whenever the value changes, the way `goTo` would: `linear` and
+the guard apply. Any string is accepted; `null` and `undefined` mean "nothing
+to follow".
+
+<FrameworkOnly is="vue svelte solid angular lit">
+To follow a value that changes, pass the options as a function (see
+[Options that change](#options-that-change)): an object is read with the
+value it had when you wrote it.
+</FrameworkOnly>
+
+When both `step` and `snapshot.step` are given, `step` wins if the flow is
+allowed to be there.
+
+See [The step in the URL](/docs/v9/:framework/guides/url).
+
+## onChange
+
+Called with the new snapshot after anything a saved copy should know about:
+
+- an accepted `next`, `prev` or `goTo` to another step,
+- a `next()` rejected by the schema, because the data that was passed is kept,
+- `setData` with a new value, `reset` and `restore`.
+
+It is not called when only `isPending`, `isFinished` or the issues change (so
+not by `validate()`), when a guard refuses a move, or when the flow cannot
+follow `step`.
+
+Because `setData` calls it, debounce slow writes if you save drafts while
+typing.
+
+## onFinish
+
+Called once when `next()` completes a final step: the last step of the list, a
+step whose `next` entry is `null`, or a branch that returned `null`.
+
+```ts
+onFinish: async (output, data) => {
+  await api.createOrder(output);
+},
+```
+
+| Argument | What it holds |
+| --- | --- |
+| `output` | What the schema of every complete step produced: transforms, coercions and defaults applied. Typed by each schema's output. |
+| `data` | Every step as it was typed, drafts of steps that were never completed included. Typed by each schema's input. |
+
+Return a promise and the flow stays pending (`isPending`) until it settles.
+When it resolves, `isFinished` becomes `true`. When it rejects, `next()` rejects
+with the same error and the flow is not finished, so the person can try again.
+
+The flow stays on that step. Once finished, `next()` is refused with the reason
+`finished`, so a second press does not submit twice. Any move to another step,
+a `setData` with a new value, `reset()` or `restore()` reopens the flow. See
+[Finishing the flow](/docs/v9/:framework/guides/navigation#finish-the-flow).
+
+Steps that were restored as complete from a snapshot have no output yet, so
+they are validated once more right before `onFinish`. If one fails, the flow
+does not finish: `next()` resolves with `invalid`, the issues are stored under
+that step (`stepper.issues(id)`) and the step is no longer complete.
+
+## onInvalidStep
+
+Called with the id of the step the flow is on when it cannot follow `step`:
+
+- the value is not a step of the definition,
+- a linear flow does not allow that step yet,
+- the guard refused the move,
+- or another move was still running.
+
+Use it to correct the source without adding a history entry:
+
+<FrameworkCode>
+
+```ts framework="react"
+onInvalidStep: (current) => router.replace(`/checkout/${current}`),
+```
+
+```ts framework="vue"
+onInvalidStep: (current) => router.replace({ params: { step: current } }),
+```
+
+```ts framework="svelte"
+onInvalidStep: (current) => goto(`/checkout/${current}`, { replaceState: true }),
+```
+
+```ts framework="solid"
+onInvalidStep: (current) => navigate(`/checkout/${current}`, { replace: true }),
+```
+
+```ts framework="angular"
+onInvalidStep: (current) => void this.#router.navigate(["/checkout", current], { replaceUrl: true }),
+```
+
+```ts framework="lit"
+onInvalidStep: (current) => {
+  history.replaceState(null, "", `/checkout/${current}`);
+  this.step = current;
+},
+```
+
+</FrameworkCode>

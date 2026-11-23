@@ -1,0 +1,107 @@
+---
+title: Shared state
+description: One flow read by several components, with a Provider and useStepperContext.
+---
+
+`useStepper()` gives one component its own flow. When the step list, the
+current panel and the buttons live in different components, share one flow
+instead.
+
+## Provider
+
+```svelte title="Checkout.svelte"
+<script lang="ts">
+  import { checkout } from "./checkout";
+  import CheckoutHeader from "./CheckoutHeader.svelte";
+  import CheckoutBody from "./CheckoutBody.svelte";
+</script>
+
+<checkout.Provider linear onFinish={placeOrder}>
+  <CheckoutHeader />
+  <CheckoutBody />
+</checkout.Provider>
+```
+
+`Provider` takes every [option](/docs/v9/svelte/api/options) as a prop and
+renders no element. It puts the flow in Svelte's context.
+
+`Stepper.Root` is a `Provider` too: components inside it can call
+`useStepperContext()`.
+
+## useStepperContext
+
+```svelte title="CheckoutHeader.svelte"
+<script lang="ts">
+  import { checkout } from "./checkout";
+
+  const stepper = checkout.useStepperContext();
+</script>
+
+<p>Step {stepper.index + 1} of {stepper.steps.length}</p>
+```
+
+It returns the same reactive stepper as `useStepper()`. Call it while the
+component initialises. Outside the flow's own `Provider` it throws
+[SZ100](/docs/v9/core/errors#sz100).
+
+## Reading only what you need
+
+Svelte tracks what each expression reads, and `$derived` drops results that did
+not change, so there is no selector argument:
+
+```ts
+const isLast = $derived(stepper.isLast);
+```
+
+## Outside a component
+
+Sometimes the flow belongs to the app rather than to one component: a wizard
+in a dialog that any page can open, or a flow that survives navigating between
+routes. Create it in a `.svelte.ts` module with `create()`, and make it
+reactive with `fromFlow()`:
+
+```ts title="checkout-flow.svelte.ts"
+import { fromFlow } from "@stepperize/svelte";
+import { checkout } from "./checkout";
+
+export const flow = checkout.create({ linear: true, onFinish: placeOrder });
+export const stepper = fromFlow(flow);
+```
+
+```svelte title="CartBadge.svelte"
+<script lang="ts">
+  import { stepper } from "./checkout-flow.svelte";
+</script>
+
+<span>Step {stepper.index + 1} of {stepper.steps.length}</span>
+```
+
+`stepper` is the same reactive object `useStepper()` returns, and it works
+anywhere `$derived` does: markup, `$derived`, `$effect`, a class or another
+module. It creates no effect, so it needs no component: it subscribes to the
+flow while an effect reads it
+([`createSubscriber`](https://svelte.dev/docs/svelte/svelte-reactivity#createSubscriber))
+and stops when the last one is gone. Read outside an effect, as in an event
+handler, it returns the latest state.
+
+The flow is yours, not a component's:
+
+- Its options are the ones you passed to `create()`. Call
+  `flow.setOptions({ ... })` to change them; it replaces all of them, the
+  definition's defaults included.
+- Nothing destroys it. Call `flow.destroy()` if it should stop, which cancels
+  a running move and drops its listeners.
+
+<Callout type="warn" title="Not for per-user state on the server">
+	A module is evaluated once per server, so in SvelteKit every request would
+	share that one flow. Keep a module-level flow for state that only exists in
+	the browser, and use `useStepper()`, a `Provider` or `Stepper.Root` for
+	anything rendered on the server. See SvelteKit's
+	[state management](https://svelte.dev/docs/kit/state-management#Avoid-shared-state-on-the-server).
+</Callout>
+
+`useStepper()` is not the tool here: it owns its flow, so it needs a component
+(or `$effect.root`) to destroy it. Called at module scope or in an event
+handler, it throws [SZ104](/docs/v9/core/errors#sz104) in the browser and
+points you to `fromFlow()`. On the server it does not throw, so never call it
+at module scope: the mistake would only show once the page runs.

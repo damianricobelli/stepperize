@@ -7,6 +7,12 @@ Diagnostics carry a stable code and a link to this page. Warnings appear only
 in development and are removed from production builds; errors are thrown in
 both.
 
+The examples below use the React names (`Stepper.Trigger`, `Stepper.Item`,
+`useStepperContext()`). The other bindings emit the same codes for the same
+mistakes with their own names: a trigger directive in Angular or Lit, a
+`stepper-trigger` part in HTML, `injectStepperContext()` or
+`useStepperContext()` for a missing provider.
+
 ## SZ001
 
 **Warning.** A primitive received a `render` function that did not put the
@@ -24,6 +30,38 @@ are missing from the page.
 If you spread into your own component, it must forward the `ref` to its
 element.
 
+In Vue the same warning means a primitive with `as-child` could not hand its
+attributes to one element: its default slot has no element or component, has
+more than one (only the first is rendered), the component it holds does not
+put the attributes on an element, or an `as-child` List's element already has
+children of its own while the `#item` slot was meant to fill it.
+
+```vue
+<!-- Wrong: only text in the slot. -->
+<Stepper.Next as-child>Continue</Stepper.Next>
+
+<!-- Right -->
+<Stepper.Next as-child><MyButton>Continue</MyButton></Stepper.Next>
+```
+
+In Svelte it means a `child` snippet did not spread the `props` it received
+onto an element.
+
+```svelte
+<Stepper.Next>
+  {#snippet child({ props })}
+    <MyButton {...props}>Continue</MyButton>
+  {/snippet}
+</Stepper.Next>
+```
+
+In Solid it means an `as` component did not spread its props, `ref` included,
+onto an element.
+
+In Lit it is an error, not a warning: a primitive was used outside an opening
+tag. They are element directives, written next to the attributes, as in
+`<ol ${stepper.list()}>`.
+
 ## SZ002
 
 **Warning.** A `Stepper.Trigger` has no accessible name. `Stepper.Indicator` is
@@ -36,11 +74,54 @@ an unnamed button.
 </Stepper.Trigger>
 ```
 
+In HTML, an empty `stepper-title` inside the trigger counts as its name:
+`bindStepper` checks once it has filled the title in from the step.
+
 ## SZ003
 
 **Warning.** A `Stepper.Trigger` is rendered outside `Stepper.List`. Keyboard
 navigation and the list semantics depend on the list. Move the trigger inside
 it, or use a plain button that calls `goTo`.
+
+The check crosses shadow roots: a trigger that a child component renders in its
+own shadow root, inside an item of the List, is inside the List.
+
+## SZ004
+
+**Warning.** A trigger or a panel is rendered in a different shadow root than
+the stepper's root. Tabs, panels and the focus hand-off are tied together by
+ids, and an id reference (`aria-controls`, `aria-labelledby`) cannot cross a
+shadow root.
+
+It comes from Lit, where a child component can render parts in its own shadow
+root. Render triggers and panels in the same shadow root as `root()`; the
+other parts (list, item, indicator, prev, next) may live in a child component.
+
+## SZ005
+
+**Warning.** A trigger is not a `<button>`. Enter and Space do not press a
+`<span>` or a `<div>`, and it cannot be disabled. Every binding checks the
+element a trigger ends up on, in development: the one a `render` function,
+`as-child`, a `child` snippet or an `as` component renders, the element an
+Angular or Lit trigger directive is written on, and the `stepper-trigger` part
+`bindStepper` enhances. A link with an `href` passes, since the keyboard can
+press it.
+
+```tsx
+// Wrong
+<Stepper.Trigger render={(props) => <span {...props} />}>Account</Stepper.Trigger>
+
+// Right
+<Stepper.Trigger>Account</Stepper.Trigger>
+```
+
+```html
+<!-- Wrong -->
+<span data-component="stepper-trigger">Account</span>
+
+<!-- Right -->
+<button data-component="stepper-trigger">Account</button>
+```
 
 ## SZ100
 
@@ -48,7 +129,20 @@ it, or use a plain button that calls `goTo`.
 
 - `useStepperContext()` needs the `Provider` or `Stepper.Root` of the same
   definition as an ancestor. A provider of another definition does not count.
-- The primitives need `Stepper.Root`.
+- React, Vue, Svelte and Solid: `Stepper.List`, `Stepper.Trigger` and
+  `Stepper.Content` need a `Stepper.Root` above them. `Stepper.Item`,
+  `Stepper.Prev` and `Stepper.Next` only need the flow, so the `Provider` is
+  enough for them. `Stepper.Indicator` needs an item instead
+  ([SZ101](#sz101)), and `Stepper.Title` and `Stepper.Description` need
+  nothing: outside an item they show only what you pass them.
+- Angular: `injectStepperContext()` needs a `provideStepper()` of the same
+  definition, or a `[stepperRoot]` bound to one of its steppers, above it.
+  Every primitive directive needs a `[stepperRoot]`.
+- Lit: parts rendered without a `root()` directive in the same controller throw
+  when the host updates. `root()` belongs in the host's own template; a child
+  component can render the other parts inside it. A part rendered outside the
+  element that has `root()` gets this code as a development warning: the root
+  listens for its clicks, so pressing it would do nothing.
 
 If the component only needs its own flow, use `useStepper()` instead.
 
@@ -61,25 +155,101 @@ If the component only needs its own flow, use `useStepper()` instead.
 item gets its step from the `Stepper.List` function, or from its `step` prop:
 
 ```tsx
-<Stepper.List>{() => <Stepper.Item>…</Stepper.Item>}</Stepper.List>
+<Stepper.List>{(_step) => <Stepper.Item>…</Stepper.Item>}</Stepper.List>
 
 <Stepper.Item step="payment">…</Stepper.Item>
 ```
 
+In HTML bound with `bindStepper`: a part that needs a step has no `data-step`,
+on itself or on its `stepper-item`. Titles and descriptions need none. Markup
+that is wrong when `bindStepper` is called makes it throw; a part that arrives
+later without a step is skipped, with this code as a development warning, and
+the rest of the stepper keeps following the flow.
+
 ## SZ102
 
 **Error.** A step id does not exist in the definition. It is thrown by `goTo`,
-`setData`, a `next` branch that returns an unknown id, and `Stepper.Item`.
+`setData`, a `next` branch that returns an unknown id, `Stepper.Item` and
+most content parts.
 
-`goTo`, `setData` and `Stepper.Item` throw it directly. A `next` branch that
-returns an unknown id makes the `next()` promise reject with it.
+`goTo`, `setData` and `Stepper.Item` throw it directly. So does a content part
+for a step that is not in the definition, whether its step is current or not
+(`Stepper.Content` in React, Vue, Svelte and Solid, `forceMount` or not,
+Angular's `stepperContent`, Lit's `content()`): no step is ever current under
+an unknown id, so the panel would otherwise never show. `bindStepper` throws it
+for a `data-step` that is not in the flow when it is called; a part with an
+unknown `data-step` that arrives later is skipped, with this code as a
+development warning. A `next` branch that returns an unknown id makes the
+`next()` promise reject with it, and from a `Stepper.Next` button the error is
+reported (see [Errors from a click](#errors-from-a-click)).
 
-TypeScript catches this at compile time; it usually means a value was cast, or
-came from outside, such as a URL. For outside values use the
-[`step` option](/docs/v9/react/guides/url): it ignores unknown ids and calls
-`onInvalidStep` so you can correct the source.
+Where ids are typed, TypeScript catches this at compile time; it usually means
+a value was cast, or came from outside, such as a URL. Ids written in an HTML
+attribute (`data-step`) or an Angular directive input without a
+[`StepperRegistry`](/docs/v9/angular/api/primitives#stepperregistry) are plain
+strings and are only checked when the page runs. For outside values use the
+[`step` option](/docs/v9/react/guides/url): it ignores unknown ids, and
+`onInvalidStep` tells you where the flow really is so you can correct the
+source.
+
+`onInvalidStep` is called by `setOptions`, when it receives a `step` the flow
+cannot follow (unknown, or refused by `linear` or a `guard`). `createStepper`
+never calls it: given such a `step` it starts on the snapshot's step, or the
+first, without a word. The bindings pass the options again once they are
+mounted, and that call reports it:
+
+- React: in the layout effect after the first render.
+- Vue: when the component is mounted (right away for `useStepper()` in an
+  effect scope without a component).
+- Svelte and Solid: in the first effect, after mount.
+- Angular: in the first effect, before the first render.
+- Lit: in the host's first update.
+- HTML: never on its own. `bindStepper` does not pass options; call
+  `flow.setOptions` yourself, as the URL example in the
+  [FAQ](/docs/v9/html/faq#how-do-i-keep-the-current-step-in-the-url) does.
+
+None of them call it during server rendering.
 
 ## SZ103
 
 **Error.** The list of steps is not valid: it is empty, or two steps share an
 `id`.
+
+It is thrown when a flow is created from the list, not by `defineStepper`:
+by `createStepper`, `definition.create()`, and by whatever creates a flow for a
+component (`useStepper()`, `Stepper.Root`, the `Provider`, Angular's
+`injectStepper()` and `provideStepper()` when the stepper is first read, a Lit
+controller on its first update or first read of `flow`). A definition with a
+bad list that is never used throws nothing.
+
+## SZ104
+
+**Error or warning.** A flow was created where nothing owns it, so nothing
+would ever destroy it.
+
+- Svelte, an error in the browser: `useStepper()` was called outside a
+  component's initialisation, for example in a `.svelte.ts` module. The server
+  does not check it, so never call it at module scope. Use
+  `fromFlow(definition.create())` there.
+- Vue, a warning: `useStepper()` ran without a component instance or an effect
+  scope, typically after an `await` in a hand-written async `setup()`. Call it
+  before the first `await`, or inside an `effectScope()` that you stop.
+- Solid, a warning: `useStepper()` ran without an owner, after an `await`, in a
+  `setTimeout`, or outside a component. Call it while a component runs, or
+  inside `createRoot()` and dispose that root.
+
+## Errors from a click
+
+A move started by a click or a key has no caller to return its promise to:
+`Stepper.Next`, `Stepper.Prev`, a trigger, arrow keys in a List, and the
+`stepper-next`, `stepper-prev` and `stepper-trigger` parts in HTML. When that
+move throws (a failing `onFinish`, a guard or schema that throws, an unknown id
+from a `next` branch), every binding hands the error to the global
+[`reportError()`](https://developer.mozilla.org/docs/Web/API/reportError), so
+it is reported as an error thrown by any event listener is: it shows in the
+console as uncaught, and `window.onerror` and error trackers receive it. Where
+`reportError` does not exist, it is logged with `console.error`. The flow is
+idle again, so the button works on the next press.
+
+To show the failure in the page, catch it where it happens, in `onFinish` or
+the guard, or call the move yourself and handle the promise.

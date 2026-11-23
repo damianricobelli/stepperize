@@ -24,6 +24,27 @@ jobs:
       - run: pnpm --filter @stepperize/core typecheck
       - run: pnpm --filter @stepperize/core exec vitest run
       - run: node scripts/test-react-compat.mjs ${{ matrix.react }}
+  bindings:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        binding: [vue, svelte, solid, angular, lit]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @stepperize/${{ matrix.binding }} exec playwright install --with-deps --only-shell chromium
+      - run: pnpm --filter @stepperize/core build
+      - run: pnpm --filter @stepperize/${{ matrix.binding }} build
+      - run: pnpm --filter @stepperize/${{ matrix.binding }} typecheck
+      - run: pnpm --filter @stepperize/${{ matrix.binding }} test
+      - name: Build, typecheck and test against the lowest version of each peer range
+        run: node scripts/test-peer-floor.mjs ${{ matrix.binding }}
   docs:
     runs-on: ubuntu-latest
     steps:
@@ -35,8 +56,10 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @stepperize/react exec playwright install --with-deps --only-shell chromium
-      - run: pnpm turbo build --filter=@stepperize/react...
+      - run: pnpm build:packages
       - run: node scripts/check-bundle.mjs
+      - name: Typecheck the published declarations on the oldest TypeScript each package claims
+        run: node scripts/test-consumer-types.mjs
       - run: pnpm --filter @stepperize/codemod typecheck
       - run: pnpm --filter @stepperize/codemod test
       - run: pnpm lint

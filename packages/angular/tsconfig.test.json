@@ -1,0 +1,7 @@
+{
+	"extends": "./tsconfig.json",
+	"compilerOptions": { "outDir": "./out-tsc/test", "types": [] },
+	"include": ["src/**/*.ts", "headless/**/*.ts", "tests/**/*.ts"],
+	// Compiled one by one by templates.test.ts: they are meant to fail.
+	"exclude": ["tests/templates/**"]
+}

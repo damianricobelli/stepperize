@@ -9,7 +9,7 @@ cannot follow.
 
 ```tsx
 function Checkout() {
-  const { step } = useParams();
+  const { step } = useParams<{ step: string }>();
   const router = useRouter();
 
   const stepper = checkout.useStepper({

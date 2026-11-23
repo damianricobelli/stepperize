@@ -11,8 +11,32 @@ import {
 	Truck,
 	Zap,
 } from "lucide-react";
-import { type ReactNode, type Ref, useRef, useState } from "react";
+import {
+	type CSSProperties,
+	type ReactNode,
+	type Ref,
+	useRef,
+	useState,
+} from "react";
+import { FrameworkIcon } from "@/components/framework-icon";
+import { Input } from "@/components/ui/input";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
+import { DEFAULT_FRAMEWORK, type DocsFramework } from "@/lib/frameworks";
 import { cn } from "@/lib/utils";
+import { Tokens } from "./code";
+import {
+	CHOICE_LABELS,
+	CHOICES,
+	setFramework,
+	useFramework,
+} from "./framework-choice";
+import { HERO_MAX_LINES, HERO_SOURCES, type LineMap } from "./hero-code";
 
 /* ────────────────────────────── the flow ─────────────────────────────── */
 
@@ -27,8 +51,17 @@ type StepId = (typeof checkout.steps)[number]["id"];
 type Result =
 	| { accepted: true; to: StepId | null }
 	| { accepted: false; reason: string };
-/** `from` is where the call started: the result itself only says where it led. */
-type LastCall = { method: "next" | "prev"; from: StepId; result: Result };
+type Method = "next" | "prev" | "goTo";
+/**
+ * `from` is where the call started: the result itself only says where it led.
+ * `target` is the step a `goTo()` (a click on the step list) asked for.
+ */
+type LastCall = {
+	method: Method;
+	from: StepId;
+	target?: StepId;
+	result: Result;
+};
 
 const SHIPPING = {
 	standard: { label: "Standard", detail: "3–5 business days", price: 0 },
@@ -40,84 +73,6 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const DEMO_EMAIL = "ada@lovelace.dev";
 const ORDER_DELAY_MS = 900;
 
-/* ────────────────────────── the code, tokenized ──────────────────────── */
-
-const SOURCE = `const checkout = defineStepper([
-  { id: "account", title: "Account" },
-  { id: "shipping", title: "Shipping" },
-  { id: "review", title: "Review" },
-  { id: "done", title: "Done" },
-]);
-
-function Checkout() {
-  const stepper = checkout.useStepper({
-    async guard({ from, direction }) {
-      if (direction === "prev") return true;
-      if (from.id === "account") return isEmail(email);
-      if (from.id === "review") await placeOrder();
-    },
-  });
-
-  return stepper.match({
-    account: () => <Account />,
-    shipping: () => <Shipping />,
-    review: () => <Review />,
-    done: () => <Done />,
-  });
-}`;
-
-/** Line numbers (0-based) the live state points at. */
-const LINES = {
-	stepDefinition: 1,
-	prevGuard: 10,
-	emailGuard: 11,
-	orderGuard: 12,
-	match: 17,
-} as const;
-
-const CODE_PAD_Y = 16;
-
-type TokenKind = "comment" | "string" | "keyword" | "tag" | "fn" | "punct";
-
-const TOKEN_RE =
-	/(\/\/.*$)|("[^"]*")|\b(const|function|async|await|if|return|true)\b|(<\/?[A-Z]\w*|\/>)|\b([a-zA-Z_]\w*)(?=\()|([{}()[\];,.:=<>])/g;
-
-const TOKEN_CLASS: Record<TokenKind, string> = {
-	comment: "text-muted-foreground",
-	string: "text-emerald-700 dark:text-emerald-300",
-	keyword: "text-violet-600 dark:text-violet-300",
-	tag: "text-amber-700 dark:text-amber-300",
-	fn: "text-sky-700 dark:text-sky-300",
-	punct: "text-foreground/45",
-};
-
-function tokenize(line: string) {
-	const out: { kind?: TokenKind; text: string }[] = [];
-	let last = 0;
-	for (const m of line.matchAll(TOKEN_RE)) {
-		const index = m.index ?? 0;
-		if (index > last) out.push({ text: line.slice(last, index) });
-		const kind: TokenKind = m[1]
-			? "comment"
-			: m[2]
-				? "string"
-				: m[3]
-					? "keyword"
-					: m[4]
-						? "tag"
-						: m[5]
-							? "fn"
-							: "punct";
-		out.push({ kind, text: m[0] });
-		last = index + m[0].length;
-	}
-	if (last < line.length) out.push({ text: line.slice(last) });
-	return out;
-}
-
-// Static: tokenized once at module load, never per render.
-const CODE_LINES = SOURCE.split("\n").map(tokenize);
-
 /* ───────────────────────────── component ─────────────────────────────── */
 
 /**
@@ -125,13 +80,19 @@ const CODE_LINES = SOURCE.split("\n").map(tokenize);
  * right, the code that drives it on the left, and an inspector strip that
  * prints the typed result of every navigation call. The highlighted lines
  * follow the live state, so "what does this code do?" answers itself.
+ *
+ * The code is shown in the visitor's framework (`hero-code.ts`). The preview
+ * is always the React binding: every binding runs the same core flow, so the
+ * step, the guard and the pending state it shows are what each version does.
  */
 export function HeroPlayground() {
 	const { Stepper } = checkout;
+	const framework = useFramework();
 	const [email, setEmail] = useState("");
 	const [shipping, setShipping] = useState<ShippingId>("standard");
 	const [lastCall, setLastCall] = useState<LastCall | null>(null);
-	const [direction, setDirection] = useState<1 | -1>(1);
+	// 0 until the first move, so the first step does not animate in on load.
+	const [direction, setDirection] = useState<0 | 1 | -1>(0);
 	// The guard reads the latest email without re-creating the stepper options.
 	const emailRef = useRef(email);
 	emailRef.current = email;
@@ -142,7 +103,9 @@ export function HeroPlayground() {
 		<Stepper.Root
 			linear
 			guard={async ({ from, direction: move, signal }) => {
-				if (move === "prev") return true;
+				// Back, and jumps from the step list, are never checked: only
+				// `next()` validates the email and places the order.
+				if (move !== "next") return true;
 				if (from.id === "account") return EMAIL_RE.test(emailRef.current);
 				if (from.id === "review") await placeOrder(signal);
 			}}
@@ -158,10 +121,14 @@ export function HeroPlayground() {
 			className="relative overflow-hidden rounded-2xl border bg-card shadow-2xl ring-1 ring-black/[0.02] dark:ring-white/[0.03]"
 		>
 			{(stepper) => {
-				const run = async (method: "next" | "prev") => {
+				const run = async (method: Method, target?: StepId) => {
 					const from = stepper.current.id;
-					const result: Result = await stepper[method]();
-					setLastCall({ method, from, result });
+					const result: Result =
+						method === "goTo" && target
+							? await stepper.goTo(target)
+							: await stepper[method === "prev" ? "prev" : "next"]();
+					// Every call lands in the inspector, so it never shows a stale result.
+					setLastCall({ method, from, target, result });
 					if (!result.accepted && result.reason === "guard") {
 						rejectEmail(emailInputRef.current);
 					}
@@ -178,7 +145,10 @@ export function HeroPlayground() {
 
 				return (
 					<>
-						<WindowBar isPending={stepper.isPending} />
+						<WindowBar
+							isPending={stepper.isPending}
+							file={HERO_SOURCES[framework].file}
+						/>
 						{/*
 						 * Desktop: code | preview, inspector across the bottom.
 						 * Phones: preview, then the inspector right under it (so the
@@ -186,6 +156,7 @@ export function HeroPlayground() {
 						 */}
 						<div className="grid lg:grid-cols-[minmax(0,1.08fr)_minmax(0,1fr)]">
 							<CodePane
+								framework={framework}
 								index={stepper.index}
 								guardLine={getGuardLine(lastCall, stepper.isPending)}
 							/>
@@ -213,12 +184,17 @@ export function HeroPlayground() {
 										>
 											<Stepper.Trigger
 												aria-label={step.title}
+												// The list's own goTo(), run here so its result is shown.
+												onClick={(event) => {
+													event.preventDefault();
+													if (!stepper.isPending) void run("goTo", step.id);
+												}}
 												className="pressable hit-44 group/trigger flex rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card disabled:active:scale-100"
 											>
-												<Stepper.Indicator className="flex size-8 items-center justify-center rounded-full border text-xs font-semibold tabular-nums transition-[background-color,border-color,color,box-shadow] duration-300 ease-out-strong group-data-[state=current]/trigger:border-primary group-data-[state=current]/trigger:bg-primary group-data-[state=current]/trigger:text-primary-foreground group-data-[state=current]/trigger:shadow-[0_0_0_4px] group-data-[state=current]/trigger:shadow-primary/15 group-data-[state=complete]/trigger:border-primary/30 group-data-[state=complete]/trigger:bg-primary/10 group-data-[state=complete]/trigger:text-primary group-data-[state=pending]/trigger:bg-muted group-data-[state=pending]/trigger:text-muted-foreground">
+												<Stepper.Indicator className="flex size-8 items-center justify-center rounded-full border text-xs font-semibold tabular-nums transition-[background-color,border-color,color,box-shadow] duration-200 ease-out-strong group-data-[state=current]/trigger:border-primary group-data-[state=current]/trigger:bg-primary group-data-[state=current]/trigger:text-primary-foreground group-data-[state=current]/trigger:shadow-[0_0_0_4px] group-data-[state=current]/trigger:shadow-primary/15 group-data-[state=complete]/trigger:border-primary/30 group-data-[state=complete]/trigger:bg-primary/10 group-data-[state=complete]/trigger:text-primary group-data-[state=pending]/trigger:bg-muted group-data-[state=pending]/trigger:text-muted-foreground">
 													{stepper.state(step.id) === "complete" ? (
 														<Check
-															className="size-3.5 animate-in duration-200 zoom-in-75 fade-in-0"
+															className="lp-swap size-3.5"
 															strokeWidth={3}
 															aria-hidden
 														/>
@@ -232,7 +208,7 @@ export function HeroPlayground() {
 													aria-hidden
 													className="relative mx-2 h-0.5 flex-1 overflow-hidden rounded-full bg-border"
 												>
-													<span className="absolute inset-0 origin-left scale-x-0 rounded-full bg-primary transition-transform duration-500 ease-in-out-strong group-data-[state=complete]/item:scale-x-100" />
+													<span className="absolute inset-0 origin-left scale-x-0 rounded-full bg-primary transition-transform duration-300 ease-in-out-strong group-data-[state=complete]/item:scale-x-100 motion-reduce:transition-none" />
 												</span>
 											)}
 										</Stepper.Item>
@@ -242,12 +218,16 @@ export function HeroPlayground() {
 								<div className="relative mt-5 min-h-[196px] flex-1">
 									<div
 										key={stepper.current.id}
-										className={cn(
-											"duration-300 ease-out-strong animate-in fade-in-0 motion-safe:blur-in-2",
+										// No entrance on first paint (it would play during
+										// hydration); after that, a short slide in the
+										// direction of travel. Transform and opacity only.
+										className={
 											direction === 1
-												? "motion-safe:slide-in-from-right-3"
-												: "motion-safe:slide-in-from-left-3",
-										)}
+												? "lp-from-right"
+												: direction === -1
+													? "lp-from-left"
+													: undefined
+										}
 									>
 										{stepper.match({
 											account: () => (
@@ -353,7 +333,7 @@ function placeOrder(signal: AbortSignal) {
 }
 
 type GuardHighlight = {
-	line: number;
+	line: keyof LineMap["guard"];
 	tone: "pass" | "reject" | "pending";
 } | null;
 
@@ -362,34 +342,42 @@ function getGuardLine(
 	lastCall: LastCall | null,
 	isPending: boolean,
 ): GuardHighlight {
-	if (isPending) return { line: LINES.orderGuard, tone: "pending" };
+	if (isPending) return { line: "order", tone: "pending" };
 	if (!lastCall) return null;
-	const { method, from, result } = lastCall;
+	const { method, from, target, result } = lastCall;
 	if (!result.accepted) {
-		return result.reason === "guard"
-			? { line: LINES.emailGuard, tone: "reject" }
-			: null;
+		return result.reason === "guard" ? { line: "email", tone: "reject" } : null;
 	}
-	if (method === "prev") return { line: LINES.prevGuard, tone: "pass" };
-	if (from === "account") return { line: LINES.emailGuard, tone: "pass" };
-	if (from === "review") return { line: LINES.orderGuard, tone: "pass" };
+	// goTo() to the step already shown is not a move: the guard never ran.
+	if (method === "goTo" && target === from) return null;
+	if (method !== "next") return { line: "others", tone: "pass" };
+	if (from === "account") return { line: "email", tone: "pass" };
+	if (from === "review") return { line: "order", tone: "pass" };
 	return null;
 }
 
 /* ────────────────────────────── chrome ───────────────────────────────── */
 
-function WindowBar({ isPending }: { isPending: boolean }) {
+function WindowBar({ isPending, file }: { isPending: boolean; file: string }) {
 	return (
 		<div className="flex h-11 items-center gap-3 border-b bg-muted/40 px-4">
-			<div className="flex gap-1.5" aria-hidden>
+			<div className="flex gap-1.5 max-sm:hidden" aria-hidden>
 				<span className="size-2.5 rounded-full bg-foreground/15" />
 				<span className="size-2.5 rounded-full bg-foreground/15" />
 				<span className="size-2.5 rounded-full bg-foreground/15" />
 			</div>
-			<span className="font-mono text-xs text-muted-foreground">
-				checkout.tsx
+			{/*
+			 * Desktop: the bar sits over the code, so it names the file. Phones:
+			 * the live preview comes first, so the bar names what is under it.
+			 */}
+			<span className="min-w-0 truncate font-mono text-xs text-muted-foreground max-lg:hidden">
+				{file}
 			</span>
-			<span className="ml-auto inline-flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
+			<span className="inline-flex min-w-0 items-center gap-1.5 text-xs font-medium text-muted-foreground lg:hidden">
+				<FrameworkIcon id="react" className="size-3.5" />
+				<span className="truncate">Checkout preview, in React</span>
+			</span>
+			<span className="ml-auto inline-flex shrink-0 items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
 				<span
 					aria-hidden
 					className={cn(
@@ -397,7 +385,7 @@ function WindowBar({ isPending }: { isPending: boolean }) {
 						isPending ? "bg-amber-500" : "bg-emerald-500",
 					)}
 				/>
-				Live preview
+				Live<span className="max-lg:hidden">&nbsp;preview</span>
 			</span>
 		</div>
 	);
@@ -409,71 +397,126 @@ const GUARD_TONE = {
 	pending: "bg-amber-500/12",
 } as const;
 
+const CODE_PAD_Y = 16;
+
 function CodePane({
+	framework,
 	index,
 	guardLine,
 }: {
+	framework: DocsFramework;
 	index: number;
 	guardLine: GuardHighlight;
 }) {
+	const { lines, map } = HERO_SOURCES[framework];
+	const active = new Set([map.steps[index], map.render[index]]);
+	const isMain = framework === DEFAULT_FRAMEWORK;
+	const guard = guardLine && map.guard[guardLine.line];
+
 	return (
-		<div className="relative order-3 min-w-0 overflow-x-auto overscroll-x-contain bg-card lg:order-none">
-			{/* --lh drives both the text and the highlight bars, so they stay in register. */}
-			<pre
-				className="relative min-w-max font-mono text-[11.5px] [--lh:20px] sm:text-[12.5px] sm:[--lh:22px]"
-				style={{ paddingBlock: CODE_PAD_Y, lineHeight: "var(--lh)" }}
-			>
-				{/* Moving highlights: they slide between lines as the state changes. */}
-				<HighlightBar line={LINES.stepDefinition + index} />
-				<HighlightBar line={LINES.match + index} />
-				{guardLine && (
-					<span
-						aria-hidden
-						key={`${guardLine.line}-${guardLine.tone}`}
-						className={cn(
-							"absolute inset-x-0 animate-in duration-300 fade-in-0",
-							GUARD_TONE[guardLine.tone],
-						)}
-						style={{
-							top: `calc(${CODE_PAD_Y}px + var(--lh) * ${guardLine.line})`,
-							height: "var(--lh)",
-						}}
-					/>
-				)}
-				<code className="relative block">
-					{CODE_LINES.map((tokens, i) => {
-						const active =
-							i === LINES.stepDefinition + index || i === LINES.match + index;
-						return (
+		<div className="order-3 flex min-w-0 flex-col bg-card lg:order-none">
+			<div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b px-3 py-2 sm:px-4">
+				<FrameworkSelect value={framework} />
+				{/*
+				 * The preview on the right is the React binding. Every binding
+				 * runs the same core flow, so the state it shows is what this
+				 * code would do too: say so, without making a fuss.
+				 */}
+				<p className="text-[11px] leading-snug text-muted-foreground sm:ml-auto">
+					{isMain
+						? "The code behind the preview"
+						: "Same core flow as the preview, which runs React"}
+				</p>
+			</div>
+			<div className="min-w-0 flex-1 overflow-x-auto overscroll-x-contain">
+				{/* --lh drives both the text and the highlight bars, so they stay in register. */}
+				<pre
+					className="relative min-w-max font-mono text-[11.5px] [--lh:20px] sm:text-[12.5px] sm:[--lh:22px] lg:min-h-(--code-h)"
+					style={
+						{
+							paddingBlock: CODE_PAD_Y,
+							lineHeight: "var(--lh)",
+							// The longest framework's height: switching never moves the page.
+							"--code-h": `calc(${CODE_PAD_Y * 2}px + var(--lh) * ${HERO_MAX_LINES})`,
+						} as CSSProperties
+					}
+				>
+					{/*
+					 * Moving highlights: they slide between lines as the state
+					 * changes. Keyed by framework so a new snippet places them
+					 * instantly instead of sliding across unrelated code.
+					 */}
+					<HighlightBar key={`${framework}-steps`} line={map.steps[index]} />
+					<HighlightBar key={`${framework}-render`} line={map.render[index]} />
+					{guardLine && guard != null && (
+						<span
+							aria-hidden
+							key={`${framework}-${guard}-${guardLine.tone}`}
+							className={cn(
+								"lp-fade absolute inset-x-0",
+								GUARD_TONE[guardLine.tone],
+							)}
+							style={{
+								top: `calc(${CODE_PAD_Y}px + var(--lh) * ${guard})`,
+								height: "var(--lh)",
+							}}
+						/>
+					)}
+					<code className="relative block">
+						{lines.map((tokens, i) => (
 							<div key={i} className="flex pr-6">
 								<span
 									aria-hidden
 									className={cn(
-										"w-10 shrink-0 pr-4 text-right tabular-nums transition-colors duration-200 select-none",
-										active ? "text-foreground/70" : "text-foreground/20",
+										"w-10 shrink-0 pr-4 text-right tabular-nums select-none",
+										active.has(i) ? "text-foreground/70" : "text-foreground/20",
 									)}
 								>
 									{i + 1}
 								</span>
 								<span>
-									{tokens.length === 0
-										? " "
-										: tokens.map((t, j) =>
-												t.kind ? (
-													<span key={j} className={TOKEN_CLASS[t.kind]}>
-														{t.text}
-													</span>
-												) : (
-													t.text
-												),
-											)}
+									<Tokens tokens={tokens} />
 								</span>
 							</div>
-						);
-					})}
-				</code>
-			</pre>
+						))}
+					</code>
+				</pre>
+			</div>
 		</div>
+	);
+}
+
+/** Picks the framework the code is shown in: the same choice as the rest of the page. */
+function FrameworkSelect({ value }: { value: DocsFramework }) {
+	return (
+		<Select
+			items={CHOICE_LABELS}
+			value={value}
+			onValueChange={(id) => {
+				if (id) setFramework(id);
+			}}
+		>
+			<SelectTrigger
+				size="sm"
+				aria-label="Show the code in"
+				className="hit-44 h-7 gap-1.5 bg-background pr-1.5 pl-2 text-xs font-medium dark:bg-background"
+			>
+				<FrameworkIcon id={value} className="size-3.5" />
+				<SelectValue />
+			</SelectTrigger>
+			<SelectContent
+				align="start"
+				alignItemWithTrigger={false}
+				aria-label="Show the code in"
+			>
+				{CHOICES.map((entry) => (
+					<SelectItem key={entry.id} value={entry.id}>
+						<FrameworkIcon id={entry.id} />
+						{entry.title}
+					</SelectItem>
+				))}
+			</SelectContent>
+		</Select>
 	);
 }
 
@@ -481,7 +524,7 @@ function HighlightBar({ line }: { line: number }) {
 	return (
 		<span
 			aria-hidden
-			className="absolute inset-x-0 top-0 border-l-2 border-primary bg-primary/[0.07] transition-transform duration-300 ease-in-out-strong motion-reduce:transition-none"
+			className="absolute inset-x-0 top-0 border-l-2 border-primary bg-primary/[0.07] transition-transform duration-250 ease-in-out-strong motion-reduce:transition-none"
 			style={{
 				height: "var(--lh)",
 				transform: `translateY(calc(${CODE_PAD_Y}px + var(--lh) * ${line}))`,
@@ -520,13 +563,13 @@ function Inspector({
 			</div>
 			<div className="flex min-w-0 items-start gap-2 sm:ml-auto sm:items-center">
 				<span className="shrink-0 text-muted-foreground">
-					{lastCall ? `${lastCall.method}() →` : "result →"}
+					{lastCall ? `${callLabel(lastCall)} →` : "result →"}
 				</span>
 				{lastCall ? (
 					<span
 						key={JSON.stringify(lastCall)}
 						className={cn(
-							"rounded-md px-1.5 py-0.5 [overflow-wrap:anywhere] animate-in sm:truncate duration-200 fade-in-0 motion-safe:slide-in-from-bottom-1",
+							"lp-from-below rounded-md px-1.5 py-0.5 [overflow-wrap:anywhere] sm:truncate",
 							lastCall.result.accepted
 								? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
 								: "bg-red-500/10 text-red-600 dark:text-red-300",
@@ -535,9 +578,7 @@ function Inspector({
 						{formatResult(lastCall.result)}
 					</span>
 				) : (
-					<span className="truncate text-muted-foreground/70">
-						press Continue
-					</span>
+					<span className="truncate text-muted-foreground">press Continue</span>
 				)}
 			</div>
 		</div>
@@ -551,6 +592,10 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
 			<span className="text-foreground">{children}</span>
 		</span>
 	);
+}
+
+function callLabel({ method, target }: LastCall) {
+	return method === "goTo" ? `goTo("${target}")` : `${method}()`;
 }
 
 function formatResult(result: Result) {
@@ -594,7 +639,7 @@ function AccountStep({
 					Use demo email
 				</button>
 			</div>
-			<input
+			<Input
 				ref={inputRef}
 				id="hero-email"
 				type="email"
@@ -609,7 +654,7 @@ function AccountStep({
 				aria-invalid={invalid || undefined}
 				aria-describedby="hero-email-hint"
 				className={cn(
-					"mt-2 h-10 w-full rounded-lg border bg-background px-3 text-sm shadow-xs outline-none transition-[border-color,box-shadow] duration-150 placeholder:text-muted-foreground/60 focus:border-primary/60 focus:ring-3 focus:ring-primary/15",
+					"mt-2 h-10 w-full rounded-lg border bg-background px-3 shadow-xs outline-none transition-[border-color,box-shadow] duration-150 placeholder:text-muted-foreground focus:border-primary/60 focus:ring-3 focus:ring-primary/15",
 					invalid &&
 						"border-red-500/60 focus:border-red-500/70 focus:ring-red-500/15",
 				)}
@@ -746,7 +791,7 @@ function DoneStep({
 }) {
 	return (
 		<div className="flex flex-col items-center py-3 text-center">
-			<span className="flex size-12 items-center justify-center rounded-full bg-emerald-500 text-white shadow-lg shadow-emerald-500/25 animate-in duration-500 ease-out-strong zoom-in-75 fade-in-0">
+			<span className="flex size-12 items-center justify-center rounded-full bg-emerald-500 text-white shadow-lg shadow-emerald-500/25 animate-in duration-250 ease-out-strong zoom-in-95 fade-in-0 motion-reduce:animate-none">
 				<Check className="size-6" strokeWidth={2.75} aria-hidden />
 			</span>
 			<p className="mt-4 text-[15px] font-semibold tracking-tight">
@@ -759,7 +804,7 @@ function DoneStep({
 			<button
 				type="button"
 				onClick={onRestart}
-				className="pressable mt-5 inline-flex h-8 items-center gap-1.5 rounded-lg border bg-background px-3 text-xs font-medium outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
+				className="pressable mt-5 inline-flex h-8 items-center gap-1.5 rounded-lg border bg-background px-3 text-xs font-medium outline-none pointer-coarse:h-11 pointer-coarse:px-4 hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
 			>
 				<RotateCcw className="size-3.5" aria-hidden />
 				stepper.reset()

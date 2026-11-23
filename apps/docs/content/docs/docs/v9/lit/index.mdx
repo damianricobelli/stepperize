@@ -1,0 +1,116 @@
+---
+title: Introduction
+description: Typed multi-step flows for Lit and web components, from one definition.
+---
+
+Stepperize is for flows where someone moves through named steps: checkout,
+onboarding, surveys, import wizards, approval flows and multi-step forms.
+
+You describe the steps once. The definition gives you a reactive controller
+for your elements and a set of accessible primitives, as directives for your
+own templates, that all share the same typed step ids.
+
+```ts
+import { defineStepper } from "@stepperize/lit";
+import { html, LitElement } from "lit";
+import { z } from "zod";
+
+const checkout = defineStepper([
+  { id: "shipping", title: "Shipping", schema: z.object({ address: z.string().min(1) }) },
+  { id: "payment", title: "Payment", schema: z.object({ card: z.string().length(16) }) },
+  { id: "review", title: "Review" },
+]);
+
+class CheckoutSteps extends LitElement {
+  stepper = checkout.controller(this, { onFinish: (output) => placeOrder(output) });
+
+  render() {
+    const stepper = this.stepper.value;
+
+    return html`
+      <h2>${stepper.current.title}</h2>
+
+      ${stepper.match({
+        shipping: () => html`<shipping-form></shipping-form>`,
+        payment: () => html`<payment-form></payment-form>`,
+        review: () => html`<order-review .data=${stepper.data}></order-review>`,
+      })}
+
+      <button ?disabled=${stepper.isFirst} @click=${() => stepper.prev()}>Back</button>
+      <button @click=${() => stepper.next()}>
+        ${stepper.isLast ? "Place order" : "Continue"}
+      </button>
+    `;
+  }
+}
+customElements.define("checkout-steps", CheckoutSteps);
+```
+
+A flow built with the primitives, running:
+
+<FrameworkDemo framework="lit" />
+
+## Is it a form library?
+
+No. Stepperize owns the **flow**: which step is current, moving between steps,
+what each step saved and which steps are complete. Your elements own the
+fields. See [Forms](/docs/v9/lit/guides/forms).
+
+## What you get
+
+- **One call moves forward.** `next(data)` saves the step's data, validates it
+  against the step's schema and moves on. It resolves with what happened
+  instead of throwing.
+- **Typed everywhere.** Step ids, each step's data and your own fields
+  (`title`, `icon`, anything) are inferred from the definition, including in
+  the directives.
+- **A controller, not a base class.** It is a `ReactiveController`: add it to
+  any `LitElement`, or to any other `ReactiveControllerHost`.
+- **Your markup.** The primitives are element directives for your own
+  template. No custom elements are registered and nothing is hidden in a
+  shadow root you do not own.
+- **Branching as data.** A `next` map decides where each step leads from its
+  validated data, and a flow can have more than one ending.
+- **Resumable.** One `snapshot` goes in, one `onChange` comes out. The current
+  step can follow the URL with a single option.
+- **Accessible primitives.** Roles, keyboard navigation, focus and
+  announcements are handled for you, in shadow DOM and in light DOM, and they
+  keep the attributes you write.
+- **Small.** About 2.6 KiB for the controller and 6.7 KiB with the primitives,
+  min + gzip, with no third-party dependencies.
+
+## The same flow as every other binding
+
+The state machine is [`@stepperize/core`](/docs/v9/core), shared by every
+binding, so the concepts are the same everywhere. Each has its own page,
+with Lit code: [steps](/docs/v9/lit/concepts/steps),
+[the lifecycle of a move](/docs/v9/lit/concepts/moves),
+[step state](/docs/v9/lit/concepts/step-state),
+[validation](/docs/v9/lit/guides/validation),
+[branching](/docs/v9/lit/guides/branching) and
+[persistence](/docs/v9/lit/guides/persistence).
+
+## Next
+
+<Cards>
+	<Card
+		href="/docs/v9/lit/installation"
+		title="Installation"
+		description="Add the package to a Lit 3 project."
+	/>
+	<Card
+		href="/docs/v9/lit/first-stepper"
+		title="Your first stepper"
+		description="A working flow, built in four small steps."
+	/>
+	<Card
+		href="/docs/v9/lit/guides/primitives"
+		title="Primitives"
+		description="Accessible directives for your own template."
+	/>
+	<Card
+		href="/docs/v9/core"
+		title="Without Lit"
+		description="The same state machine in tests, servers and agents."
+	/>
+</Cards>

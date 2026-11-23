@@ -3,8 +3,8 @@ title: Primitives
 description: Props of every Stepper component.
 ---
 
-All primitives accept the props of the element they render, a `ref`, and
-`render` to [use your own element](/docs/v9/react/guides/primitives#rendering-your-own-element).
+All primitives accept the props of the element they render and a `ref`. All
+but `Root` accept `render` to [use your own element](/docs/v9/react/guides/primitives#rendering-your-own-element).
 See [Styling](/docs/v9/react/guides/styling) for their data attributes.
 
 ## Root
@@ -70,6 +70,9 @@ in a flow rendered as tabs, and otherwise a `group` named after the step's
 | --- | --- | --- |
 | `step` | Step id | Required. |
 | `forceMount` | `boolean` | Keep it mounted and `hidden` while its step is not current. |
+
+Do not pass `id`: the trigger's `aria-controls` points at the id `Content`
+is given.
 
 ## Prev and Next
 

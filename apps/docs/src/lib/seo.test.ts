@@ -75,9 +75,13 @@ describe("SEO and OG image boundary", () => {
 		const ogImage = metaContent(result.meta, "property", "og:image");
 		const imageProps = parseOgImageRequest(ogImage ?? "");
 
-		expect(meta.title).toBe("Stepperize");
+		expect(meta.title).toBe(
+			"Stepperize: type-safe multi-step flows for React, Vue and more",
+		);
+		// Results show about 60 characters of a title.
+		expect(meta.title.length).toBeLessThanOrEqual(65);
 		expect(meta.description).toBe(
-			"Build type-safe wizards, forms, and onboarding flows in React.",
+			"Build type-safe wizards, forms, and onboarding flows in React or any framework.",
 		);
 		expect(ogTitle).toBe(meta.socialTitle);
 		expect(ogDescription).toBe(meta.socialDescription);

@@ -23,8 +23,8 @@ Migrate this project from @stepperize/react v8 to v9.
 
 1. Install the new version with the project's package manager:
    `@stepperize/react@^9`.
-2. Run `npx @stepperize/codemod v9 src --check --json` (it needs Node 22.18
-   or later) and read the report. It
+2. Run `npx @stepperize/codemod v9 src --check --json` (it needs Node 22.18+
+   in the 22 line, or 24.11+) and read the report. It
    rewrites what has a direct equivalent and writes a
    `// TODO(stepperize-v9): ...` comment above each statement that needs a
    decision. The report has every comment as `todos` (file, line, message),

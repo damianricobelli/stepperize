@@ -6,6 +6,43 @@ description: What changed in each release of Stepperize v9.
 Release notes for Stepperize v9. Earlier releases are in the
 [v8 changelog](/docs/v8/changelog).
 
+## v9.1.0
+
+Stepperize is no longer React only. Every package now shares one version, so
+`@stepperize/vue@9.1.0` goes with `@stepperize/react@9.1.0` and these docs.
+
+### New bindings
+
+- [Vue](/docs/v9/vue), [Svelte](/docs/v9/svelte), [Solid](/docs/v9/solid),
+  [Angular](/docs/v9/angular) and [Lit](/docs/v9/lit): the same definition,
+  options and accessible primitives as React, in each framework's own terms.
+- [HTML, without a framework](/docs/v9/html): `@stepperize/core/dom` binds a
+  flow to server-rendered markup, for plain pages, Alpine and htmx.
+- `@stepperize/vue` and `@stepperize/solid` existed before as 2.x and 1.x
+  with a different API. 9.1.0 replaces it; there is no compatibility layer.
+
+### Changes in every package
+
+- **A cancelled move resolves.** A move cancelled by `reset()`, `restore()` or
+  unmounting resolves with `reason: "cancelled"` at once, even when its guard
+  is still waiting or rejects because its `signal` was aborted. It used to
+  reject with `AbortError`, or stay pending while the guard waited.
+- **`isLinear`** on the stepper says whether the flow is `linear`.
+- **Keyboard.** Arrow keys pressed with Alt, Ctrl or Meta are left to the
+  browser, and a tab you disabled is skipped instead of becoming the current
+  step.
+- **Ids.** Step ids with spaces no longer break `aria-controls`.
+- **Strict Content Security Policy.** The live region no longer needs inline
+  styles.
+- **Types.** `@stepperize/react` no longer declares `createStepper` and other
+  core values as its own exports, which type-checked and then failed at run
+  time.
+- **Diagnostics.** New codes [SZ004](/docs/v9/core/errors#sz004),
+  [SZ005](/docs/v9/core/errors#sz005) and
+  [SZ104](/docs/v9/core/errors#sz104).
+
+Blocks and Stepper Studio stay React only: they are built on shadcn/ui.
+
 ## v9.0.0
 
 A smaller API on a core that does not depend on a framework. Read

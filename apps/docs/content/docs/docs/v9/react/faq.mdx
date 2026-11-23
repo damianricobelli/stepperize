@@ -93,7 +93,7 @@ Yes. The `next` option decides where each step leads from its data, and a
 ## Can the same step appear twice?
 
 No. Ids are unique: they are the key for the data, the completion and the
-primitives. A repeated id throws when the definition is created. To revisit a
+primitives. A repeated id throws when the first flow is created. To revisit a
 step, go back to it.
 
 ## How do I reset the whole flow?
@@ -117,7 +117,8 @@ HTML elements and are for the web.
 
 ## Which React versions are supported?
 
-React 18 and 19.
+React 18 and 19. The tests run against React 18.0.0, the lowest version the
+peer range allows, and the latest 19.
 
 ## Does it work without TypeScript?
 

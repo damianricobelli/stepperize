@@ -1,0 +1,75 @@
+---
+title: The URL as the current step
+description: Keep the step in the URL, in both directions.
+---
+
+The `step` option makes the flow follow a value that lives somewhere else. Pass
+the options as a function: it is read again before every render of the element,
+so it always sees the element's latest properties, and the step the URL asks
+for is rendered in that same update.
+
+```ts
+import { html, LitElement } from "lit";
+import { checkout } from "./checkout";
+
+class CheckoutPage extends LitElement {
+  static properties = { step: {} };
+  /** Set by your router from the URL, for example `/checkout/:step`. */
+  declare step: string;
+
+  stepper = checkout.controller(this, () => ({
+    linear: true,
+    // The URL moves (a link, the back button): the flow follows.
+    step: this.step,
+    // The flow moves: push the new step.
+    onChange: (snapshot) => {
+      if (snapshot.step !== this.step) {
+        history.pushState(null, "", `/checkout/${snapshot.step}`);
+        this.step = snapshot.step;
+      }
+    },
+    // The URL asks for a step the flow cannot be on: correct it without a history entry.
+    onInvalidStep: (current) => {
+      history.replaceState(null, "", `/checkout/${current}`);
+      this.step = current;
+    },
+  }));
+}
+```
+
+`history.pushState` does not notify anyone, so both callbacks also update the
+property: without that, the element would keep comparing against the old URL.
+A router that sets `step` after it navigates does it for you: replace the two
+`history` calls with its navigation call (`Router.go`, `router.navigate`...)
+and drop the assignments. With no router, read the step from `location`
+before the element connects, and again on `popstate`:
+
+```ts
+connectedCallback() {
+  // Before the first render, so the flow starts on that step.
+  this.step = location.pathname.split("/").at(-1) ?? "";
+  super.connectedCallback();
+  addEventListener("popstate", this.#read);
+}
+
+disconnectedCallback() {
+  super.disconnectedCallback();
+  removeEventListener("popstate", this.#read);
+}
+
+#read = () => {
+  this.step = location.pathname.split("/").at(-1) ?? "";
+};
+```
+
+- Following the URL is a `goTo`. With `linear`, a deep link cannot open a
+  step before the ones in front of it are complete. Without `linear`, any step
+  can be opened, as with `goTo`.
+- The `guard` runs when the URL changes after the element is connected. It
+  does not run for the step the page first loads on.
+- `onInvalidStep` is called for unknown ids, for steps `linear` does not allow
+  yet and for URL changes the guard refused.
+- The flow is created no later than the element's first update, so a `step`
+  or `snapshot` set before that is used from the start: a Lit template binding
+  (`.step=${…}`) is, and so is a property assigned before the element is
+  appended.

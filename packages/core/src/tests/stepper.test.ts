@@ -195,8 +195,47 @@ describe("guard and policy", () => {
 		expect(flow.current.id).toBe("a");
 	});
 
+	it("resolves as cancelled when the guard rejects because its signal was aborted", async () => {
+		const flow = createStepper([{ id: "a" }, { id: "b" }], {
+			// What `fetch(url, { signal })` does: reject with an AbortError when the signal aborts.
+			guard: ({ signal }) =>
+				new Promise<boolean>((_resolve, reject) => {
+					signal.addEventListener("abort", () => reject(new DOMException("Aborted", "AbortError")));
+				}),
+		});
+		const moving = flow.next();
+		await Promise.resolve();
+		flow.reset();
+		expect(await moving).toEqual({ accepted: false, reason: "cancelled" });
+	});
+
+	it("settles a cancelled move at once, even when its guard never settles", async () => {
+		const flow = createStepper([{ id: "a" }, { id: "b" }], {
+			guard: () => new Promise<boolean>(() => {}),
+		});
+		const moving = flow.next();
+		await Promise.resolve();
+		expect(flow.isPending).toBe(true);
+		flow.destroy();
+		expect(await moving).toEqual({ accepted: false, reason: "cancelled" });
+		expect(flow.isPending).toBe(false);
+		expect(flow.get().isPending).toBe(false);
+	});
+
+	it("still rejects when a guard fails on its own", async () => {
+		const flow = createStepper([{ id: "a" }, { id: "b" }], {
+			guard: () => Promise.reject(new Error("offline")),
+		});
+		await expect(flow.next()).rejects.toThrow("offline");
+		expect(flow.isPending).toBe(false);
+	});
+
 	it("linear only moves forward through next(); completed steps can be revisited", async () => {
 		const flow = createStepper([{ id: "a" }, { id: "b" }, { id: "c" }], { linear: true });
+		expect(flow.isLinear).toBe(true);
+		flow.setOptions({});
+		expect(flow.isLinear).toBe(false);
+		flow.setOptions({ linear: true });
 		expect([flow.canGoTo("a"), flow.canGoTo("b"), flow.canGoTo("c")]).toEqual([true, false, false]);
 		expect(await flow.goTo("b")).toEqual({ accepted: false, reason: "policy" });
 		await flow.next();

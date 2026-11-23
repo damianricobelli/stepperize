@@ -1,0 +1,143 @@
+---
+title: Your first stepper
+description: Define the steps, render the current one, move between them, and finish.
+---
+
+This page builds a three-step checkout from nothing. It takes about five
+minutes, and every later page builds on it.
+
+## 1. Define the steps
+
+A step needs an `id`. Every other field is yours and stays typed.
+
+```ts title="checkout.ts"
+import { defineStepper } from "@stepperize/angular";
+
+export const checkout = defineStepper([
+  { id: "shipping", title: "Shipping" },
+  { id: "payment", title: "Payment" },
+  { id: "review", title: "Review" },
+]);
+```
+
+Create the definition once, in a module. It is not state: it is the typed
+description of the flow.
+
+## 2. Render the current step
+
+`checkout.injectStepper()` gives the component a flow of its own. It returns a
+signal: call it in the template and the view follows the flow.
+
+```ts title="checkout.component.ts"
+import { Component } from "@angular/core";
+import { checkout } from "./checkout";
+
+@Component({
+  selector: "app-checkout",
+  template: `
+    <h2>{{ stepper().current.title }}</h2>
+
+    @switch (stepper().current.id) {
+      @case ("shipping") { <p>Where should we send it?</p> }
+      @case ("payment") { <p>How would you like to pay?</p> }
+      @case ("review") { <p>Check everything before placing the order.</p> }
+    }
+  `,
+})
+export class Checkout {
+  readonly stepper = checkout.injectStepper();
+}
+```
+
+`stepper().current` is the step object you defined, so `title` is typed, and
+`stepper().current.id` is the union of your ids: a `@case ("shiping")` is
+reported by the template type-checker.
+
+Call `injectStepper()` where `inject()` works: a field initialiser or the
+constructor. The flow is destroyed with the component.
+
+## 3. Move
+
+```html
+<button type="button" [disabled]="stepper().isFirst" (click)="stepper().prev()">Back</button>
+<button type="button" (click)="stepper().next()">
+  {{ stepper().isLast ? "Place order" : "Continue" }}
+</button>
+```
+
+`next()` moves forward and `prev()` goes back. `isFirst` and `isLast` are
+derived for you, so there is no index arithmetic.
+
+## 4. Finish
+
+`next()` on the last step finishes the flow and calls `onFinish`, once. From
+then on `stepper().isFinished` is `true`, until the flow changes again.
+
+```ts
+readonly stepper = checkout.injectStepper({
+  onFinish: () => alert("Order placed"),
+});
+```
+
+```html
+@if (stepper().isFinished) {
+  <p>Thanks for your order.</p>
+}
+```
+
+## The whole thing
+
+```ts title="checkout.component.ts"
+import { Component } from "@angular/core";
+import { defineStepper } from "@stepperize/angular";
+
+const checkout = defineStepper([
+  { id: "shipping", title: "Shipping" },
+  { id: "payment", title: "Payment" },
+  { id: "review", title: "Review" },
+]);
+
+@Component({
+  selector: "app-checkout",
+  template: `
+    @if (stepper().isFinished) {
+      <p>Thanks for your order.</p>
+    } @else {
+      <p>Step {{ stepper().index + 1 }} of {{ stepper().steps.length }}</p>
+      <h2>{{ stepper().current.title }}</h2>
+
+      @switch (stepper().current.id) {
+        @case ("shipping") { <p>Where should we send it?</p> }
+        @case ("payment") { <p>How would you like to pay?</p> }
+        @case ("review") { <p>Check everything before placing the order.</p> }
+      }
+
+      <button type="button" [disabled]="stepper().isFirst" (click)="stepper().prev()">Back</button>
+      <button type="button" (click)="stepper().next()">
+        {{ stepper().isLast ? "Place order" : "Continue" }}
+      </button>
+    }
+  `,
+})
+export class Checkout {
+  readonly stepper = checkout.injectStepper({
+    onFinish: () => alert("Order placed"),
+  });
+}
+```
+
+## What you did not write
+
+- No index signal, and no clamping at the edges.
+- No comparing against untyped strings in the component: a typo in a step id
+  does not compile.
+- No "is this the last step?" logic.
+- No subscription to clean up.
+
+## Where to go next
+
+- Collect data and validate it: [Forms](/docs/v9/angular/guides/forms).
+- Read the flow from several components: [Shared state](/docs/v9/angular/guides/shared-state).
+- Use accessible directives in your template: [Primitives](/docs/v9/angular/guides/primitives).
+- Skip steps depending on the answers: [Branching](/docs/v9/angular/guides/branching)
+  (the options are the same in every binding).

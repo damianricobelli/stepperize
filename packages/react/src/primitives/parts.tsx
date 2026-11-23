@@ -1,4 +1,5 @@
 import type { Step } from "@stepperize/core";
+import { reportError } from "@stepperize/core/primitives";
 import React from "react";
 import type { Scope } from "../definition";
 import { element, ItemContext, primitive, useDevRef, useItem } from "./shared";
@@ -74,9 +75,9 @@ export function createNav<S extends readonly Step[]>(
 			"aria-disabled": disabled || idle || undefined,
 			onClick: (e: React.MouseEvent<HTMLButtonElement>) => {
 				onClick?.(e);
-				// A rejecting `onFinish` rejects `next()`: the flow is not finished and the button works
-				// again. The error belongs to `onFinish`, which reports it; nothing awaits this click.
-				if (!e.defaultPrevented && !idle) flow[dir]().catch(() => {});
+				// Nothing awaits a click: a move that throws (a guard, a schema, a rejecting `onFinish`) is
+				// reported like an error in any event listener. The flow is idle again, so the button works.
+				if (!e.defaultPrevented && !idle) flow[dir]().catch(reportError);
 			},
 		};
 		return element("button", domProps, render);

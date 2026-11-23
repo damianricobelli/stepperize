@@ -1,0 +1,459 @@
+---
+title: Troubleshooting
+description: Errors, warnings and surprises in Svelte and SvelteKit, with the cause and the fix for each.
+---
+
+Most problems come from a few causes. Find your symptom below. Errors thrown
+by the library carry a code; [Errors and warnings](/docs/v9/core/errors)
+explains each one.
+
+## Runtime errors
+
+### SZ100: Missing Provider
+
+`useStepperContext()` reads a flow that a component above it created. Without
+a `Provider` or `Stepper.Root` of the **same definition** above, there is
+nothing to read. Context only flows down, so the component that renders the
+`Provider` cannot read it itself: call `useStepperContext()` in a child, or use
+the `children` snippet of `Stepper.Root`, which receives the stepper.
+
+```svelte
+<Stepper.Root>
+  {#snippet children(stepper)}
+    <p>Step {stepper.index + 1} of {stepper.steps.length}</p>
+    <Stepper.Next>Continue</Stepper.Next>
+  {/snippet}
+</Stepper.Root>
+```
+
+A provider of another definition does not count, and neither does a second
+definition created from the same steps. Call `defineStepper` once, in a module,
+and import that object everywhere. `Stepper.List`, `Stepper.Trigger` and
+`Stepper.Content` throw the same code outside `Stepper.Root` ("Missing
+Stepper.Root"); `Stepper.Item`, `Stepper.Prev` and `Stepper.Next` only need
+the flow, so a `Provider` is enough for them.
+
+### SZ101: Missing Stepper.Item
+
+`Stepper.Trigger`, `Stepper.Indicator` and `Stepper.useItem()` belong to a
+step, which they get from the `Stepper.Item` around them. An item gets its step
+from the `item` snippet of `Stepper.List`, or from its `step` prop. Anywhere
+else, including the List's `children` and the inside of another
+`Stepper.Root`, pass `step`.
+
+```svelte
+<Stepper.List>
+  {#snippet item()}
+    <Stepper.Item>
+      <Stepper.Trigger><Stepper.Title /></Stepper.Trigger>
+    </Stepper.Item>
+  {/snippet}
+</Stepper.List>
+
+<Stepper.Item step="payment">…</Stepper.Item>
+```
+
+`Stepper.Title` and `Stepper.Description` do not throw outside an item: they
+render their children, or nothing.
+
+### SZ102: Step "…" not found
+
+An id that is not in the definition reached `goTo`, `setData`, a `next`
+branch, a `Stepper.Item` or a `Stepper.Content`. A `Stepper.Content` throws
+whether its step is current or not: no step is ever current under an unknown
+id, so it would never show. `svelte-check` rejects this at
+compile time, so it usually means a cast, or a value from outside, such as
+`page.params`. For URL values use the [`step` option](/docs/v9/svelte/guides/url),
+which ignores unknown ids and calls `onInvalidStep`.
+
+### SZ103: Duplicate step id
+
+Two steps share an `id`, or the list is empty. `defineStepper` does not check
+it: the first flow created from the definition throws, whether it comes from
+`useStepper()`, a `Provider`, a `Stepper.Root` or `create()`.
+
+### SZ104: useStepper() outside a component
+
+`useStepper()` owns its flow and destroys it when the component unmounts, so it
+must run while a component initialises: at the top of `<script>`, or in a class
+or function called from there. In a `.svelte.ts` module or an event handler it
+throws in the browser. The server does not check it, so a call at module scope
+only fails once the page runs. Use `fromFlow` there.
+
+```ts title="checkout-flow.svelte.ts"
+import { fromFlow } from "@stepperize/svelte";
+import { checkout } from "./checkout";
+
+// Wrong: nothing owns this flow.
+// export const stepper = checkout.useStepper();
+
+export const flow = checkout.create();
+export const stepper = fromFlow(flow);
+```
+
+### lifecycle_outside_component
+
+`useStepperContext()` and `Stepper.useItem()` read Svelte's context, which only
+exists while a component initialises. Called in an event handler, a timer or
+anything else that runs later, Svelte throws `lifecycle_outside_component`.
+Call them at the top of `<script>` and keep the result; the stepper they return
+stays current.
+
+```svelte
+<script lang="ts">
+  import { checkout } from "./checkout";
+
+  const stepper = checkout.useStepperContext();
+</script>
+
+<button type="button" onclick={() => stepper.next()}>Continue</button>
+```
+
+### effect_update_depth_exceeded
+
+An `$effect` reads the flow's data and writes it back. `setData` gives
+`stepper.data` a new value, the effect runs again and writes again, until
+Svelte stops it.
+
+```ts
+// Wrong: reads stepper.data, then changes it.
+$effect(() => {
+  stepper.setData("shipping", { ...stepper.data.shipping, address });
+});
+```
+
+Write drafts from the input's event, from your own `$state`. An effect that
+only reads your own state can call `setData`: the actions read nothing, so
+calling one does not make the effect depend on the flow. It still runs on
+mount; see
+[A complete step is incomplete as soon as the page loads](#a-complete-step-is-incomplete-as-soon-as-the-page-loads).
+
+### SZ001: A child snippet dropped its props
+
+A warning, in development. A `child` snippet did not put the `props` it
+received on an element, so the ARIA attributes, ids, handlers and `ref` are
+missing. Spread them onto exactly one element. A component you spread them
+onto must pass its rest props to its own element:
+
+```svelte title="MyButton.svelte"
+<script lang="ts">
+  import type { HTMLButtonAttributes } from "svelte/elements";
+
+  let { children, ...rest }: HTMLButtonAttributes = $props();
+</script>
+
+<button {...rest}>{@render children?.()}</button>
+```
+
+```svelte
+<Stepper.Next>
+  {#snippet child({ props })}
+    <MyButton {...props}>Continue</MyButton>
+  {/snippet}
+</Stepper.Next>
+```
+
+### SZ002, SZ003, SZ005: Trigger warnings
+
+Warnings, in development, about the element a `Stepper.Trigger` ends up on:
+
+- **SZ002**: it has no accessible name. `Stepper.Indicator` is hidden from
+  screen readers, so a trigger that only holds one needs `Stepper.Title`, text
+  or `aria-label`.
+- **SZ003**: it is outside `Stepper.List`, which provides the keyboard
+  navigation and the list semantics. Move its `Stepper.Item` into the List, or
+  use a plain button that calls `stepper.goTo(id)`.
+- **SZ005**: a `child` snippet rendered it as a `<span>` or a `<div>`, which
+  Enter and Space do not press. Use a `<button>`, or a link with an `href`.
+
+```svelte
+<Stepper.List>
+  {#snippet item(step)}
+    <Stepper.Item>
+      <Stepper.Trigger aria-label={step.title}>
+        <Stepper.Indicator />
+      </Stepper.Trigger>
+    </Stepper.Item>
+  {/snippet}
+</Stepper.List>
+```
+
+## Common surprises
+
+### A complete step is incomplete as soon as the page loads
+
+An `$effect` writes a draft with `setData`. Effects run once on mount, and that
+first write is a new object, so the flow sees changed data: the step stops
+being complete (in a `linear` flow, so do the steps completed after it), a
+finished flow reopens, and `onChange` runs before anyone typed. Write the draft
+from the input's event instead.
+
+```svelte
+<script lang="ts">
+  import { checkout } from "./checkout";
+
+  const stepper = checkout.useStepperContext();
+  let address = $state(stepper.data.shipping?.address ?? "");
+
+  // Wrong: also runs on mount.
+  // $effect(() => stepper.setData("shipping", { address }));
+</script>
+
+<input bind:value={address} oninput={() => stepper.setData("shipping", { address })} />
+```
+
+### The stepper stopped updating
+
+Its state was copied: `const { current } = stepper`, or any plain variable set
+from it, reads the value once, while the component initialises. Read
+`stepper.current` where you use it, or derive a local name. In a component that
+is not in runes mode, `$:` statements and markup that only reads the stepper do
+not follow it either.
+
+```ts
+const { current } = stepper; // Wrong: never changes.
+const title = $derived(stepper.current.title); // Follows the flow.
+```
+
+### Options do not follow a prop or the URL
+
+An options object is read once, when the component initialises; Svelte warns
+about it with `state_referenced_locally`. Pass a function instead: it is read
+again whenever the state it uses changes, and the flow gets the new options.
+
+```ts
+let { step }: { step: string } = $props();
+
+const stepper = checkout.useStepper(() => ({ step }));
+```
+
+`snapshot` is the exception: it is where the flow starts, and is read once,
+including as a prop of `Provider` or `Stepper.Root` and when SvelteKit passes
+new `data` to a page that stays mounted. Call `stepper.restore(snapshot)` to
+replace the state later.
+
+### Two components show different steps
+
+Each `useStepper()` call creates its own flow. Components that should move
+together need one `Provider` or `Stepper.Root` above them and
+`useStepperContext()` inside, or one module flow read with `fromFlow()`.
+
+### on:click or onchange on a primitive misbehaves
+
+The primitives are runes components: they take event handlers as props, such
+as `onclick`, and do not dispatch component events, so `on:click` never runs
+(`svelte-check` reports it as a type error). `onchange` in lowercase is the DOM
+event: on `Stepper.Root` it goes to the `div` and fires whenever a field inside
+changes. The flow's callback is `onChange`.
+
+```svelte
+<Stepper.Root onChange={(snapshot) => save(snapshot)}>…</Stepper.Root>
+<Stepper.Next onclick={() => track("next")}>Continue</Stepper.Next>
+```
+
+### A button in a child snippet does not move
+
+An `onclick` written after `{...props}` replaces the primitive's handler. Call
+`props.onclick(event)` from yours, or pass your handler to the primitive itself,
+where it runs first.
+
+```svelte
+<Stepper.Next>
+  {#snippet child({ props })}
+    <button
+      {...props}
+      onclick={(event) => {
+        track("next");
+        props.onclick(event);
+      }}
+    >
+      Continue
+    </button>
+  {/snippet}
+</Stepper.Next>
+```
+
+### Scoped styles do not reach the primitives
+
+Svelte scopes a component's styles to the elements written in it. A class
+passed to `<Stepper.Trigger class="step">` lands on an element the primitive
+renders, so `.step` in your `<style>` is reported as unused and removed. Use
+`:global(.step)`, a utility class, or a `child` snippet: the element you write
+in it is yours, and scoped styles apply to it.
+
+```svelte
+<style>
+  :global([data-component="stepper-trigger"][data-state="current"]) {
+    font-weight: 600;
+  }
+</style>
+```
+
+### A transition inside Stepper.Content does not play
+
+Svelte transitions are local: they play when the block that directly contains
+them is added or removed. The `{#if}` that shows a panel is inside the
+primitive, so a transition in your panel only plays with `|global`. Or key your
+own markup on the step id with `{#key stepper.current.id}`.
+
+```svelte
+<Stepper.Content step="payment">
+  <div in:fade|global>…</div>
+</Stepper.Content>
+```
+
+### Stepper.Next does not move on a form step
+
+`Stepper.Next` calls `next()` without values, so it validates what the step
+already has stored. If the fields live in `$state` that has not been handed
+over, the step's data is empty and validation fails. Pass the values yourself:
+
+```svelte
+<Stepper.Next
+  onclick={(event) => {
+    event.preventDefault();
+    stepper.next($state.snapshot(values));
+  }}
+>
+  Continue
+</Stepper.Next>
+```
+
+### A complete step keeps its old output after the fields change
+
+`next(values)` was given the `$state` object itself. The flow stores that
+proxy, so later typing changes the stored data in place, without `setData`:
+the step stays complete, its output keeps the old values, and `onChange` does
+not run. Pass a plain copy: `stepper.next($state.snapshot(values))`.
+
+### onFinish does not run again
+
+`onFinish` runs once. After the flow has finished, `next()` resolves with
+`reason: "finished"` until the flow changes: any move to another step, a
+`setData` with a new value, `reset()` or `restore()`. If the request inside it
+can fail, return its promise: when it rejects, the flow is not finished and
+`next()` can be called again. `Stepper.Next` reports the rejection as an error
+thrown by any click handler is reported: the console shows it as uncaught, and
+`window.onerror` and error trackers receive it (see
+[Errors from a click](/docs/v9/core/errors#errors-from-a-click)). To tell the
+person, show the failure from inside `onFinish`. See
+[When submitting can fail](/docs/v9/svelte/guides/navigation#when-submitting-can-fail).
+
+```ts
+let error = $state("");
+
+const stepper = checkout.useStepper({
+  onFinish: async (output) => {
+    error = "";
+    const response = await fetch("/api/orders", { method: "POST", body: JSON.stringify(output) });
+    if (!response.ok) {
+      error = "Could not place the order. Try again.";
+      throw new Error(error);
+    }
+  },
+});
+```
+
+### localStorage is not defined
+
+The component's script also runs on the server, where there is no
+`localStorage`. Apply a saved snapshot after mounting, with `restore()`. Then
+the server and the browser render the same first step, and hydration matches.
+To render the saved step from the start, save it in a cookie and read it in
+`load` instead; see [Server rendering](/docs/v9/svelte/guides/ssr).
+
+```ts
+import { onMount } from "svelte";
+
+const stepper = checkout.useStepper({
+  onChange: (snapshot) => localStorage.setItem("checkout", JSON.stringify(snapshot)),
+});
+
+onMount(() => {
+  const saved = localStorage.getItem("checkout");
+  if (saved) stepper.restore(JSON.parse(saved));
+});
+```
+
+### Every visitor sees the same flow
+
+A flow created at module scope, such as `fromFlow(checkout.create())` in a
+`.svelte.ts` file, exists once per server process, so in SvelteKit every
+request renders, and can change, the same one. Create the flow in a component
+(`useStepper()`, `Provider` or `Stepper.Root`) for anything rendered on the
+server. See
+[Outside a component](/docs/v9/svelte/guides/shared-state#outside-a-component).
+
+## TypeScript
+
+### Step ids are typed as string
+
+The array was created before it reached `defineStepper`, so its ids widened,
+and `step="anything"` compiles. Write it inline or add `as const`. See
+[Keep ids literal](/docs/v9/svelte/concepts/steps#keep-ids-literal).
+
+```ts
+const steps = [{ id: "shipping" }, { id: "payment" }] as const;
+export const checkout = defineStepper(steps);
+```
+
+### A wrong step id in markup is not reported
+
+`tsc` does not read `.svelte` files. Run `svelte-check`: it reports a
+`step="shiping"` on a primitive, a missing `match` handler and the other
+mistakes in markup, as the Svelte language tools do in the editor.
+
+### A field exists on the current step, but TypeScript complains
+
+`stepper.current` is the union of every step. Narrow it by comparing
+`stepper.current.id`, in `<script>` or in an `{#if}`, or use `match`, which
+needs a handler for every step. See
+[Fields that only some steps have](/docs/v9/svelte/concepts/steps#fields-that-only-some-steps-have).
+
+```svelte
+{#if stepper.current.id === "payment"}
+  <p>{stepper.current.methods.join(", ")}</p>
+{/if}
+```
+
+### A step's data is typed unknown
+
+The step has no `schema`. Add one, or cast where you read it.
+
+```ts
+const draft = stepper.data.notes as string | undefined;
+```
+
+### The type of a stepper
+
+To pass a stepper to a component as a prop:
+
+```svelte
+<script lang="ts">
+  import type { Stepper } from "@stepperize/svelte";
+  import type { checkout } from "./checkout";
+
+  let { stepper }: { stepper: Stepper<typeof checkout.steps> } = $props();
+</script>
+```
+
+`ReturnType<typeof checkout.useStepper>` is the same type, and
+`(typeof checkout.steps)[number]["id"]` is the union of the ids.
+
+### bind:ref is not assignable
+
+`ref` is typed with the element the primitive renders by default:
+`HTMLDivElement` for `Root` and `Content`, `HTMLOListElement` for `List`,
+`HTMLLIElement` for `Item`, `HTMLButtonElement` for `Trigger`, `Prev` and
+`Next`, `HTMLSpanElement` for `Title`, `Description` and `Indicator`. Declare
+the variable with that type, plus `null`. The type stays the same with a
+`child` snippet, even when the element you render there is another tag.
+
+```ts
+let next: HTMLButtonElement | null = $state(null);
+```
+
+<Callout type="info">
+Still stuck? Check the [FAQ](/docs/v9/svelte/faq), or open an issue with a
+minimal reproduction.
+</Callout>

@@ -1,0 +1,395 @@
+---
+title: Troubleshooting
+description: Angular errors and surprises with Stepperize, with the cause and the fix for each.
+---
+
+Most problems come from a few causes. Find your symptom below. Errors thrown
+by the library carry a code; [Errors and warnings](/docs/v9/core/errors)
+explains each one. Errors that start with `NG` come from Angular itself.
+
+## Runtime errors
+
+### NG0203: injectStepper() can only be used within an injection context
+
+`injectStepper()` calls `inject()`, so it has to run where Angular can inject:
+a field initialiser, a constructor, a provider factory or
+`runInInjectionContext`. `ngOnInit`, an event handler, a timer and the code
+after an `await` are not.
+
+```ts
+// Wrong: ngOnInit is not an injection context.
+export class Checkout implements OnInit {
+  stepper?: StepperRef<typeof checkout.steps>;
+
+  ngOnInit() {
+    this.stepper = checkout.injectStepper();
+  }
+}
+
+// Right
+export class Checkout {
+  readonly stepper = checkout.injectStepper();
+}
+```
+
+`injectStepperContext()` follows the same rule, and its message names it:
+"injectStepperContext() can only be used within an injection context". If the
+flow really has to start later, see
+[Where can I call injectStepper?](/docs/v9/angular/faq#where-can-i-call-injectstepper)
+
+### NG0950: Input is required but no value is available yet
+
+The options function reads a required input, and something read the stepper
+before Angular set that input: the constructor, or a field initialiser that
+calls `stepper()`. Read it in the template, `ngOnInit`, a `computed` or an
+`effect` instead. The stepper recovers by itself once the input is set; the
+error only means that one read came too early.
+
+```ts
+export class OnboardingPage {
+  readonly start = input.required<Id<typeof onboarding.steps>>();
+  readonly stepper = onboarding.injectStepper(() => ({ snapshot: { step: this.start() } }));
+
+  constructor() {
+    this.stepper(); // Wrong: the input is not set yet.
+  }
+}
+```
+
+The directives' own inputs never cause it: `item.value()` and `panel.active()`
+can be read in a binding on the item's or the panel's own element, such as
+`[class.done]`, which Angular evaluates before it sets the directive's input.
+
+### SZ100: Missing provider
+
+`injectStepperContext()` reads a flow that something above created. It throws
+when it finds nothing of **the same definition**:
+
+- No `provideStepper()` of that definition is in the `providers` of a
+  component, route or the application above, and no `[stepperRoot]` around it
+  is bound to one of its steppers.
+- The component that renders `[stepperRoot]` in its own template injects the
+  context. The root is below it, not above; it already has the stepper it
+  binds.
+- The provider is in `viewProviders` and the reader is projected with
+  `<ng-content>`. Projected content only sees `providers`.
+- The reader is a `providedIn: "root"` service. It sees the application's
+  providers, never a component's. Let the service own the flow instead, or
+  read the context in the component.
+- The provider belongs to another definition, or to a second definition
+  created from the same steps. Import the same `checkout` object everywhere.
+
+```ts
+@Component({
+  selector: "app-checkout",
+  imports: [CheckoutHeader],
+  providers: [checkout.provideStepper({ linear: true })],
+  template: `<app-checkout-header />`,
+})
+export class Checkout {}
+
+@Component({
+  selector: "app-checkout-header",
+  template: `<h2>{{ stepper().current.title }}</h2>`,
+})
+export class CheckoutHeader {
+  readonly stepper = checkout.injectStepperContext();
+}
+```
+
+Below a `[stepperRoot]`, the error comes the first time the stepper is read,
+usually by the template. If the component only needs its own flow, call
+`injectStepper()` instead.
+
+### SZ100: Missing stepperRoot
+
+Every directive except `stepperRoot` needs an element with `[stepperRoot]`
+around it. Parts in a child component work, as long as that component's
+element is inside the root.
+
+```html
+<!-- Wrong: the buttons are outside the root. -->
+<div [stepperRoot]="stepper">…</div>
+<button stepperNext>Continue</button>
+
+<!-- Right -->
+<div [stepperRoot]="stepper">
+  …
+  <button stepperNext>Continue</button>
+</div>
+```
+
+### SZ101: stepperTrigger needs a step id, or a stepperItem around it
+
+`stepperTrigger` and `stepperIndicator` belong to a step. They take it from
+the `stepperItem` around them, or from their own input.
+
+```html
+<ol stepperList>
+  @for (step of stepper.steps; track step.id) {
+    <li [stepperItem]="step">
+      <button stepperTrigger><span stepperIndicator></span>{{ step.title }}</button>
+    </li>
+  }
+  <li><button stepperTrigger="review">Review</button></li>
+</ol>
+```
+
+### SZ102: Step "…" not found
+
+An id that is not in the definition reached `goTo`, `setData`, a `next`
+branch, or a directive. A `stepperContent` throws whether its step is current
+or not. Ids in TypeScript and in template expressions are checked at compile
+time, so it usually means a cast, or a value from outside.
+
+Ids given to `stepperItem`, `stepperContent`, `stepperTrigger` and
+`stepperIndicator` are plain strings until you register the definition in
+[`StepperRegistry`](/docs/v9/angular/api/primitives#stepperregistry). Even
+then, an id of another registered definition compiles: the directives accept
+the ids of every registered definition, and the wrong one throws here.
+
+For route parameters use the [`step` option](/docs/v9/angular/guides/url),
+which ignores unknown ids and calls `onInvalidStep`.
+
+### SZ103: Invalid step list
+
+The step array is empty, or two steps share an `id`. It is thrown when the
+first flow of that definition is created, before the component's first
+render, not when `defineStepper` runs.
+
+### SZ002: Stepper trigger has no accessible name
+
+**Warning**, in development builds only. A `stepperTrigger` has no text, no
+`aria-label` and no `aria-labelledby`. A trigger that only holds a
+`stepperIndicator` is announced as an unnamed button, because the indicator
+is hidden from screen readers.
+
+```html
+<button stepperTrigger [attr.aria-label]="step.title">
+  <span stepperIndicator></span>
+</button>
+```
+
+### SZ003: Stepper trigger is outside stepperList
+
+**Warning**, in development builds only. Arrow keys and the list semantics
+come from `stepperList`. Move the trigger inside it, or use a plain button
+that calls `stepper().goTo(id)`. A trigger that a child component with
+`ViewEncapsulation.ShadowDom` renders inside an item of the list is inside it:
+the check crosses shadow roots.
+
+### SZ005: The trigger is not a button
+
+**Warning**, in development builds only. `stepperTrigger` is on a `<span>`, a
+`<div>` or another element that Enter and Space do not press and that cannot
+be disabled. Put it on a `<button>`, or on a link with an `href`.
+
+## Common surprises
+
+### `if (stepper().next())` is always true
+
+Moves return a promise, and a promise is truthy. Await it and read `accepted`.
+
+```ts
+async continue() {
+  const result = await this.stepper().next();
+  if (result.accepted) track("advanced");
+}
+```
+
+### A value keeps showing the old step
+
+`stepper()` returns the view of one moment, and that view never changes. A
+value read before an `await`, or stored in a field, keeps the step it was read
+on. Call `stepper()` again, or derive what you need with `computed`.
+
+```ts
+// Wrong: read once, never updates.
+readonly view = this.stepper();
+
+// Right
+readonly title = computed(() => this.stepper().current.title);
+```
+
+### Two components show different steps
+
+Each `injectStepper()` call creates its own flow, and so does each injector
+that has a `provideStepper()`. Components that should move together need one
+`provideStepper()` above them and `injectStepperContext()` inside.
+
+```ts
+// Wrong: two independent flows.
+export class CheckoutHeader {
+  readonly stepper = checkout.injectStepper();
+}
+
+export class CheckoutFooter {
+  readonly stepper = checkout.injectStepper();
+}
+```
+
+### The flow starts over after navigating
+
+The flow belongs to the component that created it, and the router destroys
+that component when the route changes. To keep it across the pages of a flow,
+put `provideStepper()` in the `providers` of the parent route, or let a
+`providedIn: "root"` service own it. To survive a reload, save the snapshot
+too.
+
+### The snapshot option is ignored
+
+`snapshot` is where the flow starts, and it is read once, when the flow is
+created, even from an options function. Changing it later does nothing; call
+`stepper().restore(snapshot)`. If it comes from a route resolver, it only
+reaches the input with `withComponentInputBinding()`; without it the input
+stays `undefined` and the flow starts on the first step.
+
+### stepperNext does nothing on a form step
+
+`stepperNext` calls `next()` without values, so it validates what the step
+already has stored. If the fields live in a form that has not handed its
+values over, the step's data is empty and validation fails. Submit the form
+and call `stepper().next(values)`, or pass the values from the button:
+
+```html
+<button stepperNext (click)="$event.preventDefault(); stepper().next(form.getRawValue())">
+  Continue
+</button>
+```
+
+`$event.stopPropagation()` does not stop the part; `preventDefault()` does.
+
+### The flow moves two steps on submit
+
+A `stepperNext` with `type="submit"` sits in a form whose `(ngSubmit)` also
+calls `next()`. The click runs both: the directive's `next()` and yours. When
+the form submits the step, use a plain submit button and no `stepperNext`.
+Without a `type`, `stepperNext` is `type="button"` and never submits.
+
+```html
+<form [formGroup]="form" (ngSubmit)="submit()">
+  …
+  <button>Continue</button>
+</form>
+```
+
+### Pressing Next logs an uncaught error
+
+`onFinish` rejected, or a `guard` or schema threw, in a move started by
+`stepperNext`, `stepperPrev` or a trigger. Nothing awaits a click, so the
+error is reported as one thrown by any event listener, through the browser's
+`reportError()`: the console shows it as uncaught, and `window.onerror`, error
+trackers and, with `provideBrowserGlobalErrorListeners()`, Angular's
+`ErrorHandler` receive it. The flow is idle again, so the button works on the
+next press. To tell the person, catch the error in `onFinish` and rethrow it
+so the flow is not finished, or call `stepper().next()` yourself and handle
+the promise. See [Errors from a click](/docs/v9/core/errors#errors-from-a-click).
+
+### onFinish never sends the request
+
+`onFinish` returned an Observable, such as `HttpClient.post()`. The flow only
+waits for promises and never subscribes, so the request is not made and the
+flow finishes at once. Convert it with `firstValueFrom`:
+
+```ts
+readonly stepper = checkout.injectStepper({
+  onFinish: (output) => firstValueFrom(this.#http.post("/api/orders", output)),
+});
+```
+
+### onChange runs on every keystroke
+
+Saving drafts from `valueChanges` with `setData` changes the flow, so it calls
+`onChange` each time. Debounce the writes, or only react when `snapshot.step`
+changes.
+
+```ts
+team.valueChanges
+  .pipe(debounceTime(300), takeUntilDestroyed())
+  .subscribe(() => this.stepper().setData("team", team.getRawValue()));
+```
+
+### Every step's component is created at once
+
+`stepperContent` keeps its element in the page while its step is not current,
+with `hidden` and `display: none`, so the components inside are created up
+front and keep their state. To leave a step out until it is current, export
+the panel and use `@if (panel.active())`, or `@defer (when panel.active())`.
+A `display` rule marked `!important` makes hidden panels visible. See
+[Panels in or out of the DOM](/docs/v9/angular/guides/primitives#panels-in-or-out-of-the-dom).
+
+### The first step shows, then the saved one
+
+The flow read a snapshot only the browser has, such as `localStorage`, so the
+server rendered one step and the browser another. Load the snapshot where the
+server can read it too (a cookie, or a resolver), or start from what the
+server knows and restore after the first render:
+
+```ts
+constructor() {
+  afterNextRender(() => {
+    const saved = localStorage.getItem("checkout");
+    if (saved) this.stepper().restore(JSON.parse(saved));
+  });
+}
+```
+
+## TypeScript
+
+### `Property 'current' does not exist on type 'StepperRef<…>'`
+
+The stepper is a signal: call it. `stepper().current`, not `stepper.current`.
+Only `stepper.steps` and `stepper.flow` are read without calling it.
+
+### `Type 'Stepper<…>' is not assignable to type 'StepperSource'`
+
+`[stepperRoot]` takes the signal, not its value: bind `stepper`, not
+`stepper()`.
+
+```html
+<div [stepperRoot]="stepper">…</div>
+```
+
+### Step ids are typed as string
+
+The array was created before it reached `defineStepper`, so its ids widened.
+Write it inline or add `as const`. See
+[Keep ids literal](/docs/v9/angular/concepts/steps#keep-ids-literal).
+
+### A field of one step is an error in the template
+
+`stepper().current` is the union of every step, and the template
+type-checker does not narrow two separate `stepper()` calls. Read it once with
+`@let`, then narrow with `@switch` or `@if`:
+
+```html
+@let current = stepper().current;
+@switch (current.id) {
+  @case ("team") { <p>{{ current.size }} people</p> }
+  @default { <p>{{ current.title }}</p> }
+}
+```
+
+### A wrong id in stepperContent compiles
+
+Directive ids are plain strings until the definition is registered in
+`StepperRegistry`, and they are only checked with `strictTemplates` on. Add
+the `declare module` block from
+[Typed step ids](/docs/v9/angular/guides/primitives#typed-step-ids) to a file
+that is part of the build.
+
+### The type of a stepper
+
+```ts
+type CheckoutRef = StepperRef<typeof checkout.steps>; // what injectStepper() returns
+type CheckoutStepper = Stepper<typeof checkout.steps>; // what calling it returns
+type CheckoutStepId = Id<typeof checkout.steps>;
+```
+
+A stepper passed through an input is a signal inside a signal, so the child
+reads it with `stepper()()`. `injectStepperContext()` avoids that.
+
+<Callout type="info">
+Still stuck? Check the [FAQ](/docs/v9/angular/faq), or open an issue with a
+minimal reproduction.
+</Callout>

@@ -10,16 +10,21 @@ import {
 } from "lucide-react";
 import {
 	Activity,
+	type ComponentType,
 	type KeyboardEvent,
-	type ReactNode,
+	lazy,
+	Suspense,
 	useRef,
 	useState,
 } from "react";
+import { FrameworkIcon } from "@/components/framework-icon";
 import { cn } from "@/lib/utils";
-import { AsyncProvisioningBlock } from "../blocks/async-provisioning";
-import { ConditionalOnboardingBlock } from "../blocks/conditional-onboarding";
-import { ValidatedCheckoutBlock } from "../blocks/validated-checkout";
-import { Section, SectionHeading } from "./shared";
+import {
+	DemoPlaceholder,
+	Section,
+	SectionHeading,
+	useNearViewport,
+} from "./shared";
 
 type Demo = {
 	id: string;
@@ -27,7 +32,8 @@ type Demo = {
 	label: string;
 	body: string;
 	api: string;
-	Block: () => ReactNode;
+	/** Loaded when the section nears the screen: below the fold, not in the first bundle. */
+	Block: ComponentType;
 };
 
 const DEMOS: Demo[] = [
@@ -37,7 +43,11 @@ const DEMOS: Demo[] = [
 		label: "Validation that blocks",
 		body: "next() checks the step against its schema. A failed check cancels the move and hands back the issues to show.",
 		api: "next · issues",
-		Block: ValidatedCheckoutBlock,
+		Block: lazy(() =>
+			import("../blocks/validated-checkout").then((m) => ({
+				default: m.ValidatedCheckoutBlock,
+			})),
+		),
 	},
 	{
 		id: "branching",
@@ -45,7 +55,11 @@ const DEMOS: Demo[] = [
 		label: "Branching paths",
 		body: "An earlier answer rewrites the path. A personal account skips the team step entirely, and Back returns the way you came.",
 		api: "next map · prev",
-		Block: ConditionalOnboardingBlock,
+		Block: lazy(() =>
+			import("../blocks/conditional-onboarding").then((m) => ({
+				default: m.ConditionalOnboardingBlock,
+			})),
+		),
 	},
 	{
 		id: "async",
@@ -53,7 +67,11 @@ const DEMOS: Demo[] = [
 		label: "Async work and retry",
 		body: "The transition awaits real work, exposes isPending, fails the first try, and recovers on retry.",
 		api: "isPending",
-		Block: AsyncProvisioningBlock,
+		Block: lazy(() =>
+			import("../blocks/async-provisioning").then((m) => ({
+				default: m.AsyncProvisioningBlock,
+			})),
+		),
 	},
 ];
 
@@ -64,6 +82,14 @@ const DEMOS: Demo[] = [
  */
 export function FlowLogic() {
 	const [active, setActive] = useState(DEMOS[0].id);
+	// Panels settle in when the visitor clicks or taps a tab: not on first
+	// paint, and not from the arrow keys (keyboard moves get no animation).
+	const [switched, setSwitched] = useState(false);
+	const select = (id: string, animate: boolean) => {
+		setActive(id);
+		setSwitched(animate);
+	};
+	const [stageRef, near] = useNearViewport<HTMLDivElement>();
 	const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
 	const onKeyDown = (event: KeyboardEvent, index: number) => {
@@ -77,7 +103,7 @@ export function FlowLogic() {
 		if (delta === undefined) return;
 		event.preventDefault();
 		const next = (index + delta + DEMOS.length) % DEMOS.length;
-		setActive(DEMOS[next].id);
+		select(DEMOS[next].id, false);
 		tabRefs.current[next]?.focus();
 	};
 
@@ -89,7 +115,8 @@ export function FlowLogic() {
 			>
 				Most stepper libraries stop at "which step is active". Stepperize
 				handles the hard parts too: validation that blocks, declarative
-				branching, and async transitions with retry. These demos are live.
+				branching, and async transitions with retry. They are options of the
+				core, so they read the same in every framework.
 			</SectionHeading>
 
 			<div className="mt-12 grid gap-4 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.6fr)] lg:gap-6">
@@ -113,7 +140,8 @@ export function FlowLogic() {
 								aria-controls={`flow-panel-${demo.id}`}
 								tabIndex={selected ? 0 : -1}
 								onClick={(event) => {
-									setActive(demo.id);
+									// `detail` is 0 for Enter or Space: a keyboard press.
+									select(demo.id, event.detail > 0);
 									// On phones the tabs are a swipeable strip; bring a
 									// half-visible tab fully into view once chosen.
 									event.currentTarget.scrollIntoView({
@@ -167,7 +195,10 @@ export function FlowLogic() {
 					})}
 				</div>
 
-				<div className="relative grid min-h-[28rem] overflow-hidden rounded-3xl border bg-muted/30 sm:min-h-[30rem]">
+				<div
+					ref={stageRef}
+					className="relative grid min-h-[28rem] overflow-hidden rounded-3xl border bg-muted/30 sm:min-h-[30rem]"
+				>
 					<div
 						aria-hidden
 						className="pointer-events-none absolute inset-0 bg-[radial-gradient(var(--color-border)_1px,transparent_1px)] bg-size-[16px_16px] mask-[radial-gradient(ellipse_70%_70%_at_50%_50%,black,transparent)]"
@@ -181,23 +212,39 @@ export function FlowLogic() {
 								role="tabpanel"
 								id={`flow-panel-${demo.id}`}
 								aria-labelledby={`flow-tab-${demo.id}`}
-								className="relative col-start-1 row-start-1 flex items-center justify-center p-4 duration-300 ease-out-strong animate-in fade-in-0 motion-safe:zoom-in-98 sm:p-10"
+								className={cn(
+									"relative col-start-1 row-start-1 flex items-center justify-center p-4 sm:p-10",
+									switched && "lp-swap",
+								)}
 							>
-								<demo.Block />
+								<Suspense fallback={<DemoPlaceholder />}>
+									{near ? <demo.Block /> : <DemoPlaceholder />}
+								</Suspense>
 							</div>
 						</Activity>
 					))}
 				</div>
 			</div>
 
-			<Link
-				to="/blocks"
-				search={{ category: "flow-control" }}
-				className="hit-44 mt-8 inline-flex items-center gap-1.5 rounded text-sm font-medium text-primary outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring"
-			>
-				See every flow-logic block
-				<ArrowRight className="size-4" aria-hidden />
-			</Link>
+			<div className="mt-6 flex flex-col gap-x-6 gap-y-3 sm:flex-row sm:items-center sm:justify-between">
+				{/*
+				 * The demos are the React blocks (shadcn/ui). Say so, and keep it
+				 * apart from the claim above: the logic is the core's.
+				 */}
+				<p className="inline-flex items-start gap-2 text-[13px] text-muted-foreground sm:items-center">
+					<FrameworkIcon id="react" className="mt-0.5 size-3.5 sm:mt-0" />
+					Live demos built with the React blocks. The options behind them work
+					in every binding.
+				</p>
+				<Link
+					to="/blocks"
+					search={{ category: "flow-control" }}
+					className="hit-44 inline-flex shrink-0 items-center gap-1.5 self-start rounded text-sm font-medium text-primary outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring sm:self-auto"
+				>
+					See every flow-logic block
+					<ArrowRight className="size-4" aria-hidden />
+				</Link>
+			</div>
 		</Section>
 	);
 }

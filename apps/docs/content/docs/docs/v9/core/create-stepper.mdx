@@ -17,7 +17,7 @@ const flow = createStepper(steps, options);
 ## The flow
 
 A flow has every property and action of a [stepper](/docs/v9/react/api/stepper).
-Unlike the stepper a hook returns, which describes one moment, reads on a flow
+Unlike the stepper a binding returns, which describes one moment, reads on a flow
 always return the latest state:
 
 ```ts
@@ -37,7 +37,7 @@ It adds four members for whoever owns it.
 | --- | --- |
 | `get()` | The current stepper: an immutable picture of the flow. A new object after every change, the same object until then. |
 | `subscribe(listener)` | Calls `listener` after every change. Returns a function that unsubscribes. |
-| `setOptions(options)` | Replaces the options. Bindings call it on every render so callbacks stay current. |
+| `setOptions(options)` | Replaces the options. Bindings call it whenever the options change, so callbacks stay current. |
 | `destroy()` | Cancels a running move and drops every listener. |
 
 ## Subscribing
@@ -57,7 +57,7 @@ const stepper = shallowRef(flow.get());
 onScopeDispose(flow.subscribe(() => (stepper.value = flow.get())));
 ```
 
-The object `get()` returns is what the React hooks call a stepper. It is
+The object `get()` returns is what every binding calls a stepper. It is
 immutable: one you kept keeps describing the moment it was taken, and `get()`
 returns the same object until something changes, which is what external-store
 APIs require.
@@ -65,15 +65,16 @@ APIs require.
 ## Options that change
 
 `setOptions` replaces every option except `snapshot`, which is only read when
-the flow is created. A binding calls it whenever its owner re-renders, so
+the flow is created. A binding calls it whenever the options change, so
 callbacks never go stale. When the `step` option changes, the flow follows it;
 see [The step in the URL](/docs/v9/react/guides/url).
 
 ## Cleaning up
 
 Call `destroy()` when the owner goes away. It cancels a move that is still
-running (its promise resolves with `reason: "cancelled"`) and removes every
-listener.
+running and removes every listener. The guard's `signal` is aborted, and the
+move's promise resolves with `reason: "cancelled"` at once; what it was waiting
+on is dropped.
 
 ## Types
 

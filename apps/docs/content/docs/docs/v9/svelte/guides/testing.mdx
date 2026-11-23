@@ -1,0 +1,396 @@
+---
+title: Testing
+description: Test the flow without rendering, and the components by role with Testing Library or Vitest Browser Mode.
+---
+
+A flow has two parts worth testing separately: its logic, which needs no
+component, and the components that show it.
+
+## The flow, without Svelte
+
+`definition.create()` returns the same state machine `useStepper()` and
+`Stepper.Root` use, with no component, no runes and no DOM. Validation,
+branching and guards can be asserted directly, in a plain Node test.
+
+```ts title="checkout.ts"
+import { defineStepper } from "@stepperize/svelte";
+import { z } from "zod";
+
+export const checkout = defineStepper([
+  {
+    id: "shipping",
+    title: "Shipping",
+    schema: z.object({ address: z.string().min(1, "Enter an address") }),
+  },
+  { id: "payment", title: "Payment" },
+  { id: "review", title: "Review" },
+]);
+```
+
+```ts title="checkout.test.ts"
+import { expect, it, vi } from "vitest";
+import { checkout } from "./checkout";
+
+it("rejects an empty address and keeps what was typed", async () => {
+  const flow = checkout.create();
+
+  const result = await flow.next({ address: "" });
+
+  expect(result).toMatchObject({ accepted: false, reason: "invalid" });
+  expect(flow.current.id).toBe("shipping");
+  expect(flow.data.shipping).toEqual({ address: "" });
+  expect(flow.issues()?.[0]?.message).toBe("Enter an address");
+});
+
+it("finishes once, with the output of every step", async () => {
+  const onFinish = vi.fn();
+  const flow = checkout.create({ onFinish });
+
+  await flow.next({ address: "1 Main St" });
+  await flow.next();
+  const result = await flow.next();
+
+  expect(result).toMatchObject({ accepted: true, to: null });
+  expect(onFinish).toHaveBeenCalledOnce();
+  expect(onFinish.mock.calls[0][0]).toEqual({ shipping: { address: "1 Main St" } });
+  expect(flow.isFinished).toBe(true);
+});
+
+it("does not let a linear flow jump ahead", async () => {
+  const flow = checkout.create({ linear: true });
+
+  expect(flow.canGoTo("review")).toBe(false);
+  expect(await flow.goTo("review")).toEqual({ accepted: false, reason: "policy" });
+});
+
+it("is pending while an async guard runs, and refuses a second move", async () => {
+  let allow!: (value: boolean) => void;
+  const flow = checkout.create({
+    snapshot: { step: "payment", complete: ["shipping"], data: { shipping: { address: "1 Main St" } } },
+    guard: () => new Promise<boolean>((resolve) => (allow = resolve)),
+  });
+
+  const moving = flow.next();
+  expect(flow.isPending).toBe(true);
+  expect(await flow.next()).toEqual({ accepted: false, reason: "pending" });
+
+  allow(true);
+  expect(await moving).toMatchObject({ accepted: true, to: "review" });
+  expect(flow.isPending).toBe(false);
+});
+```
+
+Reads on a flow (`flow.current`, `flow.data`, `flow.isPending`) always return
+the latest state, so there is nothing to re-query between steps. Start from any
+point with a `snapshot` instead of walking there, as the last test does.
+
+`create()` takes the definition's defaults, so a flow defined with
+`{ linear: true }` is linear here too. Pass an option to override it for one
+test.
+
+A flow made at module scope and read with `fromFlow` is a `create()` flow, so
+the same tests cover it. Reset it between tests, or make one per test.
+
+## Components
+
+Render the component and drive it the way a person would. These examples use
+[Svelte Testing Library](https://testing-library.com/docs/svelte-testing-library/intro)
+and [user-event](https://testing-library.com/docs/user-event/intro) on
+[Vitest](https://vitest.dev) with jsdom:
+
+```bash
+pnpm add -D vitest jsdom @testing-library/svelte @testing-library/user-event @testing-library/jest-dom
+```
+
+```ts title="vite.config.ts"
+import { svelte } from "@sveltejs/vite-plugin-svelte";
+import { svelteTesting } from "@testing-library/svelte/vite";
+import { defineConfig } from "vitest/config";
+
+export default defineConfig({
+  // `svelteTesting()` resolves Svelte's browser build and cleans up after each test.
+  plugins: [svelte(), svelteTesting()],
+  test: {
+    environment: "jsdom",
+    setupFiles: ["./vitest.setup.ts"],
+  },
+});
+```
+
+```ts title="vitest.setup.ts"
+import "@testing-library/jest-dom/vitest";
+```
+
+In SvelteKit, use `sveltekit()` from `@sveltejs/kit/vite` in place of
+`svelte()`.
+
+The component under test: the primitives, a field whose draft is kept in the
+flow with `setData`, and its error.
+
+```svelte title="CheckoutSteps.svelte"
+<script lang="ts">
+  import type { Options } from "@stepperize/svelte";
+  import { checkout } from "./checkout";
+
+  let { linear, guard }: { linear?: boolean; guard?: Options<typeof checkout.steps>["guard"] } = $props();
+
+  const { Stepper } = checkout;
+</script>
+
+<Stepper.Root {linear} {guard} aria-label="Checkout">
+  {#snippet children(stepper)}
+    <Stepper.List>
+      {#snippet item()}
+        <Stepper.Item>
+          <Stepper.Trigger>
+            <Stepper.Indicator />
+            <Stepper.Title />
+          </Stepper.Trigger>
+        </Stepper.Item>
+      {/snippet}
+    </Stepper.List>
+
+    <Stepper.Content step="shipping">
+      <label>
+        Address
+        <input
+          value={stepper.data.shipping?.address ?? ""}
+          aria-invalid={stepper.issues("shipping") ? true : undefined}
+          aria-describedby={stepper.issues("shipping") ? "address-error" : undefined}
+          oninput={(event) => stepper.setData("shipping", { address: event.currentTarget.value })}
+        />
+      </label>
+      {#if stepper.issues("shipping")}
+        <p id="address-error" role="alert">{stepper.issues("shipping")?.[0]?.message}</p>
+      {/if}
+    </Stepper.Content>
+    <Stepper.Content step="payment">Payment details</Stepper.Content>
+    <Stepper.Content step="review">Review your order</Stepper.Content>
+
+    <Stepper.Prev>Back</Stepper.Prev>
+    <Stepper.Next>Continue</Stepper.Next>
+  {/snippet}
+</Stepper.Root>
+```
+
+```ts title="CheckoutSteps.test.ts"
+import { render, screen } from "@testing-library/svelte";
+import userEvent from "@testing-library/user-event";
+import { expect, it, vi } from "vitest";
+import CheckoutSteps from "./CheckoutSteps.svelte";
+
+it("shows the error and stays on the step", async () => {
+  const user = userEvent.setup();
+  render(CheckoutSteps);
+
+  await user.click(screen.getByRole("button", { name: "Continue" }));
+
+  const address = screen.getByRole("textbox", { name: "Address" });
+  expect(await screen.findByRole("alert")).toBeVisible();
+  expect(address).toBeInvalid();
+  expect(address).toHaveAccessibleDescription();
+
+  // `setData` changes the step's data, which clears its issues.
+  await user.type(address, "1 Main St");
+  expect(screen.queryByRole("alert")).toBeNull();
+  expect(screen.getByRole("tab", { name: "Shipping" })).toHaveAttribute("aria-selected", "true");
+});
+
+it("moves with Continue and Back", async () => {
+  const user = userEvent.setup();
+  render(CheckoutSteps);
+
+  await user.type(screen.getByRole("textbox", { name: "Address" }), "1 Main St");
+  await user.click(screen.getByRole("button", { name: "Continue" }));
+
+  const shipping = screen.getByRole("tab", { name: "Shipping" });
+  expect(screen.getByRole("tab", { name: "Payment" })).toHaveAttribute("aria-selected", "true");
+  expect(shipping).toHaveAttribute("data-state", "complete");
+  expect(screen.getByRole("tabpanel")).toHaveTextContent("Payment details");
+
+  await user.click(screen.getByRole("button", { name: "Back" }));
+  expect(shipping).toHaveAttribute("aria-selected", "true");
+  expect(screen.getByRole("textbox", { name: "Address" })).toHaveValue("1 Main St");
+});
+
+it("renders a linear flow as a list of steps", () => {
+  render(CheckoutSteps, { linear: true });
+
+  expect(screen.queryByRole("tablist")).toBeNull();
+  expect(screen.getByRole("button", { name: "Shipping" })).toHaveAttribute("aria-current", "step");
+  expect(screen.getByRole("button", { name: "Review" })).toBeDisabled();
+  expect(screen.getByRole("group", { name: "Shipping" })).toBeVisible();
+});
+```
+
+user-event yields to the event loop after each action, so Svelte has updated
+the DOM by the time an awaited `user` call returns. Use `findBy*` for what
+appears after a promise of your own, such as an async schema or guard. After
+changing state from the test itself, `await tick()` (or `flushSync()`) before
+reading the DOM.
+
+### Assert roles and state
+
+Query by role and name, not by class. Which role the current step has depends
+on the flow:
+
+| Flow | The current step is |
+| --- | --- |
+| `linear` | A `button` with `aria-current="step"` |
+| Free navigation | A `tab` with `aria-selected="true"` (or `getByRole("tab", { selected: true })`) |
+| No triggers | The only `group` panel on the page with the step's `title` as its name |
+
+`data-state`, `data-invalid`, `data-disabled` and `data-pending` are part of
+the public API, so asserting them is fine when the role does not say it:
+`data-state="complete"` has no ARIA equivalent.
+
+### Async checks
+
+While an async schema, guard or `onFinish` runs, the stepper is busy and the
+buttons stay focusable. Hold the promise open and check both:
+
+```ts
+it("waits for an async guard: busy, and a second click does nothing", async () => {
+  const user = userEvent.setup();
+  let allow!: (value: boolean) => void;
+  const guard = vi.fn(() => new Promise<boolean>((resolve) => (allow = resolve)));
+  render(CheckoutSteps, { guard });
+
+  await user.click(screen.getByRole("tab", { name: "Review" }));
+
+  const next = screen.getByRole("button", { name: "Continue" });
+  expect(screen.getByRole("group", { name: "Checkout" })).toHaveAttribute("aria-busy", "true");
+  expect(next).toHaveAttribute("aria-disabled", "true");
+  expect(next).toHaveAttribute("data-pending");
+  expect(next).toBeEnabled(); // not `disabled`: it keeps keyboard focus
+
+  await user.click(next);
+  expect(guard).toHaveBeenCalledOnce();
+
+  allow(true);
+  expect(await screen.findByRole("tab", { name: "Review", selected: true })).toBeInTheDocument();
+  expect(screen.getByRole("group", { name: "Checkout" })).not.toHaveAttribute("aria-busy");
+});
+```
+
+### Announcements
+
+The live region is a `span` with `aria-live="polite"` inside the root. When
+the step changes and focus stays on Continue, it holds the new step's title:
+
+```ts
+it("announces the new step while focus stays on Continue", async () => {
+  const user = userEvent.setup();
+  render(CheckoutSteps);
+
+  await user.type(screen.getByRole("textbox", { name: "Address" }), "1 Main St");
+  await user.click(screen.getByRole("button", { name: "Continue" }));
+
+  expect(screen.getByRole("button", { name: "Continue" })).toHaveFocus();
+  expect(document.querySelector('[aria-live="polite"]')).toHaveTextContent("Payment");
+});
+```
+
+### Snippets and context in a test
+
+`render` takes a component, so a test that needs `Stepper.Root` around a
+component of yours, or a snippet, renders a small wrapper `.svelte` file kept
+next to the tests. `checkout.useStepperContext()` inside that component then
+reads the root's flow.
+
+### In a real browser
+
+jsdom does not lay out the page: arrow keys in right-to-left layouts, CSS and
+transitions need a browser. With
+[Vitest Browser Mode](https://vitest.dev/guide/browser/) and
+`vitest-browser-svelte`, the same component runs in Chromium:
+
+```ts title="CheckoutSteps.browser.test.ts"
+import { expect, test } from "vitest";
+import { page, userEvent } from "vitest/browser";
+import { render } from "vitest-browser-svelte";
+import CheckoutSteps from "./CheckoutSteps.svelte";
+
+test("arrow keys move between the tabs", async () => {
+  await render(CheckoutSteps);
+
+  await userEvent.click(page.getByRole("tab", { name: "Shipping" }));
+  await userEvent.keyboard("{ArrowRight}");
+
+  await expect.element(page.getByRole("tab", { name: "Payment" })).toHaveAttribute("aria-selected", "true");
+  await expect.element(page.getByRole("tab", { name: "Payment" })).toHaveFocus();
+});
+```
+
+Browser tests need a Vitest project of their own with `browser.enabled` and a
+provider such as `@vitest/browser-playwright`; give their files a suffix like
+`.browser.test.ts` and exclude it from the jsdom project.
+
+The `sv` CLI sets this up in a new project (`npx sv add vitest`), with a
+`client` project for `.svelte.test.ts` files in the browser and a `server`
+project for the rest.
+
+## Server rendering
+
+`render` from `svelte/server` runs the component as SvelteKit does on the
+server, so the HTML can be asserted in a Node test. No callback runs on the
+server, and ids come from `$props.id()`, so they match the client's.
+
+```ts title="CheckoutSteps.server.test.ts"
+import { render } from "svelte/server";
+import { expect, it } from "vitest";
+import CheckoutSteps from "./CheckoutSteps.svelte";
+
+it("renders the tabs and the current panel on the server", () => {
+  const { body } = render(CheckoutSteps);
+
+  expect(body).toContain('role="tablist"');
+  expect(body).toMatch(/<button[^>]*aria-selected="true"[^>]*>.*Shipping/s);
+  expect(body).toMatch(/role="tabpanel"[^>]*>.*Address/s);
+  expect(body).not.toContain("Payment details");
+});
+```
+
+`svelteTesting()` makes Svelte resolve to its browser build, where
+`svelte/server` cannot render. Run server tests in a Vitest project of their
+own, without it:
+
+```ts title="vite.config.ts"
+import { svelte } from "@sveltejs/vite-plugin-svelte";
+import { svelteTesting } from "@testing-library/svelte/vite";
+import { defineConfig } from "vitest/config";
+
+export default defineConfig({
+  plugins: [svelte()],
+  test: {
+    projects: [
+      {
+        extends: true,
+        plugins: [svelteTesting()],
+        test: {
+          name: "client",
+          environment: "jsdom",
+          setupFiles: ["./vitest.setup.ts"],
+          exclude: ["**/node_modules/**", "**/*.server.test.ts"],
+        },
+      },
+      {
+        extends: true,
+        test: { name: "server", environment: "node", include: ["**/*.server.test.ts"] },
+      },
+    ],
+  },
+});
+```
+
+A `Stepper.Root` assumes it has triggers until it mounts, so server HTML of a
+flow without triggers still says `tabpanel`; see
+[Server rendering](/docs/v9/svelte/guides/ssr#tabs-without-triggers).
+
+## What to cover
+
+- A move that is refused: the step does not change and the reason is shown.
+- Each branch of the `next` map, and that Back returns along it.
+- The finishing move, including the failure path if `onFinish` makes a request.
+- Resuming from a saved snapshot.
+- An async check: the stepper is busy, and a second click does nothing.

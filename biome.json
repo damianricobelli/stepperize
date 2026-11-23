@@ -6,6 +6,7 @@
 			"!.turbo",
 			"!**/.next",
 			"!**/.source",
+			"!**/.svelte-kit",
 			"!.changeset",
 			"!.pnpm-store",
 			"!packages/*/dist",
@@ -66,6 +67,20 @@
 		}
 	},
 	"overrides": [
+		{
+			"includes": ["**/*.vue", "**/*.svelte"],
+			"linter": {
+				"rules": {
+					"correctness": {
+						"noUnusedVariables": "off",
+						"noUnusedImports": "off"
+					},
+					"style": {
+						"useVueMultiWordComponentNames": "off"
+					}
+				}
+			}
+		},
 		{
 			"includes": ["packages/react/src/**"],
 			"linter": {

@@ -2,25 +2,28 @@
 
 import { Check, X } from "lucide-react";
 import { useState } from "react";
+import type { DocsFramework } from "@/lib/frameworks";
 import { cn } from "@/lib/utils";
-import { C, CodeFrame, F, K, P, S, Section, SectionHeading, T } from "./shared";
+import { Highlighted, tokenize } from "./code";
+import { useFramework } from "./framework-choice";
+import { CodeFrame, Section, SectionHeading } from "./shared";
 
 const MODES = {
 	without: {
 		label: "Without",
 		points: [
-			"Manual index and clamping on every move",
-			"Stringly-typed switch: a typo still compiles",
-			"Miss a case and nothing warns you",
+			"An index to keep in sync with the steps",
+			"Clamping by hand on every move",
+			"Stringly-typed checks: a typo still compiles",
 			"Validation gating wired by hand, per step",
 		],
 	},
 	with: {
 		label: "With Stepperize",
 		points: [
+			"No index: the flow knows where it is",
 			"next() and prev() clamp and guard for you",
 			"Step ids are a typed union: typos fail to compile",
-			"match() is exhaustive: miss a case, get an error",
 			"One guard decides whether any move happens",
 		],
 	},
@@ -37,6 +40,7 @@ type Mode = keyof typeof MODES;
  */
 export function BeforeAfter() {
 	const [mode, setMode] = useState<Mode>("without");
+	const variant = variantOf(useFramework());
 
 	return (
 		<Section className="border-y bg-muted/30">
@@ -56,7 +60,7 @@ export function BeforeAfter() {
 						<span
 							aria-hidden
 							className={cn(
-								"absolute inset-y-1 left-1 w-[calc(50%-4px)] rounded-lg transition-[transform,background-color] duration-300 ease-out-strong",
+								"absolute inset-y-1 left-1 w-[calc(50%-4px)] rounded-lg transition-[transform,background-color] duration-200 ease-out-strong",
 								mode === "with"
 									? "translate-x-full bg-primary"
 									: "translate-x-0 bg-foreground",
@@ -88,10 +92,8 @@ export function BeforeAfter() {
 								key={m}
 								aria-hidden={mode !== m}
 								className={cn(
-									"col-start-1 row-start-1 space-y-2.5 text-[15px] transition-[opacity,filter] duration-300 ease-out-strong",
-									mode === m
-										? "opacity-100"
-										: "pointer-events-none opacity-0 blur-[2px]",
+									"col-start-1 row-start-1 space-y-2.5 text-[15px] transition-opacity duration-200 ease-out-strong",
+									mode === m ? "opacity-100" : "pointer-events-none opacity-0",
 								)}
 							>
 								{MODES[m].points.map((point) => (
@@ -119,11 +121,11 @@ export function BeforeAfter() {
 				</div>
 
 				<CodeFrame
-					filename="checkout.tsx"
+					filename={CODE[variant].file}
 					aside={
 						<span
 							className={cn(
-								"inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-medium transition-colors duration-300",
+								"inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-medium transition-colors duration-200",
 								mode === "with"
 									? "bg-emerald-500/12 text-emerald-700 dark:text-emerald-300"
 									: "bg-red-500/10 text-red-600 dark:text-red-300",
@@ -139,13 +141,13 @@ export function BeforeAfter() {
 								key={m}
 								aria-hidden={mode !== m}
 								className={cn(
-									"col-start-1 row-start-1 p-4 font-mono text-[11.5px] leading-[1.75] transition-[opacity,filter] sm:p-6 sm:text-[12.5px] duration-300 ease-out-strong",
-									mode === m
-										? "opacity-100"
-										: "pointer-events-none opacity-0 blur-[2px]",
+									"col-start-1 row-start-1 p-4 font-mono text-[11.5px] leading-[1.75] transition-opacity sm:p-6 sm:text-[12.5px] duration-200 ease-out-strong",
+									mode === m ? "opacity-100" : "pointer-events-none opacity-0",
 								)}
 							>
-								<code>{m === "with" ? <AfterCode /> : <BeforeCode />}</code>
+								<code>
+									<Highlighted lines={TOKENIZED[variant][m]} />
+								</code>
 							</pre>
 						))}
 					</div>
@@ -155,104 +157,261 @@ export function BeforeAfter() {
 	);
 }
 
-function BeforeCode() {
-	return (
-		<>
-			<K>const</K> steps <P>=</P> <P>[</P>
-			<S>"shipping"</S>
-			<P>,</P> <S>"payment"</S>
-			<P>,</P> <S>"review"</S>
-			<P>];</P>
-			{"\n"}
-			<K>const</K> <P>[</P>step<P>,</P> setStep<P>] =</P> <F>useState</F>
-			<P>(</P>
-			<T>0</T>
-			<P>);</P>
-			{"\n\n"}
-			<C>{"// clamp by hand, every time"}</C>
-			{"\n"}
-			<K>const</K> next <P>{"= () =>"}</P> <F>setStep</F>
-			<P>((</P>s<P>{") =>"}</P>
-			{"\n"}
-			{"  "}
-			<F>Math</F>
-			<P>.</P>
-			<F>min</F>
-			<P>(</P>s <P>+</P> <T>1</T>
-			<P>,</P> steps<P>.</P>length <P>-</P> <T>1</T>
-			<P>));</P>
-			{"\n\n"}
-			<C>{"// stringly-typed — typo still compiles"}</C>
-			{"\n"}
-			<K>switch</K> <P>(</P>steps<P>[</P>step<P>]) {"{"}</P>
-			{"\n"}
-			{"  "}
-			<K>case</K> <S>"shiping"</S>
-			<P>:</P> <K>return</K> <P>{"<"}</P>
-			<T>Shipping</T> <P>{"/>;"}</P>
-			{"  "}
-			<C>{"// 💥"}</C>
-			{"\n"}
-			{"  "}
-			<K>case</K> <S>"payment"</S>
-			<P>:</P> {""}
-			<K>return</K> <P>{"<"}</P>
-			<T>Payment</T> <P>{"/>;"}</P>
-			{"\n"}
-			{"  "}
-			<C>{"// forgot review? no warning."}</C>
-			{"\n"}
-			<P>{"}"}</P>
-		</>
-	);
+/* ─────────────────────── the code, per framework ─────────────────────── */
+
+const IDS = `{ id: "shipping" },
+{ id: "payment" },
+{ id: "review" },`;
+
+const indent = (code: string, spaces: number) =>
+	code.replace(/^/gm, " ".repeat(spaces));
+
+/**
+ * The hand-rolled version every team writes first, next to the Stepperize
+ * version, in each framework's own idiom. The type checker that catches the
+ * typo is the framework's own: tsc, vue-tsc, svelte-check, Angular's strict
+ * templates. HTML has no types, so it shows the TypeScript core it runs on.
+ */
+const CODE: Record<
+	"react" | "vue" | "svelte" | "solid" | "angular" | "lit" | "core",
+	{ file: string; without: string; with: string }
+> = {
+	react: {
+		file: "checkout.tsx",
+		without: `const steps = ["shipping", "payment", "review"];
+const [step, setStep] = useState(0);
+
+// clamp by hand, every time
+const next = () =>
+  setStep((s) => Math.min(s + 1, steps.length - 1));
+
+// stringly-typed: a typo still compiles
+switch (steps[step]) {
+  case "shiping": return <Shipping />; // 💥
+  case "payment": return <Payment />;
+  // forgot review? no warning.
+}`,
+		with: `const checkout = defineStepper([
+${indent(IDS, 2)}
+]);
+
+const stepper = checkout.useStepper();
+
+// clamped and guarded for you
+const onNext = () => stepper.next();
+
+// exhaustive: a typo is a compile error
+return stepper.match({
+  shipping: () => <Shipping />,
+  payment: () => <Payment />,
+  review: () => <Review />,
+});`,
+	},
+	vue: {
+		file: "Checkout.vue",
+		without: `<script setup lang="ts">
+const steps = ["shipping", "payment", "review"];
+const step = ref(0);
+
+// clamp by hand, every time
+const next = () =>
+  (step.value = Math.min(step.value + 1, steps.length - 1));
+</script>
+
+<template>
+  <!-- stringly-typed: a typo still compiles 💥 -->
+  <Shipping v-if="steps[step] === 'shiping'" />
+  <Payment v-else-if="steps[step] === 'payment'" />
+  <!-- forgot review? no warning. -->
+</template>`,
+		with: `<script setup lang="ts">
+const checkout = defineStepper([
+${indent(IDS, 2)}
+]);
+const stepper = checkout.useStepper();
+</script>
+
+<template>
+  <!-- typed ids: 'shiping' fails vue-tsc -->
+  <Shipping v-if="stepper.current.id === 'shipping'" />
+  <Payment v-else-if="stepper.current.id === 'payment'" />
+  <Review v-else />
+  <!-- clamped and guarded for you -->
+  <button @click="stepper.next()">Continue</button>
+</template>`,
+	},
+	svelte: {
+		file: "Checkout.svelte",
+		without: `<script lang="ts">
+  const steps = ["shipping", "payment", "review"];
+  let step = $state(0);
+
+  // clamp by hand, every time
+  const next = () => (step = Math.min(step + 1, steps.length - 1));
+</script>
+
+<!-- stringly-typed: a typo still compiles 💥 -->
+{#if steps[step] === "shiping"}
+  <Shipping />
+{:else if steps[step] === "payment"}
+  <Payment />
+{/if}
+<!-- forgot review? no warning. -->`,
+		with: `<script lang="ts">
+  const checkout = defineStepper([
+${indent(IDS, 4)}
+  ]);
+  const stepper = checkout.useStepper();
+</script>
+
+<!-- typed ids: "shiping" fails svelte-check -->
+{#if stepper.current.id === "shipping"}
+  <Shipping />
+{:else if stepper.current.id === "payment"}
+  <Payment />
+{:else}
+  <Review />
+{/if}
+<!-- clamped and guarded for you -->
+<button onclick={() => stepper.next()}>Continue</button>`,
+	},
+	solid: {
+		file: "Checkout.tsx",
+		without: `const steps = ["shipping", "payment", "review"];
+const [step, setStep] = createSignal(0);
+
+// clamp by hand, every time
+const next = () =>
+  setStep((s) => Math.min(s + 1, steps.length - 1));
+
+// stringly-typed: a typo still compiles
+<Switch>
+  <Match when={steps[step()] === "shiping"}><Shipping /></Match>
+  <Match when={steps[step()] === "payment"}><Payment /></Match>
+  {/* forgot review? no warning. */}
+</Switch>`,
+		with: `const checkout = defineStepper([
+${indent(IDS, 2)}
+]);
+
+const stepper = checkout.useStepper();
+
+// typed ids: "shiping" is a compile error
+<Switch>
+  <Match when={stepper.current.id === "shipping"}><Shipping /></Match>
+  <Match when={stepper.current.id === "payment"}><Payment /></Match>
+  <Match when={stepper.current.id === "review"}><Review /></Match>
+</Switch>
+
+// clamped and guarded for you
+<button onClick={() => stepper.next()}>Continue</button>`,
+	},
+	angular: {
+		file: "checkout.component.ts",
+		without: `steps = ["shipping", "payment", "review"];
+step = signal(0);
+
+// clamp by hand, every time
+next() {
+  this.step.update((s) => Math.min(s + 1, this.steps.length - 1));
 }
 
-function AfterCode() {
-	return (
-		<>
-			<K>const</K> checkout <P>=</P> <F>defineStepper</F>
-			<P>([</P>
-			{"\n"}
-			{"  "}
-			<P>{"{ "}</P>id<P>:</P> <S>"shipping"</S> <P>{"},"}</P>
-			{"\n"}
-			{"  "}
-			<P>{"{ "}</P>id<P>:</P> <S>"payment"</S> <P>{"},"}</P>
-			{"\n"}
-			{"  "}
-			<P>{"{ "}</P>id<P>:</P> <S>"review"</S> <P>{"},"}</P>
-			{"\n"}
-			<P>]);</P>
-			{"\n\n"}
-			<K>const</K> stepper <P>=</P> checkout<P>.</P>
-			<F>useStepper</F>
-			<P>();</P>
-			{"\n\n"}
-			<C>{"// call from your Next button"}</C>
-			{"\n"}
-			<K>const</K> onNext <P>{"= () => "}</P>
-			stepper<P>.</P>
-			<F>next</F>
-			<P>();</P>
-			{"\n\n"}
-			<C>{"// exhaustive — a typo is a compile error"}</C>
-			{"\n"}
-			<K>return</K> stepper<P>.</P>
-			<F>match</F>
-			<P>({"{"}</P>
-			{"\n"}
-			{"  "}shipping<P>:</P> <P>{"() =>"}</P> <P>{"<"}</P>
-			<T>Shipping</T> <P>{"/>,"}</P>
-			{"\n"}
-			{"  "}payment<P>:</P> {""}
-			<P>{"() =>"}</P> <P>{"<"}</P>
-			<T>Payment</T> <P>{"/>,"}</P>
-			{"\n"}
-			{"  "}review<P>:</P> {""}
-			<P>{"() =>"}</P> <P>{"<"}</P>
-			<T>Review</T> <P>{"/>,"}</P>
-			{"\n"}
-			<P>{"});"}</P>
-		</>
-	);
+// stringly-typed: a typo still compiles
+template: \`
+  @switch (steps[step()]) {
+    @case ("shiping") { <app-shipping /> } 💥
+    @case ("payment") { <app-payment /> }
+  }
+\``,
+		with: `const checkout = defineStepper([
+${indent(IDS, 2)}
+]);
+
+readonly stepper = checkout.injectStepper();
+
+// typed ids: "shiping" fails strict templates
+template: \`
+  @switch (stepper().current.id) {
+    @case ("shipping") { <app-shipping /> }
+    @case ("payment") { <app-payment /> }
+    @case ("review") { <app-review /> }
+  }
+  <button (click)="stepper().next()">Continue</button>
+\``,
+	},
+	lit: {
+		file: "checkout-flow.ts",
+		without: `steps = ["shipping", "payment", "review"];
+@state() step = 0;
+
+// clamp by hand, every time
+next() {
+  this.step = Math.min(this.step + 1, this.steps.length - 1);
 }
+
+render() {
+  // stringly-typed: a typo still compiles
+  switch (this.steps[this.step]) {
+    case "shiping": return html\`<shipping-step></shipping-step>\`; // 💥
+    case "payment": return html\`<payment-step></payment-step>\`;
+    // forgot review? no warning.
+  }
+}`,
+		with: `const checkout = defineStepper([
+${indent(IDS, 2)}
+]);
+
+stepper = checkout.controller(this);
+
+render() {
+  // exhaustive: a typo is a compile error
+  return this.stepper.value.match({
+    shipping: () => html\`<shipping-step></shipping-step>\`,
+    payment: () => html\`<payment-step></payment-step>\`,
+    review: () => html\`<review-step></review-step>\`,
+  });
+}
+// clamped and guarded: this.stepper.value.next()`,
+	},
+	core: {
+		file: "checkout.ts",
+		without: `const steps = ["shipping", "payment", "review"];
+let step = 0;
+
+// clamp by hand, every time
+function next() {
+  step = Math.min(step + 1, steps.length - 1);
+}
+
+// stringly-typed: a typo still compiles
+switch (steps[step]) {
+  case "shiping": return showShipping(); // 💥
+  case "payment": return showPayment();
+  // forgot review? no warning.
+}`,
+		with: `const flow = createStepper([
+${indent(IDS, 2)}
+]);
+
+// clamped and guarded for you
+await flow.next();
+
+// exhaustive: a typo is a compile error
+flow.match({
+  shipping: () => showShipping(),
+  payment: () => showPayment(),
+  review: () => showReview(),
+});`,
+	},
+};
+
+// Static: tokenized once at module load, never per render.
+const TOKENIZED = Object.fromEntries(
+	Object.entries(CODE).map(([id, code]) => [
+		id,
+		{ without: tokenize(code.without), with: tokenize(code.with) },
+	]),
+) as Record<keyof typeof CODE, Record<Mode, ReturnType<typeof tokenize>>>;
+
+const variantOf = (framework: DocsFramework): keyof typeof CODE =>
+	framework === "html" ? "core" : framework;

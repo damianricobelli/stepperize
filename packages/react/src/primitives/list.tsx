@@ -1,5 +1,6 @@
 import type { Id, Step, StepState } from "@stepperize/core";
 import { fail } from "@stepperize/core";
+import { reportError } from "@stepperize/core/primitives";
 import React from "react";
 import type { Scope } from "../definition";
 import { element, IndexContext, ItemContext, primitive, useDevRef, useUi } from "./shared";
@@ -45,9 +46,12 @@ export function createList<S extends readonly Step[]>(scope: Scope<S>): Componen
 			e.preventDefault();
 			const id = tab.dataset.step as Id<S>;
 			if (tab === target || !flow.canGoTo(id)) return;
-			void flow.goTo(id).then((result) => {
-				if (result.accepted) tab.focus();
-			});
+			flow
+				.goTo(id)
+				.then((result) => {
+					if (result.accepted) tab.focus();
+				})
+				.catch(reportError);
 		};
 
 		const domProps = {

@@ -1,0 +1,204 @@
+---
+title: Primitives
+description: Unstyled components that handle roles, keyboard, focus and announcements.
+---
+
+Every definition comes with a `Stepper` object: components bound to your steps.
+They render plain elements with no styles, and take care of the parts that are
+easy to get wrong: roles, ids, keyboard navigation, focus and announcements.
+
+For a simple flow, your own buttons and a `<Switch>` are enough.
+
+## Basic structure
+
+```tsx
+const { Stepper } = checkout;
+
+function CheckoutSteps() {
+  return (
+    <Stepper.Root linear onFinish={placeOrder}>
+      <Stepper.List>
+        {(_step) => (
+          <Stepper.Item>
+            <Stepper.Trigger>
+              <Stepper.Indicator />
+              <Stepper.Title />
+              <Stepper.Description />
+            </Stepper.Trigger>
+          </Stepper.Item>
+        )}
+      </Stepper.List>
+
+      <Stepper.Content step="shipping"><ShippingForm /></Stepper.Content>
+      <Stepper.Content step="payment"><PaymentForm /></Stepper.Content>
+      <Stepper.Content step="review"><Review /></Stepper.Content>
+
+      <Stepper.Prev>Back</Stepper.Prev>
+      <Stepper.Next>Continue</Stepper.Next>
+    </Stepper.Root>
+  );
+}
+```
+
+<FrameworkDemo framework="solid" />
+
+## How the pieces connect
+
+1. `Stepper.Root` creates the flow and provides it. It takes the options as
+   props.
+2. `Stepper.List` renders the list and handles arrow keys.
+3. Its function child is called once per step, with the step and its index.
+4. `Stepper.Item` is one step. Everything inside it knows which one.
+5. `Stepper.Trigger` goes to that step when pressed.
+6. `Stepper.Content` renders while its `step` is current.
+7. `Stepper.Prev` and `Stepper.Next` call `prev()` and `next()`.
+
+`step` is typed: `<Stepper.Content step="shiping">` does not compile.
+
+### Function or content
+
+A function child of `List` must declare its `step` parameter, even when it does
+not use it. A function without parameters is content: that is the rule `<Show>`
+and `<Match>` follow, and it is how Solid's own components pass what they
+render. So a list built with `<For>` works too, with a `step` on each item:
+
+```tsx
+<Stepper.List>
+  <For each={checkout.steps}>
+    {(step) => (
+      <Stepper.Item step={step.id}>
+        <Stepper.Trigger>{step.title}</Stepper.Trigger>
+      </Stepper.Item>
+    )}
+  </For>
+</Stepper.List>
+```
+
+The same holds for the function children of `Root` and `Item`.
+
+## Reading the flow in JSX
+
+`Root`, `List` and `Item` accept a function as children. `Root` passes the
+stepper, `List` passes each step, and `Item` passes that item:
+
+```tsx
+<Stepper.Root>
+  {(stepper) => (
+    <>
+      <p>
+        Step {stepper.index + 1} of {stepper.steps.length}
+      </p>
+
+      <Stepper.List>
+        {(step, index) => (
+          <Stepper.Item>
+            {(item) => (
+              <Stepper.Trigger>
+                {item.state === "complete" ? "✓" : index + 1} {step.title}
+              </Stepper.Trigger>
+            )}
+          </Stepper.Item>
+        )}
+      </Stepper.List>
+    </>
+  )}
+</Stepper.Root>
+```
+
+The functions run once and are not tracked, like the children of `<Show>`:
+what they receive is reactive, so only the expressions in their JSX that read
+it update. Do not destructure it: `{({ state }) => ...}` would copy the state
+once and never change. In a child component, `checkout.useStepperContext()` and
+`Stepper.useItem()` return the same things.
+
+## Three patterns, chosen for you
+
+| The flow | What is rendered |
+| --- | --- |
+| Not `linear`, with triggers | A `tablist`: triggers are tabs with roving focus and arrow keys, panels are `tabpanel`s. |
+| `linear` | An ordered list of buttons with `aria-current="step"`. Steps that cannot be reached yet are disabled. |
+| No triggers | Panels are `group`s named by the step's `title`. |
+
+On every step change the new step is announced to screen readers by its
+`title`, and if the focused element disappeared, focus moves to the new panel
+instead of being lost.
+
+## Styling
+
+Nothing is styled. Every element has a `data-component` and the state it shows:
+
+| Attribute | On | Values |
+| --- | --- | --- |
+| `data-state` | `Item`, `Trigger`, `Indicator` | `pending`, `current`, `complete` |
+| `data-invalid` | `Item`, `Trigger`, `Indicator` | Present after a failed validation. |
+| `data-disabled` | `Item`, `Trigger`, `Prev`, `Next` | Present when it cannot be used. |
+| `data-pending` | `Root`, `Prev`, `Next` | Present while an async check or `onFinish` runs. |
+| `data-finished` | `Root` | Present once the flow has finished. |
+| `data-orientation` | `Root`, `List` | `horizontal`, `vertical` |
+
+```css
+[data-component="stepper-trigger"][data-state="current"] { font-weight: 600; }
+[data-component="stepper-indicator"][data-state="complete"] { background: green; }
+```
+
+`class`, `style`, `ref` and any other attribute you pass go to the element.
+
+## Rendering your own element
+
+Pass `as` with a tag name or a component. The props follow what you render:
+with `as="a"`, `href` is allowed and `ref` receives an `HTMLAnchorElement`.
+
+```tsx
+<Stepper.List as="div">...</Stepper.List>
+<Stepper.Trigger as="a" href="#payment" ref={(link) => link.focus()}>
+  Payment
+</Stepper.Trigger>
+```
+
+A component receives the ARIA attributes, ids, handlers and `ref` as props and
+must spread them onto an element. Its own props are typed, and its required
+props are required on the primitive:
+
+```tsx
+import { type JSX, splitProps } from "solid-js";
+
+function MyButton(props: JSX.ButtonHTMLAttributes<HTMLButtonElement> & { tone?: "primary" }) {
+  const [local, rest] = splitProps(props, ["tone"]);
+  return <button class={local.tone === "primary" ? "btn btn-primary" : "btn"} {...rest} />;
+}
+
+<Stepper.Next as={MyButton} tone="primary">Continue</Stepper.Next>
+```
+
+Use `splitProps`, not destructuring, to take your own props out: destructuring
+props reads them once and loses reactivity. A component whose props cannot take
+a `ref`, such as `(props: { label: string }) => ...` or one with no props, does
+not compile: it could not put the ARIA attributes on an element.
+
+`Prev` and `Next` add `type="button"` unless `as` names another tag, so a
+design-system button inside a `<form>` does not submit it; pass `type` to
+change it. `Trigger` adds it only to its default `button`: with `as`, the type
+of your own element stands, since a trigger is often a link.
+
+## Handling the move yourself
+
+Call `preventDefault()` in your own handler to take over, for example to pass
+form values:
+
+```tsx
+<Stepper.Next
+  onClick={(event) => {
+    event.preventDefault();
+    stepper.next({ ...values });
+  }}
+>
+  Continue
+</Stepper.Next>
+```
+
+## Keeping panels mounted
+
+`<Stepper.Content step="payment" forceMount>` stays in the DOM, `hidden`, while
+its step is not current, so the state of the fields inside survives.
+
+See the [primitives reference](/docs/v9/solid/api/primitives) for every prop.

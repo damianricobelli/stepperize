@@ -1,5 +1,6 @@
 import type { Id, Step } from "@stepperize/core";
 import { warn } from "@stepperize/core";
+import { reportError } from "@stepperize/core/primitives";
 import React from "react";
 import type { Scope } from "../definition";
 import { element, panelId, primitive, triggerId, useDevRef, useItem, useUi } from "./shared";
@@ -27,6 +28,13 @@ export function createTrigger<S extends readonly Step[]>(scope: Scope<S>): Compo
 						}
 						if (!node.closest('[data-component="stepper-list"]')) {
 							warn("SZ003", `Stepper.Trigger for step "${id}" is outside Stepper.List.`);
+						}
+						// A button, or a link that goes somewhere: what the keyboard can press.
+						if (!(node.tagName === "BUTTON" || (node.tagName === "A" && node.hasAttribute("href")))) {
+							warn(
+								"SZ005",
+								`The trigger for step "${id}" is a <${node.tagName.toLowerCase()}>, not a <button>: Enter and Space do not press it and it cannot be disabled. Use a <button>.`,
+							);
 						}
 					}
 				: undefined,
@@ -64,7 +72,7 @@ export function createTrigger<S extends readonly Step[]>(scope: Scope<S>): Compo
 				: { "aria-current": current ? ("step" as const) : undefined }),
 			onClick: (e: React.MouseEvent<HTMLButtonElement>) => {
 				onClick?.(e);
-				if (!e.defaultPrevented && !pending) void flow.goTo(id);
+				if (!e.defaultPrevented && !pending) flow.goTo(id).catch(reportError);
 			},
 		};
 		return element("button", domProps, render);

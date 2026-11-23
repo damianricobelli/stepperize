@@ -183,10 +183,11 @@ const form = useForm({
     onSubmitAsync: async ({ value }) => {
       const result = await stepper.next(value);
       if (result.accepted || !result.issues) return;
-      const fields: Record<string, string> = {};
+      // The same shape as the schema issues the fields already render.
+      const fields: Record<string, { message: string }> = {};
       for (const issue of result.issues) {
         const field = issue.path?.[0];
-        if (typeof field === "string") fields[field] ??= issue.message;
+        if (typeof field === "string") fields[field] ??= { message: issue.message };
       }
       return { fields };
     },

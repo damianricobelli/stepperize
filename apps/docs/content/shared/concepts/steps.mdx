@@ -1,0 +1,449 @@
+A step is a plain object. Only `id` is required; everything else belongs to
+your app.
+
+<FrameworkCode>
+
+```ts framework="react" title="checkout.ts"
+import { defineStepper } from "@stepperize/react";
+
+export const checkout = defineStepper([
+  { id: "shipping", title: "Shipping", icon: "truck" },
+  { id: "payment", title: "Payment", icon: "card" },
+  { id: "review", title: "Review", icon: "check" },
+]);
+```
+
+```ts framework="vue" title="checkout.ts"
+import { defineStepper } from "@stepperize/vue";
+
+export const checkout = defineStepper([
+  { id: "shipping", title: "Shipping", icon: "truck" },
+  { id: "payment", title: "Payment", icon: "card" },
+  { id: "review", title: "Review", icon: "check" },
+]);
+```
+
+```ts framework="svelte" title="checkout.ts"
+import { defineStepper } from "@stepperize/svelte";
+
+export const checkout = defineStepper([
+  { id: "shipping", title: "Shipping", icon: "truck" },
+  { id: "payment", title: "Payment", icon: "card" },
+  { id: "review", title: "Review", icon: "check" },
+]);
+```
+
+```ts framework="solid" title="checkout.ts"
+import { defineStepper } from "@stepperize/solid";
+
+export const checkout = defineStepper([
+  { id: "shipping", title: "Shipping", icon: "truck" },
+  { id: "payment", title: "Payment", icon: "card" },
+  { id: "review", title: "Review", icon: "check" },
+]);
+```
+
+```ts framework="angular" title="checkout.ts"
+import { defineStepper } from "@stepperize/angular";
+
+export const checkout = defineStepper([
+  { id: "shipping", title: "Shipping", icon: "truck" },
+  { id: "payment", title: "Payment", icon: "card" },
+  { id: "review", title: "Review", icon: "check" },
+]);
+```
+
+```ts framework="lit" title="checkout.ts"
+import { defineStepper } from "@stepperize/lit";
+
+export const checkout = defineStepper([
+  { id: "shipping", title: "Shipping", icon: "truck" },
+  { id: "payment", title: "Payment", icon: "card" },
+  { id: "review", title: "Review", icon: "check" },
+]);
+```
+
+```ts framework="core" title="checkout.ts"
+import { createStepper } from "@stepperize/core";
+
+export const checkout = createStepper([
+  { id: "shipping", title: "Shipping", icon: "truck" },
+  { id: "payment", title: "Payment", icon: "card" },
+  { id: "review", title: "Review", icon: "check" },
+]);
+```
+
+</FrameworkCode>
+
+The definition is the contract for the whole flow. The stepper, `match`, the
+data of each step, the `next` map and the primitives all use these same ids,
+and TypeScript knows them as the union `"shipping" | "payment" | "review"`.
+
+<FrameworkOnly is="angular">
+On this page, `stepper` is the value of the signal `injectStepper()` returns:
+in a template, `stepper()`.
+</FrameworkOnly>
+
+<FrameworkOnly is="lit">
+On this page, `stepper` is the controller's `value`: `this.stepper.value`.
+</FrameworkOnly>
+
+## Step ids
+
+Ids are what you save, put in the URL and branch on. Pick ones that describe
+the business step, not the current label or position.
+
+| Good | Avoid | Why |
+| --- | --- | --- |
+| `"shipping"` | `"Step 1"` | Reordering steps would change its meaning. |
+| `"payment"` | `"Pay now"` | Copy changes; ids should not. |
+| `"review"` | `"confirm-2026"` | Generated ids cannot be typed or bookmarked. |
+
+Ids must be unique. An empty list or a repeated id throws
+[SZ103](/docs/v9/core/errors#sz103) when the first flow is created from the
+definition: the first component that uses it, or the first `create()`.
+
+## Your own fields
+
+Any other field stays on the step, fully typed, wherever Stepperize hands you a
+step: `stepper.current`, `stepper.steps`, the `match` handlers and the
+primitives.
+
+<FrameworkCode>
+
+```tsx framework="react" title="Header.tsx"
+import { checkout } from "./checkout";
+
+export function Header() {
+  const stepper = checkout.useStepperContext();
+  return (
+    <h2>
+      <Icon name={stepper.current.icon} /> {stepper.current.title}
+    </h2>
+  );
+}
+```
+
+```vue framework="vue" title="StepHeader.vue"
+<script setup lang="ts">
+import { checkout } from "./checkout";
+import Icon from "./Icon.vue";
+
+const stepper = checkout.useStepperContext();
+</script>
+
+<template>
+  <h2><Icon :name="stepper.current.icon" /> {{ stepper.current.title }}</h2>
+</template>
+```
+
+```svelte framework="svelte" title="StepHeader.svelte"
+<script lang="ts">
+  import { checkout } from "./checkout";
+  import Icon from "./Icon.svelte";
+
+  const stepper = checkout.useStepperContext();
+</script>
+
+<h2><Icon name={stepper.current.icon} /> {stepper.current.title}</h2>
+```
+
+```tsx framework="solid" title="StepHeader.tsx"
+import { checkout } from "./checkout";
+
+export function StepHeader() {
+  const stepper = checkout.useStepperContext();
+  return (
+    <h2>
+      <Icon name={stepper.current.icon} /> {stepper.current.title}
+    </h2>
+  );
+}
+```
+
+```ts framework="angular" title="step-header.component.ts"
+import { Component } from "@angular/core";
+import { checkout } from "./checkout";
+import { Icon } from "./icon.component";
+
+@Component({
+  selector: "app-step-header",
+  imports: [Icon],
+  template: `
+    <h2><app-icon [name]="stepper().current.icon" /> {{ stepper().current.title }}</h2>
+  `,
+})
+export class StepHeader {
+  readonly stepper = checkout.injectStepperContext();
+}
+```
+
+```ts framework="lit" title="step-header.ts"
+import { html, LitElement } from "lit";
+import { checkout } from "./checkout";
+
+export class StepHeader extends LitElement {
+  stepper = checkout.controller(this);
+
+  render() {
+    const { current } = this.stepper.value;
+    return html`<h2><app-icon name=${current.icon}></app-icon> ${current.title}</h2>`;
+  }
+}
+customElements.define("step-header", StepHeader);
+```
+
+</FrameworkCode>
+
+Two fields have a meaning for the library:
+
+| Field | Used for |
+| --- | --- |
+| `schema` | Types the step's data, and `next()` validates against it. See [Validation](/docs/v9/:framework/guides/validation). |
+| `title`, `description` | Shown by the title and description primitives. A string `title` is also what screen readers hear when the step changes. |
+
+Everything else (`icon`, `optional`, `estimatedMinutes`, a component) is yours.
+
+## Define once, at module scope
+
+A definition holds no state. It is the description of the flow, plus what your
+framework needs to use it. Create it once, in a module, outside your
+components, and import it where you need it.
+
+<FrameworkCode>
+
+```tsx framework="react"
+// Wrong: a new definition on every render. Its Provider is a new component
+// each time, so React remounts everything below it with a new, empty flow.
+function Checkout() {
+  const checkout = defineStepper([{ id: "shipping" }, { id: "payment" }]);
+  return <checkout.Provider>{/* ... */}</checkout.Provider>;
+}
+```
+
+```vue framework="vue" title="Checkout.vue"
+<script setup lang="ts">
+import { defineStepper } from "@stepperize/vue";
+
+// Wrong: a new definition for every instance of the component. No other
+// component can import it, so none can read this flow.
+const checkout = defineStepper([{ id: "shipping" }, { id: "payment" }]);
+const stepper = checkout.useStepper();
+</script>
+```
+
+```svelte framework="svelte" title="Checkout.svelte"
+<script lang="ts">
+  import { defineStepper } from "@stepperize/svelte";
+
+  // Wrong: a new definition for every instance of the component. No other
+  // component can import it, so none can read this flow.
+  const checkout = defineStepper([{ id: "shipping" }, { id: "payment" }]);
+  const stepper = checkout.useStepper();
+</script>
+```
+
+```tsx framework="solid"
+// Wrong: a new definition for every instance of the component. No other
+// component can import it, so none can read this flow.
+function Checkout() {
+  const checkout = defineStepper([{ id: "shipping" }, { id: "payment" }]);
+  const stepper = checkout.useStepper();
+}
+```
+
+```ts framework="angular"
+// Wrong: a new definition for every instance of the component. No other
+// component can import it, so none can read this flow.
+export class Checkout {
+  readonly checkout = defineStepper([{ id: "shipping" }, { id: "payment" }]);
+  readonly stepper = this.checkout.injectStepper();
+}
+```
+
+```ts framework="lit"
+// Wrong: a new definition for every instance of the element. No other
+// element can import it, so none can follow this flow.
+class CheckoutSteps extends LitElement {
+  checkout = defineStepper([{ id: "shipping" }, { id: "payment" }]);
+  stepper = this.checkout.controller(this);
+}
+```
+
+</FrameworkCode>
+
+Every flow created from a definition is independent, so one definition can
+back several flows on a page.
+
+## Keep ids literal
+
+Ids stay literal when the array is written inline. If you build the array
+first, add `as const`, or the ids widen to `string` and you lose the checks.
+
+```ts
+// Ids are string: nothing is checked.
+const steps = [{ id: "account" }, { id: "profile" }];
+const loose = defineStepper(steps);
+
+// Ids are "account" | "profile".
+const inline = defineStepper([{ id: "account" }, { id: "profile" }]);
+
+const list = [{ id: "account" }, { id: "profile" }] as const;
+const pinned = defineStepper(list);
+```
+
+## Fields that only some steps have
+
+`stepper.current` is the union of all your steps. A field that exists on some
+steps only is not available until you know which step you are on. `match`
+narrows for you:
+
+```ts title="signup.ts"
+export const signup = defineStepper([
+  { id: "account", title: "Account", help: "We never share your email." },
+  { id: "done", title: "All set" },
+]);
+```
+
+<FrameworkCode>
+
+```tsx framework="react" title="Body.tsx"
+import { signup } from "./signup";
+
+export function Body() {
+  const stepper = signup.useStepperContext();
+  return stepper.match({
+    account: (step) => <p>{step.help}</p>,
+    done: (step) => <p>{step.title}</p>,
+  });
+}
+```
+
+```vue framework="vue" title="StepBody.vue"
+<script setup lang="ts">
+import { computed } from "vue";
+import { signup } from "./signup";
+
+const stepper = signup.useStepperContext();
+const body = computed(() =>
+  stepper.match({
+    account: (step) => step.help,
+    done: (step) => step.title,
+  }),
+);
+</script>
+
+<template>
+  <p>{{ body }}</p>
+</template>
+```
+
+```svelte framework="svelte" title="StepBody.svelte"
+<script lang="ts">
+  import { signup } from "./signup";
+
+  const stepper = signup.useStepperContext();
+</script>
+
+<p>
+  {stepper.match({
+    account: (step) => step.help,
+    done: (step) => step.title,
+  })}
+</p>
+```
+
+```tsx framework="solid" title="StepBody.tsx"
+import { signup } from "./signup";
+
+export function StepBody() {
+  const stepper = signup.useStepperContext();
+  // Inside JSX, so it runs again when the step changes.
+  return (
+    <>
+      {stepper.match({
+        account: (step) => <p>{step.help}</p>,
+        done: (step) => <p>{step.title}</p>,
+      })}
+    </>
+  );
+}
+```
+
+```ts framework="angular" title="step-body.component.ts"
+import { Component, computed } from "@angular/core";
+import { signup } from "./signup";
+
+@Component({
+  selector: "app-step-body",
+  template: `<p>{{ body() }}</p>`,
+})
+export class StepBody {
+  readonly stepper = signup.injectStepperContext();
+  readonly body = computed(() =>
+    this.stepper().match({
+      account: (step) => step.help,
+      done: (step) => step.title,
+    }),
+  );
+}
+```
+
+```ts framework="lit" title="step-body.ts"
+import { html, LitElement } from "lit";
+import { signup } from "./signup";
+
+export class StepBody extends LitElement {
+  stepper = signup.controller(this);
+
+  render() {
+    return this.stepper.value.match({
+      account: (step) => html`<p>${step.help}</p>`,
+      done: (step) => html`<p>${step.title}</p>`,
+    });
+  }
+}
+customElements.define("step-body", StepBody);
+```
+
+</FrameworkCode>
+
+Comparing `stepper.current.id` narrows it too.
+
+<FrameworkCode>
+
+```tsx framework="react solid"
+{stepper.current.id === "account" && <p>{stepper.current.help}</p>}
+```
+
+```vue framework="vue"
+<template>
+  <p v-if="stepper.current.id === 'account'">{{ stepper.current.help }}</p>
+</template>
+```
+
+```svelte framework="svelte"
+{#if stepper.current.id === "account"}
+  <p>{stepper.current.help}</p>
+{/if}
+```
+
+```ts framework="angular"
+// A template narrows a local, not a call: name the step with @let.
+template: `
+  @let current = stepper().current;
+  @if (current.id === "account") {
+    <p>{{ current.help }}</p>
+  }
+`,
+```
+
+```ts framework="lit"
+const stepper = this.stepper.value;
+return stepper.current.id === "account" ? html`<p>${stepper.current.help}</p>` : nothing;
+```
+
+</FrameworkCode>
+
+Next: [the flow and the stepper](/docs/v9/:framework/concepts/stepper), the
+objects you work with at runtime.

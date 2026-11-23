@@ -1,0 +1,113 @@
+---
+title: Introduction
+description: Typed multi-step flows for Svelte 5, from one definition.
+---
+
+Stepperize is for flows where someone moves through named steps: checkout,
+onboarding, surveys, import wizards, approval flows and multi-step forms.
+
+You describe the steps once. The definition gives you a typed, reactive
+stepper, a provider and a set of accessible, unstyled components that all share
+the same step ids.
+
+```svelte
+<script module lang="ts">
+  import { defineStepper } from "@stepperize/svelte";
+  import { z } from "zod";
+
+  const checkout = defineStepper([
+    { id: "shipping", title: "Shipping", schema: z.object({ address: z.string().min(1) }) },
+    { id: "payment", title: "Payment", schema: z.object({ card: z.string().length(16) }) },
+    { id: "review", title: "Review" },
+  ]);
+</script>
+
+<script lang="ts">
+  const stepper = checkout.useStepper({ onFinish: (output) => placeOrder(output) });
+</script>
+
+<section>
+  <h2>{stepper.current.title}</h2>
+
+  {#if stepper.current.id === "shipping"}
+    <ShippingForm />
+  {:else if stepper.current.id === "payment"}
+    <PaymentForm />
+  {:else}
+    <Review data={stepper.data} />
+  {/if}
+
+  <button type="button" disabled={stepper.isFirst} onclick={() => stepper.prev()}>Back</button>
+  <button type="button" onclick={() => stepper.next(readForm())}>
+    {stepper.isLast ? "Place order" : "Continue"}
+  </button>
+</section>
+```
+
+A flow built with the primitives, running:
+
+<FrameworkDemo framework="svelte" />
+
+## Is it a form library?
+
+No. Stepperize owns the **flow**: which step is current, moving between steps,
+what each step saved and which steps are complete. `bind:value`, or your form
+library, owns the fields. See [Forms](/docs/v9/svelte/guides/forms).
+
+## What you get
+
+- **One call moves forward.** `next(data)` saves the step's data, validates it
+  against the step's schema and moves on. It resolves with what happened
+  instead of throwing.
+- **Typed everywhere.** Step ids, each step's data and your own fields
+  (`title`, `icon`, anything) are inferred from the definition, in `<script>`
+  and in markup.
+- **Runes-native.** The stepper is a reactive object: markup, `$derived` and
+  `$effect` follow it, in a component or a `.svelte.ts` module. No stores, no
+  `$` prefix.
+- **Branching as data.** A `next` map decides where each step leads from its
+  validated data, and a flow can have more than one ending.
+- **Resumable.** One `snapshot` goes in, one `onChange` comes out. The current
+  step can follow the URL with a single option.
+- **Accessible primitives.** Roles, keyboard navigation, focus and
+  announcements are handled for you. `bind:ref`, `{@attach}` and `child`
+  snippets reach the element, as in any Svelte component library.
+- **Server rendering.** It renders in SvelteKit and hydrates in place.
+- **Small.** About 3.5 KiB for the stepper and 8.3 KiB with the primitives,
+  min + gzip. The only dependency besides the core is `esm-env`.
+
+## The same flow as every other binding
+
+The state machine is [`@stepperize/core`](/docs/v9/core), shared by every
+binding, so the concepts are the same everywhere. Each has its own page,
+with Svelte code: [steps](/docs/v9/svelte/concepts/steps),
+[the lifecycle of a move](/docs/v9/svelte/concepts/moves),
+[step state](/docs/v9/svelte/concepts/step-state),
+[validation](/docs/v9/svelte/guides/validation),
+[branching](/docs/v9/svelte/guides/branching) and
+[persistence](/docs/v9/svelte/guides/persistence).
+
+## Next
+
+<Cards>
+	<Card
+		href="/docs/v9/svelte/installation"
+		title="Installation"
+		description="Add the package to a Svelte 5 project."
+	/>
+	<Card
+		href="/docs/v9/svelte/first-stepper"
+		title="Your first stepper"
+		description="A working flow, built in four small steps."
+	/>
+	<Card
+		href="/docs/v9/svelte/guides/primitives"
+		title="Primitives"
+		description="Accessible components bound to your steps."
+	/>
+	<Card
+		href="/docs/v9/core"
+		title="Without Svelte"
+		description="The same state machine in tests, servers and agents."
+	/>
+</Cards>

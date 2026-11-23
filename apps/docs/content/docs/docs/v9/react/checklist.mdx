@@ -55,8 +55,9 @@ export function Checkout() {
   `Stepper.Prev`, `Stepper.Next` and the triggers already do.
 - [ ] **The final request is safe to retry.** A cancelled or failed move does
   not undo what the server already did.
-- [ ] **Stored data is treated as a draft.** Parse it with the schema before
-  sending it if your schemas transform values.
+- [ ] **Stored data is treated as a draft.** Send `output` (the first argument
+  of `onFinish`, or `stepper.output`), which is what the schemas produced, not
+  `stepper.data`, which is what was typed.
 
 ## Persistence
 
