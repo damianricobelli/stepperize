@@ -12,6 +12,7 @@ import {
 	Zap,
 } from "lucide-react";
 import { type ReactNode, type Ref, useRef, useState } from "react";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
 /* ────────────────────────────── the flow ─────────────────────────────── */
@@ -594,7 +595,7 @@ function AccountStep({
 					Use demo email
 				</button>
 			</div>
-			<input
+			<Input
 				ref={inputRef}
 				id="hero-email"
 				type="email"
@@ -609,7 +610,7 @@ function AccountStep({
 				aria-invalid={invalid || undefined}
 				aria-describedby="hero-email-hint"
 				className={cn(
-					"mt-2 h-10 w-full rounded-lg border bg-background px-3 text-sm shadow-xs outline-none transition-[border-color,box-shadow] duration-150 placeholder:text-muted-foreground/60 focus:border-primary/60 focus:ring-3 focus:ring-primary/15",
+					"mt-2 h-10 w-full rounded-lg border bg-background px-3 shadow-xs outline-none transition-[border-color,box-shadow] duration-150 placeholder:text-muted-foreground/60 focus:border-primary/60 focus:ring-3 focus:ring-primary/15",
 					invalid &&
 						"border-red-500/60 focus:border-red-500/70 focus:ring-red-500/15",
 				)}

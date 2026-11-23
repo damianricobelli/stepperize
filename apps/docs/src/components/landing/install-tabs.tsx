@@ -1,8 +1,15 @@
 "use client";
 
-import { Check, ChevronDown, Copy } from "lucide-react";
-import { useId, useRef, useState } from "react";
+import { Check, Copy } from "lucide-react";
+import { useRef, useState } from "react";
 import { FrameworkIcon } from "@/components/framework-icon";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
 import { BINDINGS, CORE_FRAMEWORK, FRAMEWORKS } from "@/lib/frameworks";
 import { cn } from "@/lib/utils";
 
@@ -26,6 +33,11 @@ const PACKAGES = [
 	package: entry.package.split("/").slice(0, 2).join("/"),
 }));
 
+/** What the closed select shows for each value. */
+const FRAMEWORK_LABELS = Object.fromEntries(
+	PACKAGES.map((entry) => [entry.id, entry.label]),
+);
+
 type Manager = keyof typeof MANAGERS;
 const MANAGER_IDS = Object.keys(MANAGERS) as Manager[];
 
@@ -39,7 +51,6 @@ export function InstallTabs({ className }: { className?: string }) {
 	const [manager, setManager] = useState<Manager>("npm");
 	const [framework, setFramework] = useState<string>(PACKAGES[0].id);
 	const [copied, setCopied] = useState(false);
-	const frameworkId = useId();
 	const resetTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 	const pkg = PACKAGES.find((entry) => entry.id === framework) ?? PACKAGES[0];
 	const cmd = `${MANAGERS[manager]} ${pkg.package}`;
@@ -89,34 +100,30 @@ export function InstallTabs({ className }: { className?: string }) {
 						</button>
 					))}
 				</fieldset>
-				<label htmlFor={frameworkId} className="sr-only">
-					Framework
-				</label>
-				{/* A native select: on a phone it opens the system picker. The logo
-				    and chevron sit on top of it and let every tap through. */}
-				<span className="relative inline-flex h-7 items-center rounded-md text-muted-foreground transition-colors duration-150 focus-within:ring-2 focus-within:ring-ring hover:text-foreground">
-					<FrameworkIcon
-						id={pkg.id}
-						className="pointer-events-none absolute left-2 size-3.5"
-					/>
-					<select
-						id={frameworkId}
-						value={framework}
-						onChange={(event) => setFramework(event.target.value)}
-						// 16px on touch screens: iOS zooms the page into anything smaller.
-						className="hit-44 h-7 max-w-[10.5rem] cursor-pointer appearance-none truncate rounded-md bg-transparent pr-6 pl-7 text-xs font-medium text-inherit outline-none pointer-coarse:text-base"
+				<Select
+					items={FRAMEWORK_LABELS}
+					value={framework}
+					onValueChange={(id) => {
+						if (id) setFramework(id);
+					}}
+				>
+					<SelectTrigger
+						size="sm"
+						aria-label="Framework"
+						className="hit-44 h-7 gap-1.5 border-transparent bg-transparent pr-1.5 pl-2 text-xs font-medium text-muted-foreground hover:text-foreground dark:bg-transparent dark:hover:bg-transparent"
 					>
+						<FrameworkIcon id={pkg.id} className="size-3.5" />
+						<SelectValue />
+					</SelectTrigger>
+					<SelectContent align="end" alignItemWithTrigger={false}>
 						{PACKAGES.map((entry) => (
-							<option key={entry.id} value={entry.id}>
+							<SelectItem key={entry.id} value={entry.id}>
+								<FrameworkIcon id={entry.id} />
 								{entry.label}
-							</option>
+							</SelectItem>
 						))}
-					</select>
-					<ChevronDown
-						aria-hidden
-						className="pointer-events-none absolute right-1.5 size-3.5"
-					/>
-				</span>
+					</SelectContent>
+				</Select>
 			</div>
 			<div className="flex items-center gap-3 py-1.5 pr-1.5 pl-4">
 				<code className="min-w-0 flex-1 truncate font-mono text-[13px]">
