@@ -212,6 +212,8 @@ This repository is a pnpm workspace managed with Turbo.
   step-based workflows.
 - `packages/react` - React and React Native bindings, including
   `defineStepper` and unstyled primitives.
+- `packages/vue` - Vue 3 binding: composables, a provider and the same
+  accessible primitives. See [`packages/vue`](packages/vue/README.md).
 - `apps/docs` - the Stepperize documentation site, block gallery, changelog,
   and shadcn-compatible registry.
 

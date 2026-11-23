@@ -1,0 +1,14 @@
+import { defineConfig } from "tsup";
+
+export default defineConfig((options) => ({
+	entry: ["src/index.ts", "src/headless.ts"],
+	format: ["esm"],
+	dts: true,
+	sourcemap: false,
+	clean: !options.watch,
+	minify: true,
+	treeshake: true,
+	splitting: true,
+	external: ["@stepperize/core", "vue"],
+	tsconfig: "tsconfig.json",
+}));
