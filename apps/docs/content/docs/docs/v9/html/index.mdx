@@ -1,0 +1,105 @@
+---
+title: Introduction
+description: An accessible stepper on HTML that is already on the page, with no framework.
+---
+
+`@stepperize/core/dom` is for pages whose HTML comes from somewhere else: a
+Rails, Laravel or Django template, an Astro page, a static file. You write the
+markup; one function makes it a stepper.
+
+```bash
+npm install @stepperize/core
+```
+
+```html
+<div data-component="stepper" id="signup">
+  <ol data-component="stepper-list">
+    <li data-component="stepper-item" data-step="account">
+      <button data-component="stepper-trigger">Account</button>
+    </li>
+    <li data-component="stepper-item" data-step="plan">
+      <button data-component="stepper-trigger">Plan</button>
+    </li>
+  </ol>
+
+  <div data-component="stepper-content" data-step="account">…</div>
+  <div data-component="stepper-content" data-step="plan">…</div>
+
+  <button data-component="stepper-prev">Back</button>
+  <button data-component="stepper-next">Continue</button>
+</div>
+```
+
+```ts
+import { createStepper } from "@stepperize/core";
+import { bindStepper } from "@stepperize/core/dom";
+
+const flow = createStepper([
+  { id: "account", title: "Account" },
+  { id: "plan", title: "Plan" },
+]);
+
+const unbind = bindStepper(document.getElementById("signup"), flow);
+```
+
+Here it is running. The markup below was plain HTML before `bindStepper` ran:
+
+<FrameworkDemo framework="html" />
+
+## What it does
+
+`bindStepper` adds nothing to your content. It takes the elements you marked
+and keeps them in sync with the flow:
+
+- **Roles and ids.** A tablist with tabs and tab panels, or an ordered list of
+  steps with `aria-current`, or named groups: the same three patterns as the
+  [framework primitives](/docs/v9/react/guides/accessibility).
+- **State for your CSS.** `data-state`, `data-invalid`, `data-disabled` and
+  `data-pending` on every part.
+- **Panels.** The panel of the current step is shown; the others get `hidden`.
+- **Keyboard.** Arrow keys, Home and End between tabs, mirrored in
+  right-to-left pages.
+- **Focus and announcements.** The new step is announced to screen readers,
+  and focus moves to the new panel when the focused field was hidden.
+- **Buttons.** Triggers, Prev and Next move the flow, and are disabled when
+  they cannot.
+
+The flow itself is [`createStepper`](/docs/v9/core/create-stepper): validation,
+branching, guards and snapshots all work as documented there.
+
+## Good to know
+
+- **No templating.** It never creates your content. The only element it adds
+  is a visually hidden live region for announcements.
+- **Several steppers.** Call it once per stepper. Each one only touches its own
+  parts, including when one stepper is nested in another's panel.
+- **Markup that arrives later.** Elements swapped in by htmx, Alpine or Turbo
+  become part of the stepper on their own.
+- **Server safe.** Importing the module touches nothing; only `bindStepper`
+  needs a DOM. The main `@stepperize/core` entry has no DOM code at all.
+- **Small.** About 2.6 kB min + gzip on top of the 2.2 kB state machine.
+
+## Next
+
+<Cards>
+	<Card
+		href="/docs/v9/html/markup"
+		title="Markup and options"
+		description="Every part, every attribute it reads and writes."
+	/>
+	<Card
+		href="/docs/v9/html/guides/server-rendered"
+		title="Server-rendered pages"
+		description="Rails, Laravel, Django and Astro."
+	/>
+	<Card
+		href="/docs/v9/html/guides/alpine"
+		title="Alpine"
+		description="Read the flow in x-text and x-show."
+	/>
+	<Card
+		href="/docs/v9/html/guides/htmx"
+		title="htmx"
+		description="Let the server validate each step."
+	/>
+</Cards>

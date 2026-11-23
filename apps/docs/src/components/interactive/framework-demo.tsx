@@ -5,6 +5,7 @@ const loaders = {
 	vue: () => import("@/components/framework-demos/mount/vue"),
 	svelte: () => import("@/components/framework-demos/mount/svelte"),
 	solid: () => import("@/components/framework-demos/mount/solid"),
+	html: () => import("@/components/framework-demos/mount/html"),
 };
 
 export function FrameworkDemo({
