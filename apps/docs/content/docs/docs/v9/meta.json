@@ -1,5 +1,5 @@
 {
 	"title": "v9",
 	"description": "Documentation for Stepperize v9",
-	"pages": ["react", "vue", "svelte", "solid", "lit", "core"]
+	"pages": ["react", "vue", "svelte", "solid", "lit", "html", "core"]
 }

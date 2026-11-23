@@ -214,6 +214,7 @@ for (const binding of bindings) {
 			conditions: binding.conditions,
 			plugins: binding.plugins?.(require),
 			legalComments: "none",
+			logLevel: "error",
 			metafile: true,
 			define: { "process.env.NODE_ENV": '"production"' },
 		});
@@ -249,6 +250,44 @@ for (const binding of bindings) {
 			"Gzip bytes": bundle.gzip,
 			"Gzip KiB": (bundle.gzip / 1024).toFixed(2),
 			"vs full": bundle === bundles[0] ? "baseline" : `✓ −${((1 - bundle.gzip / bundles[0].gzip) * 100).toFixed(1)}%`,
+		});
+	}
+}
+// The framework-less binding lives in core: its own entry, so the state machine stays free of DOM code.
+{
+	const require = createRequire(`${root}/packages/core/package.json`);
+	const esbuild = createRequire(require.resolve("tsup"))("esbuild");
+	const bundle = async (name) => {
+		const result = await esbuild.build({
+			entryPoints: [require.resolve(name)],
+			bundle: true,
+			write: false,
+			minify: true,
+			format: "esm",
+			platform: "browser",
+			target: "es2022",
+			legalComments: "none",
+			logLevel: "error",
+			define: { "process.env.NODE_ENV": '"production"' },
+		});
+		return result.outputFiles[0];
+	};
+	const main = await bundle("@stepperize/core");
+	assert(!/querySelector|ownerDocument|MutationObserver/.test(main.text), "DOM code leaked into the main core entry");
+	const dom = await bundle("@stepperize/core/dom");
+	const { bindStepper } = await import(pathToFileURL(require.resolve("@stepperize/core/dom")));
+	assert.equal(typeof bindStepper, "function", "The DOM entry must be importable without a DOM");
+	for (const [entry, file] of [
+		["@stepperize/core", main],
+		["@stepperize/core/dom", dom],
+	]) {
+		const gzip = gzipSync(file.contents, { level: 9 }).length;
+		rows.push({
+			Entry: entry,
+			"Minified bytes": file.contents.length,
+			"Gzip bytes": gzip,
+			"Gzip KiB": (gzip / 1024).toFixed(2),
+			"vs full": entry.endsWith("/dom") ? "bindStepper, without the flow" : "the state machine",
 		});
 	}
 }

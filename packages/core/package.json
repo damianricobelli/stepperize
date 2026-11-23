@@ -28,6 +28,11 @@
 			"import": "./dist/index.js",
 			"default": "./dist/index.js"
 		},
+		"./dom": {
+			"types": "./dist/dom.d.ts",
+			"import": "./dist/dom.js",
+			"default": "./dist/dom.js"
+		},
 		"./primitives": {
 			"types": "./dist/primitives.d.ts",
 			"import": "./dist/primitives.js",
@@ -36,6 +41,9 @@
 	},
 	"typesVersions": {
 		"*": {
+			"dom": [
+				"./dist/dom.d.ts"
+			],
 			"primitives": [
 				"./dist/primitives.d.ts"
 			],
@@ -62,10 +70,13 @@
 		}
 	},
 	"devDependencies": {
+		"@typescript/native": "catalog:",
+		"@vitest/browser-playwright": "catalog:",
+		"axe-core": "4.14.0",
+		"playwright": "catalog:",
 		"tsup": "catalog:",
 		"typescript": "catalog:legacy-tooling",
-		"vitest": "catalog:",
-		"@typescript/native": "catalog:",
-		"vite": "catalog:"
+		"vite": "catalog:",
+		"vitest": "catalog:"
 	}
 }
