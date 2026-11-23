@@ -46,3 +46,6 @@ yarn-error.log*
 
 # Benchmark raw samples, rewritten by `pnpm benchmark`
 scripts/benchmarks/results.json
+
+# Svelte packaging
+.svelte-kit

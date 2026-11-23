@@ -214,6 +214,8 @@ This repository is a pnpm workspace managed with Turbo.
   `defineStepper` and unstyled primitives.
 - `packages/vue` - Vue 3 binding: composables, a provider and the same
   accessible primitives. See [`packages/vue`](packages/vue/README.md).
+- `packages/svelte` - Svelte 5 binding: a reactive stepper, a provider and
+  the same accessible primitives. See [`packages/svelte`](packages/svelte/README.md).
 - `apps/docs` - the Stepperize documentation site, block gallery, changelog,
   and shadcn-compatible registry.
 

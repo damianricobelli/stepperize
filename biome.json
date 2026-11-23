@@ -6,6 +6,7 @@
 			"!.turbo",
 			"!**/.next",
 			"!**/.source",
+			"!**/.svelte-kit",
 			"!.changeset",
 			"!.pnpm-store",
 			"!packages/*/dist",

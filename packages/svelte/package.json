@@ -1,0 +1,66 @@
+{
+	"name": "@stepperize/svelte",
+	"version": "0.0.0",
+	"private": false,
+	"publishConfig": {
+		"access": "public"
+	},
+	"description": "The library for building step-by-step workflows for Svelte apps",
+	"author": "damianricobelli",
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/damianricobelli/stepperize.git",
+		"directory": "packages/svelte"
+	},
+	"homepage": "https://stepperize.com",
+	"sideEffects": false,
+	"files": [
+		"dist"
+	],
+	"type": "module",
+	"svelte": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"svelte": "./dist/index.js",
+			"default": "./dist/index.js"
+		},
+		"./headless": {
+			"types": "./dist/headless.d.ts",
+			"svelte": "./dist/headless.js",
+			"default": "./dist/headless.js"
+		}
+	},
+	"scripts": {
+		"build": "svelte-package --input src/lib --output dist",
+		"dev": "svelte-package --input src/lib --output dist --watch",
+		"lint": "biome lint src",
+		"prepublishOnly": "pnpm run build",
+		"clean": "rm -rf .turbo && rm -rf node_modules dist .svelte-kit",
+		"test": "vitest run",
+		"typecheck": "svelte-check --tsconfig ./tsconfig.json"
+	},
+	"dependencies": {
+		"@stepperize/core": "workspace:*",
+		"esm-env": "^1.2.2"
+	},
+	"peerDependencies": {
+		"svelte": "^5.29.0"
+	},
+	"devDependencies": {
+		"@sveltejs/package": "^3.0.3",
+		"@sveltejs/vite-plugin-svelte": "^7.3.1",
+		"@vitest/browser-playwright": "catalog:",
+		"axe-core": "4.14.0",
+		"playwright": "catalog:",
+		"svelte": "^5.59.1",
+		"svelte-check": "^4.7.8",
+		"tsup": "catalog:",
+		"typescript": "catalog:legacy-tooling",
+		"vite": "catalog:",
+		"vitest": "catalog:",
+		"vitest-browser-svelte": "^3.1.0"
+	}
+}

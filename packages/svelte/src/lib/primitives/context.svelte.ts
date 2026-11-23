@@ -1,0 +1,71 @@
+import { fail, type Step, warn } from "@stepperize/core";
+import type { ItemValue, Ui } from "@stepperize/core/primitives";
+import { DEV } from "esm-env";
+import { getContext, setContext, tick } from "svelte";
+import { createAttachmentKey } from "svelte/attachments";
+
+const UI = Symbol("stepperize.ui");
+const ITEM = Symbol("stepperize.item");
+const INDEX = Symbol("stepperize.index");
+const TABLIST = Symbol("stepperize.tablist");
+
+/** Set by `Stepper.Root`, read by every primitive below it. */
+export type RootContext = {
+	/** Live: its fields follow the Root. */
+	ui: Ui;
+	/** Tabs need triggers: each one tells its Root while it is mounted. */
+	register: () => () => void;
+};
+
+export const setRoot = (context: RootContext) => setContext(UI, context);
+export const useRoot = () =>
+	(getContext(UI) as RootContext | undefined) ??
+	fail("SZ100", "Missing Stepper.Root. Render the primitives inside it.");
+
+/** Live: its fields follow the enclosing Item. */
+export const setItem = (item: ItemValue) => setContext(ITEM, item);
+export const findItem = () => getContext(ITEM) as ItemValue | undefined;
+export function useItem<S extends readonly Step[]>(): ItemValue<S> {
+	return (findItem() ??
+		fail("SZ101", "Missing Stepper.Item. Render this primitive inside a Stepper.Item.")) as ItemValue<S>;
+}
+
+/** The step index the `item` snippet of a List is rendering, so its Item needs no `step` prop. */
+export const setIndex = (index: number) => setContext(INDEX, index);
+export const useIndex = () => (getContext(INDEX) as number | undefined) ?? -1;
+
+/** `tabs` is true inside a tablist: its items are presentational. */
+export const setTablist = (list: { readonly tabs: boolean }) => setContext(TABLIST, list);
+export const inTablist = () => !!(getContext(TABLIST) as { tabs: boolean } | undefined)?.tabs;
+
+/**
+ * The element a primitive ended up on, whoever rendered it. `attach` goes in
+ * the props, so it reaches the default tag and a `child` snippet alike. In
+ * development, a `child` snippet that did not spread its props is reported.
+ */
+export function useElement(name: string, custom: () => boolean, check?: (node: Element) => void) {
+	let node: Element | undefined;
+	const attach = {
+		[createAttachmentKey()]: (element: Element) => {
+			node = element;
+			return () => {
+				node = undefined;
+			};
+		},
+	};
+	if (DEV) {
+		$effect(() => {
+			const own = custom();
+			void tick().then(() => {
+				if (node) check?.(node);
+				else if (own) {
+					warn(
+						"SZ001",
+						`Stepper.${name} received a \`child\` snippet that did not spread its props onto an element, so ARIA attributes and handlers are missing.`,
+					);
+				}
+			});
+		});
+	}
+	return attach;
+}

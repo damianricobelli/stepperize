@@ -1,0 +1,7 @@
+---
+"@stepperize/svelte": minor
+---
+
+Add `@stepperize/svelte`, the Svelte 5 binding.
+
+`defineStepper(steps, options)` returns the same definition as in React, in Svelte's terms: `useStepper()` for a flow owned by the component, as a reactive object that markup, `$derived` and `$effect` follow; `Provider` and `useStepperContext()` to share one; `create()` to run it without Svelte; and the accessible, unstyled `Stepper.*` primitives (`Root`, `List`, `Item`, `Trigger`, `Title`, `Description`, `Indicator`, `Content`, `Prev`, `Next`), with snippets for the stepper, each step and your own elements. Step ids are typed in markup, it renders on the server and hydrates in place, and `@stepperize/svelte/headless` leaves the primitives out.
