@@ -1,6 +1,5 @@
-import { fail, type Id, type Step, warn } from "@stepperize/core";
+import { fail, type Step, warn } from "@stepperize/core";
 import {
-	type Attrs,
 	checkTrigger,
 	contentAttrs,
 	focusInside,
@@ -23,7 +22,6 @@ import {
 	type Ui,
 } from "@stepperize/core/primitives";
 import {
-	type Accessor,
 	type Component,
 	createComponent,
 	createComputed,
@@ -42,23 +40,24 @@ import {
 	splitProps,
 	untrack,
 	useContext,
+	type ValidComponent,
 } from "solid-js";
 import { Dynamic } from "solid-js/web";
-import { pickOptions, type Scope } from "./definition";
-import type { ButtonProps, ContentProps, ItemProps, ListProps, RootProps, TextProps } from "./types";
+import type { Scope } from "./definition";
+import type { ContentOwnProps, ItemOwnProps, ListOwnProps, Polymorphic, RootProps } from "./types";
 
 /** Unstyled, accessible components bound to one flow, so `step` props are typed with its ids. */
 export type Primitives<S extends readonly Step[]> = {
 	Root: Component<RootProps<S>>;
-	List: Component<ListProps<S>>;
-	Item: Component<ItemProps<S>>;
-	Trigger: Component<ButtonProps>;
-	Title: Component<TextProps>;
-	Description: Component<TextProps>;
-	Indicator: Component<TextProps>;
-	Content: Component<ContentProps<S>>;
-	Prev: Component<ButtonProps>;
-	Next: Component<ButtonProps>;
+	List: Polymorphic<"ol", ListOwnProps<S>>;
+	Item: Polymorphic<"li", ItemOwnProps<S>>;
+	Trigger: Polymorphic<"button">;
+	Title: Polymorphic<"span">;
+	Description: Polymorphic<"span">;
+	Indicator: Polymorphic<"span">;
+	Content: Polymorphic<"div", ContentOwnProps<S>>;
+	Prev: Polymorphic<"button">;
+	Next: Polymorphic<"button">;
 	/** The enclosing `Stepper.Item`: its step, index, state and whether it can be reached. Reactive, like props. */
 	useItem: () => ItemValue<S>;
 };
@@ -84,13 +83,24 @@ function useItem<S extends readonly Step[]>(): ItemValue<S> {
 		fail("SZ101", "Missing Stepper.Item. Render this primitive inside a Stepper.Item.")) as ItemValue<S>;
 }
 
-type Props = Record<string, any>;
-type Handler<E extends Event> = JSX.EventHandlerUnion<HTMLElement, E> | undefined;
+/**
+ * A primitive's props as its implementation sees them: `T` erased. What it does
+ * not read goes to the element untouched.
+ */
+type Erased<Own = unknown> = Own &
+	Omit<{ as?: ValidComponent; ref?: unknown; children?: JSX.Element }, keyof Own> & { [attribute: string]: unknown };
 
-/** Solid handlers are a function or a `[function, data]` pair. */
-function call<E extends Event>(handler: Handler<E>, event: E) {
-	if (typeof handler === "function") (handler as (event: E) => void)(event);
-	else if (handler) (handler[0] as (data: unknown, event: E) => void)(handler[1], event);
+/**
+ * Callers see a signature generic over what `as` renders, so its props and `ref`
+ * are typed; the implementation is the same for every `T`. The one cast between them.
+ */
+const polymorphic = <Default extends ValidComponent, Own = unknown>(render: (props: Erased<Own>) => JSX.Element) =>
+	render as Polymorphic<Default, Own>;
+
+/** Run the caller's handler: a function, or Solid's `[function, data]` pair. */
+function call(handler: unknown, event: Event) {
+	if (typeof handler === "function") handler(event);
+	else if (Array.isArray(handler) && typeof handler[0] === "function") handler[0](handler[1], event);
 }
 
 /**
@@ -101,22 +111,23 @@ function call<E extends Event>(handler: Handler<E>, event: E) {
 function element(
 	name: string,
 	tag: string,
-	props: Props,
-	rest: Props,
-	attrs: Accessor<Attrs>,
-	extra?: Props,
+	local: { as?: ValidComponent; ref?: unknown },
+	rest: object,
+	// Opaque to the types: an index signature would swallow `component`.
+	attrs: () => object,
+	extra: object,
 	check?: (node: Element) => void,
 ) {
 	let node: Element | undefined;
 	const ref = (value: Element) => {
 		node = value;
-		const forwarded = props.ref as ((value: Element) => void) | undefined;
-		if (typeof forwarded === "function") forwarded(value);
+		// Solid compiles every `ref` given to a component into a function.
+		if (typeof local.ref === "function") local.ref(value);
 	};
 	if (DEV) {
 		onMount(() => {
 			if (node) check?.(node);
-			else if (typeof props.as === "function") {
+			else if (typeof local.as === "function") {
 				warn(
 					"SZ001",
 					`Stepper.${name} received an \`as\` component that did not spread its props (including \`ref\`) onto an element, so ARIA attributes and handlers are missing.`,
@@ -129,18 +140,21 @@ function element(
 		mergeProps(
 			{
 				get component() {
-					return props.as ?? tag;
+					return local.as ?? tag;
 				},
 			},
 			rest,
 			attrs,
-			extra ?? {},
+			extra,
 			{ ref },
-		) as never,
+		),
 	);
 }
 
 const NONE = () => ({});
+
+/** `<Show>` as Content uses it: one signature instead of the keyed overloads. */
+const Mount: Component<{ when: boolean; children: JSX.Element }> = Show;
 
 /**
  * For Prev and Next: `type="button"` unless `as` names another tag. A component
@@ -150,21 +164,26 @@ const NONE = () => ({});
 const buttonType = (as: unknown) => (typeof as === "string" && as !== "button" ? {} : { type: "button" });
 
 /**
- * Children that may be a function of something the primitive knows. A function
- * that takes no argument is one of Solid's own accessors (`<Show>`, `<For>`),
- * not a render function. The call is not tracked, as in `<Show>`: what the
- * function reads at its top level must not render the whole subtree again,
- * only the expressions in its JSX follow the flow.
+ * A render function declares its parameter, the rule `<Show>` and `<Match>`
+ * follow. A function without one is content: one of Solid's own accessors, such
+ * as what `<For>` or `<Show>` returns.
  */
-const resolve = <T>(children: unknown, value: T): JSX.Element =>
-	typeof children === "function" && children.length > 0
-		? untrack(() => (children as (value: T) => JSX.Element)(value))
-		: (children as JSX.Element);
+const renders = <F extends (...args: never[]) => JSX.Element>(children: JSX.Element | F): children is F =>
+	typeof children === "function" && children.length > 0;
+
+/**
+ * Children that may be a function of something the primitive knows. The call is
+ * not tracked, as in `<Show>`: what the function reads at its top level must not
+ * render the whole subtree again, only the expressions in its JSX follow the flow.
+ */
+const resolve = <T>(children: JSX.Element | ((value: T) => JSX.Element), value: T): JSX.Element =>
+	renders(children) ? untrack(() => children(value)) : children;
 
 function createRoot<S extends readonly Step[]>(scope: Scope<S>): Component<RootProps<S>> {
 	return (props) => {
-		const [, local, rest] = splitProps(props as Props, OPTION_KEYS, ["orientation", "children", "ref"]);
-		const shared = scope.useFlow(() => pickOptions<S>(props as Props));
+		const [, local, rest] = splitProps(props, OPTION_KEYS, ["orientation", "children", "ref"]);
+		// Only the option keys are read from the props, never the children or attributes.
+		const shared = scope.useFlow(props);
 		// The same on the server and the client. The dash keeps one Root's prefix from starting another's.
 		const id = `${createUniqueId()}-`;
 		// Tabs need triggers. Assume them (server HTML and the usual layout never change),
@@ -178,8 +197,9 @@ function createRoot<S extends readonly Step[]>(scope: Scope<S>): Component<RootP
 			get orientation() {
 				return orientation();
 			},
+			// The policy the flow applies, so the markup never disagrees with what a click does.
 			get tabs() {
-				return !(props.linear ?? scope.defaults.linear) && (!mounted() || triggers() > 0);
+				return !shared.stepper.isLinear && (!mounted() || triggers() > 0);
 			},
 		};
 		const value: RootValue = {
@@ -205,6 +225,7 @@ function createRoot<S extends readonly Step[]>(scope: Scope<S>): Component<RootP
 			),
 		);
 		createEffect(on(index, () => stepChanged(root, region, shared.flow.current, ui, inside), { defer: true }));
+		const attrs: () => object = () => rootAttrs(orientation(), status());
 
 		return createComponent(scope.FlowContext.Provider, {
 			value: shared,
@@ -214,7 +235,7 @@ function createRoot<S extends readonly Step[]>(scope: Scope<S>): Component<RootP
 					get children() {
 						return createComponent(
 							Dynamic,
-							mergeProps({ component: "div" }, () => rootAttrs(orientation(), status()), rest, {
+							mergeProps({ component: "div" }, attrs, rest, {
 								ref: (node: HTMLDivElement) => {
 									root = node;
 									if (typeof local.ref === "function") local.ref(node);
@@ -223,17 +244,17 @@ function createRoot<S extends readonly Step[]>(scope: Scope<S>): Component<RootP
 									return [
 										// The function only tracks what it reads, so a Root that ignores the stepper never updates for it.
 										resolve(local.children, shared.stepper),
-										createComponent(Dynamic, {
+										createComponent(Dynamic<"span">, {
 											component: "span",
 											ref: (node: HTMLSpanElement) => {
 												region = node;
 											},
 											"aria-live": "polite",
 											style: HIDDEN,
-										} as never),
+										}),
 									];
 								},
-							}) as never,
+							}),
 						);
 					},
 				});
@@ -242,16 +263,9 @@ function createRoot<S extends readonly Step[]>(scope: Scope<S>): Component<RootP
 	};
 }
 
-function createList<S extends readonly Step[]>(scope: Scope<S>): Component<ListProps<S>> {
-	return (props) => {
-		const [local, rest] = splitProps(props as Props, [
-			"orientation",
-			"children",
-			"as",
-			"ref",
-			"onKeyDown",
-			"onkeydown",
-		]);
+function createList<S extends readonly Step[]>(scope: Scope<S>) {
+	return polymorphic<"ol", ListOwnProps<S>>((props) => {
+		const [local, rest] = splitProps(props, ["orientation", "children", "as", "ref", "onKeyDown", "onkeydown"]);
 		const { ui } = useRoot();
 		// Read lazily in the handler so the List never updates on navigation.
 		const { flow } = scope.useShared();
@@ -267,19 +281,21 @@ function createList<S extends readonly Step[]>(scope: Scope<S>): Component<ListP
 					mergeProps(() => listAttrs(ui, orientation()), rest),
 					NONE,
 					{
-						onKeyDown: (event: KeyboardEvent) => {
+						// Solid types `currentTarget` as the element the handler is on.
+						onKeyDown: (event: KeyboardEvent & { currentTarget: HTMLElement }) => {
 							// Solid keeps both spellings in one slot: take whichever the caller used.
 							call(local.onKeyDown ?? local.onkeydown, event);
-							onListKeydown(event, event.currentTarget as HTMLElement, flow, ui, orientation());
+							onListKeydown(event, event.currentTarget, flow, ui, orientation());
 						},
 						get children() {
 							const children = local.children;
-							return typeof children === "function"
+							// Called once per step, untracked like every other render function.
+							return renders(children)
 								? scope.steps.map((step, index) =>
 										createComponent(IndexContext.Provider, {
 											value: index,
 											get children() {
-												return (children as (step: S[number], index: number) => JSX.Element)(step, index);
+												return untrack(() => children(step, index));
 											},
 										}),
 									)
@@ -289,18 +305,18 @@ function createList<S extends readonly Step[]>(scope: Scope<S>): Component<ListP
 				);
 			},
 		});
-	};
+	});
 }
 
-function createItem<S extends readonly Step[]>(scope: Scope<S>): Component<ItemProps<S>> {
-	return (props) => {
-		const [local, rest] = splitProps(props as Props, ["step", "children", "as", "ref"]);
+function createItem<S extends readonly Step[]>(scope: Scope<S>) {
+	return polymorphic<"li", ItemOwnProps<S>>((props) => {
+		const [local, rest] = splitProps(props, ["step", "children", "as", "ref"]);
 		const tablist = useContext(TablistContext);
 		const auto = useContext(IndexContext);
 		const { view } = scope.useShared();
 		const index = () => (local.step === undefined ? auto : (scope.positions.get(local.step) ?? -1));
-		const step = () =>
-			(scope.steps[index()] as S[number] | undefined) ??
+		const step = (): S[number] =>
+			scope.steps[index()] ??
 			fail(
 				local.step === undefined ? "SZ101" : "SZ102",
 				local.step === undefined
@@ -308,7 +324,7 @@ function createItem<S extends readonly Step[]>(scope: Scope<S>): Component<ItemP
 					: `Step "${local.step}" not found.`,
 			);
 		// One number per item, its trigger included: it only changes when what they show does.
-		const bits = createMemo(() => itemBits(view(), step().id as Id<S>));
+		const bits = createMemo(() => itemBits(view(), step().id));
 		const value = createMemo(() => itemValue<S>(step(), index(), bits()));
 		const item: ItemValue<S> = {
 			get step() {
@@ -347,12 +363,12 @@ function createItem<S extends readonly Step[]>(scope: Scope<S>): Component<ItemP
 				);
 			},
 		});
-	};
+	});
 }
 
-function createTrigger<S extends readonly Step[]>(scope: Scope<S>): Component<ButtonProps> {
-	return (props) => {
-		const [local, rest] = splitProps(props as Props, ["children", "as", "ref", "disabled", "onClick", "onclick"]);
+function createTrigger<S extends readonly Step[]>(scope: Scope<S>) {
+	return polymorphic<"button">((props) => {
+		const [local, rest] = splitProps(props, ["children", "as", "ref", "disabled", "onClick", "onclick"]);
 		const { ui, register } = useRoot();
 		// Read lazily in the handler: the item above already follows this step.
 		const { flow } = scope.useShared();
@@ -374,7 +390,7 @@ function createTrigger<S extends readonly Step[]>(scope: Scope<S>): Component<Bu
 			{
 				onClick: (event: MouseEvent) => {
 					call(local.onClick ?? local.onclick, event);
-					if (!event.defaultPrevented && !item.pending) void flow.goTo(item.step.id as Id<S>);
+					if (!event.defaultPrevented && !item.pending) void flow.goTo(item.step.id);
 				},
 				get children() {
 					return local.children;
@@ -382,58 +398,60 @@ function createTrigger<S extends readonly Step[]>(scope: Scope<S>): Component<Bu
 			},
 			(node) => checkTrigger(node, item.step.id),
 		);
-	};
+	});
 }
 
 /** `Title` and `Description`: a `span` showing the same-named field of the step, unless you pass children. */
-function createText(field: "title" | "description"): Component<TextProps> {
-	return (props) => {
-		const [local, rest] = splitProps(props as Props, ["children", "as", "ref"]);
+function createText(field: "title" | "description") {
+	return polymorphic<"span">((props) => {
+		const [local, rest] = splitProps(props, ["children", "as", "ref"]);
 		const item = useContext(ItemContext);
 		return element(
 			field === "title" ? "Title" : "Description",
 			"span",
 			local,
 			mergeProps({ "data-component": `stepper-${field}` }, rest),
-			() => ({}),
+			NONE,
 			{
 				get children() {
-					return local.children ?? (item?.step as Record<string, JSX.Element> | undefined)?.[field];
+					// The fields are yours: whatever they hold is rendered, like any child.
+					const step: { id: string; title?: JSX.Element; description?: JSX.Element } | undefined = item?.step;
+					return local.children ?? step?.[field];
 				},
 			},
 		);
-	};
+	});
 }
 
 /** A decorative mark for the step: hidden from assistive technology, styled through `data-state`. */
-const Indicator: Component<TextProps> = (props) => {
-	const [local, rest] = splitProps(props as Props, ["children", "as", "ref"]);
+const Indicator = polymorphic<"span">((props) => {
+	const [local, rest] = splitProps(props, ["children", "as", "ref"]);
 	const item = useItem();
 	return element(
 		"Indicator",
 		"span",
 		local,
 		mergeProps(() => indicatorAttrs(item), rest),
-		() => ({}),
+		NONE,
 		{
 			get children() {
 				return local.children;
 			},
 		},
 	);
-};
+});
 
-function createContent<S extends readonly Step[]>(scope: Scope<S>): Component<ContentProps<S>> {
-	return (props) => {
-		const [local, rest] = splitProps(props as Props, ["step", "forceMount", "children", "as", "ref"]);
+function createContent<S extends readonly Step[]>(scope: Scope<S>) {
+	return polymorphic<"div", ContentOwnProps<S>>((props) => {
+		const [local, rest] = splitProps(props, ["step", "forceMount", "children", "as", "ref"]);
 		const { ui } = useRoot();
 		const { view } = scope.useShared();
 		const active = createMemo(() => view().current.id === local.step);
 		const step = () =>
 			scope.steps[scope.positions.get(local.step) ?? -1] ?? fail("SZ102", `Step "${local.step}" not found.`);
-		return createComponent(Show, {
+		return createComponent(Mount, {
 			get when() {
-				return active() || local.forceMount;
+				return active() || !!local.forceMount;
 			},
 			get children() {
 				return element(
@@ -441,7 +459,7 @@ function createContent<S extends readonly Step[]>(scope: Scope<S>): Component<Co
 					"div",
 					local,
 					mergeProps(() => contentAttrs(ui, step(), active()), rest),
-					() => ({}),
+					NONE,
 					{
 						get children() {
 							return local.children;
@@ -449,17 +467,17 @@ function createContent<S extends readonly Step[]>(scope: Scope<S>): Component<Co
 					},
 				);
 			},
-		} as never);
-	};
+		});
+	});
 }
 
 /**
  * `Next` validates the current step and moves on; on the last step it finishes the
  * flow (`onFinish`) once. `Prev` goes back to the step you came from.
  */
-function createNav<S extends readonly Step[]>(dir: "next" | "prev", scope: Scope<S>): Component<ButtonProps> {
-	return (props) => {
-		const [local, rest] = splitProps(props as Props, ["children", "as", "ref", "disabled", "onClick", "onclick"]);
+function createNav<S extends readonly Step[]>(dir: "next" | "prev", scope: Scope<S>) {
+	return polymorphic<"button">((props) => {
+		const [local, rest] = splitProps(props, ["children", "as", "ref", "disabled", "onClick", "onclick"]);
 		const { flow, view } = scope.useShared();
 		const bits = createMemo(() => navBits(view(), dir));
 		return element(
@@ -480,7 +498,7 @@ function createNav<S extends readonly Step[]>(dir: "next" | "prev", scope: Scope
 				},
 			},
 		);
-	};
+	});
 }
 
 const Title = createText("title");

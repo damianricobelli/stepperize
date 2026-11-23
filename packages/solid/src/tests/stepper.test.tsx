@@ -1,4 +1,4 @@
-import { createEffect, createMemo, createRoot, createSignal, onMount } from "solid-js";
+import { batch, createEffect, createMemo, createResource, createRoot, createSignal, onMount, Suspense } from "solid-js";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { defineStepper } from "../headless";
 import { cleanup, render, settle } from "./render";
@@ -153,14 +153,90 @@ describe("useStepper", () => {
 		expect(changes).not.toHaveBeenCalled();
 	});
 
+	it("calls a callback changed in the same batch as the action", async () => {
+		const first = vi.fn();
+		const second = vi.fn();
+		const [onChange, setOnChange] = createSignal(first);
+		const [guard, setGuard] = createSignal<() => boolean>(() => true);
+		const { result: stepper, dispose } = host(() => flow.useStepper(() => ({ onChange: onChange(), guard: guard() })));
+		await settle();
+		let moved!: Promise<unknown>;
+		batch(() => {
+			setOnChange(() => second);
+			moved = stepper.next();
+		});
+		await moved;
+		expect([first.mock.calls.length, second.mock.calls.length]).toEqual([0, 1]);
+		batch(() => {
+			setGuard(() => () => false);
+			moved = stepper.next();
+		});
+		expect(await moved).toMatchObject({ accepted: false, reason: "guard" });
+		dispose();
+	});
+
+	it("calls the latest callbacks under a Suspense that is still loading, where effects wait", async () => {
+		const first = vi.fn();
+		const second = vi.fn();
+		const [onChange, setOnChange] = createSignal(first);
+		const [step, setStep] = createSignal<"a" | "b" | "c">("a");
+		let api!: Api;
+		function Loading() {
+			const [never] = createResource(() => new Promise<string>(() => {}));
+			api = flow.useStepper(() => ({ onChange: onChange(), step: step() }));
+			return <span>{never()}</span>;
+		}
+		const { container } = render(() => (
+			<Suspense fallback={<p>Loading</p>}>
+				<Loading />
+			</Suspense>
+		));
+		await settle();
+		expect(container.textContent).toBe("Loading");
+		setOnChange(() => second);
+		await api.next();
+		expect([first.mock.calls.length, second.mock.calls.length]).toEqual([0, 1]);
+		// `step` is pushed by an effect, which Solid holds until the boundary resolves.
+		setStep("c");
+		await settle();
+		expect(api.current.id).toBe("b");
+	});
+
+	it("cancels a running move when its owner is disposed", async () => {
+		let release!: (allowed: boolean) => void;
+		let signal!: AbortSignal;
+		const { result: stepper, dispose } = host(() =>
+			flow.useStepper({
+				guard: (context) => {
+					signal = context.signal;
+					return new Promise<boolean>((resolve) => {
+						release = resolve;
+					});
+				},
+			}),
+		);
+		const moving = stepper.next();
+		expect(stepper.isPending).toBe(true);
+		dispose();
+		// The guard's `fetch` would be aborted; one that settles anyway changes nothing.
+		expect(signal.aborted).toBe(true);
+		release(true);
+		expect(await moving).toMatchObject({ accepted: false, reason: "cancelled" });
+		expect(stepper.current.id).toBe("a");
+	});
+
 	it("uses the definition's defaults and lets an instance override them", () => {
 		const linear = defineStepper([{ id: "a" }, { id: "b" }], { linear: true });
 		const strict = host(() => linear.useStepper());
 		expect(strict.result.canGoTo("b")).toBe(false);
 		const free = host(() => linear.useStepper({ linear: false }));
 		expect(free.result.canGoTo("b")).toBe(true);
+		// An absent option, like an absent prop, keeps the default.
+		const unset = host(() => linear.useStepper({ linear: undefined }));
+		expect(unset.result.isLinear).toBe(true);
 		strict.dispose();
 		free.dispose();
+		unset.dispose();
 	});
 });
 
@@ -219,6 +295,33 @@ describe("Provider and useStepperContext", () => {
 		await settle();
 		await api.prev();
 		expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ step: "b" }));
+	});
+
+	it("nested Providers: each component reads the nearest flow of its own definition", async () => {
+		const other = defineStepper([{ id: "x" }, { id: "y" }]);
+		const seen: Record<string, () => string> = {};
+		function Probe(props: { name: string }) {
+			const stepper = flow.useStepperContext();
+			seen[props.name] = () => stepper.current.id;
+			return null;
+		}
+		function OtherProbe() {
+			const stepper = other.useStepperContext();
+			seen.other = () => stepper.current.id;
+			return null;
+		}
+		render(() => (
+			<flow.Provider snapshot={{ step: "b" }}>
+				<Probe name="outer" />
+				<other.Provider snapshot={{ step: "y" }}>
+					<flow.Provider snapshot={{ step: "c" }}>
+						<Probe name="inner" />
+						<OtherProbe />
+					</flow.Provider>
+				</other.Provider>
+			</flow.Provider>
+		));
+		expect([seen.outer(), seen.inner(), seen.other()]).toEqual(["b", "c", "y"]);
 	});
 
 	it("throws a coded error outside its own Provider", () => {

@@ -5,7 +5,13 @@ description: Props of every Stepper component.
 
 All primitives pass `class`, `style`, `ref` and every other attribute to the
 element they render. All except `Root` accept `as` to
-[use your own element](/docs/v9/solid/guides/primitives#rendering-your-own-element).
+[use your own element](/docs/v9/solid/guides/primitives#rendering-your-own-element):
+a tag name, or a component whose props take `ref`. The other props, and the
+element `ref` receives, follow what `as` renders.
+
+The function children of `Root`, `List` and `Item` run once, untracked, and
+must declare their parameter: a function without one is content, as in
+`<Show>`.
 
 ## Root
 
@@ -30,8 +36,8 @@ Renders an `ol`.
 
 | Prop | Type | Description |
 | --- | --- | --- |
-| `children` | `JSX.Element \| (step, index) => JSX.Element` | The function is called once per step; items inside it need no `step` prop. |
-| `orientation` | `"horizontal" \| "vertical"` | Defaults to the root's. |
+| `children` | `JSX.Element \| (step, index) => JSX.Element` | The function is called once per step; items inside it need no `step` prop. `<For>` works too, with a `step` on each item. |
+| `orientation` | `"horizontal" \| "vertical"` | Defaults to the root's. Arrow keys follow it: left and right, or up and down. |
 
 ## Item
 
@@ -49,7 +55,8 @@ and should be inside a `List`.
 
 It is disabled when `linear` does not allow reaching the step, or when you pass
 `disabled`. In a flow that is not linear it is a `tab`; in a linear flow it is
-a plain button, with `aria-current="step"` on the current one.
+a plain button, with `aria-current="step"` on the current one. It has
+`type="button"` unless you pass `as`: a trigger is often a link.
 
 ## Title and Description
 
@@ -88,6 +95,9 @@ Once the flow has finished, `Next` is `aria-disabled` with `data-disabled` and
 ignores clicks, so the flow is not submitted twice. It becomes available again
 when the flow changes.
 
+Both have `type="button"` unless `as` names another tag, so they never submit
+a form by accident; a `type` you pass wins.
+
 Your own `onClick` runs first. Call `event.preventDefault()` in it to handle
 the move yourself.
 
@@ -109,6 +119,6 @@ Outside an `Item` it throws [SZ101](/docs/v9/core/errors#sz101).
 ## Diagnostics
 
 In development the primitives warn about an `as` component that does not
-spread its props ([SZ001](/docs/v9/core/errors#sz001)), a trigger without an
+spread its props (the types already refuse one that cannot take `ref`) ([SZ001](/docs/v9/core/errors#sz001)), a trigger without an
 accessible name ([SZ002](/docs/v9/core/errors#sz002)) and a trigger outside a
 `List` ([SZ003](/docs/v9/core/errors#sz003)).

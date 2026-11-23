@@ -37,9 +37,17 @@ It returns the [stepper](/docs/v9/react/api/stepper) as a reactive object:
 reads are tracked, so JSX, memos and effects follow the flow. Do not
 destructure its state.
 
-- Options can be an object or a function. A function is read again when the
-  signals it uses change, and the flow gets the new options.
+- Options can be an object or a function. Pass a function when an option
+  depends on a signal or on props.
+- Callbacks (`onChange`, `onFinish`, `onInvalidStep`, `guard`) and `next` are
+  read when the flow calls them, so it always calls the latest, even one
+  changed in the same `batch` as the action, or under a `Suspense` that is
+  still loading.
+- `linear` and `step` are followed when they change, once the component is
+  mounted.
 - `snapshot` is read once, when the flow is created.
+- An option that is `undefined` keeps the definition's default, like an absent
+  prop.
 - The flow is destroyed with its owner: the component, or the `createRoot` it
   was called under.
 - On the server it renders the current step and runs no callback.
@@ -64,10 +72,17 @@ flow. Outside the flow's `Provider` or `Stepper.Root` it throws
 </checkout.Provider>
 ```
 
-Every [option](/docs/v9/react/api/options) is a prop. It renders its children
-and no element.
+Every [option](/docs/v9/react/api/options) is a prop, read like
+`useStepper`'s options. It renders its children and no element. Providers nest:
+each component reads the nearest one of its own definition.
 
 ## Types
 
 Everything `@stepperize/core` exports as a type is re-exported:
 `Stepper<S>`, `Options<S>`, `Snapshot<S>`, `Result<S>`, `Id<S>` and the rest.
+
+The props of the primitives are exported too: `RootProps<S>`,
+`ListProps<S, T>`, `ItemProps<S, T>`, `ContentProps<S, T>`, `ButtonProps<T>`
+and `TextProps<T>`, where `T` is what `as` renders (its default tag when
+omitted). `PolymorphicProps<T, Own>` builds the same shape for your own
+wrappers.

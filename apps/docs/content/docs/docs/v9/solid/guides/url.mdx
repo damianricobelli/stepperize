@@ -30,6 +30,22 @@ export default function CheckoutPage() {
 }
 ```
 
+With the primitives, pass the same options as props. Props are reactive, so
+nothing else is needed:
+
+```tsx
+<checkout.Stepper.Root
+  linear
+  step={params.step}
+  onChange={(snapshot) => {
+    if (snapshot.step !== params.step) navigate(`/checkout/${snapshot.step}`);
+  }}
+  onInvalidStep={(current) => navigate(`/checkout/${current}`, { replace: true })}
+>
+  ...
+</checkout.Stepper.Root>
+```
+
 - Following the URL is a `goTo`. With `linear`, a deep link cannot open a
   step before the ones in front of it are complete. Without `linear`, any step
   can be opened, as with `goTo`.

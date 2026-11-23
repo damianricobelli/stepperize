@@ -15,7 +15,7 @@ export function Full(props: Omit<RootProps<typeof steps>, "children">) {
 	return (
 		<Stepper.Root {...props}>
 			<Stepper.List>
-				{() => (
+				{(_step) => (
 					<Stepper.Item>
 						<Stepper.Trigger>
 							<Stepper.Indicator />
@@ -41,21 +41,68 @@ export function Full(props: Omit<RootProps<typeof steps>, "children">) {
 	);
 }
 
-/** Two steppers on one page, for the server and hydration tests. */
-export function Pair() {
-	return (
-		<>
-			<Full snapshot={{ step: "second", complete: ["first"] }} />
-			<Full />
-		</>
-	);
-}
-
-/** The root both `renderToString` and `hydrate` are given, so their hydration keys agree. */
-export const page = () => <Pair />;
-
 /** A design-system button: it forwards what it receives. */
 export function Fancy(props: JSX.ButtonHTMLAttributes<HTMLButtonElement>) {
 	const [local, rest] = splitProps(props, ["class"]);
 	return <button class={`mine ${local.class ?? ""}`.trim()} {...rest} type="submit" />;
 }
+
+/** A router-style link: a component with its own props that spreads the rest. */
+export function Link(props: JSX.AnchorHTMLAttributes<HTMLAnchorElement> & { to: string }) {
+	const [local, rest] = splitProps(props, ["to"]);
+	return <a href={`#${local.to}`} {...rest} />;
+}
+
+/** A Root function child, `as` tags and components, and panels kept mounted. */
+export function Extras() {
+	return (
+		<Stepper.Root aria-label="Extras" data-testid="extras">
+			{(stepper) => (
+				<>
+					<output>{stepper.current.title}</output>
+					<Stepper.List as="div">
+						{(step) => (
+							<Stepper.Item as="div">
+								<Stepper.Trigger as={Link} to={step.id}>
+									<Stepper.Title />
+								</Stepper.Trigger>
+							</Stepper.Item>
+						)}
+					</Stepper.List>
+					<For each={steps}>
+						{(step) => (
+							<Stepper.Content step={step.id} as="section" forceMount>
+								{step.title} panel
+							</Stepper.Content>
+						)}
+					</For>
+					<Stepper.Next as={Fancy}>Continue</Stepper.Next>
+				</>
+			)}
+		</Stepper.Root>
+	);
+}
+
+/** A free flow, a linear one resumed mid-way, and the extras: one page for the server and hydration tests. */
+export const page = () => (
+	<>
+		<Full snapshot={{ step: "second", complete: ["first"] }} />
+		<Full linear snapshot={{ step: "second", complete: ["first"] }} />
+		<Extras />
+	</>
+);
+
+/** A flow without triggers: the server assumes tabs, the browser switches to groups once mounted. */
+export const groups = () => (
+	<Stepper.Root>
+		<Stepper.List>
+			{(_step) => (
+				<Stepper.Item>
+					<Stepper.Indicator />
+					<Stepper.Title />
+				</Stepper.Item>
+			)}
+		</Stepper.List>
+		<Stepper.Content step="first">One</Stepper.Content>
+	</Stepper.Root>
+);

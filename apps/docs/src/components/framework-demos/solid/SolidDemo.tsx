@@ -1,6 +1,6 @@
 /** @jsxImportSource solid-js */
 import { defineStepper } from "@stepperize/solid";
-import { createSignal } from "solid-js";
+import { Show } from "solid-js";
 
 const { Stepper } = defineStepper([
 	{ id: "account", title: "Account", description: "Who you are" },
@@ -9,14 +9,10 @@ const { Stepper } = defineStepper([
 ]);
 
 export default function SolidDemo() {
-	const [finished, setFinished] = createSignal(false);
-
 	return (
 		<Stepper.Root
 			class="not-prose my-4 flex flex-col gap-4 rounded-lg border p-4 text-sm"
 			data-demo="solid"
-			onFinish={() => setFinished(true)}
-			onChange={() => setFinished(false)}
 		>
 			{(stepper) => (
 				<>
@@ -43,9 +39,12 @@ export default function SolidDemo() {
 						Pick the plan that fits.
 					</Stepper.Content>
 					<Stepper.Content step="done" class="rounded-md bg-fd-muted p-3">
-						{finished()
-							? "Finished. Thanks!"
-							: "Press Finish to complete the flow."}
+						<Show
+							when={stepper.isFinished}
+							fallback="Press Finish to complete the flow."
+						>
+							Finished. Thanks!
+						</Show>
 					</Stepper.Content>
 
 					<div class="flex items-center gap-2">

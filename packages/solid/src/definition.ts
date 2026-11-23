@@ -1,5 +1,4 @@
 import { createStepper, type Flow, fail, type Options, type Step, type Stepper } from "@stepperize/core";
-import { OPTION_KEYS } from "@stepperize/core/primitives";
 import {
 	$PROXY,
 	type Accessor,
@@ -10,6 +9,7 @@ import {
 	createMemo,
 	createSignal,
 	getOwner,
+	on,
 	onCleanup,
 	untrack,
 	useContext,
@@ -48,13 +48,6 @@ export type Shared<S extends readonly Step[]> = {
 	stepper: Stepper<S>;
 };
 
-/** The options a component received as props. An absent prop does not override a default. */
-export function pickOptions<S extends readonly Step[]>(props: Record<string, unknown>): Options<S> {
-	const options: Record<string, unknown> = {};
-	for (const key of OPTION_KEYS) if (props[key] !== undefined) options[key] = props[key];
-	return options as Options<S>;
-}
-
 const ACTIONS: ReadonlySet<PropertyKey> = new Set(["next", "prev", "goTo", "setData", "validate", "reset", "restore"]);
 const STATE_KEYS = [
 	"current",
@@ -75,22 +68,58 @@ export function createDefinition<const S extends readonly Step[]>(steps: S, defa
 	const positions = new Map(steps.map((step, index) => [step.id as string, index]));
 	const create = (options?: Options<S>) => createStepper(steps, { ...defaults, ...options });
 
-	/** One flow per component instance. `snapshot` is read once; everything else stays current. */
+	/**
+	 * One flow per component instance. `options` is read lazily, one key at a time, so
+	 * props work as they are: the children and attributes of a Root are never read.
+	 */
 	function useFlow(options?: MaybeAccessor<Options<S> | undefined>): Shared<S> {
-		const merged = (): Options<S> => ({
-			...defaults,
-			...(typeof options === "function" ? options() : options),
-		});
-		const flow = createStepper(steps, untrack(merged));
+		/** One option, tracked. An absent one keeps the definition's default. */
+		const option = <K extends keyof Options<S>>(key: K): Options<S>[K] => {
+			const value = (typeof options === "function" ? options() : options)?.[key];
+			return value === undefined ? defaults[key] : value;
+		};
+		const latest = <K extends keyof Options<S>>(key: K) => untrack(() => option(key));
+		/**
+		 * The flow reads its callbacks when it calls them, so it always calls the latest:
+		 * no effect stands between a new callback and the action that uses it, whether
+		 * both change in one `batch` or under a `Suspense` that is still loading.
+		 * `linear` and `step` are values the flow acts on when they change, so they are pushed.
+		 */
+		const settings = (
+			linear: boolean | undefined,
+			step: Options<S>["step"],
+			snapshot?: Options<S>["snapshot"],
+		): Options<S> =>
+			({
+				linear,
+				step,
+				snapshot,
+				get next() {
+					return latest("next");
+				},
+				get guard() {
+					return latest("guard");
+				},
+				get onChange() {
+					return latest("onChange");
+				},
+				get onFinish() {
+					return latest("onFinish");
+				},
+				get onInvalidStep() {
+					return latest("onInvalidStep");
+				},
+			}) satisfies Record<keyof Options<S>, unknown>;
+		const linear = createMemo(() => option("linear"));
+		const step = createMemo(() => option("step"));
+		const flow = createStepper(steps, settings(untrack(linear), untrack(step), latest("snapshot")));
 		const [view, setView] = createSignal(flow.get());
 		// Subscribed from the start, so a change made while children mount is never missed.
 		flow.subscribe(() => setView(() => flow.get()));
-		// Effects do not run on the server: options are applied once mounted and after every
-		// later change, like every other binding. Following `step` calls back into the owner.
-		createEffect(() => {
-			const next = merged();
-			untrack(() => flow.setOptions(next));
-		});
+		// Effects do not run on the server, and the first run is after mount: a `step` the flow
+		// cannot follow is reported (`onInvalidStep`) in the browser only. Following it may call
+		// back into the owner, which `on` keeps untracked.
+		createEffect(on([linear, step], ([linear, step]) => flow.setOptions(settings(linear, step))));
 		if (getOwner()) onCleanup(() => flow.destroy());
 		const read = () => view() as Record<PropertyKey, unknown>;
 		// One memo per piece of state: a reader of `current` is not told about a draft, because a
@@ -146,7 +175,7 @@ export function createDefinition<const S extends readonly Step[]>(steps: S, defa
 		},
 		Provider: (props) =>
 			createComponent(FlowContext.Provider, {
-				value: useFlow(() => pickOptions<S>(props)),
+				value: useFlow(props),
 				get children() {
 					return props.children;
 				},

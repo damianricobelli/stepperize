@@ -18,7 +18,7 @@ function CheckoutSteps() {
   return (
     <Stepper.Root linear onFinish={placeOrder}>
       <Stepper.List>
-        {() => (
+        {(step) => (
           <Stepper.Item>
             <Stepper.Trigger>
               <Stepper.Indicator />
@@ -47,13 +47,34 @@ function CheckoutSteps() {
 1. `Stepper.Root` creates the flow and provides it. It takes the options as
    props.
 2. `Stepper.List` renders the list and handles arrow keys.
-3. Its function child is called once per step.
+3. Its function child is called once per step, with the step and its index.
 4. `Stepper.Item` is one step. Everything inside it knows which one.
 5. `Stepper.Trigger` goes to that step when pressed.
 6. `Stepper.Content` renders while its `step` is current.
 7. `Stepper.Prev` and `Stepper.Next` call `prev()` and `next()`.
 
 `step` is typed: `<Stepper.Content step="shiping">` does not compile.
+
+### Function or content
+
+A function child of `List` must declare its `step` parameter, even when it does
+not use it. A function without parameters is content: that is the rule `<Show>`
+and `<Match>` follow, and it is how Solid's own components pass what they
+render. So a list built with `<For>` works too, with a `step` on each item:
+
+```tsx
+<Stepper.List>
+  <For each={checkout.steps}>
+    {(step) => (
+      <Stepper.Item step={step.id}>
+        <Stepper.Trigger>{step.title}</Stepper.Trigger>
+      </Stepper.Item>
+    )}
+  </For>
+</Stepper.List>
+```
+
+The same holds for the function children of `Root` and `Item`.
 
 ## Reading the flow in JSX
 
@@ -84,8 +105,10 @@ stepper, `List` passes each step, and `Item` passes that item:
 </Stepper.Root>
 ```
 
-The functions run once; what they receive is reactive, so only the expressions
-that read it update. In a child component, `checkout.useStepperContext()` and
+The functions run once and are not tracked, like the children of `<Show>`:
+what they receive is reactive, so only the expressions in their JSX that read
+it update. Do not destructure it: `{({ state }) => ...}` would copy the state
+once and never change. In a child component, `checkout.useStepperContext()` and
 `Stepper.useItem()` return the same things.
 
 ## Three patterns, chosen for you
@@ -122,21 +145,40 @@ Nothing is styled. Every element has a `data-component` and the state it shows:
 
 ## Rendering your own element
 
-Pass `as` with a tag name or a component. A component receives the ARIA
-attributes, ids, handlers and `ref` as props and must spread them onto an
-element:
+Pass `as` with a tag name or a component. The props follow what you render:
+with `as="a"`, `href` is allowed and `ref` receives an `HTMLAnchorElement`.
 
 ```tsx
-function MyButton(props: JSX.ButtonHTMLAttributes<HTMLButtonElement>) {
-  return <button class="btn" {...props} />;
-}
-
-<Stepper.Next as={MyButton}>Continue</Stepper.Next>
-<Stepper.List as="ul">...</Stepper.List>
+<Stepper.List as="div">...</Stepper.List>
+<Stepper.Trigger as="a" href="#payment" ref={(link) => link.focus()}>
+  Payment
+</Stepper.Trigger>
 ```
 
-With `as`, `type="button"` is not added for you: a component that renders a
-`<button>` inside a `<form>` should set it.
+A component receives the ARIA attributes, ids, handlers and `ref` as props and
+must spread them onto an element. Its own props are typed, and its required
+props are required on the primitive:
+
+```tsx
+import { type JSX, splitProps } from "solid-js";
+
+function MyButton(props: JSX.ButtonHTMLAttributes<HTMLButtonElement> & { tone?: "primary" }) {
+  const [local, rest] = splitProps(props, ["tone"]);
+  return <button class={local.tone === "primary" ? "btn btn-primary" : "btn"} {...rest} />;
+}
+
+<Stepper.Next as={MyButton} tone="primary">Continue</Stepper.Next>
+```
+
+Use `splitProps`, not destructuring, to take your own props out: destructuring
+props reads them once and loses reactivity. A component whose props cannot take
+a `ref`, such as `(props: { label: string }) => ...` or one with no props, does
+not compile: it could not put the ARIA attributes on an element.
+
+`Prev` and `Next` add `type="button"` unless `as` names another tag, so a
+design-system button inside a `<form>` does not submit it; pass `type` to
+change it. `Trigger` adds it only to its default `button`: with `as`, the type
+of your own element stands, since a trigger is often a link.
 
 ## Handling the move yourself
 

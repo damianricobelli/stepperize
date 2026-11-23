@@ -3,11 +3,11 @@ import solid from "vite-plugin-solid";
 import { defineConfig } from "vitest/config";
 import type { BrowserCommand } from "vitest/node";
 
-/** Renders the hydration fixture with the server build of Solid. */
-const renderOnServer: BrowserCommand<[]> = async ({ project }) => {
+/** Renders a hydration fixture (an export of `fixtures.tsx`) with the server build of Solid. */
+const renderOnServer: BrowserCommand<[name: string]> = async ({ project }, name) => {
 	const { renderToString, generateHydrationScript } = await project.vite.ssrLoadModule("solid-js/web");
-	const { page } = await project.vite.ssrLoadModule("/src/tests/fixtures.tsx");
-	return { html: renderToString(page) as string, script: generateHydrationScript() as string };
+	const fixtures = await project.vite.ssrLoadModule("/src/tests/fixtures.tsx");
+	return { html: renderToString(fixtures[name]) as string, script: generateHydrationScript() as string };
 };
 
 export default defineConfig({

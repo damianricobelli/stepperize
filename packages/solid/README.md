@@ -78,7 +78,7 @@ const { Stepper } = checkout;
 
 <Stepper.Root linear onFinish={placeOrder}>
   <Stepper.List>
-    {() => (
+    {(step) => (
       <Stepper.Item>
         <Stepper.Trigger>
           <Stepper.Indicator />
@@ -99,8 +99,10 @@ const { Stepper } = checkout;
 
 They handle roles, ids, keyboard navigation, focus and screen reader
 announcements, expose their state through `data-*` attributes for styling, and
-take `as` to render your own element or component. `step` props are typed with
-your step ids.
+take `as` to render your own element or component, with its props and `ref`
+typed. `step` props are typed with your step ids. A function child declares its
+parameter (`(step) => ...`): a function without one is content, as in `<Show>`,
+so `<For>` works inside a `List` too.
 
 If you only want the reactive stepper, import from `@stepperize/solid/headless`.
 

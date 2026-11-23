@@ -1,7 +1,9 @@
 // @vitest-environment node
-import { renderToString } from "solid-js/web";
+import { createResource, Show, Suspense } from "solid-js";
+import { renderToStream, renderToString, renderToStringAsync } from "solid-js/web";
 import { expect, it, vi } from "vitest";
-import { defineStepper } from "../index";
+import { defineStepper, type Snapshot } from "../index";
+import { Full, type steps } from "./fixtures";
 
 it("renders the stepper and the primitives on the server without browser globals or callbacks", () => {
 	const onChange = vi.fn();
@@ -21,7 +23,7 @@ it("renders the stepper and the primitives on the server without browser globals
 			<Local />
 			<flow.Stepper.Root onChange={onChange}>
 				<flow.Stepper.List>
-					{() => (
+					{(_step) => (
 						<flow.Stepper.Item>
 							<flow.Stepper.Trigger>
 								<flow.Stepper.Title />
@@ -45,4 +47,53 @@ it("renders the stepper and the primitives on the server without browser globals
 	expect(onInvalidStep).not.toHaveBeenCalled();
 	errors.mockRestore();
 	warnings.mockRestore();
+});
+
+/** A saved snapshot loaded the way a SolidStart route loads it: the flow waits under Suspense. */
+function Resumed(props: { onChange: () => void; onInvalidStep: () => void }) {
+	const [saved] = createResource(
+		() =>
+			new Promise<Partial<Snapshot<typeof steps>>>((resolve) =>
+				setTimeout(() => resolve({ step: "third", complete: ["first", "second"] }), 5),
+			),
+	);
+	return (
+		<Suspense fallback={<p>Loading</p>}>
+			<Show when={saved()}>
+				{(snapshot) => (
+					<Full
+						linear
+						snapshot={snapshot()}
+						step="nope"
+						onChange={props.onChange}
+						onInvalidStep={props.onInvalidStep}
+					/>
+				)}
+			</Show>
+		</Suspense>
+	);
+}
+
+it("renderToStringAsync waits for the snapshot and renders the resumed step, still without callbacks", async () => {
+	const callbacks = { onChange: vi.fn(), onInvalidStep: vi.fn() };
+	const html = await renderToStringAsync(() => <Resumed {...callbacks} />);
+	expect(html).not.toContain("Loading");
+	expect(html).toMatch(/aria-current="step"[^>]*>.*?Third/);
+	expect(html).toMatch(/data-step="third" role="group"[^>]*>.*?Third/);
+	expect(callbacks.onChange).not.toHaveBeenCalled();
+	expect(callbacks.onInvalidStep).not.toHaveBeenCalled();
+});
+
+it("renderToStream sends the fallback first, then the resumed flow", async () => {
+	const chunks: string[] = [];
+	await renderToStream(() => <Resumed onChange={() => {}} onInvalidStep={() => {}} />).pipeTo(
+		new WritableStream({
+			write: (chunk: unknown) => {
+				chunks.push(typeof chunk === "string" ? chunk : new TextDecoder().decode(chunk as Uint8Array));
+			},
+		}),
+	);
+	expect(chunks[0]).toContain("Loading");
+	const html = chunks.join("");
+	expect(html).toMatch(/aria-current="step"[^>]*>.*?Third/);
 });

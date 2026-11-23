@@ -1,15 +1,15 @@
 import axe from "axe-core";
-import { createSignal, type JSX, Show } from "solid-js";
+import { batch, createSignal, For, type JSX, Show, sharedConfig } from "solid-js";
 import { hydrate } from "solid-js/web";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { commands, page as screen, userEvent } from "vitest/browser";
 import { defineStepper } from "../index";
-import { type Api, Fancy, Full, flow, page, Stepper, steps } from "./fixtures";
+import { type Api, Fancy, Full, flow, groups, page, Stepper, steps } from "./fixtures";
 import { cleanup, render, settle } from "./render";
 
 declare module "vitest/browser" {
 	interface BrowserCommands {
-		renderOnServer: () => Promise<{ html: string; script: string }>;
+		renderOnServer: (name: "page" | "groups") => Promise<{ html: string; script: string }>;
 	}
 }
 
@@ -21,6 +21,12 @@ async function violations(node: Element) {
 	return result.violations.map(
 		(violation) => `${violation.id}: ${violation.nodes.map((entry) => entry.html).join(" | ")}`,
 	);
+}
+
+/** The element, or a failed test. */
+function must<T>(value: T | null | undefined): T {
+	if (value == null) throw new Error("Element not found");
+	return value;
 }
 
 const next = () => screen.getByRole("button", { name: "Continue" }).element() as HTMLButtonElement;
@@ -79,7 +85,7 @@ describe("patterns", () => {
 		const { container } = render(() => (
 			<outer.Stepper.Root data-testid="outer">
 				<outer.Stepper.List>
-					{() => (
+					{(_step) => (
 						<outer.Stepper.Item>
 							<outer.Stepper.Indicator />
 						</outer.Stepper.Item>
@@ -145,7 +151,7 @@ describe("state and data attributes", () => {
 			<checked.Stepper.Root>
 				<Probe />
 				<checked.Stepper.List>
-					{() => (
+					{(_step) => (
 						<checked.Stepper.Item>
 							<checked.Stepper.Trigger>
 								<checked.Stepper.Indicator />
@@ -178,7 +184,7 @@ describe("state and data attributes", () => {
 		render(() => (
 			<Stepper.Root linear>
 				<Stepper.List>
-					{() => (
+					{(_step) => (
 						<Stepper.Item>
 							{(item) => (
 								<>
@@ -211,6 +217,30 @@ describe("state and data attributes", () => {
 			["first", false],
 			["second", true],
 		]);
+	});
+
+	it("forceMount keeps what was typed while the user moves away and back", async () => {
+		let api!: Api;
+		const { container } = render(() => (
+			<Stepper.Root>
+				<Grab ready={(stepper) => (api = stepper)} />
+				<Stepper.Content step="first" forceMount>
+					<input aria-label="Name" />
+				</Stepper.Content>
+				<Stepper.Content step="second" forceMount>
+					Two
+				</Stepper.Content>
+			</Stepper.Root>
+		));
+		const input = must(container.querySelector("input"));
+		await userEvent.fill(input, "Ada");
+		await api.next();
+		const panels = () => Array.from(container.querySelectorAll<HTMLElement>("[data-step]"), (panel) => panel.hidden);
+		expect(panels()).toEqual([true, false]);
+		await api.prev();
+		expect(panels()).toEqual([false, true]);
+		expect(container.querySelector("input")).toBe(input);
+		expect(input.value).toBe("Ada");
 	});
 });
 
@@ -246,7 +276,7 @@ describe("navigation", () => {
 					<>
 						<output>{stepper.current.id}</output>
 						<Stepper.List onKeyDown={(event) => event.preventDefault()}>
-							{() => (
+							{(_step) => (
 								<Stepper.Item>
 									<Stepper.Trigger>
 										<Stepper.Title />
@@ -295,6 +325,19 @@ describe("navigation", () => {
 		expect(document.activeElement).toBe(second);
 		await userEvent.keyboard("{End}");
 		expect(document.activeElement).toBe(screen.getByRole("tab", { name: /Third/ }).element());
+	});
+
+	it("a vertical list moves with up and down, not left and right", async () => {
+		const { container } = render(() => <Full orientation="vertical" />);
+		expect(container.querySelector("ol")?.getAttribute("aria-orientation")).toBe("vertical");
+		const tab = (name: RegExp) => screen.getByRole("tab", { name }).element();
+		tab(/First/).focus();
+		await userEvent.keyboard("{ArrowRight}");
+		expect(document.activeElement).toBe(tab(/First/));
+		await userEvent.keyboard("{ArrowDown}");
+		expect([document.activeElement, tab(/Second/).getAttribute("aria-selected")]).toEqual([tab(/Second/), "true"]);
+		await userEvent.keyboard("{ArrowUp}");
+		expect(document.activeElement).toBe(tab(/First/));
 	});
 });
 
@@ -434,6 +477,162 @@ describe("refs and as", () => {
 		await userEvent.click(button);
 		expect(container.querySelector("output")?.textContent).toBe("second");
 	});
+
+	it("an `as` component on any primitive gets the ARIA, the handlers and the ref", async () => {
+		const Panel = (props: JSX.HTMLAttributes<HTMLElement>) => <section {...props} />;
+		const Row = (props: JSX.HTMLAttributes<HTMLDivElement>) => <div {...props} />;
+		const refs: Element[] = [];
+		const { container } = render(() => (
+			<Stepper.Root>
+				<Stepper.List as={Row} ref={(node) => refs.push(node)}>
+					{(step) => (
+						<Stepper.Item as={Row}>
+							<Stepper.Trigger as="a" href={`#${step.id}`} ref={(node) => refs.push(node)}>
+								<Stepper.Title as="strong" />
+							</Stepper.Trigger>
+						</Stepper.Item>
+					)}
+				</Stepper.List>
+				<Stepper.Content step="first" as={Panel} ref={(node) => refs.push(node)}>
+					One
+				</Stepper.Content>
+				<Stepper.Content step="second" as={Panel}>
+					Two
+				</Stepper.Content>
+			</Stepper.Root>
+		));
+		expect(refs.map((node) => node.tagName).sort()).toEqual(["A", "A", "A", "DIV", "SECTION"]);
+		expect(refs.find((node) => node.tagName === "DIV")?.getAttribute("role")).toBe("tablist");
+		const panel = container.querySelector("section");
+		expect([panel?.getAttribute("role"), panel?.getAttribute("aria-labelledby")]).toEqual([
+			"tabpanel",
+			container.querySelector('a[href="#first"]')?.id,
+		]);
+		await userEvent.click(screen.getByRole("tab", { name: "Second" }));
+		expect(container.querySelector("section")?.textContent).toBe("Two");
+		expect(await violations(container)).toEqual([]);
+	});
+});
+
+describe("function children", () => {
+	it("a List whose child is <For> renders it as content, like any other accessor", () => {
+		const { container } = render(() => (
+			<Stepper.Root>
+				<Stepper.List>
+					<For each={steps}>
+						{(step) => (
+							<Stepper.Item step={step.id}>
+								<Stepper.Trigger>
+									<Stepper.Title />
+								</Stepper.Trigger>
+							</Stepper.Item>
+						)}
+					</For>
+				</Stepper.List>
+			</Stepper.Root>
+		));
+		expect(Array.from(container.querySelectorAll("li"), (item) => item.dataset.step)).toEqual([
+			"first",
+			"second",
+			"third",
+		]);
+		expect(screen.getByRole("tab", { name: "Second" }).element()).toBeTruthy();
+	});
+
+	it("a function without parameters is content, not a render function", () => {
+		const { container } = render(() => (
+			<Stepper.Root>
+				<Stepper.List>{() => <Stepper.Item step="second" />}</Stepper.List>
+			</Stepper.Root>
+		));
+		expect(Array.from(container.querySelectorAll("li"), (item) => item.dataset.step)).toEqual(["second"]);
+	});
+
+	it("Root, List and Item functions run once: only the JSX that reads the flow updates", async () => {
+		const calls = { root: 0, list: 0, item: 0 };
+		const { container } = render(() => (
+			<Stepper.Root>
+				{(stepper) => {
+					calls.root++;
+					// Read at the top level, where it is not tracked.
+					const first = stepper.current.id;
+					return (
+						<>
+							<output>
+								{first} {stepper.current.id}
+							</output>
+							<Stepper.List>
+								{(step) => {
+									calls.list++;
+									void stepper.index;
+									return (
+										<Stepper.Item>
+											{(item) => {
+												calls.item++;
+												void item.state;
+												return (
+													<Stepper.Trigger>
+														{step.title} {item.state}
+													</Stepper.Trigger>
+												);
+											}}
+										</Stepper.Item>
+									);
+								}}
+							</Stepper.List>
+							<Stepper.Next>Continue</Stepper.Next>
+						</>
+					);
+				}}
+			</Stepper.Root>
+		));
+		await userEvent.click(next());
+		await userEvent.click(next());
+		expect(calls).toEqual({ root: 1, list: 3, item: 3 });
+		expect(container.querySelector("output")?.textContent).toBe("first third");
+		expect(Array.from(container.querySelectorAll("button[role=tab]"), (tab) => tab.textContent)).toEqual([
+			"First complete",
+			"Second complete",
+			"Third current",
+		]);
+	});
+});
+
+describe("options as props", () => {
+	it("the Root follows its `step` prop and reports what it cannot follow", async () => {
+		const [param, setParam] = createSignal<string>("third");
+		const { container } = render(() => (
+			<Full
+				linear
+				step={param()}
+				onChange={(snapshot) => setParam(snapshot.step)}
+				onInvalidStep={(current) => setParam(current)}
+			/>
+		));
+		const current = () => container.querySelector('[aria-current="step"]')?.textContent;
+		await settle();
+		// A deep link to a step `linear` does not allow yet is corrected.
+		expect([param(), current()]).toEqual(["first", expect.stringContaining("First")]);
+		await userEvent.click(next());
+		expect([param(), current()]).toEqual(["second", expect.stringContaining("Second")]);
+		setParam("first");
+		await settle();
+		expect(current()).toContain("First");
+	});
+
+	it("uses the callback passed in the same batch as the click", async () => {
+		const first = vi.fn();
+		const second = vi.fn();
+		const [onFinish, setOnFinish] = createSignal(first);
+		render(() => <Full snapshot={{ step: "third" }} onFinish={onFinish()} />);
+		await settle();
+		batch(() => {
+			setOnFinish(() => second);
+			next().click();
+		});
+		await settle();
+		expect([first.mock.calls.length, second.mock.calls.length]).toEqual([0, 1]);
+	});
 });
 
 describe("development diagnostics", () => {
@@ -449,6 +648,7 @@ describe("development diagnostics", () => {
 	it("warns about an `as` component that drops its props", async () => {
 		const seen = await warnings(() => (
 			<Stepper.Root>
+				{/* @ts-expect-error a component without props is refused by the types; JavaScript callers get the warning */}
 				<Stepper.List as={() => <ol />} />
 			</Stepper.Root>
 		));
@@ -487,44 +687,100 @@ describe("development diagnostics", () => {
 });
 
 describe("hydration", () => {
-	it("keeps the server HTML: nothing changes until the user acts", async () => {
-		const server = await commands.renderOnServer();
+	/** Put a fixture's server HTML in the document, as a SolidStart page would arrive. */
+	async function serve(name: "page" | "groups") {
+		const server = await commands.renderOnServer(name);
 		const container = document.createElement("div");
 		container.innerHTML = server.html;
 		document.body.appendChild(container);
-		// What `generateHydrationScript()` puts in the document head.
+		// A fresh page load: Solid hydrates once per page, and the previous test already did.
+		// The script only sets up its global once, and Solid remembers that hydration is done.
+		Reflect.deleteProperty(window, "_$HY");
+		sharedConfig.done = false;
 		new Function(server.script.replace(/<\/?script[^>]*>/g, ""))();
-		expect(container.querySelectorAll('[role="tablist"]').length).toBe(2);
-		const ids = Array.from(container.querySelectorAll("[id]"), (node) => node.id);
-		expect(new Set(ids).size).toBe(ids.length);
 		const attributes = () =>
-			Array.from(container.querySelectorAll("*"), (node) =>
+			Array.from(container.querySelectorAll<HTMLElement>("*"), (node) =>
 				Array.from(
 					node.attributes,
 					// Hydration writes `style` back through the CSSOM, which only reformats the same declarations.
-					(attribute) =>
-						`${attribute.name}=${attribute.name === "style" ? (node as HTMLElement).style.cssText : attribute.value}`,
+					(attribute) => `${attribute.name}=${attribute.name === "style" ? node.style.cssText : attribute.value}`,
 				).join(" "),
 			);
-		const before = { text: container.textContent, attributes: attributes(), nodes: container.querySelectorAll("*") };
 		const warnings = vi.spyOn(console, "warn").mockImplementation(() => {});
 		const errors = vi.spyOn(console, "error").mockImplementation(() => {});
-		const dispose = hydrate(page, container);
-		await settle();
-		expect(warnings).not.toHaveBeenCalled();
-		expect(errors).not.toHaveBeenCalled();
+		return {
+			container,
+			attributes,
+			hydrate: async () => {
+				const dispose = hydrate(name === "page" ? page : groups, container);
+				await settle();
+				expect(warnings).not.toHaveBeenCalled();
+				expect(errors).not.toHaveBeenCalled();
+				warnings.mockRestore();
+				errors.mockRestore();
+				return () => {
+					dispose();
+					container.remove();
+				};
+			},
+		};
+	}
+
+	it("keeps the server HTML of free, linear and resumed flows: nothing changes until the user acts", async () => {
+		const { container, attributes, hydrate } = await serve("page");
+		const roots = () => container.querySelectorAll('[data-component="stepper"]');
+		// The free flow and the extras are tabs; the linear flow is a list with `aria-current`.
+		expect(container.querySelectorAll('[role="tablist"]').length).toBe(2);
+		expect(roots()[1].querySelector('[aria-current="step"]')?.textContent).toContain("Second");
+		const ids = Array.from(container.querySelectorAll("[id]"), (node) => node.id);
+		expect(new Set(ids).size).toBe(ids.length);
+		const before = { text: container.textContent, attributes: attributes(), nodes: container.querySelectorAll("*") };
+		const done = await hydrate();
 		// The same elements, untouched: hydration adopted them instead of rendering again.
 		const after = container.querySelectorAll("*");
 		expect(after.length).toBe(before.nodes.length);
 		expect(Array.from(after).every((node, index) => node === before.nodes[index])).toBe(true);
 		expect(attributes()).toEqual(before.attributes);
 		expect(container.textContent).toBe(before.text);
-		// Hydrated, not inert.
-		await userEvent.click(container.querySelectorAll<HTMLElement>('[data-component="stepper-next"]')[1]);
-		expect(container.querySelectorAll('[aria-selected="true"]')[1]?.textContent).toContain("Second");
-		dispose();
-		container.remove();
-		warnings.mockRestore();
-		errors.mockRestore();
+		// Hydrated, not inert: the linear flow moves on and its list follows.
+		await userEvent.click(must(roots()[1].querySelector<HTMLElement>('[data-component="stepper-next"]')));
+		expect(roots()[1].querySelector('[aria-current="step"]')?.textContent).toContain("Third");
+		done();
+	});
+
+	it("hydrates a Root function, `as` tags and components, and panels kept mounted", async () => {
+		const { container, hydrate } = await serve("page");
+		const extras = () => must(container.querySelector('[data-testid="extras"]'));
+		const panels = () => Array.from(extras().querySelectorAll<HTMLElement>("section"), (panel) => panel.hidden);
+		// Every panel is in the server HTML, only the current one visible.
+		expect(panels()).toEqual([false, true, true]);
+		expect(extras().querySelector("output")?.textContent).toBe("First");
+		const links = extras().querySelectorAll("a");
+		expect(Array.from(links, (link) => [link.getAttribute("role"), link.getAttribute("href")])).toEqual([
+			["tab", "#first"],
+			["tab", "#second"],
+			["tab", "#third"],
+		]);
+		const done = await hydrate();
+		const next = must(extras().querySelector<HTMLButtonElement>(".mine"));
+		expect([next.type, next.dataset.component]).toEqual(["submit", "stepper-next"]);
+		await userEvent.click(next);
+		expect(extras().querySelector("output")?.textContent).toBe("Second");
+		expect(panels()).toEqual([true, false, true]);
+		await userEvent.click(links[2]);
+		expect(extras().querySelector("output")?.textContent).toBe("Third");
+		done();
+	});
+
+	it("a flow without triggers is served as tabs and becomes groups once hydrated, without a mismatch", async () => {
+		const { container, hydrate } = await serve("groups");
+		const panel = () => container.querySelector('[data-component="stepper-content"]');
+		expect(panel()?.getAttribute("role")).toBe("tabpanel");
+		const node = panel();
+		const done = await hydrate();
+		expect(panel()).toBe(node);
+		expect([panel()?.getAttribute("role"), panel()?.getAttribute("aria-label")]).toEqual(["group", "First"]);
+		expect(container.querySelector("ol")?.hasAttribute("role")).toBe(false);
+		done();
 	});
 });

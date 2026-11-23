@@ -13,6 +13,8 @@ The stepper and the primitives render on the server and hydrate in place.
   the `guard` only run in the browser.
 - The package contains no JSX: there is nothing for your bundler to compile
   differently for the server.
+- `renderToString`, `renderToStringAsync` and `renderToStream` all work. A flow
+  inside a `Suspense` is rendered once its data has loaded, on the right step.
 
 ## Resuming from a cookie or the database
 

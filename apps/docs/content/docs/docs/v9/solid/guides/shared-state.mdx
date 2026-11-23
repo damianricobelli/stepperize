@@ -28,6 +28,9 @@ renders no element.
 `Stepper.Root` is a `Provider` too: components inside it can call
 `useStepperContext()`.
 
+Providers nest. A component reads the nearest `Provider` of its own
+definition, so a flow inside another flow's step keeps its own state.
+
 ## useStepperContext
 
 ```tsx title="CheckoutHeader.tsx"
