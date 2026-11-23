@@ -1,0 +1,6 @@
+{
+	"extends": "./tsconfig.json",
+	"compilerOptions": { "outDir": "./out-tsc/lib", "declarationMap": false },
+	"angularCompilerOptions": { "compilationMode": "partial" },
+	"include": ["src/**/*.ts", "headless/**/*.ts"]
+}

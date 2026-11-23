@@ -1,0 +1,25 @@
+{
+	"compilerOptions": {
+		"module": "esnext",
+		"target": "es2022",
+		"moduleResolution": "bundler",
+		"lib": ["es2022", "dom", "dom.iterable"],
+		"strict": true,
+		"noUnusedLocals": true,
+		"noUnusedParameters": true,
+		"skipLibCheck": true,
+		"experimentalDecorators": true,
+		"importHelpers": true,
+		"declaration": true,
+		"isolatedModules": true,
+		"paths": {
+			"@stepperize/angular/headless": ["./headless/src/public-api.ts"],
+			"@stepperize/angular": ["./src/public-api.ts"]
+		}
+	},
+	"angularCompilerOptions": {
+		"strictTemplates": true,
+		"strictInjectionParameters": true,
+		"strictInputAccessModifiers": true
+	}
+}
