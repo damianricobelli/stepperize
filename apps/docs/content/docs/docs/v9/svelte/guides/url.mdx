@@ -1,0 +1,37 @@
+---
+title: The URL as the current step
+description: Keep the step in the URL with SvelteKit, in both directions.
+---
+
+The `step` option makes the flow follow a value that lives somewhere else. Pass
+the options as a function so they are read again when the page changes.
+
+```svelte title="src/routes/checkout/[step]/+page.svelte"
+<script lang="ts">
+  import { goto } from "$app/navigation";
+  import { page } from "$app/state";
+  import { checkout } from "$lib/checkout";
+
+  const stepper = checkout.useStepper(() => ({
+    linear: true,
+    // The URL moves (a link, the back button): the flow follows.
+    step: page.params.step,
+    // The flow moves: push the new step.
+    onChange: (snapshot) => {
+      if (snapshot.step !== page.params.step) goto(`/checkout/${snapshot.step}`);
+    },
+    // The URL asks for a step the flow cannot be on: correct it without a history entry.
+    onInvalidStep: (current) => goto(`/checkout/${current}`, { replaceState: true }),
+  }));
+</script>
+```
+
+- Following the URL is a `goTo`: `linear` and the `guard` still apply, so a
+  deep link cannot skip validation.
+- `onInvalidStep` is called for unknown ids, for steps `linear` does not allow
+  yet and for moves the guard refused.
+- On the server the flow starts on the URL's step when that is allowed, and no
+  callback runs until the page is mounted.
+
+A query parameter works the same way: read `page.url.searchParams.get("step")`
+and write it with `goto`.

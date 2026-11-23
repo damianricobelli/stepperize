@@ -30,6 +30,12 @@ export const FRAMEWORKS = [
 		description: "Composables and accessible primitives",
 	},
 	{
+		id: "svelte",
+		title: "Svelte",
+		package: "@stepperize/svelte",
+		description: "A reactive stepper and accessible primitives",
+	},
+	{
 		id: "core",
 		title: "Core",
 		package: "@stepperize/core",

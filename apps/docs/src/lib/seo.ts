@@ -581,6 +581,57 @@ export const DOC_KEYWORDS: Record<string, readonly string[]> = {
 		"Stepper slots",
 		"as-child stepper",
 	],
+	"current/svelte": [
+		"Svelte stepper",
+		"Svelte 5 wizard",
+		"multi-step flow Svelte",
+		"headless stepper Svelte",
+	],
+	"current/svelte/installation": [
+		"install Svelte stepper",
+		"@stepperize/svelte",
+		"Svelte 5 wizard package",
+	],
+	"current/svelte/first-stepper": [
+		"Svelte stepper tutorial",
+		"Svelte multi-step example",
+		"runes stepper",
+	],
+	"current/svelte/guides/forms": [
+		"Svelte multi-step form",
+		"bind:value stepper",
+		"Svelte form wizard validation",
+	],
+	"current/svelte/guides/shared-state": [
+		"Svelte stepper context",
+		"useStepperContext Svelte",
+		"shared stepper state",
+	],
+	"current/svelte/guides/url": [
+		"SvelteKit stepper",
+		"step in URL SvelteKit",
+		"wizard route sync",
+	],
+	"current/svelte/guides/ssr": [
+		"SvelteKit SSR wizard",
+		"Svelte stepper hydration",
+		"server rendered stepper",
+	],
+	"current/svelte/guides/primitives": [
+		"Svelte stepper components",
+		"accessible stepper Svelte",
+		"unstyled stepper Svelte",
+	],
+	"current/svelte/api/define-stepper": [
+		"defineStepper Svelte",
+		"useStepper Svelte",
+		"Stepperize Svelte API",
+	],
+	"current/svelte/api/primitives": [
+		"Svelte stepper props",
+		"Stepper snippets",
+		"child snippet stepper",
+	],
 	"current/core": [
 		"@stepperize/core",
 		"framework-agnostic stepper",

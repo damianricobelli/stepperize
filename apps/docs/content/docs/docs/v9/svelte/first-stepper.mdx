@@ -1,0 +1,144 @@
+---
+title: Your first stepper
+description: Define the steps, render the current one, move between them, and finish.
+---
+
+This page builds a three-step checkout from nothing. It takes about five
+minutes, and every later page builds on it.
+
+## 1. Define the steps
+
+A step needs an `id`. Every other field is yours and stays typed.
+
+```ts title="checkout.ts"
+import { defineStepper } from "@stepperize/svelte";
+
+export const checkout = defineStepper([
+  { id: "shipping", title: "Shipping" },
+  { id: "payment", title: "Payment" },
+  { id: "review", title: "Review" },
+]);
+```
+
+Create the definition once, in a module. It is not state: it is the typed
+description of the flow, with functions and components bound to it.
+
+## 2. Render the current step
+
+`useStepper()` creates a flow owned by the component. What it returns is
+reactive: read it in markup and the markup follows the flow.
+
+```svelte title="Checkout.svelte"
+<script lang="ts">
+  import { checkout } from "./checkout";
+
+  const stepper = checkout.useStepper();
+</script>
+
+<section>
+  <h2>{stepper.current.title}</h2>
+
+  {#if stepper.current.id === "shipping"}
+    <p>Where should we send it?</p>
+  {:else if stepper.current.id === "payment"}
+    <p>How would you like to pay?</p>
+  {:else}
+    <p>Check everything before placing the order.</p>
+  {/if}
+</section>
+```
+
+`stepper.current` is the step object you defined, so `title` is typed, and
+`stepper.current.id` is the union of your ids: a typo in the `{#if}` does not
+compile.
+
+<Callout title="Do not destructure the state">
+	`stepper.current` is always the latest, but `const { current } = stepper` is
+	a copy that never changes. Use `const current = $derived(stepper.current)`
+	when you want a local name. The actions (`next`, `prev`, `goTo`...) are safe
+	to destructure.
+</Callout>
+
+Call `useStepper()` at the top of the `<script>`, while the component
+initialises, like `setContext` or `$effect`.
+
+## 3. Move
+
+```svelte
+<button type="button" disabled={stepper.isFirst} onclick={() => stepper.prev()}>Back</button>
+<button type="button" onclick={() => stepper.next()}>
+  {stepper.isLast ? "Place order" : "Continue"}
+</button>
+```
+
+`next()` moves forward and `prev()` goes back. `isFirst` and `isLast` are
+derived for you, so there is no index arithmetic.
+
+## 4. Finish
+
+`next()` on the last step finishes the flow and calls `onFinish`, once. From
+then on `stepper.isFinished` is `true`.
+
+```ts
+const stepper = checkout.useStepper({
+  onFinish: () => alert("Order placed"),
+});
+```
+
+```svelte
+{#if stepper.isFinished}<p>Thanks for your order.</p>{/if}
+```
+
+## The whole thing
+
+```svelte title="Checkout.svelte"
+<script lang="ts">
+  import { defineStepper } from "@stepperize/svelte";
+
+  const checkout = defineStepper([
+    { id: "shipping", title: "Shipping" },
+    { id: "payment", title: "Payment" },
+    { id: "review", title: "Review" },
+  ]);
+
+  const stepper = checkout.useStepper({
+    onFinish: () => alert("Order placed"),
+  });
+</script>
+
+{#if stepper.isFinished}
+  <p>Thanks for your order.</p>
+{:else}
+  <section>
+    <p>Step {stepper.index + 1} of {stepper.steps.length}</p>
+    <h2>{stepper.current.title}</h2>
+
+    {#if stepper.current.id === "shipping"}
+      <p>Where should we send it?</p>
+    {:else if stepper.current.id === "payment"}
+      <p>How would you like to pay?</p>
+    {:else}
+      <p>Check everything before placing the order.</p>
+    {/if}
+
+    <button type="button" disabled={stepper.isFirst} onclick={() => stepper.prev()}>Back</button>
+    <button type="button" onclick={() => stepper.next()}>
+      {stepper.isLast ? "Place order" : "Continue"}
+    </button>
+  </section>
+{/if}
+```
+
+## What you did not write
+
+- No index `$state`, and no clamping at the edges.
+- No comparing against untyped strings: a typo in a step id does not compile.
+- No "is this the last step?" logic.
+
+## Where to go next
+
+- Collect data and validate it: [Forms](/docs/v9/svelte/guides/forms).
+- Read the flow from several components: [Shared state](/docs/v9/svelte/guides/shared-state).
+- Use ready-made accessible components: [Primitives](/docs/v9/svelte/guides/primitives).
+- Skip steps depending on the answers: [Branching](/docs/v9/react/guides/branching)
+  (the options are the same in every binding).

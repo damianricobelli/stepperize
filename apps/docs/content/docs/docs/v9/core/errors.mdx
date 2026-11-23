@@ -35,6 +35,17 @@ component in its default slot to receive those attributes.
 <Stepper.Next as-child><MyButton>Continue</MyButton></Stepper.Next>
 ```
 
+In Svelte it means a `child` snippet did not spread the `props` it received
+onto an element.
+
+```svelte
+<Stepper.Next>
+  {#snippet child({ props })}
+    <MyButton {...props}>Continue</MyButton>
+  {/snippet}
+</Stepper.Next>
+```
+
 ## SZ002
 
 **Warning.** A `Stepper.Trigger` has no accessible name. `Stepper.Indicator` is

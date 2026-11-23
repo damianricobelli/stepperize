@@ -1,0 +1,61 @@
+---
+title: Shared state
+description: One flow read by several components, with a Provider and useStepperContext.
+---
+
+`useStepper()` gives one component its own flow. When the step list, the
+current panel and the buttons live in different components, share one flow
+instead.
+
+## Provider
+
+```svelte title="Checkout.svelte"
+<script lang="ts">
+  import { checkout } from "./checkout";
+  import CheckoutHeader from "./CheckoutHeader.svelte";
+  import CheckoutBody from "./CheckoutBody.svelte";
+</script>
+
+<checkout.Provider linear onFinish={placeOrder}>
+  <CheckoutHeader />
+  <CheckoutBody />
+</checkout.Provider>
+```
+
+`Provider` takes every [option](/docs/v9/react/api/options) as a prop and
+renders no element. It puts the flow in Svelte's context.
+
+`Stepper.Root` is a `Provider` too: components inside it can call
+`useStepperContext()`.
+
+## useStepperContext
+
+```svelte title="CheckoutHeader.svelte"
+<script lang="ts">
+  import { checkout } from "./checkout";
+
+  const stepper = checkout.useStepperContext();
+</script>
+
+<p>Step {stepper.index + 1} of {stepper.steps.length}</p>
+```
+
+It returns the same reactive stepper as `useStepper()`. Call it while the
+component initialises. Outside the flow's own `Provider` it throws
+[SZ100](/docs/v9/core/errors#sz100).
+
+## Reading only what you need
+
+Svelte tracks what each expression reads, and `$derived` drops results that did
+not change, so there is no selector argument:
+
+```ts
+const isLast = $derived(stepper.isLast);
+```
+
+## Outside a component
+
+A flow does not need a component. `checkout.create()` returns the same state
+machine with `get()` and `subscribe()`, for tests, servers and your own
+`.svelte.ts` modules. `useStepper()` itself needs an effect context: a
+component, or `$effect.root`.

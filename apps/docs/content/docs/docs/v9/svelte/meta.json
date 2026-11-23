@@ -1,0 +1,21 @@
+{
+	"title": "Svelte",
+	"description": "Stepperize v9 for Svelte",
+	"root": true,
+	"pages": [
+		"---Start---",
+		"index",
+		"installation",
+		"first-stepper",
+		"---Build---",
+		"guides/forms",
+		"guides/shared-state",
+		"guides/url",
+		"guides/ssr",
+		"---Primitives---",
+		"guides/primitives",
+		"---Reference---",
+		"api/define-stepper",
+		"api/primitives"
+	]
+}
