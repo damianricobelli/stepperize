@@ -72,20 +72,19 @@ fields. See [Forms](/docs/v9/angular/guides/forms).
   navigation, focus and announcements.
 - **Zoneless and server rendered.** No zone.js needed; the server HTML already
   has the roles, and hydration adopts it.
-- **Small.** About 3.2 KiB for the signals API and 8.5 KiB with the primitives,
+- **Small.** About 3.2 KiB for the signals API and 8.7 KiB with the primitives,
   min + gzip, with no runtime dependencies besides the core.
 
 ## The same flow as every other binding
 
 The state machine is [`@stepperize/core`](/docs/v9/core), shared by every
-binding. The concepts are explained in depth in the React docs and apply
-unchanged: [steps](/docs/v9/angular/concepts/steps),
+binding, so the concepts are the same everywhere. Each has its own page,
+with Angular code: [steps](/docs/v9/angular/concepts/steps),
 [the lifecycle of a move](/docs/v9/angular/concepts/moves),
-[step state](/docs/v9/react/concepts/step-state),
-[validation](/docs/v9/react/guides/validation),
-[branching](/docs/v9/react/guides/branching) and
-[persistence](/docs/v9/react/guides/persistence). Where those pages show a
-hook, `injectStepper` takes the same options.
+[step state](/docs/v9/angular/concepts/step-state),
+[validation](/docs/v9/angular/guides/validation),
+[branching](/docs/v9/angular/guides/branching) and
+[persistence](/docs/v9/angular/guides/persistence).
 
 ## Next
 

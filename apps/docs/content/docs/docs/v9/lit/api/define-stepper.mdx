@@ -12,7 +12,7 @@ const checkout = defineStepper(steps, options?);
 | Argument | Description |
 | --- | --- |
 | `steps` | An array of steps. Each needs a unique `id`; `schema` types and validates its data; every other field is yours. |
-| `options` | Defaults for every flow created from this definition. See [Options](/docs/v9/react/api/options). |
+| `options` | Defaults for every flow created from this definition. See [Options](/docs/v9/lit/api/options). |
 
 It returns:
 
@@ -46,7 +46,7 @@ with anything it missed, when the host is connected again.
 
 | Member | Description |
 | --- | --- |
-| `value` | The current [stepper](/docs/v9/react/api/stepper): an immutable view plus the actions. A new object after every change. |
+| `value` | The current [stepper](/docs/v9/lit/api/stepper): an immutable view plus the actions. A new object after every change. |
 | `flow` | The flow itself, to hand to another controller or to code outside the element. |
 | `steps` | The steps of the definition. |
 | `destroy()` | Ends the controller: it stops updating the host and is removed from it. A flow it owns is destroyed, which cancels a running move; a flow it follows is left running. Disconnecting does not do this, because an element can be moved. |

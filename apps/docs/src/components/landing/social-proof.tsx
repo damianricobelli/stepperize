@@ -69,7 +69,7 @@ const FOOTPRINT: Record<
 		depsLabel: "third-party dependency (esm-env)",
 	},
 	solid: {
-		size: "3.1 KiB",
+		size: "3.3 KiB",
 		sizeLabel: "Solid flow, min + gzip",
 		deps: 0,
 		depsLabel: "third-party dependencies",
@@ -87,7 +87,7 @@ const FOOTPRINT: Record<
 		depsLabel: "third-party dependencies",
 	},
 	html: {
-		size: "4.0 KiB",
+		size: "4.5 KiB",
 		sizeLabel: "bindStepper, on the 2.3 KiB core",
 		deps: 0,
 		depsLabel: "third-party dependencies",

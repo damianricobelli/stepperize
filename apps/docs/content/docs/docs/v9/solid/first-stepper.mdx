@@ -28,7 +28,7 @@ typed description of the flow, with functions and components bound to it.
 `useStepper()` creates a flow owned by the component. What it returns is
 reactive: read it in JSX and the DOM follows the flow.
 
-```tsx title="Checkout.tsx"
+```tsx title="CheckoutFlow.tsx"
 import { Match, Switch } from "solid-js";
 import { checkout } from "./checkout";
 
@@ -96,7 +96,7 @@ const stepper = checkout.useStepper({
 
 ## The whole thing
 
-```tsx title="Checkout.tsx"
+```tsx title="CheckoutFlow.tsx"
 import { defineStepper } from "@stepperize/solid";
 import { Match, Show, Switch } from "solid-js";
 
@@ -154,5 +154,5 @@ export function Checkout() {
 - Collect data and validate it: [Forms](/docs/v9/solid/guides/forms).
 - Read the flow from several components: [Shared state](/docs/v9/solid/guides/shared-state).
 - Use ready-made accessible components: [Primitives](/docs/v9/solid/guides/primitives).
-- Skip steps depending on the answers: [Branching](/docs/v9/react/guides/branching)
+- Skip steps depending on the answers: [Branching](/docs/v9/solid/guides/branching)
   (the options are the same in every binding).

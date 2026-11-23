@@ -12,7 +12,7 @@ const checkout = defineStepper(steps, options?);
 | Argument | Description |
 | --- | --- |
 | `steps` | An array of steps. Each needs a unique `id`; `schema` types and validates its data; every other field is yours. |
-| `options` | Defaults for every flow created from this definition. See [Options](/docs/v9/react/api/options). |
+| `options` | Defaults for every flow created from this definition. See [Options](/docs/v9/vue/api/options). |
 
 It returns:
 
@@ -34,7 +34,7 @@ const stepper = checkout.useStepper(() => ({ step: route.params.step as string }
 ```
 
 Call it in `setup` (or `<script setup>`). It returns the
-[stepper](/docs/v9/react/api/stepper) as a reactive, read-only object
+[stepper](/docs/v9/vue/api/stepper) as a reactive, read-only object
 (`Readonly<Stepper<S>>`): reads are tracked, so templates and `computed`
 follow the flow. Do not destructure its state.
 
@@ -89,7 +89,7 @@ nested. Outside the flow's `Provider` or `Stepper.Root` it throws
 </checkout.Provider>
 ```
 
-Every [option](/docs/v9/react/api/options) is a prop. `@change`, `@finish` and
+Every [option](/docs/v9/vue/api/options) is a prop. `@change`, `@finish` and
 `@invalid-step` are the `onChange`, `onFinish` and `onInvalidStep` options;
 several listeners for one of them all run. It renders its default slot and no
 element.

@@ -281,7 +281,7 @@ the list. To style by position, compare indexes in the `#item` slot:
 <Stepper.Root v-slot="stepper">
   <Stepper.List>
     <template #item="{ index }">
-      <Stepper.Item :data-passed="index < stepper.index || undefined">…</Stepper.Item>
+      <Stepper.Item :class="{ passed: index < stepper.index }">…</Stepper.Item>
     </template>
   </Stepper.List>
 </Stepper.Root>

@@ -10,7 +10,7 @@ the options as a function so they are read again when the page changes.
 <script lang="ts">
   import { goto } from "$app/navigation";
   import { page } from "$app/state";
-  import { checkout } from "$lib/checkout";
+  import { checkout } from "#lib/checkout.js";
 
   const stepper = checkout.useStepper(() => ({
     linear: true,

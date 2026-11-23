@@ -76,20 +76,19 @@ fields. See [Forms](/docs/v9/lit/guides/forms).
 - **Accessible primitives.** Roles, keyboard navigation, focus and
   announcements are handled for you, in shadow DOM and in light DOM, and they
   keep the attributes you write.
-- **Small.** About 2.6 KiB for the controller and 6.5 KiB with the primitives,
+- **Small.** About 2.6 KiB for the controller and 6.7 KiB with the primitives,
   min + gzip, with no third-party dependencies.
 
 ## The same flow as every other binding
 
 The state machine is [`@stepperize/core`](/docs/v9/core), shared by every
-binding. The concepts are explained in depth in the React docs and apply
-unchanged: [steps](/docs/v9/lit/concepts/steps),
+binding, so the concepts are the same everywhere. Each has its own page,
+with Lit code: [steps](/docs/v9/lit/concepts/steps),
 [the lifecycle of a move](/docs/v9/lit/concepts/moves),
-[step state](/docs/v9/react/concepts/step-state),
-[validation](/docs/v9/react/guides/validation),
-[branching](/docs/v9/react/guides/branching) and
-[persistence](/docs/v9/react/guides/persistence). Where those pages show a
-hook, `controller(this, options)` takes the same options.
+[step state](/docs/v9/lit/concepts/step-state),
+[validation](/docs/v9/lit/guides/validation),
+[branching](/docs/v9/lit/guides/branching) and
+[persistence](/docs/v9/lit/guides/persistence).
 
 ## Next
 

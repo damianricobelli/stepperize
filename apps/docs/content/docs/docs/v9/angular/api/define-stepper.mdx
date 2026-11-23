@@ -12,7 +12,7 @@ const checkout = defineStepper(steps, options?);
 | Argument | Description |
 | --- | --- |
 | `steps` | An array of steps. Each needs a unique `id`; `schema` types and validates its data; every other field is yours. |
-| `options` | Defaults for every flow created from this definition. See [Options](/docs/v9/react/api/options). |
+| `options` | Defaults for every flow created from this definition. See [Options](/docs/v9/angular/api/options). |
 
 It returns:
 
@@ -37,7 +37,7 @@ factory. Outside one it throws `NG0203`; in development the message names
 `injectStepper()`.
 
 It returns a `StepperRef`: a signal of the
-[stepper](/docs/v9/react/api/stepper), which is a new immutable view after
+[stepper](/docs/v9/angular/api/stepper), which is a new immutable view after
 every change, with these properties:
 
 | Property | Description |

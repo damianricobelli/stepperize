@@ -91,7 +91,7 @@ const signup = defineStepper([
 
 A promise of a result: `{ accepted: true, to, data }` or
 `{ accepted: false, reason, issues? }`. They do not throw for an expected
-outcome. See [Moving between steps](/docs/v9/react/guides/navigation#read-the-result);
+outcome. See [Moving between steps](/docs/v9/solid/guides/navigation#read-the-result);
 the API is the same in Solid.
 
 ## How do I handle the final submit?
@@ -100,13 +100,13 @@ Call `next()` on the last step. It finishes the flow and calls `onFinish` once
 with the validated output of every complete step. `stepper.isLast` tells you
 when to change the button's label, and `stepper.isFinished` when to show the
 confirmation. If the request can fail, return its promise from `onFinish`; see
-[When submitting can fail](/docs/v9/react/guides/navigation#when-submitting-can-fail).
+[When submitting can fail](/docs/v9/solid/guides/navigation#when-submitting-can-fail).
 
 ## Where are the values my schema transformed?
 
 In `stepper.output`, and in the first argument of `onFinish`. `stepper.data`
 keeps what was typed. See
-[Draft data and validated output](/docs/v9/react/guides/validation#draft-data-and-validated-output).
+[Draft data and validated output](/docs/v9/solid/guides/validation#draft-data-and-validated-output).
 
 ## Should I use Switch and Match, or stepper.match?
 
@@ -220,7 +220,7 @@ read once, when the flow is created, so a snapshot that loads asynchronously
 must be ready before the flow renders: wait for it with `<Show>`, or call
 `stepper.restore(snapshot)` once it arrives. See
 [Resuming from a cookie or the database](/docs/v9/solid/guides/ssr#resuming-from-a-cookie-or-the-database)
-and [Saving and resuming](/docs/v9/react/guides/persistence).
+and [Saving and resuming](/docs/v9/solid/guides/persistence).
 
 ```tsx
 const saved = createAsync(() => getSnapshot());
@@ -236,7 +236,7 @@ const saved = createAsync(() => getSnapshot());
 
 Yes. The `next` option decides where each step leads from its data, and a
 `null` entry ends the flow at that step. See
-[Branching](/docs/v9/react/guides/branching); the options are the same in
+[Branching](/docs/v9/solid/guides/branching); the options are the same in
 Solid.
 
 ## Can the same step appear twice?

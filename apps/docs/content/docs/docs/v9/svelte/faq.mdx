@@ -125,7 +125,7 @@ const signup = defineStepper([
 
 A promise of a result: `{ accepted: true, to, data }` or
 `{ accepted: false, reason, issues? }`. They do not throw for an expected
-outcome. See [Moving between steps](/docs/v9/react/guides/navigation#read-the-result).
+outcome. See [Moving between steps](/docs/v9/svelte/guides/navigation#read-the-result).
 
 ## How do I handle the final submit?
 
@@ -133,13 +133,13 @@ Call `next()` on the last step. It finishes the flow and calls `onFinish` once
 with the validated output of every complete step. `stepper.isLast` tells you
 when to change the button's label, and `stepper.isFinished` when to show the
 confirmation. If the request can fail, return its promise from `onFinish`; see
-[When submitting can fail](/docs/v9/react/guides/navigation#when-submitting-can-fail).
+[When submitting can fail](/docs/v9/svelte/guides/navigation#when-submitting-can-fail).
 
 ## Where are the values my schema transformed?
 
 In `stepper.output`, and in the first argument of `onFinish`. `stepper.data`
 keeps what was typed. See
-[Draft data and validated output](/docs/v9/react/guides/validation#draft-data-and-validated-output).
+[Draft data and validated output](/docs/v9/svelte/guides/validation#draft-data-and-validated-output).
 
 ## How do I keep what was typed when the user goes back?
 
@@ -173,7 +173,7 @@ SvelteKit, read it in `load`, from a cookie or your database, so the server
 already renders the right step. A snapshot kept in `localStorage` can only be
 applied after mounting, with `stepper.restore()`. See
 [Resuming from a cookie or the database](/docs/v9/svelte/guides/ssr#resuming-from-a-cookie-or-the-database)
-and [Saving and resuming](/docs/v9/react/guides/persistence).
+and [Saving and resuming](/docs/v9/svelte/guides/persistence).
 
 ## Can I run side effects when the step changes?
 
@@ -216,7 +216,7 @@ element unmounts. `bind:this` gives you the component instead. See
 
 Yes. The `next` option decides where each step leads from its data, and a
 `null` entry ends the flow at that step. See
-[Branching](/docs/v9/react/guides/branching).
+[Branching](/docs/v9/svelte/guides/branching).
 
 ## Can the same step appear twice?
 
@@ -242,7 +242,7 @@ send a deep link to a step the flow does not allow yet back to one it does. See
 
 ```ts title="src/routes/checkout/[step]/+page.server.ts"
 import { redirect } from "@sveltejs/kit";
-import { checkout } from "$lib/checkout";
+import { checkout } from "#lib/checkout.js";
 
 export function load({ params, cookies }) {
   const saved = cookies.get("checkout");

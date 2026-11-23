@@ -26,7 +26,7 @@ export function load({ cookies }) {
 
 ```svelte title="src/routes/onboarding/+page.svelte"
 <script lang="ts">
-  import { onboarding } from "$lib/onboarding";
+  import { onboarding } from "#lib/onboarding.js";
 
   let { data } = $props();
 
