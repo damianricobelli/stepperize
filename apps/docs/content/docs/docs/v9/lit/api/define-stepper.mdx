@@ -30,14 +30,15 @@ class CheckoutSteps extends LitElement {
   stepper = checkout.controller(this, { linear: true, onFinish });
   stepper = checkout.controller(this, () => ({ step: this.step }));
   stepper = checkout.controller(this, flow);
+  stepper = checkout.controller(this, () => this.flow);
 }
 ```
 
 | `source` | The controller... |
 | --- | --- |
 | Nothing, or options | Creates a flow and owns it. |
-| A function returning options | The same, and reads the options again after every update of the host, so callbacks and `step` see the host's latest properties. |
 | A flow | Follows that flow without owning it. See [Shared state](/docs/v9/lit/guides/shared-state). |
+| A function | Reads it once before every render of the host. Options are given to the flow it owns, so callbacks and `step` see the host's latest properties, and a move that `step` causes is in the same render. A flow is followed, including one that arrives later or changes. `undefined` means no options. |
 
 It updates the host (`requestUpdate()`) on every change of the flow while the
 host is connected, stops when the host is disconnected and resumes, catching up
@@ -48,17 +49,22 @@ with anything it missed, when the host is connected again.
 | `value` | The current [stepper](/docs/v9/react/api/stepper): an immutable view plus the actions. A new object after every change. |
 | `flow` | The flow itself, to hand to another controller or to code outside the element. |
 | `steps` | The steps of the definition. |
+| `destroy()` | Ends the controller: it stops updating the host and is removed from it. A flow it owns is destroyed, which cancels a running move; a flow it follows is left running. Disconnecting does not do this, because an element can be moved. |
 | `root()`, `list()`, `item(id)`... | The [primitives](/docs/v9/lit/api/primitives). Not in `/headless`. |
 
-The flow is created the first time it is needed, which is no later than when
-the host is connected. `snapshot` is read at that moment, so it can come from
-a property set on the element before it connects: a Lit template binding
+The flow is created the first time it is needed, which is no later than the
+host's first update. `snapshot` is read at that moment, so it can come from a
+property set on the element before then: a Lit template binding
 (`.options=${…}`) is, and so is a property assigned before the element is
-appended. One assigned after that is ignored.
+appended. One assigned after that is ignored; use `restore()` instead.
+
+The host can be any `ReactiveControllerHost`: `addController`,
+`removeController`, `requestUpdate` and `updateComplete` are all it uses.
 
 ## Types
 
 Everything `@stepperize/core` exports as a type is re-exported:
 `Stepper<S>`, `Flow<S>`, `Options<S>`, `Snapshot<S>`, `Result<S>`, `Id<S>` and
 the rest. `StepperController` and `StepperPrimitives` are the controller
-classes, for typing a field.
+classes, for typing a field or a property that receives one. `ControllerSource<S>`
+is what `controller` accepts, and `StepItem<S, I>` is what `at(id)` returns.

@@ -5,11 +5,13 @@ description: The element directives of the controller.
 
 Every primitive is a method of the controller that returns an element
 directive. Write it inside an opening tag; using it anywhere else throws
-[SZ001](/docs/v9/core/errors#sz001). The directives add attributes and leave
-yours in place.
+[SZ001](/docs/v9/core/errors#sz001). The directives add attributes and never
+remove one they did not set; where you set the same one, see
+[Your attributes](/docs/v9/lit/guides/primitives#your-attributes).
 
-All of them must be inside the element that has `root()`. Without one the
-controller throws [SZ100](/docs/v9/core/errors#sz100).
+All of them must be inside the element that has `root()`, in your template or
+in a child component's. Without one the controller throws
+[SZ100](/docs/v9/core/errors#sz100).
 
 ## root
 
@@ -21,10 +23,13 @@ html`<div ${s.root({ orientation: "vertical" })}>…</div>`;
 | --- | --- | --- |
 | `orientation` | `"horizontal" \| "vertical"` | Default `"horizontal"`. |
 
-The element gets `role="group"` and the name "Stepper". While an async check or
-`onFinish` runs it has `aria-busy` and `data-pending`; once the flow has
-finished it has `data-finished`. A visually hidden live region is appended to
-it for announcements.
+The element gets `role="group"` and the name "Stepper", unless you give it a
+`role` or a name (`aria-label`, `aria-labelledby`) of your own. While an async
+check or `onFinish` runs it has `aria-busy` and `data-pending`; once the flow
+has finished it has `data-finished`. A visually hidden live region is appended
+to it for announcements, styled through its `style` property, so a Content
+Security Policy that forbids inline style attributes does not block it. It is
+cleared once the flow finishes.
 
 The flow's options (`linear`, `guard`, `onFinish`...) go to
 [`controller`](/docs/v9/lit/api/define-stepper#controller), not here.
@@ -39,8 +44,10 @@ html`<ol ${s.list()}>…</ol>`;
 | --- | --- | --- |
 | `orientation` | `"horizontal" \| "vertical"` | Defaults to the root's. |
 
-A `tablist` when the flow is not linear and the template has triggers. Handles
-the arrow keys, Home and End, mirrored in right-to-left layouts.
+A `tablist` when the flow is not linear and the template has triggers; a flow
+the controller follows says whether it is linear itself. Handles the arrow keys
+(left and right, or up and down when vertical), Home and End, mirrored in
+right-to-left layouts.
 
 ## item
 
@@ -60,7 +67,8 @@ html`<button ${s.trigger(step.id, { disabled: this.locked })}>…</button>`;
 ```
 
 Goes to its step when pressed. It is disabled when `linear` does not allow
-reaching the step, or with `disabled: true`. In a flow that is not linear it is
+reaching the step, with `disabled: true`, or with a `disabled` attribute of
+yours. In a flow that is not linear it is
 a `tab`; in a linear flow it is a plain button, with `aria-current="step"` on
 the current one. A `button` gets `type="button"` unless you wrote a `type`.
 
@@ -80,7 +88,8 @@ html`<div ${s.content("payment")}>…</div>`;
 
 The panel of a step: `hidden` unless its step is current. It is the `tabpanel`
 of its trigger in a flow rendered as tabs, and otherwise a `group` named after
-the step's `title`.
+the step's `title`. A `role`, name or `tabindex` of yours wins; its `id` is the
+stepper's, because tabs and focus find the panel by it.
 
 ## prev and next
 
@@ -90,7 +99,7 @@ html`<button ${s.prev()}>Back</button> <button ${s.next()}>Continue</button>`;
 
 | Option | Type | Description |
 | --- | --- | --- |
-| `disabled` | `boolean` | Disable it on top of what the flow decides. |
+| `disabled` | `boolean` | Disable it on top of what the flow decides. A `disabled` attribute of yours adds up the same way. |
 
 - `next()` calls the flow's `next()` with no argument, which validates the data
   stored for the current step. On the last step it finishes the flow; it is
@@ -106,11 +115,12 @@ move yourself.
 
 ## at
 
-`s.at(id)` returns a step as its item sees it.
+`s.at(id)` returns a step as its item sees it. It reads the flow, so it works
+in `render()` on the server too.
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `step` | `Step` | The step, with all its fields. |
+| `step` | `StepOf<S, I>` | The step with that id, with all its fields typed. |
 | `index` | `number` | Its position. |
 | `state` | `"pending" \| "current" \| "complete"` | |
 | `invalid` | `boolean` | Its last validation failed and its data has not changed since. |
@@ -120,10 +130,14 @@ move yourself.
 ## Titles and descriptions
 
 There are no `title` or `description` directives: write `${step.title}` in your
-template.
+template. The step is already in scope where you map over the steps, the text
+renders on the server (a directive could only fill it in on hydration), and an
+element with only text needs no role or state.
 
 ## Diagnostics
 
 In development the primitives warn about a trigger without an accessible name
-([SZ002](/docs/v9/core/errors#sz002)) and a trigger outside a list
-([SZ003](/docs/v9/core/errors#sz003)).
+([SZ002](/docs/v9/core/errors#sz002)), a trigger outside a list
+([SZ003](/docs/v9/core/errors#sz003)), and a trigger or panel in a different
+shadow root than the root, where ids cannot reach it
+([SZ004](/docs/v9/core/errors#sz004)).

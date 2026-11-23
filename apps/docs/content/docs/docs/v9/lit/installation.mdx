@@ -58,13 +58,13 @@ ARIA yourself, import from `/headless` to leave them out of your bundle:
 import { defineStepper } from "@stepperize/lit/headless";
 ```
 
-The definition is the same; its controller has `flow` and `value` and no
-directives.
+The definition is the same; its controller has `flow`, `value` and `destroy()`,
+and no directives.
 
 ## Other web component libraries
 
 The controller only needs a `ReactiveControllerHost` (`addController`,
-`requestUpdate`, `updateComplete`), so it works with anything that implements
-that interface. For plain custom elements with no library, use
+`removeController`, `requestUpdate`, `updateComplete`), so it works with
+anything that implements that interface. For plain custom elements with no library, use
 [`@stepperize/core`](/docs/v9/core) directly: `flow.subscribe` in
 `connectedCallback`, and its return value in `disconnectedCallback`.

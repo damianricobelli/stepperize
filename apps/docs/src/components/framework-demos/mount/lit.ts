@@ -48,7 +48,7 @@ class LitDemo extends LitElement {
 				<div ${s.content("account")} class=${panel}>Create your account.</div>
 				<div ${s.content("plan")} class=${panel}>Pick the plan that fits.</div>
 				<div ${s.content("done")} class=${panel}>
-					${s.value.isFinished ? "Finished. Thanks!" : "Press Finish to complete the flow."}
+					${stepper.isFinished ? "Finished. Thanks!" : "Press Finish to complete the flow."}
 				</div>
 				<div class="flex items-center gap-2">
 					<button ${s.prev()} class="rounded-md border px-3 py-1 disabled:opacity-40">Back</button>

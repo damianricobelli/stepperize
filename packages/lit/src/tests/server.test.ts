@@ -25,3 +25,20 @@ it("renders on the server without browser globals or callbacks; the parts are ap
 	expect(onInvalidStep).not.toHaveBeenCalled();
 	errors.mockRestore();
 });
+
+it("what the first paint needs is written as bindings, which the server renders", async () => {
+	await import("./elements");
+	const page = collectResultSync(
+		render(html`<sz-served .options=${{ snapshot: { step: "second", complete: ["first"] } }}></sz-served>`),
+	);
+	const panels = Array.from(page.matchAll(/<section([^>]*)>/g), (match) => match[1].includes("hidden"));
+	expect(panels).toEqual([true, false, true]);
+	expect(Array.from(page.matchAll(/data-state="(\w+)"/g), (match) => match[1])).toEqual([
+		"complete",
+		"current",
+		"pending",
+	]);
+	expect(page.match(/<button type="button"/g)?.length).toBe(5);
+	// The directives' own attributes are added by hydration.
+	expect(page).not.toContain("data-component");
+});

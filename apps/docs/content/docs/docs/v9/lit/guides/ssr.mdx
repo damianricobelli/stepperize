@@ -1,43 +1,101 @@
 ---
 title: Server rendering
-description: What renders on the server with @lit-labs/ssr, and what waits for the browser.
+description: What renders on the server with @lit-labs/ssr, what waits for hydration, and how to make the first paint right.
 ---
 
 With [`@lit-labs/ssr`](https://lit.dev/docs/ssr/overview/) the controller works
-on the server: the flow is created, the step in `snapshot` or `step` is the
-current one, and your template renders for it. No callback runs on the server.
+on the server: the flow is created from your options the first time `render()`
+reads it, the step in `snapshot` or `step` is the current one, and your
+template renders for it. No callback runs on the server, and neither do the
+controller's lifecycle hooks.
 
-## What waits for the browser
+## What waits for hydration
 
-Lit's server renderer does not run element directives. The primitives are
-element directives, so on the server your elements render without the roles,
-ids, `data-state` and `hidden` that the directives add. They appear when the
-element hydrates.
+Lit's server renderer does not run element directives, and the primitives are
+element directives. So the server HTML has what your template wrote (static
+attributes and bindings) and none of what the directives add: roles, ids,
+`aria-*`, `data-*`, `hidden` on the panels that are not current and
+`type="button"`. All of it is added in place when the element hydrates, and
+from then on the stepper works as it does without a server.
 
-That matters for two things:
+Until then, three things are visible:
 
-- **Panels.** `content()` hides the panels that are not current. Until
-  hydration nothing does, so render only the current panel, or write `hidden`
-  yourself:
+- every panel shows, not only the current one;
+- rules such as `[data-state="current"]` match nothing;
+- a `<button>` inside a `<form>` is a submit button.
+
+## Make the first paint right
+
+Write those three as bindings. Bindings render on the server, and the
+directives work with them: they never remove an attribute they did not set, and
+a `hidden` you bind adds to the one they set. On every later render both agree,
+because both come from the flow.
 
 ```ts
-html`<div ${s.content("payment")} ?hidden=${s.value.current.id !== "payment"}>…</div>`;
+render() {
+  const s = this.stepper;
+  const current = s.value.current.id;
+
+  return html`
+    <div ${s.root()}>
+      <ol ${s.list()}>
+        ${s.steps.map(
+          (step) => html`
+            <li ${s.item(step.id)} data-state=${s.at(step.id).state}>
+              <button type="button" ${s.trigger(step.id)}>${step.title}</button>
+            </li>
+          `,
+        )}
+      </ol>
+
+      ${s.steps.map(
+        (step) => html`<section ${s.content(step.id)} ?hidden=${current !== step.id}>…</section>`,
+      )}
+
+      <button type="button" ${s.prev()}>Back</button>
+      <button type="button" ${s.next()}>Continue</button>
+    </div>
+  `;
+}
 ```
 
-- **Styling by state.** Rules such as `[data-state="current"]` do not match
-  before hydration. If the first paint must be styled, add your own class from
-  `s.at(step.id).state`, which does run on the server:
+- **Panels:** bind `?hidden` from `s.value.current`. Do not write a static
+  `hidden` instead: yours adds to the directive's, so the current panel would
+  stay hidden after hydration. Or render only the current panel and leave the
+  others out of the template; their fields then lose what was typed in them
+  unless it is kept in the flow with `setData`.
+- **State for styling:** `s.at(id)` reads a step from the flow, on the server
+  too. Bind its `state` (or a class) on the elements your CSS targets.
+- **Buttons:** write `type="button"`. The directives keep a `type` you wrote.
+
+The roles and ARIA are not worth writing by hand: until the page hydrates the
+tabs cannot be operated, and announcing them as tabs would promise a keyboard
+that does not work yet.
+
+## Hydration
+
+Load Lit's hydration support before Lit itself, as the
+[client usage guide](https://lit.dev/docs/ssr/client-usage/) explains:
 
 ```ts
-html`<li ${s.item(step.id)} class=${s.at(step.id).state}>…</li>`;
+import "@lit-labs/ssr-client/lit-element-hydrate-support.js";
 ```
 
-If the stepper must be fully formed in the server HTML, with no client step,
-write the roles and states as ordinary attributes from `s.value`
-(`s.value.state(id)`, `s.value.canGoTo(id)`, `s.value.current`), using the [headless](/docs/v9/lit/installation#the-controller-without-the-primitives)
+The element must start from the same options on the client as on the server,
+or the hydrated page shows the server's step with the client's flow. A
+property bound in the server template (`.options=${…}`) is not in the HTML:
+the client only has it if it hydrates that template with the same values.
+Otherwise pass state the client can read too, such as an attribute or the URL
+(see [The URL as the current step](/docs/v9/lit/guides/url)).
+
+## With no client script
+
+If a page is never hydrated, the directives never run. To send a stepper that
+is complete in the server HTML, write its roles and states yourself from
+`s.value` (`s.value.state(id)`, `s.value.canGoTo(id)`, `s.value.current`),
+with the [headless](/docs/v9/lit/installation#the-controller-without-the-primitives)
 controller, instead of the directives.
 
 ## Without server rendering
 
-Nothing to do. The controller creates the flow when the element connects and
-the directives apply everything in the first render.
+Nothing to do. The directives apply everything in the first render.

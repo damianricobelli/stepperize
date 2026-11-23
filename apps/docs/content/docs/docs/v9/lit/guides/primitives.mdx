@@ -54,7 +54,8 @@ class CheckoutSteps extends LitElement {
 ## How the pieces connect
 
 1. `root()` marks the element that contains the stepper. Every other part must
-   be inside it; clicks and keys are handled there.
+   be inside it, in your template or in a [child component](#parts-in-a-child-component)'s;
+   clicks and keys are handled there.
 2. `list()` marks the list of steps and gives it arrow-key navigation.
 3. `item(id)` is one step.
 4. `trigger(id)` goes to that step when pressed.
@@ -66,7 +67,8 @@ Step ids are typed: `s.content("shiping")` does not compile.
 
 A directive is written inside the opening tag, next to the attributes. It adds
 to what you wrote: `class`, `style`, your own attributes and your own
-`@click` stay.
+`@click` stay. See [Your attributes](#your-attributes) for the ones a directive
+also sets.
 
 ## Why directives and not custom elements
 
@@ -141,6 +143,88 @@ html`<button
 </button>`;
 ```
 
+## Your attributes
+
+A directive never removes an attribute it did not set. Where you and the
+directive both set one:
+
+| Attribute | On | Who wins |
+| --- | --- | --- |
+| `role`, `aria-label`, `aria-labelledby`, `tabindex` | root, list, item, content, indicator | **Yours.** A name you give replaces the stepper's, both ways of naming included. |
+| `type` | any `<button>` | **Yours.** Otherwise `type="button"`. |
+| `disabled`, `hidden` | any part | **Both.** Yours adds to the stepper's: disabled if either says so. `aria-disabled` and `data-disabled` follow. |
+| ARIA and `id` | trigger, prev, next, and the `id` of content | **The stepper's.** They are what make the tabs, the keyboard and focus work. |
+| `data-*` the stepper sets | any part | **The stepper's**, and yours comes back when it stops setting one. |
+
+```ts
+html`
+  <div ${s.root()} aria-label="Checkout">…</div>
+  <section ${s.content("payment")} aria-labelledby="payment-heading">
+    <h3 id="payment-heading">Pay</h3>
+  </section>
+`;
+```
+
+To disable a button on top of the flow, prefer the option:
+`s.next({ disabled: this.saving })`. A `?disabled=${…}` binding works too, with
+one gap: when it turns on while the stepper has already disabled the button
+(Back on the first step), the stepper cannot see it, and enables the button when
+the flow moves on.
+
+Trigger and panel ids are the stepper's: the tabs, `aria-controls`, the panel's
+name and the focus hand-off are tied by them. Select a panel by
+`[data-step="payment"]` instead of an id of your own.
+
+## Parts in a child component
+
+The parts can be rendered by another element, in its own shadow root: pass it
+the controller as a property.
+
+```ts
+import type { StepperPrimitives } from "@stepperize/lit";
+
+class CheckoutSteps extends LitElement {
+  stepper = checkout.controller(this);
+
+  render() {
+    const s = this.stepper;
+    return html`
+      <div ${s.root()}>
+        <ol ${s.list()}>…</ol>
+        <div ${s.content("shipping")}>…</div>
+        <checkout-nav .stepper=${s}></checkout-nav>
+      </div>
+    `;
+  }
+}
+
+class CheckoutNav extends LitElement {
+  static properties = { stepper: { attribute: false } };
+  declare stepper: StepperPrimitives<typeof checkout.steps>;
+
+  render() {
+    return html`<button ${this.stepper.prev()}>Back</button><button ${this.stepper.next()}>Continue</button>`;
+  }
+}
+```
+
+Parts that arrive later, from a child component, `until` or anything else, are
+painted as soon as their template is in place. Clicks reach the root and keys
+reach the list from inside the child's shadow root.
+
+Ids do not cross shadow roots, so two things need one root: a trigger and the
+panel it controls name each other by id, and focus moves to the new panel by
+id. Render the panels, and the triggers of a flow shown as tabs, in the same
+shadow root as `root()`. In development a trigger or panel in another root is
+reported as [SZ004](/docs/v9/core/errors#sz004). Everything else can be in a
+child's shadow root: the list and its items, indicators, Back and Continue,
+and the triggers of a linear flow whose steps have a `title`.
+
+## Ending the stepper
+
+`this.stepper.destroy()` ends the controller and stops its directives:
+see [Ending a flow](/docs/v9/lit/guides/shared-state#ending-a-flow).
+
 ## Panels in or out of the template
 
 `content(id)` hides its element while the step is not current, so the fields
@@ -150,5 +234,8 @@ the template:
 ```ts
 ${s.value.current.id === "review" ? html`<div ${s.content("review")}>…</div>` : nothing}
 ```
+
+With [server rendering](/docs/v9/lit/guides/ssr), either way needs a binding
+or a condition so the server HTML only shows the current panel.
 
 See the [primitives reference](/docs/v9/lit/api/primitives) for every option.

@@ -98,7 +98,9 @@ render() {
 They handle roles, ids, keyboard navigation, focus and screen reader
 announcements, and expose their state through `data-*` attributes for styling.
 Step ids are typed: `s.content("shiping")` does not compile. They work in
-shadow DOM and in light DOM.
+shadow DOM and in light DOM, and keep the attributes you write: your name,
+role and tab stop on the structure, your `type`, and your `disabled` on top of
+the flow's.
 
 If you only want the controller, import from `@stepperize/lit/headless`.
 
@@ -106,9 +108,12 @@ If you only want the controller, import from `@stepperize/lit/headless`.
 
 | | |
 | --- | --- |
-| `controller(host, options?)` | A flow owned by the host. Options can be a function, read again on every update. |
-| `controller(host, flow)` | Follow a flow that lives elsewhere, to share it between elements. |
+| `controller(host, options?)` | A flow owned by the host. Options can be a function, read again before every render. |
+| `controller(host, flow)` | Follow a flow that lives elsewhere, to share it between elements. A function returning the flow follows one that arrives later or changes, such as one from `@lit/context`. |
 | `create(options?)` | The same state machine without Lit, for tests, servers and stores. |
+
+`stepper.destroy()` ends a controller: it leaves the host, and a flow the host
+owns is destroyed with it.
 
 ## License
 

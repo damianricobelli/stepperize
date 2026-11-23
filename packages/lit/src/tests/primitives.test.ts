@@ -1,7 +1,7 @@
 import axe from "axe-core";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { page as screen, userEvent } from "vitest/browser";
-import { type Full, type Scenario, type StepOptions, steps } from "./elements";
+import { flow as definition, type Follower, type Full, type Scenario, type StepOptions, steps } from "./elements";
 
 const mounted: Element[] = [];
 afterEach(() => {
@@ -9,7 +9,11 @@ afterEach(() => {
 });
 
 /** Put an element on the page with its properties set, and wait for its first render. */
-async function mount<E extends Full | Scenario>(tag: string, props: Partial<E> = {}, parent: Element = document.body) {
+async function mount<E extends Full | Scenario | Follower>(
+	tag: string,
+	props: Partial<E> = {},
+	parent: Element = document.body,
+) {
 	const element = Object.assign(document.createElement(tag), props) as E;
 	parent.appendChild(element);
 	mounted.push(element);
@@ -20,7 +24,25 @@ async function mount<E extends Full | Scenario>(tag: string, props: Partial<E> =
 }
 const full = (options: StepOptions = {}, tag = "sz-full") => mount<Full>(tag, { options });
 const scenario = (name: string, props: Partial<Scenario> = {}) => mount<Scenario>("sz-scenario", { name, ...props });
-const settle = (element: Full | Scenario) => element.updateComplete;
+const settle = (element: Full | Scenario | Follower) => element.updateComplete;
+/** Let a move, its notification and the update it requests run. */
+const flush = async (element: Full | Scenario | Follower) => {
+	await new Promise((resolve) => setTimeout(resolve));
+	await element.updateComplete;
+};
+const tabs = (element: Element) =>
+	Array.from(root(element).querySelectorAll<HTMLButtonElement>('[data-component="stepper-trigger"]'));
+/** Collect the development warnings `run` causes. */
+async function warnings(run: () => Promise<unknown>) {
+	const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+	try {
+		await run();
+		await new Promise((resolve) => setTimeout(resolve));
+		return warn.mock.calls.map((call) => String(call[0]));
+	} finally {
+		warn.mockRestore();
+	}
+}
 
 async function violations(node: Element) {
 	// `region` is about page landmarks, not a component rendered in isolation.
@@ -390,6 +412,305 @@ describe("development diagnostics", () => {
 		window.removeEventListener("error", onError);
 		expect(errors.some((message) => message.includes("SZ100"))).toBe(true);
 		expect(errors.some((message) => message.includes("SZ102"))).toBe(true);
+	});
+});
+
+describe("your attributes", () => {
+	it("keeps your name, role and tab stop on the structure, and adds your `disabled` to the flow's", async () => {
+		const element = await scenario("authored", { label: "Your details", lock: true });
+		const dom = root(element);
+		const stepper = dom.querySelector('[data-component="stepper"]');
+		expect([stepper?.id, stepper?.getAttribute("role"), stepper?.getAttribute("aria-label")]).toEqual([
+			"mine",
+			"region",
+			"Checkout",
+		]);
+		expect(dom.querySelector("ol")?.getAttribute("role")).toBe("list");
+		expect(dom.querySelector("li")?.getAttribute("role")).toBe("none");
+		const [one, two] = dom.querySelectorAll<HTMLElement>('[data-component="stepper-content"]');
+		// Your name replaces the stepper's, and both of its ways of naming go.
+		expect([one.getAttribute("aria-label"), one.hasAttribute("aria-labelledby"), one.tabIndex]).toEqual([
+			"Your details",
+			false,
+			0,
+		]);
+		expect(two.getAttribute("aria-labelledby")).toBe(tabs(element)[1].id);
+		// The controls keep the stepper's ARIA: they are still tabs.
+		expect(tabs(element)[0].getAttribute("role")).toBe("tab");
+		// Your `disabled` survives every update of the flow, and shows in ARIA too.
+		await element.stepper.value.next();
+		await flush(element);
+		const [back, forward] = [screen.getByRole("button", { name: "Back" }).element() as HTMLButtonElement, next()];
+		expect([back.disabled, forward.disabled, forward.getAttribute("aria-disabled")]).toEqual([true, true, "true"]);
+		element.lock = false;
+		await flush(element);
+		expect([back.disabled, forward.disabled, forward.hasAttribute("aria-disabled")]).toEqual([false, false, false]);
+		// At the start the flow disables Back on its own.
+		await element.stepper.value.prev();
+		await flush(element);
+		expect(back.disabled).toBe(true);
+		// Your name can go away: the stepper's comes back.
+		element.label = undefined;
+		await flush(element);
+		expect([one.hasAttribute("aria-label"), one.getAttribute("aria-labelledby")]).toEqual([false, tabs(element)[0].id]);
+	});
+
+	it("removes only what it set: tabs that become a list lose their tab attributes", async () => {
+		const element = await full();
+		const [first] = tabs(element);
+		first.setAttribute("data-mine", "yes");
+		element.options = { linear: true };
+		await settle(element);
+		await settle(element);
+		expect([first.hasAttribute("role"), first.hasAttribute("aria-selected"), first.hasAttribute("tabindex")]).toEqual([
+			false,
+			false,
+			false,
+		]);
+		expect([first.getAttribute("aria-current"), first.dataset.mine]).toEqual(["step", "yes"]);
+	});
+});
+
+describe("templates", () => {
+	it("paints parts that `until` renders later", async () => {
+		let resolve!: () => void;
+		const element = await scenario("until", { later: new Promise<void>((done) => (resolve = done)) });
+		expect(root(element).querySelector("ol")?.hasAttribute("role")).toBe(false);
+		resolve();
+		await flush(element);
+		expect(root(element).querySelector("ol")?.getAttribute("role")).toBe("tablist");
+		expect(tabs(element).map((tab) => tab.getAttribute("aria-selected"))).toEqual(["true", "false", "false"]);
+	});
+
+	it("keeps painting parts that `guard` does not render again", async () => {
+		const element = await scenario("guard");
+		await userEvent.click(next());
+		const panels = root(element).querySelectorAll<HTMLElement>('[data-component="stepper-content"]');
+		expect(Array.from(panels, (panel) => panel.hidden)).toEqual([true, false]);
+		// And after the host is moved, when `guard` still does not render them.
+		element.remove();
+		document.body.appendChild(element);
+		await element.stepper.flow.prev();
+		await flush(element);
+		expect(Array.from(panels, (panel) => panel.hidden)).toEqual([false, true]);
+	});
+
+	it("follows parts that `cache` puts away and brings back", async () => {
+		const element = await scenario("cache", { show: true });
+		const panel = root(element).querySelector<HTMLElement>('[data-component="stepper-content"]');
+		element.show = false;
+		await settle(element);
+		await element.stepper.value.next();
+		await flush(element);
+		element.show = true;
+		await settle(element);
+		expect(root(element).querySelector('[data-component="stepper-content"]')).toBe(panel);
+		expect(panel?.hidden).toBe(true);
+		await element.stepper.value.prev();
+		await flush(element);
+		expect(panel?.hidden).toBe(false);
+	});
+
+	it("follows the order `repeat` gives the items, for the keyboard too", async () => {
+		const element = await scenario("repeat");
+		element.order = ["third", "second", "first"];
+		await settle(element);
+		expect(tabs(element).map((tab) => tab.dataset.step)).toEqual(["third", "second", "first"]);
+		tabs(element)[2].focus();
+		await userEvent.keyboard("{ArrowLeft}");
+		await flush(element);
+		expect(element.stepper.value.current.id).toBe("second");
+		expect(tabs(element).map((tab) => tab.getAttribute("aria-posinset"))).toEqual(["3", "2", "1"]);
+	});
+
+	it("keeps the live region when a trailing child expression of the root changes", async () => {
+		const element = await scenario("trailing");
+		element.show = true;
+		await settle(element);
+		element.show = false;
+		await settle(element);
+		await userEvent.click(next());
+		expect(region(element)?.textContent).toBe("Second");
+	});
+
+	it("two controllers on one host keep their own ids, flows and keys", async () => {
+		const element = await scenario("two");
+		const [one, two] = [screen.getByTestId("one").element(), screen.getByTestId("two").element()];
+		const ids = (node: Element) => Array.from(node.querySelectorAll("[id]"), (child) => child.id);
+		expect(ids(one).some((id) => ids(two).includes(id))).toBe(false);
+		await userEvent.click(screen.getByRole("button", { name: "Next" }));
+		await flush(element);
+		expect([element.stepper.value.current.id, element.other.value.current.id]).toEqual(["first", "second"]);
+		(one.querySelector('[role="tab"]') as HTMLElement).focus();
+		await userEvent.keyboard("{End}");
+		await flush(element);
+		expect([element.stepper.value.current.id, element.other.value.current.id]).toEqual(["third", "second"]);
+	});
+});
+
+describe("keyboard", () => {
+	it("a vertical list moves with up and down, and Home and End jump to the edges", async () => {
+		const element = await scenario("vertical");
+		expect(root(element).querySelector("ol")?.getAttribute("aria-orientation")).toBe("vertical");
+		tabs(element)[0].focus();
+		await userEvent.keyboard("{ArrowRight}");
+		await flush(element);
+		expect(element.stepper.value.current.id).toBe("first");
+		await userEvent.keyboard("{ArrowDown}");
+		await flush(element);
+		expect(element.stepper.value.current.id).toBe("second");
+		await userEvent.keyboard("{End}");
+		await flush(element);
+		expect([element.stepper.value.current.id, element.shadowRoot?.activeElement]).toEqual(["third", tabs(element)[2]]);
+		await userEvent.keyboard("{Home}");
+		await flush(element);
+		expect(element.stepper.value.current.id).toBe("first");
+		await userEvent.keyboard("{ArrowUp}");
+		await flush(element);
+		expect(element.stepper.value.current.id).toBe("first");
+	});
+});
+
+describe("child components", () => {
+	it("paints parts of a child component on its first render, and their keys and clicks work", async () => {
+		const seen = await warnings(async () => {
+			const element = await scenario("child");
+			const list = root(element).querySelector("sz-child-list") as Scenario;
+			const nav = root(element).querySelector("sz-child-nav") as Scenario;
+			await list.updateComplete;
+			await nav.updateComplete;
+			const back = root(nav).querySelector("button") as HTMLButtonElement;
+			expect([back.dataset.component, back.disabled, back.type]).toEqual(["stepper-prev", true, "button"]);
+			expect(root(list).querySelector("ol")?.getAttribute("role")).toBe("tablist");
+			await userEvent.click(next());
+			await flush(element);
+			expect(element.stepper.value.current.id).toBe("second");
+			// The key comes from inside the child's shadow root: the list still sees which tab it was.
+			(root(list).querySelector('button[data-step="second"]') as HTMLElement).focus();
+			await userEvent.keyboard("{ArrowRight}");
+			await flush(element);
+			expect(element.stepper.value.current.id).toBe("third");
+			expect(root(list).activeElement?.getAttribute("data-step")).toBe("third");
+		});
+		// Tabs and panels name each other by id, which cannot cross shadow roots: that is reported.
+		expect(seen.filter((message) => message.includes("SZ004")).length).toBe(3);
+		expect(seen.some((message) => message.includes('trigger() part of step "first"'))).toBe(true);
+	});
+});
+
+describe("following", () => {
+	it("renders a linear flow it follows as a list, not tabs", async () => {
+		const element = await mount<Follower>("sz-follower", {
+			flow: definition.create({ linear: true }),
+		});
+		expect(root(element).querySelector("ol")?.hasAttribute("role")).toBe(false);
+		expect(tabs(element)[0].getAttribute("aria-current")).toBe("step");
+	});
+
+	it("follows a flow that arrives later or changes, and leaves the one it replaces alone", async () => {
+		const element = await mount<Follower>("sz-follower");
+		// Until a flow arrives, the host shows one of its own.
+		const own = vi.spyOn(element.stepper.flow, "destroy");
+		expect(root(element).querySelector("output")?.textContent).toBe("first");
+		const first = definition.create({ snapshot: { step: "second" } });
+		element.flow = first;
+		await settle(element);
+		expect(element.stepper.flow).toBe(first);
+		expect(root(element).querySelector("output")?.textContent).toBe("second");
+		// The flow the host owned until then is destroyed; the one it followed is not.
+		const destroy = vi.spyOn(first, "destroy");
+		const second = definition.create({ snapshot: { step: "third" } });
+		element.flow = second;
+		await settle(element);
+		expect(root(element).querySelector("output")?.textContent).toBe("third");
+		expect(destroy).not.toHaveBeenCalled();
+		expect(own).toHaveBeenCalledTimes(1);
+		// Only the current flow updates the host, and a new flow announces nothing.
+		const renders = element.renders;
+		await first.next();
+		await flush(element);
+		expect(element.renders).toBe(renders);
+		expect(region(element)?.textContent).toBe("");
+		await second.goTo("first");
+		await flush(element);
+		expect(root(element).querySelector("output")?.textContent).toBe("first");
+		expect(region(element)?.textContent).toBe("First");
+	});
+});
+
+describe("updates", () => {
+	it("follows `step` in the same render, without a second update or a warning", async () => {
+		const seen = await warnings(async () => {
+			const element = await full({ step: "first" });
+			const renders = element.renders;
+			element.options = { step: "third" };
+			await settle(element);
+			expect(element.renders).toBe(renders + 1);
+			expect(tabs(element)[2].getAttribute("aria-selected")).toBe("true");
+			await settle(element);
+			expect(element.renders).toBe(renders + 1);
+		});
+		expect(seen.filter((message) => message.includes("change-in-update"))).toEqual([]);
+	});
+});
+
+describe("destroy", () => {
+	it("cancels a running move of a flow the host owns, and stops updating the host", async () => {
+		let release!: (value: boolean) => void;
+		const element = await full({ guard: () => new Promise<boolean>((resolve) => (release = resolve)) });
+		const moving = element.stepper.flow.next();
+		await flush(element);
+		expect(element.stepper.value.isPending).toBe(true);
+		const renders = element.renders;
+		element.stepper.destroy();
+		release(true);
+		expect(await moving).toEqual({ accepted: false, reason: "cancelled" });
+		element.requestUpdate();
+		await flush(element);
+		// Gone from the host: its update no longer repaints the parts, and clicks do nothing.
+		expect(element.renders).toBe(renders + 1);
+		next().click();
+		await flush(element);
+		expect(element.stepper.value.current.id).toBe("first");
+		expect(region(element)).toBeNull();
+	});
+
+	it("leaves a flow it follows running", async () => {
+		const shared = definition.create();
+		const element = await mount<Follower>("sz-follower", { flow: shared });
+		element.stepper.destroy();
+		expect(await shared.next()).toMatchObject({ accepted: true });
+	});
+
+	it("a host removed while a move runs shows its result when it comes back, without announcing it", async () => {
+		let release!: (value: boolean) => void;
+		const element = await full({ guard: () => new Promise<boolean>((resolve) => (release = resolve)) });
+		next().focus();
+		await userEvent.click(next());
+		element.remove();
+		release(true);
+		await flush(element);
+		expect(element.stepper.value.current.id).toBe("second");
+		document.body.appendChild(element);
+		await flush(element);
+		expect(tabs(element)[1].getAttribute("aria-selected")).toBe("true");
+		expect(region(element)?.textContent).toBe("");
+		await userEvent.click(next());
+		release(true);
+		await flush(element);
+		expect(region(element)?.textContent).toBe("Third");
+	});
+
+	it("clears the announcement when the flow finishes", async () => {
+		const element = await full();
+		await userEvent.click(next());
+		expect(region(element)?.textContent).toBe("Second");
+		await element.stepper.value.goTo("third");
+		await flush(element);
+		await userEvent.click(next());
+		await flush(element);
+		expect(element.stepper.value.isFinished).toBe(true);
+		expect(region(element)?.textContent).toBe("");
 	});
 });
 

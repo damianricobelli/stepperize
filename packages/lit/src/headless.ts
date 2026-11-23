@@ -24,7 +24,7 @@ export type {
 	Stepper,
 	StepState,
 } from "@stepperize/core";
-export type { ControllerOptions, MaybeGetter } from "./controller";
+export type { ControllerSource, MaybeGetter } from "./controller";
 export { StepperController } from "./controller";
 export type { Definition } from "./definition";
 
