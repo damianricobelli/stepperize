@@ -42,6 +42,16 @@ export function load({ cookies }) {
 `snapshot` is read once, when the flow is created. To replace the state later,
 call `stepper.restore(snapshot)`.
 
+## Flows in a module
+
+A flow created at module scope and read with
+[`fromFlow`](/docs/v9/svelte/api/define-stepper#fromflow) exists once per
+server process, so every request would render, and could change, the same
+one. On the server, create the flow in a component (`useStepper()`,
+`Provider` or `Stepper.Root`) so each request gets its own, and pass it down
+with context. Keep module-level flows for state that only lives in the
+browser.
+
 ## Tabs without triggers
 
 A `Stepper.Root` assumes it will have triggers and renders its panels as tab

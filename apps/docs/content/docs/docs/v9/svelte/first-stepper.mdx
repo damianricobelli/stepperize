@@ -60,7 +60,9 @@ compile.
 </Callout>
 
 Call `useStepper()` at the top of the `<script>`, while the component
-initialises, like `setContext` or `$effect`.
+initialises, like `setContext` or `$effect`: the component owns the flow and
+destroys it when it unmounts. For a flow that lives in a `.svelte.ts` module
+instead, see [Outside a component](/docs/v9/svelte/guides/shared-state#outside-a-component).
 
 ## 3. Move
 

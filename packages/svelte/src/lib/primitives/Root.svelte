@@ -17,6 +17,7 @@ let {
 	step,
 	onInvalidStep,
 	orientation = "horizontal",
+	ref = $bindable(null),
 	children,
 	...rest
 }: RootProps<readonly Step[]> = $props();
@@ -59,23 +60,22 @@ setRoot({
 
 const status = $derived(statusBits(shared.view()));
 const index = $derived(shared.view().index);
-let root = $state<HTMLDivElement>();
 let region = $state<HTMLSpanElement>();
 // Read before Svelte touches the DOM: was focus in this stepper?
 let inside = false;
 let previous = untrack(() => index);
 $effect.pre(() => {
 	void index;
-	inside = focusInside(root);
+	inside = focusInside(ref);
 });
 $effect(() => {
 	if (index === previous) return;
 	previous = index;
-	untrack(() => stepChanged(root, region, shared.flow.current, ui, inside));
+	untrack(() => stepChanged(ref, region, shared.flow.current, ui, inside));
 });
 </script>
 
-<div {...rootAttrs(orientation, status)} {...rest} bind:this={root}>
+<div {...rootAttrs(orientation, status)} {...rest} bind:this={ref}>
 	{@render children?.(shared.stepper)}
 	<span bind:this={region} aria-live="polite" style={HIDDEN}></span>
 </div>

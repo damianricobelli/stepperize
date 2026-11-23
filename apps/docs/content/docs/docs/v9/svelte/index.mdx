@@ -61,15 +61,17 @@ library, owns the fields. See [Forms](/docs/v9/svelte/guides/forms).
   (`title`, `icon`, anything) are inferred from the definition, in `<script>`
   and in markup.
 - **Runes-native.** The stepper is a reactive object: markup, `$derived` and
-  `$effect` follow it. No stores, no `$` prefix.
+  `$effect` follow it, in a component or a `.svelte.ts` module. No stores, no
+  `$` prefix.
 - **Branching as data.** A `next` map decides where each step leads from its
   validated data, and a flow can have more than one ending.
 - **Resumable.** One `snapshot` goes in, one `onChange` comes out. The current
   step can follow the URL with a single option.
 - **Accessible primitives.** Roles, keyboard navigation, focus and
-  announcements are handled for you.
+  announcements are handled for you. `bind:ref`, `{@attach}` and `child`
+  snippets reach the element, as in any Svelte component library.
 - **Server rendering.** It renders in SvelteKit and hydrates in place.
-- **Small.** About 2.9 kB for the stepper and 7.2 kB with the primitives,
+- **Small.** About 3.4 kB for the stepper and 7.8 kB with the primitives,
   min + gzip. The only dependency besides the core is `esm-env`.
 
 ## The same flow as every other binding

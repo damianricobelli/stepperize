@@ -24,6 +24,7 @@ export type {
 	StepState,
 } from "@stepperize/core";
 export type { Definition } from "./definition.js";
+export { fromFlow } from "./flow.svelte.js";
 export type { MaybeGetter, ProviderProps } from "./types.js";
 
 /** The flow and its functions, without the UI primitives: for your own markup. */

@@ -55,7 +55,52 @@ const isLast = $derived(stepper.isLast);
 
 ## Outside a component
 
-A flow does not need a component. `checkout.create()` returns the same state
-machine with `get()` and `subscribe()`, for tests, servers and your own
-`.svelte.ts` modules. `useStepper()` itself needs an effect context: a
-component, or `$effect.root`.
+Sometimes the flow belongs to the app rather than to one component: a wizard
+in a dialog that any page can open, or a flow that survives navigating between
+routes. Create it in a `.svelte.ts` module with `create()`, and make it
+reactive with `fromFlow()`:
+
+```ts title="checkout.svelte.ts"
+import { fromFlow } from "@stepperize/svelte";
+import { checkout } from "./checkout";
+
+export const flow = checkout.create({ linear: true, onFinish: placeOrder });
+export const stepper = fromFlow(flow);
+```
+
+```svelte title="CartBadge.svelte"
+<script lang="ts">
+  import { stepper } from "./checkout.svelte";
+</script>
+
+<span>Step {stepper.index + 1} of {stepper.steps.length}</span>
+```
+
+`stepper` is the same reactive object `useStepper()` returns, and it works
+anywhere `$derived` does: markup, `$derived`, `$effect`, a class or another
+module. It creates no effect, so it needs no component: it subscribes to the
+flow while an effect reads it
+([`createSubscriber`](https://svelte.dev/docs/svelte/svelte-reactivity#createSubscriber))
+and stops when the last one is gone. Read outside an effect, as in an event
+handler, it returns the latest state.
+
+The flow is yours, not a component's:
+
+- Its options are the ones you passed to `create()`. Call
+  `flow.setOptions({ ... })` to change them; it replaces all of them, the
+  definition's defaults included.
+- Nothing destroys it. Call `flow.destroy()` if it should stop, which cancels
+  a running move and drops its listeners.
+
+<Callout type="warn" title="Not for per-user state on the server">
+	A module is evaluated once per server, so in SvelteKit every request would
+	share that one flow. Keep a module-level flow for state that only exists in
+	the browser, and use `useStepper()`, a `Provider` or `Stepper.Root` for
+	anything rendered on the server. See SvelteKit's
+	[state management](https://svelte.dev/docs/kit/state-management#Avoid-shared-state-on-the-server).
+</Callout>
+
+`useStepper()` is not the tool here: it owns its flow, so it needs a component
+(or `$effect.root`) to destroy it. Called at module scope or in an event
+handler, it throws [SZ100](/docs/v9/core/errors#sz100) and points you to
+`fromFlow()`.

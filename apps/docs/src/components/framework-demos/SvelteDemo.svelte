@@ -6,19 +6,10 @@ const { Stepper } = defineStepper([
 	{ id: "plan", title: "Plan", description: "What you need" },
 	{ id: "done", title: "Done", description: "All set" },
 ]);
-let finished = $state(false);
 </script>
 
-<Stepper.Root
-	class="not-prose my-4 flex flex-col gap-4 rounded-lg border p-4 text-sm"
-	data-demo="svelte"
-	onFinish={() => {
-		finished = true;
-	}}
-	onChange={() => {
-		finished = false;
-	}}
->
+<Stepper.Root class="not-prose my-4 flex flex-col gap-4 rounded-lg border p-4 text-sm" data-demo="svelte">
+	<!-- The snippet receives the reactive stepper: `isFinished` and `isLast` come from the flow, not local state. -->
 	{#snippet children(stepper)}
 		<Stepper.List class="flex gap-2">
 			{#snippet item(_step, index)}
@@ -43,7 +34,7 @@ let finished = $state(false);
 		<Stepper.Content step="account" class="rounded-md bg-fd-muted p-3">Create your account.</Stepper.Content>
 		<Stepper.Content step="plan" class="rounded-md bg-fd-muted p-3">Pick the plan that fits.</Stepper.Content>
 		<Stepper.Content step="done" class="rounded-md bg-fd-muted p-3">
-			{finished ? "Finished. Thanks!" : "Press Finish to complete the flow."}
+			{stepper.isFinished ? "Finished. Thanks!" : "Press Finish to complete the flow."}
 		</Stepper.Content>
 
 		<div class="flex items-center gap-2">

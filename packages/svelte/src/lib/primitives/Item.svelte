@@ -3,15 +3,19 @@ import { fail, type Step } from "@stepperize/core";
 import { type ItemValue, itemAttrs, itemBits, itemValue } from "@stepperize/core/primitives";
 import { useShared } from "../flow.svelte.js";
 import { useScope } from "../scope.js";
-import type { ItemProps } from "../types.js";
+import type { ChildProps, ItemProps } from "../types.js";
 import { inTablist, setItem, useElement, useIndex } from "./context.svelte.js";
 
-let { step: id, children, child, ...rest }: ItemProps<readonly Step[]> = $props();
+let { step: id, ref = $bindable(null), children, child, ...rest }: ItemProps<readonly Step[]> = $props();
 
 const scope = useScope();
 const { view } = useShared(scope);
 const auto = useIndex();
-const attach = useElement("Item", () => !!child);
+const attach = useElement<HTMLLIElement>(
+	"Item",
+	(node) => (ref = node),
+	() => !!child,
+);
 const index = $derived(id === undefined ? auto : (scope.positions.get(id) ?? -1));
 const step = $derived(
 	scope.steps[index] ??
@@ -50,7 +54,7 @@ const attrs = $derived({ ...itemAttrs(value, inTablist()), ...rest, ...attach })
 </script>
 
 {#if child}
-	{@render child({ props: attrs })}
+	{@render child({ props: attrs as ChildProps })}
 {:else}
 	<li {...attrs}>{@render children?.(item)}</li>
 {/if}

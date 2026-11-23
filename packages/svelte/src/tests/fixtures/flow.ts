@@ -1,4 +1,4 @@
-import { defineStepper } from "../../lib/index";
+import { defineStepper, type StandardSchemaV1 } from "../../lib/index";
 
 export const steps = [
 	{ id: "first", title: "First", description: "Start here" },
@@ -22,3 +22,17 @@ export const checked = defineStepper([
 ]);
 export const other = defineStepper([{ id: "x" }]);
 export const outer = defineStepper(steps);
+
+/** Typed both ways: a name goes in, its length comes out. */
+const name: StandardSchemaV1<string, number> = {
+	"~standard": {
+		version: 1,
+		vendor: "test",
+		validate: (value) =>
+			typeof value === "string" && value ? { value: value.length } : { issues: [{ message: "Required" }] },
+	},
+};
+export const typed = defineStepper([
+	{ id: "name", title: "Name", schema: name },
+	{ id: "done", title: "Done", icon: "check" },
+]);

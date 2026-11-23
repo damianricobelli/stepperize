@@ -3,8 +3,10 @@ import { flushSync, hydrate, tick, unmount } from "svelte";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { commands, page as screen, userEvent } from "vitest/browser";
 import { cleanup, render } from "vitest-browser-svelte";
+import Controlled from "./fixtures/Controlled.svelte";
 import Full from "./fixtures/Full.svelte";
 import type { Api } from "./fixtures/flow";
+import Parts from "./fixtures/Parts.svelte";
 import Scenario from "./fixtures/Scenario.svelte";
 
 declare module "vitest/browser" {
@@ -26,6 +28,8 @@ async function violations(node: Element) {
 const full = (props: Record<string, unknown> = {}) => render(Full, { props });
 const scenario = (name: string, props: Record<string, unknown> = {}) => render(Scenario, { props: { name, ...props } });
 const next = () => screen.getByRole("button", { name: "Continue" }).element() as HTMLButtonElement;
+const parts = (name: string, props: Record<string, unknown> = {}) => render(Parts, { props: { name, ...props } });
+const tab = (name: RegExp | string) => screen.getByRole("tab", { name }).element() as HTMLButtonElement;
 const region = (container: Element) => container.querySelector('[data-component="stepper"] > [aria-live="polite"]');
 
 describe("patterns", () => {
@@ -138,6 +142,83 @@ describe("navigation", () => {
 		expect(onFinish).toHaveBeenCalledTimes(1);
 	});
 
+	it("a rejecting onFinish leaves the flow unfinished and Next usable, with nothing unhandled", async () => {
+		const unhandled = vi.fn();
+		window.addEventListener("unhandledrejection", unhandled);
+		const onFinish = vi.fn(() => Promise.reject(new Error("Payment declined")));
+		const { container } = await full({ snapshot: { step: "third" }, onFinish });
+		await userEvent.click(next());
+		await new Promise((resolve) => setTimeout(resolve));
+		const root = container.querySelector('[data-component="stepper"]');
+		expect([root?.hasAttribute("data-finished"), root?.hasAttribute("data-pending")]).toEqual([false, false]);
+		expect(next().hasAttribute("aria-disabled")).toBe(false);
+		// The user can try again.
+		await userEvent.click(next());
+		await new Promise((resolve) => setTimeout(resolve));
+		expect(onFinish).toHaveBeenCalledTimes(2);
+		expect(unhandled).not.toHaveBeenCalled();
+		window.removeEventListener("unhandledrejection", unhandled);
+	});
+
+	it("disabled on Trigger, Prev and Next blocks them, and arrow keys skip a disabled tab", async () => {
+		const { container, rerender } = await parts("disabled", { off: { trigger: true, next: true } });
+		const output = () => container.querySelector("output")?.textContent;
+		const second = tab("Second");
+		expect([second.disabled, second.getAttribute("aria-disabled"), second.hasAttribute("data-disabled")]).toEqual([
+			true,
+			"true",
+			true,
+		]);
+		await userEvent.click(second, { force: true });
+		expect(output()).toBe("first");
+		expect([next().disabled, next().getAttribute("aria-disabled")]).toEqual([true, "true"]);
+		await userEvent.click(next(), { force: true });
+		expect(output()).toBe("first");
+		// From the first tab, ArrowRight lands on the third: the second is the application's to block.
+		tab("First").focus();
+		await userEvent.keyboard("{ArrowRight}");
+		expect([output(), document.activeElement]).toEqual(["third", tab("Third")]);
+		const back = screen.getByRole("button", { name: "Back" }).element() as HTMLButtonElement;
+		expect(back.disabled).toBe(false);
+		await rerender({ off: { prev: true } });
+		expect([back.disabled, second.disabled, next().disabled]).toEqual([true, false, false]);
+		await userEvent.click(back, { force: true });
+		expect(output()).toBe("third");
+	});
+
+	it("follows step, linear and onInvalidStep given to the Root as props", async () => {
+		let api!: Api;
+		const onInvalidStep = vi.fn();
+		const { container, rerender } = await render(Controlled, {
+			props: { step: "second", onInvalidStep, ready: (stepper: Api) => (api = stepper) },
+		});
+		await tick();
+		expect(tab("Second").getAttribute("aria-selected")).toBe("true");
+		await rerender({ step: "third" });
+		await tick();
+		expect(tab("Third").getAttribute("aria-selected")).toBe("true");
+		await rerender({ step: "nope" });
+		await tick();
+		expect(onInvalidStep).toHaveBeenCalledWith("third");
+		// Turning `linear` on changes the pattern in place: an ordered list of steps, not tabs.
+		await rerender({ step: "first" });
+		await tick();
+		expect(api.current.id).toBe("first");
+		await rerender({ linear: true });
+		await tick();
+		const list = container.querySelector("ol");
+		expect(list?.hasAttribute("role")).toBe(false);
+		const buttons = container.querySelectorAll<HTMLButtonElement>('[data-component="stepper-trigger"]');
+		expect(Array.from(buttons, (button) => [button.getAttribute("aria-current"), button.disabled])).toEqual([
+			["step", false],
+			[null, true],
+			[null, true],
+		]);
+		await rerender({ linear: false });
+		expect(list?.getAttribute("role")).toBe("tablist");
+		expect(tab("Third").disabled).toBe(false);
+	});
+
 	it("Prev is disabled at the start and returns along the path", async () => {
 		await full();
 		const back = screen.getByRole("button", { name: "Back" }).element() as HTMLButtonElement;
@@ -173,6 +254,26 @@ describe("navigation", () => {
 		expect(document.activeElement).toBe(second);
 		await userEvent.keyboard("{End}");
 		expect(document.activeElement).toBe(screen.getByRole("tab", { name: /Third/ }).element());
+	});
+
+	it("a vertical list moves with up and down, and Home goes to the first tab", async () => {
+		const { container } = await parts("vertical");
+		const output = () => container.querySelector("output")?.textContent;
+		expect(container.querySelector("ol")?.getAttribute("aria-orientation")).toBe("vertical");
+		tab("First").focus();
+		// Left and right belong to the page in a vertical list.
+		await userEvent.keyboard("{ArrowRight}");
+		expect(output()).toBe("first");
+		await userEvent.keyboard("{ArrowDown}");
+		await userEvent.keyboard("{ArrowDown}");
+		expect([output(), document.activeElement]).toEqual(["third", tab("Third")]);
+		// No wrapping past the end.
+		await userEvent.keyboard("{ArrowDown}");
+		expect(output()).toBe("third");
+		await userEvent.keyboard("{ArrowUp}");
+		expect(output()).toBe("second");
+		await userEvent.keyboard("{Home}");
+		expect([output(), document.activeElement]).toEqual(["first", tab("First")]);
 	});
 });
 
@@ -245,6 +346,121 @@ describe("child snippets", () => {
 		expect([button.className, button.dataset.component, button.type]).toEqual(["mine", "stepper-next", "submit"]);
 		await userEvent.click(button);
 		expect(container.querySelector("output")?.textContent).toBe("second");
+	});
+});
+
+describe("child snippets on every part", () => {
+	it("Content, Indicator, Title and Description hand their attributes to your element", async () => {
+		const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+		const { container } = await parts("children");
+		await tick();
+		await tick();
+		const trigger = tab(/First step/);
+		const panel = container.querySelector("section");
+		expect([panel?.dataset.component, panel?.getAttribute("role"), panel?.className]).toEqual([
+			"stepper-content",
+			"tabpanel",
+			"panel",
+		]);
+		expect(panel?.getAttribute("aria-labelledby")).toBe(trigger.id);
+		expect(trigger.getAttribute("aria-controls")).toBe(panel?.id);
+		const mark = container.querySelector("b");
+		expect([mark?.dataset.component, mark?.getAttribute("aria-hidden"), mark?.dataset.state]).toEqual([
+			"stepper-indicator",
+			"true",
+			"current",
+		]);
+		expect(container.querySelector("strong")?.dataset.component).toBe("stepper-title");
+		expect(container.querySelector("em")?.dataset.component).toBe("stepper-description");
+		expect(warn).not.toHaveBeenCalled();
+		warn.mockRestore();
+	});
+});
+
+describe("elements", () => {
+	it("bind:ref gives each part its element, the one a child snippet rendered included, and clears it", async () => {
+		let refs: Record<string, Element | null> = {};
+		let api!: Api;
+		const { container } = await parts("refs", {
+			report: (latest: typeof refs) => (refs = latest),
+			ready: (stepper: Api) => (api = stepper),
+		});
+		await tick();
+		const tags = Object.fromEntries(Object.entries(refs).map(([part, node]) => [part, node?.localName]));
+		expect(tags).toEqual({
+			root: "div",
+			list: "ol",
+			item: "li",
+			trigger: "button",
+			indicator: "span",
+			title: "span",
+			description: "span",
+			content: "div",
+			prev: "button",
+			next: "button",
+			link: "a",
+		});
+		expect(refs.root).toBe(container.querySelector('[data-component="stepper"]'));
+		expect(refs.trigger).toBe(tab(/First/));
+		expect((refs.link as HTMLElement).dataset.component).toBe("stepper-next");
+		// The panel of the first step unmounts: its ref goes back to null.
+		await api.next();
+		await tick();
+		expect(refs.content).toBeNull();
+		await api.prev();
+		await tick();
+		expect(refs.content).toBe(container.querySelector('[data-component="stepper-content"]'));
+	});
+
+	it("your attachments reach the element, through the default tag or a child snippet", async () => {
+		const seen: [string, string][] = [];
+		await parts("attach", { attached: (part: string, node: Element) => seen.push([part, node.localName]) });
+		await tick();
+		expect(seen.sort()).toEqual([
+			["content", "div"],
+			["next", "a"],
+			["root", "div"],
+			["trigger", "button"],
+		]);
+	});
+});
+
+describe("nested steppers", () => {
+	it("a stepper of another definition inside a panel keeps its own flow, ids, keys and context", async () => {
+		let inner!: Api;
+		let outer!: { current: { id: string } };
+		const { container } = await parts("nested", {
+			ready: (stepper: Api) => (inner = stepper),
+			outer: (stepper: typeof outer) => (outer = stepper),
+		});
+		await tick();
+		expect([outer.current.id, inner.current.id]).toEqual(["name", "first"]);
+		const ids = Array.from(container.querySelectorAll("[id]"), (node) => node.id);
+		expect(new Set(ids).size).toBe(ids.length);
+		const lists = container.querySelectorAll('[role="tablist"]');
+		expect(lists.length).toBe(2);
+		// Each tab controls a panel of its own stepper.
+		for (const name of ["Name", "First"]) {
+			const panel = document.getElementById(tab(name).getAttribute("aria-controls") ?? "");
+			expect(panel?.getAttribute("aria-labelledby")).toBe(tab(name).id);
+		}
+		tab("First").focus();
+		await userEvent.keyboard("{ArrowRight}");
+		expect([outer.current.id, inner.current.id]).toEqual(["name", "second"]);
+		expect(document.activeElement).toBe(tab("Second"));
+		await userEvent.click(tab("Done"));
+		expect(outer.current.id).toBe("done");
+		expect(container.querySelector('[data-testid="inner"]')).toBeNull();
+	});
+
+	it("a stepper inside an item of another one does not see that item, its index or its tablist", async () => {
+		const { container } = await parts("inside-item");
+		await tick();
+		const inner = container.querySelector('[data-testid="inner"]');
+		// Linear, so a list of steps: not a presentational item of the outer tablist.
+		expect(inner?.querySelector("li")?.hasAttribute("role")).toBe(false);
+		expect(container.querySelector<HTMLElement>('[data-testid="inner-indicator"]')?.dataset.state).toBe("pending");
+		await expect(parts("inner-index")).rejects.toThrow(/SZ101/);
 	});
 });
 

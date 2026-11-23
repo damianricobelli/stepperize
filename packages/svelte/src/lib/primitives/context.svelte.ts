@@ -49,22 +49,32 @@ export const setTablist = (list: { readonly tabs: boolean }) => setContext(TABLI
 export const inTablist = () => !!(getContext(TABLIST) as { tabs: boolean } | undefined)?.tabs;
 
 /**
- * The element a primitive ended up on, whoever rendered it. `attach` goes in
- * the props, so it reaches the default tag and a `child` snippet alike. In
- * development, a `child` snippet that did not spread its props is reported.
+ * The element a primitive ended up on, whoever rendered it, handed to `ref`.
+ * The attachment goes in the props, so it reaches the default tag and a
+ * `child` snippet alike. In development, a `child` snippet that did not spread
+ * its props is reported.
  */
-export function useElement(name: string, custom: () => boolean, check?: (node: Element) => void) {
-	// The element is only looked at by the development checks.
-	if (!DEV) return {};
-	let node: Element | undefined;
+export function useElement<E extends Element>(
+	name: string,
+	ref: (node: E | null) => void,
+	custom: () => boolean,
+	check?: (node: Element) => void,
+) {
+	let node: E | undefined;
+	// One function for the life of the primitive: the attachment only runs again for a new element.
 	const attach = {
-		[createAttachmentKey()]: (element: Element) => {
+		[createAttachmentKey()]: (element: E) => {
 			node = element;
+			ref(element);
 			return () => {
+				// When the element is replaced (the `child` snippet toggles), the new one may attach first.
+				if (node !== element) return;
 				node = undefined;
+				ref(null);
 			};
 		},
 	};
+	if (!DEV) return attach;
 	$effect(() => {
 		const own = custom();
 		void tick().then(() => {

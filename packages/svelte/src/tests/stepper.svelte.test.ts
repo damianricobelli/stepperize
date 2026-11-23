@@ -1,10 +1,14 @@
 import { flushSync, tick } from "svelte";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render } from "vitest-browser-svelte";
-import { defineStepper } from "../lib/headless";
+import { defineStepper, fromFlow } from "../lib/headless";
+import Controlled from "./fixtures/Controlled.svelte";
 import { type Api, flow as shared } from "./fixtures/flow";
+import ModuleReader from "./fixtures/ModuleReader.svelte";
+import { listeners, flow as moduleFlow, read, stepper as moduleStepper } from "./fixtures/module.svelte";
 import Owner from "./fixtures/Owner.svelte";
 import Scenario from "./fixtures/Scenario.svelte";
+import Timing from "./fixtures/Timing.svelte";
 
 afterEach(cleanup);
 
@@ -139,6 +143,42 @@ describe("useStepper", () => {
 		expect(changes).not.toHaveBeenCalled();
 	});
 
+	it("applies new options before the effects of the components below run", async () => {
+		const seen = vi.fn();
+		const { rerender } = await render(Timing, { props: { tag: "one", seen } });
+		// The child's effect moves the flow in the same flush the options changed in.
+		await rerender({ tag: "two" });
+		flushSync();
+		expect(seen.mock.calls).toEqual([["two:second"]]);
+	});
+
+	it("destroys its flow when the component unmounts", async () => {
+		let api!: Api;
+		let release!: (allowed: boolean) => void;
+		let signal!: AbortSignal;
+		const onChange = vi.fn();
+		const guard = (context: { signal: AbortSignal }) =>
+			new Promise<boolean>((resolve) => {
+				signal = context.signal;
+				release = resolve;
+			});
+		const { unmount } = await render(Owner, {
+			props: { options: { guard, onChange }, ready: (stepper: Api) => (api = stepper) },
+		});
+		const move = api.next();
+		expect(api.isPending).toBe(true);
+		unmount();
+		// The running move is cancelled: its guard is told, and its late answer changes nothing.
+		expect(signal.aborted).toBe(true);
+		release(true);
+		expect(await move).toMatchObject({ accepted: false, reason: "cancelled" });
+		expect(onChange).not.toHaveBeenCalled();
+	});
+
+	it("throws a coded error that points to fromFlow when nothing owns the flow", () => {
+		expect(() => flow.useStepper()).toThrow(/SZ100.*fromFlow/);
+	});
+
 	it("uses the definition's defaults and lets an instance override them", () => {
 		const linear = defineStepper([{ id: "a" }, { id: "b" }], { linear: true });
 		const strict = host(() => linear.useStepper());
@@ -186,6 +226,90 @@ describe("Provider and useStepperContext", () => {
 	it("throws a coded error outside its own Provider", async () => {
 		await expect(render(Scenario, { props: { name: "other-provider" } })).rejects.toThrow(/SZ100/);
 		expect(shared.steps.length).toBe(3);
+	});
+});
+
+describe("fromFlow", () => {
+	it("follows a flow created outside any component, read in markup and in effects", async () => {
+		moduleFlow.reset();
+		const seen = vi.fn();
+		const first = await render(ModuleReader, { props: { seen } });
+		const second = await render(ModuleReader);
+		const outputs = () => [first, second].map((screen) => screen.container.querySelector("output")?.textContent);
+		expect(outputs()).toEqual(["first First 0", "first First 0"]);
+		// One subscription for every reader, made by the effects that read it.
+		expect(listeners.count).toBe(1);
+		await moduleStepper.next();
+		flushSync();
+		expect(outputs()).toEqual(["second Second 1", "second Second 1"]);
+		// Outside an effect a read is the latest state, with no subscription behind it.
+		expect([moduleStepper.current.id, read()]).toEqual(["second", "Second"]);
+		// Only told about what it read: a draft does not change `current`.
+		moduleStepper.setData("second", "draft");
+		flushSync();
+		expect(seen.mock.calls.map((call) => call[0])).toEqual(["first", "second"]);
+		first.unmount();
+		second.unmount();
+		await tick();
+		await Promise.resolve();
+		// The last reader is gone: so is the subscription.
+		expect(listeners.count).toBe(0);
+		await moduleStepper.prev();
+		expect(moduleStepper.current.id).toBe("first");
+	});
+
+	it("needs no effect root, and keeps actions untracked", () => {
+		const standalone = flow.create();
+		const stepper = fromFlow(standalone);
+		expect(stepper.current.id).toBe("a");
+		const runs = vi.fn();
+		const destroy = $effect.root(() => {
+			$effect(() => {
+				runs(stepper.isLast);
+				// Writing from an effect does not make it depend on the flow.
+				stepper.setData("a", { at: Date.now() });
+			});
+		});
+		flushSync();
+		standalone.setData("a", "elsewhere");
+		flushSync();
+		expect(runs).toHaveBeenCalledTimes(1);
+		void standalone.goTo("c");
+		flushSync();
+		expect(runs.mock.calls).toEqual([[false], [true]]);
+		destroy();
+		standalone.destroy();
+	});
+});
+
+describe("Provider and Root options as props", () => {
+	it("a Provider follows step and linear, and reports a step it cannot follow", async () => {
+		let api!: Api;
+		const onInvalidStep = vi.fn();
+		const { rerender } = await render(Controlled, {
+			props: { provider: true, step: "second", onInvalidStep, ready: (stepper: Api) => (api = stepper) },
+		});
+		await tick();
+		expect(api.current.id).toBe("second");
+		await rerender({ step: "third" });
+		await tick();
+		expect(api.current.id).toBe("third");
+		await rerender({ step: "nope" });
+		await tick();
+		expect(onInvalidStep).toHaveBeenCalledWith("third");
+		await rerender({ step: "first" });
+		await tick();
+		expect(api.current.id).toBe("first");
+		// `linear` changes what can be reached, without a new flow.
+		await rerender({ linear: true });
+		expect([api.isLinear, api.canGoTo("third")]).toEqual([true, false]);
+		// Under `linear`, a step that was never completed cannot be followed.
+		await rerender({ step: "third" });
+		await tick();
+		expect(api.current.id).toBe("first");
+		expect(onInvalidStep).toHaveBeenLastCalledWith("first");
+		await rerender({ linear: false });
+		expect([api.isLinear, api.canGoTo("third")]).toEqual([false, true]);
 	});
 });
 

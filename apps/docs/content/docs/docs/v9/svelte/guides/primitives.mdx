@@ -131,6 +131,41 @@ carry the ARIA attributes, ids and handlers:
 </Stepper.Next>
 ```
 
+`props` is typed, so `props.onclick` can be called from your own handler. A
+component you spread it onto must pass its rest props to its element, as
+`MyButton` would with `let { variant, ...rest } = $props()` and
+`<button {...rest}>`. In development, a `child` snippet that drops the props is
+reported ([SZ001](/docs/v9/core/errors#sz001)).
+
+## Reaching the element
+
+`bind:ref` gives you the element a primitive rendered, whether it is the
+default tag or the one in your `child` snippet. `bind:this` would give you the
+component instead.
+
+```svelte
+<script lang="ts">
+  import { checkout } from "./checkout";
+
+  const { Stepper } = checkout;
+  let panel: HTMLDivElement | null = $state(null);
+
+  $effect(() => {
+    panel?.scrollIntoView({ block: "nearest" });
+  });
+</script>
+
+<Stepper.Content step="payment" bind:ref={panel}>…</Stepper.Content>
+```
+
+[Attachments](https://svelte.dev/docs/svelte/@attach) work too: like any other
+attribute, `{@attach}` on a primitive reaches its element, through a `child`
+snippet as well.
+
+```svelte
+<Stepper.Trigger {@attach tooltip("Go to this step")}>…</Stepper.Trigger>
+```
+
 ## Handling the move yourself
 
 Call `preventDefault()` in your own handler to take over, for example to pass

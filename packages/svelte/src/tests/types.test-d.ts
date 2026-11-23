@@ -1,8 +1,8 @@
 import type { Flow, Stepper } from "@stepperize/core";
 import type { Component, ComponentProps } from "svelte";
 import { expectTypeOf } from "vitest";
-import { defineStepper as defineHeadless } from "../lib/headless";
-import { defineStepper, type ItemValue } from "../lib/index";
+import { defineStepper as defineHeadless, fromFlow as fromHeadlessFlow } from "../lib/headless";
+import { type ButtonChildProps, defineStepper, fromFlow, type ItemValue, type ListChildProps } from "../lib/index";
 
 const steps = [
 	{ id: "cart", title: "Cart" },
@@ -25,6 +25,20 @@ expectTypeOf<NonNullable<ComponentProps<typeof flow.Stepper.Root>["onFinish"]>>(
 	review?: unknown;
 }>();
 expectTypeOf(flow.Provider).toExtend<Component<{ linear?: boolean }>>();
+
+// A flow from `create()` reads as the same reactive stepper, from either entry.
+expectTypeOf(fromFlow(flow.create())).toEqualTypeOf<Stepper<typeof steps>>();
+expectTypeOf(fromHeadlessFlow).toEqualTypeOf(fromFlow);
+
+// `ref` is bindable and typed with the default element of each part.
+expectTypeOf<ComponentProps<typeof flow.Stepper.Root>["ref"]>().toEqualTypeOf<HTMLDivElement | null | undefined>();
+expectTypeOf<ComponentProps<typeof flow.Stepper.Next>["ref"]>().toEqualTypeOf<HTMLButtonElement | null | undefined>();
+expectTypeOf<ComponentProps<typeof flow.Stepper.Title>["ref"]>().toEqualTypeOf<HTMLSpanElement | null | undefined>();
+expectTypeOf(flow.Stepper.Content).toExtend<Component<any, any, "ref">>();
+
+// `child` props carry callable handlers, typed for any element.
+expectTypeOf<ButtonChildProps["onclick"]>().parameter(0).toExtend<MouseEvent>();
+expectTypeOf<ListChildProps["onkeydown"]>().parameter(0).toExtend<KeyboardEvent>();
 
 // The headless entry has the same flow API and no primitives.
 const headless = defineHeadless(steps);

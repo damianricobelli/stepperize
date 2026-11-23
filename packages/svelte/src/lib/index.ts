@@ -25,6 +25,7 @@ export type {
 	StepState,
 } from "@stepperize/core";
 export type { Definition } from "./definition.js";
+export { fromFlow } from "./flow.svelte.js";
 export type { Primitives } from "./primitives/index.js";
 export type * from "./types.js";
 

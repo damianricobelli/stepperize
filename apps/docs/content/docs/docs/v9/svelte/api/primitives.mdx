@@ -3,9 +3,27 @@ title: Primitives
 description: Props and snippets of every Stepper component.
 ---
 
-All primitives pass `class`, `style` and every other attribute to the element
-they render. All except `Root` accept a `child` snippet to
+All primitives pass `class`, `style`, every other attribute and your
+[attachments](https://svelte.dev/docs/svelte/@attach) to the element they
+render. All except `Root` accept a `child` snippet to
 [use your own element](/docs/v9/svelte/guides/primitives#rendering-your-own-element).
+
+Every primitive has a bindable `ref`: `bind:ref` gives you its element, typed
+as the tag it renders by default (`HTMLDivElement` for `Root`,
+`HTMLButtonElement` for `Trigger`, and so on). With a `child` snippet it is the
+element you spread the props onto. It goes back to `null` when the element
+unmounts, as a `Content` does when its step stops being current.
+
+```svelte
+<script lang="ts">
+  let next: HTMLButtonElement | null = $state(null);
+</script>
+
+<Stepper.Next bind:ref={next}>Continue</Stepper.Next>
+```
+
+`bind:this` on a primitive gives you the component, not the element: use
+`bind:ref`.
 
 ## Root
 
@@ -15,6 +33,7 @@ Renders a `div`. Creates the flow and provides it.
 | --- | --- | --- |
 | Every [option](/docs/v9/react/api/options) | | `linear`, `next`, `guard`, `snapshot`, `step`, `onChange`, `onFinish`, `onInvalidStep`. |
 | `orientation` | `"horizontal" \| "vertical"` | Default `"horizontal"`. |
+| `ref` | `HTMLDivElement \| null` | Bindable. |
 | `children` | `Snippet<[stepper]>` | Receives the stepper. Reactive: it only updates for what it reads. |
 
 `onChange` is the flow's callback; the DOM event is `onchange`.
@@ -49,8 +68,13 @@ Renders a `button` that calls `goTo` for its step. Must be inside an `Item`,
 and should be inside a `List`.
 
 It is disabled when `linear` does not allow reaching the step, or when you pass
-`disabled`. In a flow that is not linear it is a `tab`; in a linear flow it is
-a plain button, with `aria-current="step"` on the current one.
+`disabled`. A trigger you disable is skipped by the arrow keys. In a flow that
+is not linear it is a `tab`; in a linear flow it is a plain button, with
+`aria-current="step"` on the current one.
+
+While a move runs, every trigger is `aria-disabled` and ignores clicks, but
+keeps its native `disabled` state from before the move, so the one you clicked
+keeps focus.
 
 ## Title and Description
 
@@ -89,17 +113,44 @@ Once the flow has finished, `Next` is `aria-disabled` with `data-disabled` and
 ignores clicks, so the flow is not submitted twice. It becomes available again
 when the flow changes.
 
+Pass `disabled` to disable either one yourself, for example until a form is
+valid.
+
 Your own `onclick` runs first. Call `event.preventDefault()` in it to handle
 the move yourself.
 
 ## The child snippet
 
 ```ts
-child?: Snippet<[{ props: Record<string, unknown> }]>
+child?: Snippet<[{ props: ChildProps }]>
 ```
 
 When present it is rendered instead of the default element, and `children` is
-ignored. Spread `props` onto exactly one element.
+ignored. Spread `props` onto exactly one element: they carry the ids, ARIA and
+`data-*` attributes, the handlers, the attributes you passed and the
+attachment that fills `ref`.
+
+`props` is typed for any element, so it spreads onto an `<a>` as well as a
+`<button>`, and its handlers can be called or wrapped:
+
+| Primitive | `props` |
+| --- | --- |
+| `Trigger`, `Prev`, `Next` | `ButtonChildProps`: `onclick` is always there, plus `disabled` and `type`. |
+| `List` | `ListChildProps`: `onkeydown` is always there. |
+| The others | `ChildProps`, which is `HTMLAttributes<HTMLElement>` from `svelte/elements`. |
+
+```svelte
+<Stepper.Next>
+  {#snippet child({ props })}
+    <a href="#review" {...props} onclick={(event) => { track("next"); props.onclick(event); }}>
+      Continue
+    </a>
+  {/snippet}
+</Stepper.Next>
+```
+
+The attributes you pass to the primitive are typed for its default tag, and
+your handlers receive the event of the element you rendered.
 
 ## useItem
 

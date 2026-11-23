@@ -23,7 +23,7 @@ It returns:
 | `useStepperContext()` | The flow of the nearest `Provider` or `Stepper.Root`. |
 | `Provider` | Shares one flow with the components below. |
 | `Stepper` | The [primitives](/docs/v9/svelte/api/primitives). Not in `/headless`. |
-| `create(options?)` | A flow without Svelte. See [Core](/docs/v9/core). |
+| `create(options?)` | A flow without Svelte. See [Core](/docs/v9/core). Wrap it in [`fromFlow`](#fromflow) to read it reactively. |
 
 ## useStepper
 
@@ -41,8 +41,11 @@ state.
 - Options can be an object or a function. A function is read again when the
   state it uses changes, and the flow gets the new options.
 - `snapshot` is read once, when the flow is created.
-- The flow is destroyed with the component.
+- The flow is destroyed with the component: a running move is cancelled.
 - On the server it renders the current step and runs no callback.
+- Outside a component (module scope, an event handler) it throws
+  [SZ100](/docs/v9/core/errors#sz100): nothing would destroy the flow. Use
+  [`fromFlow`](#fromflow) there.
 
 ## useStepperContext
 
@@ -67,7 +70,30 @@ There is no selector argument: wrap what you need in `$derived`.
 Every [option](/docs/v9/react/api/options) is a prop. It renders its children
 and no element.
 
+## fromFlow
+
+```ts
+import { fromFlow } from "@stepperize/svelte";
+
+const flow = checkout.create({ linear: true });
+const stepper = fromFlow(flow);
+```
+
+Turns a flow you created into the same reactive stepper `useStepper()`
+returns. It creates no effect, so it works in a `.svelte.ts` module, a class
+or a component that receives a flow from elsewhere. It is also exported by
+`/headless`.
+
+- It subscribes to the flow only while an effect reads it, and stops with the
+  last one. Outside an effect a read returns the latest state.
+- The flow stays yours: change its options with `flow.setOptions()` and stop it
+  with `flow.destroy()`.
+- At module scope the flow is shared by everything that imports it, on the
+  server too: see [Outside a component](/docs/v9/svelte/guides/shared-state#outside-a-component).
+
 ## Types
 
 Everything `@stepperize/core` exports as a type is re-exported:
 `Stepper<S>`, `Options<S>`, `Snapshot<S>`, `Result<S>`, `Id<S>` and the rest.
+The primitives' props are exported too (`RootProps<S>`, `ButtonProps`,
+`ChildProps` and the others): see [Primitives](/docs/v9/svelte/api/primitives).

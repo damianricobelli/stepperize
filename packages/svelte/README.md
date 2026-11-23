@@ -68,7 +68,16 @@ if (!result.accepted) console.log(result.reason, result.issues);
 | `useStepper(options?)` | A flow owned by the component. Pass a function when an option depends on state. |
 | `Provider`, `useStepperContext()` | One flow shared by the components below. |
 | `Stepper.*` | Accessible, unstyled primitives: `Root`, `List`, `Item`, `Trigger`, `Title`, `Description`, `Indicator`, `Content`, `Prev`, `Next`. |
-| `create(options?)` | The same state machine without Svelte, for tests, servers and stores. |
+| `create(options?)` | The same state machine without Svelte, for tests and servers. |
+
+`fromFlow(flow)` makes a flow from `create()` reactive without a component, for
+state that lives in a `.svelte.ts` module:
+
+```ts
+// checkout.svelte.ts
+import { fromFlow } from "@stepperize/svelte";
+export const stepper = fromFlow(checkout.create());
+```
 
 ## Primitives
 
@@ -100,8 +109,8 @@ if (!result.accepted) console.log(result.reason, result.issues);
 
 They handle roles, ids, keyboard navigation, focus and screen reader
 announcements, expose their state through `data-*` attributes for styling, and
-take a `child` snippet to render your own element. `step` props are typed with
-your step ids.
+take a `child` snippet to render your own element. `bind:ref` gives you the
+element and `{@attach}` reaches it. `step` props are typed with your step ids.
 
 If you only want the reactive stepper, import from `@stepperize/svelte/headless`.
 
