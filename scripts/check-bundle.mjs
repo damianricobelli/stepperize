@@ -132,6 +132,23 @@ const bindings = [
 		},
 	},
 	{
+		name: "lit",
+		external: ["lit", "lit/*", "@lit/*", "lit-html", "lit-html/*", "lit-element", "lit-element/*"],
+		// The definition has no `Stepper` object: the primitives are directives on the controller.
+		shape: false,
+		async verify({ definition, full }) {
+			const host = {
+				addController() {},
+				removeController() {},
+				requestUpdate() {},
+				updateComplete: Promise.resolve(true),
+			};
+			const controller = definition.controller(host, { snapshot: { step: "finish" } });
+			assert.equal(controller.value.current.id, "finish");
+			assert.equal(typeof controller.root, full ? "function" : "undefined", "Only the full entry has the directives");
+		},
+	},
+	{
 		name: "svelte",
 		external: ["svelte", "svelte/*"],
 		conditions: ["svelte", "browser", "production"],
@@ -208,7 +225,9 @@ for (const binding of bindings) {
 		if (!binding.plugins) {
 			const { defineStepper } = await import(pathToFileURL(entry));
 			definition = defineStepper([{ id: "start", title: "Start" }, { id: "finish" }]);
-			assert.equal("Stepper" in definition, full, `${name}: only the full entry has primitives`);
+			if (binding.shape !== false) {
+				assert.equal("Stepper" in definition, full, `${name}: only the full entry has primitives`);
+			}
 		}
 		await binding.verify({
 			require,
