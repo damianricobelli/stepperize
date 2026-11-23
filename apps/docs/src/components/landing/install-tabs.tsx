@@ -1,7 +1,8 @@
 "use client";
 
-import { Check, Copy } from "lucide-react";
+import { Check, ChevronDown, Copy } from "lucide-react";
 import { useId, useRef, useState } from "react";
+import { FrameworkIcon } from "@/components/framework-icon";
 import { BINDINGS, CORE_FRAMEWORK, FRAMEWORKS } from "@/lib/frameworks";
 import { cn } from "@/lib/utils";
 
@@ -58,7 +59,7 @@ export function InstallTabs({ className }: { className?: string }) {
 				className,
 			)}
 		>
-			<div className="flex items-center justify-between border-b bg-muted/40 px-1.5 py-1.5">
+			<div className="flex items-center justify-between gap-2 border-b bg-muted/40 px-1.5 py-1.5">
 				<fieldset className="relative grid grid-cols-4">
 					<legend className="sr-only">Package manager</legend>
 					{/* One sliding pill instead of four background swaps. */}
@@ -87,18 +88,31 @@ export function InstallTabs({ className }: { className?: string }) {
 				<label htmlFor={frameworkId} className="sr-only">
 					Framework
 				</label>
-				<select
-					id={frameworkId}
-					value={framework}
-					onChange={(event) => setFramework(event.target.value)}
-					className="hit-44 h-7 max-w-[9.5rem] cursor-pointer rounded-md bg-transparent px-1.5 text-xs font-medium text-muted-foreground outline-none transition-colors duration-150 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
-				>
-					{PACKAGES.map((entry) => (
-						<option key={entry.id} value={entry.id}>
-							{entry.label}
-						</option>
-					))}
-				</select>
+				{/* A native select: on a phone it opens the system picker. The logo
+				    and chevron sit on top of it and let every tap through. */}
+				<span className="relative inline-flex h-7 items-center rounded-md text-muted-foreground transition-colors duration-150 focus-within:ring-2 focus-within:ring-ring hover:text-foreground">
+					<FrameworkIcon
+						id={pkg.id}
+						className="pointer-events-none absolute left-2 size-3.5"
+					/>
+					<select
+						id={frameworkId}
+						value={framework}
+						onChange={(event) => setFramework(event.target.value)}
+						// 16px on touch screens: iOS zooms the page into anything smaller.
+						className="hit-44 h-7 max-w-[10.5rem] cursor-pointer appearance-none truncate rounded-md bg-transparent pr-6 pl-7 text-xs font-medium text-inherit outline-none pointer-coarse:text-base"
+					>
+						{PACKAGES.map((entry) => (
+							<option key={entry.id} value={entry.id}>
+								{entry.label}
+							</option>
+						))}
+					</select>
+					<ChevronDown
+						aria-hidden
+						className="pointer-events-none absolute right-1.5 size-3.5"
+					/>
+				</span>
 			</div>
 			<div className="flex items-center gap-3 py-1.5 pr-1.5 pl-4">
 				<code className="min-w-0 flex-1 truncate font-mono text-[13px]">
