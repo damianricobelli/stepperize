@@ -124,7 +124,7 @@ export function useFlow<S extends readonly Step[]>(
 		if (!isOrphan(error)) throw error;
 		// Nothing owns the flow, so nothing would destroy it. Say what to do instead.
 		fail(
-			"SZ100",
+			"SZ104",
 			"useStepper() owns its flow, so it must be called while a component initialises (or inside `$effect.root`). In a `.svelte.ts` module or outside a component, use `fromFlow(definition.create())`.",
 		);
 	}

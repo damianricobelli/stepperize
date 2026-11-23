@@ -693,7 +693,9 @@ describe("development diagnostics", () => {
 	it("warns when the child of as-child drops the props it received, and not when it passes them on", async () => {
 		const Swallows = defineComponent({
 			inheritAttrs: false,
-			setup: (_, { slots }) => () => <button type="button">{slots.default?.()}</button>,
+			setup:
+				(_, { slots }) =>
+				() => <button type="button">{slots.default?.()}</button>,
 		});
 		const Passes = defineComponent({
 			inheritAttrs: false,

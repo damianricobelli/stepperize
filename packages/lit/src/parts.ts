@@ -1,4 +1,4 @@
-import { type Code, fail, type Id, type Options, type Step, type StepOf, type Stepper, warn } from "@stepperize/core";
+import { fail, type Id, type Options, type Step, type StepOf, type Stepper, warn } from "@stepperize/core";
 import {
 	type Attrs,
 	checkTrigger,
@@ -404,7 +404,7 @@ export class StepperPrimitives<S extends readonly Step[]> extends StepperControl
 		const named = typeof (this.steps[this.#positions.get(step ?? "") ?? -1] as { title?: unknown })?.title === "string";
 		if (kind !== "content" && !(kind === "trigger" && (this.#ui.tabs || !named))) return;
 		warn(
-			"SZ004" as Code,
+			"SZ004",
 			`The ${kind}() part of step "${step}" is rendered in a different shadow root than root(), so the ids ` +
 				"that tie triggers, panels and focus together cannot reach it. Render triggers and panels in the " +
 				"same shadow root as root(); a child component can render the other parts.",

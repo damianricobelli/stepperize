@@ -345,8 +345,7 @@ function createList<S extends readonly Step[]>(scope: Scope<S>) {
 				const item = slots.item;
 				const items =
 					item &&
-					(() =>
-						scope.steps.map((step, index) => h(IndexScope, { key: step.id, index }, () => item({ step, index }))));
+					(() => scope.steps.map((step, index) => h(IndexScope, { key: step.id, index }, () => item({ step, index }))));
 				return element(
 					"List",
 					"ol",

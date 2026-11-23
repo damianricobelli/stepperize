@@ -1,4 +1,4 @@
-import { createStepper, type Flow, fail, type Options, type Step, type Stepper } from "@stepperize/core";
+import { createStepper, type Flow, fail, type Options, type Step, type Stepper, warn } from "@stepperize/core";
 import { OPTION_KEYS } from "@stepperize/core/primitives";
 import {
 	type ComputedRef,
@@ -18,7 +18,6 @@ import {
 	type ShallowRef,
 	shallowRef,
 	toValue,
-	warn as vueWarn,
 	watch,
 } from "vue";
 import type { ProviderSlots, StepperComponent } from "./types";
@@ -188,8 +187,9 @@ export function createDefinition<const S extends readonly Step[]>(steps: S, defa
 		}
 		if (getCurrentScope()) onScopeDispose(() => flow.destroy());
 		else if (process.env.NODE_ENV !== "production") {
-			vueWarn(
-				"[stepperize] useStepper() ran without a component instance or an effect scope (after an `await` in an async setup?), so its flow is never destroyed. Call it before the first `await`, or inside an effectScope() that you stop.",
+			warn(
+				"SZ104",
+				"useStepper() ran without a component instance or an effect scope (after an `await` in an async setup?), so its flow is never destroyed. Call it before the first `await`, or inside an effectScope() that you stop.",
 			);
 		}
 		const read = () => view.value as Record<PropertyKey, unknown>;

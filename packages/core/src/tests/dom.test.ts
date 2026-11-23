@@ -583,7 +583,7 @@ describe("what the page wrote", () => {
 		);
 		const seen = warn.mock.calls.map((call) => String(call[0]));
 		warn.mockRestore();
-		expect(seen.some((message) => message.includes("SZ002") && message.includes("<span>, not a <button>"))).toBe(true);
+		expect(seen.some((message) => message.includes("SZ005") && message.includes("<span>, not a <button>"))).toBe(true);
 	});
 });
 

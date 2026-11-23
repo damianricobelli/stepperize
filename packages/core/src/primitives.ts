@@ -5,7 +5,7 @@
 //
 // For binding authors. Application code uses a binding, not this entry.
 
-import { warn } from "./dev";
+import { development, warn } from "./dev";
 import type { Flow, Id, Options, Step, Stepper, StepState } from "./types";
 
 declare const process: { env: { NODE_ENV?: string } };
@@ -250,21 +250,28 @@ export function onListKeydown<S extends readonly Step[]>(
 	event: KeyboardEvent,
 	list: HTMLElement,
 	flow: Flow<S>,
-	ui: Ui,
+	/** Kept for callers; which tabs belong to the list is decided by the DOM. */
+	_ui: Ui,
 	orientation: Orientation,
 ) {
-	const target = event.target as HTMLElement;
+	// The element that was pressed, in the list's own tree: an event from a tab in a shadow root
+	// below reaches a listener above it retargeted to that root's host.
+	const tree = list.getRootNode();
+	const target = (event.composedPath().find((node) => (node as Node).getRootNode?.() === tree) ??
+		event.target) as HTMLElement;
 	if (event.defaultPrevented || target.getAttribute?.("role") !== "tab") return;
 	// Alt+Left is the browser's Back, Ctrl+End scrolls: with a modifier the key is not ours.
 	if (event.altKey || event.ctrlKey || event.metaKey) return;
 	const horizontal = orientation === "horizontal";
 	let delta = KEYS[event.key]?.[horizontal ? 0 : 1];
 	if (!delta && event.key !== "Home" && event.key !== "End") return;
-	// Only this instance's tabs, in DOM order: nested lists stay correct.
+	// Only this list's tabs, in DOM order: the tabs of a nested stepper belong to its own list.
 	// A tab the application disabled is skipped: the flow knows nothing about it, and moving
 	// onto it would leave the list without a tab stop.
 	const tabs = Array.from(list.querySelectorAll<HTMLElement>('[role="tab"]')).filter(
-		(tab) => tab.id.startsWith(ui.id) && (tab === target || !(tab as HTMLButtonElement).disabled),
+		(tab) =>
+			tab.closest('[data-component="stepper-list"]') === list &&
+			(tab === target || !(tab as HTMLButtonElement).disabled),
 	);
 	const from = tabs.indexOf(target);
 	if (from === -1) return;
@@ -309,6 +316,19 @@ export function stepChanged(
 	if (!root) return;
 	const doc = scopeOf(root) as Document;
 	let active = doc.activeElement as HTMLButtonElement | null;
+	/**
+	 * Whether an element belongs to this stepper. By the root around it, so ids the author chose
+	 * and prefixes that happen to start like another stepper's do not matter. By the id prefix
+	 * only for an element in another tree, where `closest` cannot reach the root.
+	 */
+	const owns = (element: Element) =>
+		element.getRootNode() === root.getRootNode()
+			? element.closest('[data-component="stepper"]') === root
+			: element.id.startsWith(ui.id);
+	const part = (kind: string) =>
+		Array.from(root.querySelectorAll(`[data-component="stepper-${kind}"]`)).find(
+			(element) => element.getAttribute("data-step") === step.id && owns(element),
+		);
 	// Hidden counts as gone: a panel kept in the page (`forceMount`, server-rendered markup) hides
 	// its fields without blurring them. So does a panel of another step that is still on its way
 	// out, during a leave transition: it is removed later, and nothing would move focus then.
@@ -319,20 +339,20 @@ export function stepChanged(
 			active === doc.body ||
 			active.disabled ||
 			active.closest("[hidden]") ||
-			(leaving?.id.startsWith(ui.id) && leaving.getAttribute("data-step") !== step.id))
+			(leaving && owns(leaving) && leaving.getAttribute("data-step") !== step.id))
 	) {
-		active = doc.getElementById(panelId(ui, step.id)) as HTMLButtonElement | null;
+		active = (part("content") ?? doc.getElementById(panelId(ui, step.id))) as HTMLButtonElement | null;
 		active?.focus();
 	}
 	// A focused trigger or panel already reads the step.
-	const reads = active?.id.startsWith(ui.id) && active.dataset.step === step.id;
+	const reads = !!active && owns(active) && active.dataset.step === step.id;
 	const title = (step as { title?: unknown }).title;
 	if (region) region.textContent = !reads && typeof title === "string" ? title : "";
 }
 
 /** Development only: a trigger needs a name and a List around it. */
 export function checkTrigger(node: Element, step: string) {
-	if (process.env.NODE_ENV === "production") return;
+	if (!development()) return;
 	if (!(node.textContent?.trim() || node.getAttribute("aria-label") || node.getAttribute("aria-labelledby"))) {
 		warn("SZ002", `Stepper.Trigger for step "${step}" has no accessible name. Render text or pass aria-label.`);
 	}

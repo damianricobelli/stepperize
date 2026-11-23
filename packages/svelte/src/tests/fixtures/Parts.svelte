@@ -1,6 +1,6 @@
 <script lang="ts">
 import type { Attachment } from "svelte/attachments";
-import { Stepper, flow, typed } from "./flow";
+import { flow, Stepper, typed } from "./flow";
 import Grab from "./Grab.svelte";
 
 let {

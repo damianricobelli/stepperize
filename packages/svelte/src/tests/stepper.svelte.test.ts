@@ -5,7 +5,7 @@ import { defineStepper, fromFlow } from "../lib/headless";
 import Controlled from "./fixtures/Controlled.svelte";
 import { type Api, flow as shared } from "./fixtures/flow";
 import ModuleReader from "./fixtures/ModuleReader.svelte";
-import { listeners, flow as moduleFlow, read, stepper as moduleStepper } from "./fixtures/module.svelte";
+import { listeners, flow as moduleFlow, stepper as moduleStepper, read } from "./fixtures/module.svelte";
 import Owner from "./fixtures/Owner.svelte";
 import Scenario from "./fixtures/Scenario.svelte";
 import Timing from "./fixtures/Timing.svelte";
@@ -176,7 +176,7 @@ describe("useStepper", () => {
 	});
 
 	it("throws a coded error that points to fromFlow when nothing owns the flow", () => {
-		expect(() => flow.useStepper()).toThrow(/SZ100.*fromFlow/);
+		expect(() => flow.useStepper()).toThrow(/SZ104.*fromFlow/);
 	});
 
 	it("uses the definition's defaults and lets an instance override them", () => {

@@ -5,7 +5,7 @@
 // Nothing here touches the DOM until `bindStepper` is called, so the module is
 // safe to import on a server.
 
-import { fail, warn } from "./dev";
+import { development, fail, warn } from "./dev";
 import {
 	type Attrs,
 	checkTrigger,
@@ -59,13 +59,6 @@ const bound = new WeakMap<HTMLElement, () => void>();
  * loads the files as published has no `process`, and gets no warnings rather
  * than a `ReferenceError`.
  */
-function development() {
-	try {
-		return process.env.NODE_ENV !== "production";
-	} catch {
-		return false;
-	}
-}
 
 /**
  * Make server-rendered markup a stepper: roles, ids, `data-state`, keyboard
@@ -247,7 +240,7 @@ export function bindStepper<S extends readonly Step[]>(
 				checkTrigger(element, step.id);
 				if (element.tagName !== "BUTTON") {
 					warn(
-						"SZ002",
+						"SZ005",
 						`The trigger for step "${step.id}" is a <${element.tagName.toLowerCase()}>, not a <button>: Enter and Space do not press it and it cannot be disabled. Use a <button>.`,
 					);
 				}

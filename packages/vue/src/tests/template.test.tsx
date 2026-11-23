@@ -51,9 +51,11 @@ it("works from a single-file component template: slots, listeners and as-child",
 	expect(screen.container.querySelector(".checkout")?.getAttribute("data-component")).toBe("stepper");
 	// An empty element under `as-child` shows the title, and keeps this component's scoped styles.
 	const heading = screen.container.querySelector<HTMLElement>("header > h2");
-	expect([heading?.textContent, heading?.dataset.component, getComputedStyle(heading as Element).letterSpacing]).toEqual(
-		["Payment", "stepper-title", "2px"],
-	);
+	expect([
+		heading?.textContent,
+		heading?.dataset.component,
+		getComputedStyle(heading as Element).letterSpacing,
+	]).toEqual(["Payment", "stepper-title", "2px"]);
 	expect(heading?.parentElement?.dataset.state).toBe("pending");
 	expect(screen.getByRole("tab", { name: "Payment" }).element().getAttribute("data-nth")).toBe("1");
 	const hidden = screen.container.querySelector<HTMLElement>('[data-step="payment"][data-component="stepper-content"]');

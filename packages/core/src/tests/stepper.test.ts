@@ -209,6 +209,19 @@ describe("guard and policy", () => {
 		expect(await moving).toEqual({ accepted: false, reason: "cancelled" });
 	});
 
+	it("settles a cancelled move at once, even when its guard never settles", async () => {
+		const flow = createStepper([{ id: "a" }, { id: "b" }], {
+			guard: () => new Promise<boolean>(() => {}),
+		});
+		const moving = flow.next();
+		await Promise.resolve();
+		expect(flow.isPending).toBe(true);
+		flow.destroy();
+		expect(await moving).toEqual({ accepted: false, reason: "cancelled" });
+		expect(flow.isPending).toBe(false);
+		expect(flow.get().isPending).toBe(false);
+	});
+
 	it("still rejects when a guard fails on its own", async () => {
 		const flow = createStepper([{ id: "a" }, { id: "b" }], {
 			guard: () => Promise.reject(new Error("offline")),

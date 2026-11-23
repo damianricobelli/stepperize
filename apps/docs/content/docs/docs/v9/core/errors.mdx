@@ -30,8 +30,11 @@ are missing from the page.
 If you spread into your own component, it must forward the `ref` to its
 element.
 
-In Vue the same warning means a primitive has `as-child` but no element or
-component in its default slot to receive those attributes.
+In Vue the same warning means a primitive with `as-child` could not hand its
+attributes to one element: its default slot has no element or component, has
+more than one (only the first is rendered), the component it holds does not
+put the attributes on an element, or an `as-child` List's element already has
+children of its own while the `#item` slot was meant to fill it.
 
 ```vue
 <!-- Wrong: only text in the slot. -->
@@ -76,6 +79,31 @@ an unnamed button.
 **Warning.** A `Stepper.Trigger` is rendered outside `Stepper.List`. Keyboard
 navigation and the list semantics depend on the list. Move the trigger inside
 it, or use a plain button that calls `goTo`.
+
+## SZ004
+
+**Warning.** A trigger or a panel is rendered in a different shadow root than
+the stepper's root. Tabs, panels and the focus hand-off are tied together by
+ids, and an id reference (`aria-controls`, `aria-labelledby`) cannot cross a
+shadow root.
+
+It comes from Lit, where a child component can render parts in its own shadow
+root. Render triggers and panels in the same shadow root as `root()`; the
+other parts (list, item, indicator, prev, next) may live in a child component.
+
+## SZ005
+
+**Warning.** A trigger is not a `<button>`. Enter and Space do not press a
+`<span>` or a `<div>`, and it cannot be disabled. It comes from
+`bindStepper`, which enhances markup it did not write.
+
+```html
+<!-- Wrong -->
+<span data-component="stepper-trigger">Account</span>
+
+<!-- Right -->
+<button data-component="stepper-trigger">Account</button>
+```
 
 ## SZ100
 
@@ -124,3 +152,15 @@ are only checked when the page runs. For outside values use the
 
 **Error.** The list of steps is not valid: it is empty, or two steps share an
 `id`.
+
+## SZ104
+
+**Error or warning.** A flow was created where nothing owns it, so nothing
+would ever destroy it.
+
+- Svelte, an error: `useStepper()` was called outside a component's
+  initialisation, for example in a `.svelte.ts` module. Use
+  `fromFlow(definition.create())` there.
+- Vue, a warning: `useStepper()` ran without a component instance or an effect
+  scope, typically after an `await` in a hand-written async `setup()`. Call it
+  before the first `await`, or inside an `effectScope()` that you stop.
