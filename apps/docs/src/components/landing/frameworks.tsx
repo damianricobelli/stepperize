@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { ArrowRight, Check } from "lucide-react";
 import type { CSSProperties, ReactNode } from "react";
+import { FrameworkIcon } from "@/components/framework-icon";
 import { CURRENT_DOCS_VERSION } from "@/lib/docs-tree";
 import {
 	BINDINGS,
@@ -100,6 +101,7 @@ export function Frameworks() {
 			<div className="mt-10 grid gap-4 sm:mt-12 lg:grid-cols-3">
 				<article className="flex flex-col rounded-2xl border bg-card p-6 shadow-xs lg:row-span-2">
 					<div className="flex items-center gap-2">
+						<FrameworkIcon id={MAIN.id} className="size-5" />
 						<h3 className="text-xl font-semibold tracking-tight">
 							{MAIN.title}
 						</h3>
@@ -135,7 +137,8 @@ export function Frameworks() {
 							key={entry.id}
 							className="flex flex-col rounded-2xl border bg-card p-5 shadow-xs"
 						>
-							<h3 className="font-semibold tracking-tight">
+							<h3 className="flex items-center gap-2 font-semibold tracking-tight">
+								<FrameworkIcon id={entry.id} />
 								{entry.id === CORE_FRAMEWORK ? "No framework" : entry.title}
 							</h3>
 							<p className="mt-1 font-mono text-xs text-muted-foreground">

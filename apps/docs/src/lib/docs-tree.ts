@@ -78,6 +78,8 @@ export type DocsOption = {
 	description: string;
 	url: string;
 	active: boolean;
+	/** For a version: what its documentation is, which picks its icon. */
+	kind?: "latest" | "previous" | "migration";
 };
 
 /**
@@ -132,22 +134,32 @@ export function getFrameworkOptions(
 	});
 }
 
+const VERSION_KINDS = {
+	latest: "Latest",
+	previous: "Previous version",
+	migration: "Migration notes",
+} as const;
+
 /** The version switcher: the versions of the framework being read. */
 export function getVersionOptions(slugs: string[]): DocsOption[] {
 	const current = getDocsVersion(slugs);
 	const framework = getSwitcherFramework(slugs);
-	return getFrameworkVersions(framework).map((version) => ({
-		id: version,
-		title: version,
-		description:
+	return getFrameworkVersions(framework).map((version) => {
+		const kind =
 			version === CURRENT_DOCS_VERSION
-				? "Latest"
+				? "latest"
 				: MIGRATION_ONLY.includes(version)
-					? "Migration notes"
-					: "Previous version",
-		url: versionHome(version, framework),
-		active: version === current,
-	}));
+					? "migration"
+					: "previous";
+		return {
+			id: version,
+			title: version,
+			description: VERSION_KINDS[kind],
+			url: versionHome(version, framework),
+			active: version === current,
+			kind,
+		};
+	});
 }
 
 function findDocsFolder(
