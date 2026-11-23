@@ -78,7 +78,7 @@ const { Stepper } = checkout;
 
 <Stepper.Root linear onFinish={placeOrder}>
   <Stepper.List>
-    {(step) => (
+    {(_step) => (
       <Stepper.Item>
         <Stepper.Trigger>
           <Stepper.Indicator />

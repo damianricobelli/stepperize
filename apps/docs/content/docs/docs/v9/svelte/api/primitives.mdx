@@ -5,7 +5,13 @@ description: Props and snippets of every Stepper component.
 
 All primitives pass `class`, `style`, every other attribute and your
 [attachments](https://svelte.dev/docs/svelte/@attach) to the element they
-render. All except `Root` accept a `child` snippet to
+render. On `Root`, `List`, `Item`, `Content` and `Indicator`, an attribute you
+pass replaces the one the primitive would set. On `Trigger`, `Prev` and `Next`,
+the ids, roles, `tabindex`, `disabled`, ARIA and `data-*` attributes the
+primitive manages take precedence, so the buttons stay in step with the flow;
+only the default `type="button"` gives way to yours.
+
+All except `Root` accept a `child` snippet to
 [use your own element](/docs/v9/svelte/guides/primitives#rendering-your-own-element).
 
 Every primitive has a bindable `ref`: `bind:ref` gives you its element, typed
@@ -97,6 +103,9 @@ in a flow rendered as tabs, and otherwise a `group` named after the step's
 | `step` | Step id | Required. |
 | `forceMount` | `boolean` | Keep it mounted and `hidden` while its step is not current. |
 
+Do not pass `id`: the trigger's `aria-controls` points at the id `Content`
+is given.
+
 ## Prev and Next
 
 Render a `button`.
@@ -135,7 +144,7 @@ attachment that fills `ref`.
 
 | Primitive | `props` |
 | --- | --- |
-| `Trigger`, `Prev`, `Next` | `ButtonChildProps`: `onclick` is always there, plus `disabled` and `type`. |
+| `Trigger`, `Prev`, `Next` | `ButtonChildProps`: `onclick` is always there, plus `disabled`, and `type` only if you passed one. |
 | `List` | `ListChildProps`: `onkeydown` is always there. |
 | The others | `ChildProps`, which is `HTMLAttributes<HTMLElement>` from `svelte/elements`. |
 
@@ -172,5 +181,6 @@ Outside an `Item` it throws [SZ101](/docs/v9/core/errors#sz101).
 
 In development the primitives warn about a `child` snippet that does not
 spread its props ([SZ001](/docs/v9/core/errors#sz001)), a trigger without an
-accessible name ([SZ002](/docs/v9/core/errors#sz002)) and a trigger outside a
-`List` ([SZ003](/docs/v9/core/errors#sz003)).
+accessible name ([SZ002](/docs/v9/core/errors#sz002)), a trigger outside a
+`List` ([SZ003](/docs/v9/core/errors#sz003)) and a trigger that is not a
+button ([SZ005](/docs/v9/core/errors#sz005)).

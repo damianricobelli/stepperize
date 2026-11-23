@@ -122,10 +122,9 @@ createEffect(
 );
 ```
 
-`on` makes the effect depend on the values only, and `defer` skips the run on
-mount. A plain `createEffect(() => stepper.setData(...))` reads the flow it
-changes, so it would run again on every change, and its first run would make a
-complete step incomplete without the user touching it.
+`defer` skips the run on mount: without it, the first run would write the same
+values back and make a complete step incomplete. Actions are never tracked, so
+the effect only follows `values`.
 
 `setData` does not validate. A step that was complete stops being complete when
 its data changes.

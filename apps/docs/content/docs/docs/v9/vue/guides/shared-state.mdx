@@ -96,4 +96,5 @@ A flow does not need a component. `checkout.create()` returns the same state
 machine with `get()` and `subscribe()`, for tests and servers; and
 `useStepper()` works inside an `effectScope()`, which destroys the flow when it
 stops. Called with neither (after an `await` in a hand-written `async setup()`),
-the flow is never destroyed, and in development Vue's console says so.
+the flow is never destroyed, and in development Stepperize warns
+([SZ104](/docs/v9/core/errors#sz104)).

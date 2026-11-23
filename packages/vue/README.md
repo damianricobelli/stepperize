@@ -40,7 +40,7 @@ const stepper = checkout.useStepper({ onFinish: (output) => placeOrder(output) }
     <PaymentForm v-else-if="stepper.current.id === 'payment'" />
     <Review v-else :data="stepper.data" />
 
-    <p v-for="issue in stepper.issues()" :key="issue.message">{{ issue.message }}</p>
+    <p v-for="(issue, index) in stepper.issues()" :key="index">{{ issue.message }}</p>
 
     <button type="button" :disabled="stepper.isFirst" @click="stepper.prev()">Back</button>
     <button type="button" @click="stepper.next(readForm())">

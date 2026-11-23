@@ -14,7 +14,7 @@ Requires Svelte 5.29 or newer. The documentation is at
 ## Quick start
 
 ```svelte
-<script lang="ts">
+<script module lang="ts">
   import { defineStepper } from "@stepperize/svelte";
   import { z } from "zod";
 
@@ -23,7 +23,9 @@ Requires Svelte 5.29 or newer. The documentation is at
     { id: "payment", title: "Payment", schema: z.object({ card: z.string().length(16) }) },
     { id: "review", title: "Review" },
   ]);
+</script>
 
+<script lang="ts">
   const stepper = checkout.useStepper({ onFinish: (output) => placeOrder(output) });
 </script>
 
@@ -38,7 +40,7 @@ Requires Svelte 5.29 or newer. The documentation is at
     <Review data={stepper.data} />
   {/if}
 
-  {#each stepper.issues() ?? [] as issue (issue.message)}
+  {#each stepper.issues() ?? [] as issue}
     <p>{issue.message}</p>
   {/each}
 

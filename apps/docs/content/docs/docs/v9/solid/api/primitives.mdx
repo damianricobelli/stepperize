@@ -79,6 +79,9 @@ in a flow rendered as tabs, and otherwise a `group` named after the step's
 | `step` | Step id | Required. |
 | `forceMount` | `boolean` | Keep it mounted and `hidden` while its step is not current. |
 
+Do not pass `id`: the trigger's `aria-controls` points at the id `Content`
+is given.
+
 ## Prev and Next
 
 Render a `button`.
@@ -119,6 +122,8 @@ Outside an `Item` it throws [SZ101](/docs/v9/core/errors#sz101).
 ## Diagnostics
 
 In development the primitives warn about an `as` component that does not
-spread its props (the types already refuse one that cannot take `ref`) ([SZ001](/docs/v9/core/errors#sz001)), a trigger without an
-accessible name ([SZ002](/docs/v9/core/errors#sz002)) and a trigger outside a
-`List` ([SZ003](/docs/v9/core/errors#sz003)).
+spread its props ([SZ001](/docs/v9/core/errors#sz001)), a trigger without an
+accessible name ([SZ002](/docs/v9/core/errors#sz002)), a trigger outside a
+`List` ([SZ003](/docs/v9/core/errors#sz003)) and a trigger that is not a
+button ([SZ005](/docs/v9/core/errors#sz005)). One that cannot take `ref` does
+not compile.

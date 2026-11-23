@@ -94,8 +94,20 @@ other parts (list, item, indicator, prev, next) may live in a child component.
 ## SZ005
 
 **Warning.** A trigger is not a `<button>`. Enter and Space do not press a
-`<span>` or a `<div>`, and it cannot be disabled. It comes from
-`bindStepper`, which enhances markup it did not write.
+`<span>` or a `<div>`, and it cannot be disabled. Every binding checks the
+element a trigger ends up on, in development: the one a `render` function,
+`as-child`, a `child` snippet or an `as` component renders, the element an
+Angular or Lit trigger directive is written on, and the `stepper-trigger` part
+`bindStepper` enhances. A link with an `href` passes, since the keyboard can
+press it.
+
+```tsx
+// Wrong
+<Stepper.Trigger render={(props) => <span {...props} />}>Account</Stepper.Trigger>
+
+// Right
+<Stepper.Trigger>Account</Stepper.Trigger>
+```
 
 ```html
 <!-- Wrong -->
@@ -112,6 +124,11 @@ other parts (list, item, indicator, prev, next) may live in a child component.
 - `useStepperContext()` needs the `Provider` or `Stepper.Root` of the same
   definition as an ancestor. A provider of another definition does not count.
 - The primitives need `Stepper.Root`.
+- Angular: `injectStepperContext()` needs a `provideStepper()` of the same
+  definition, or a `[stepperRoot]` bound to one of its steppers, above it, and
+  the primitive directives need a `[stepperRoot]`.
+- Lit: the other parts need the `root()` directive on an element that contains
+  them.
 
 If the component only needs its own flow, use `useStepper()` instead.
 
@@ -124,7 +141,7 @@ If the component only needs its own flow, use `useStepper()` instead.
 item gets its step from the `Stepper.List` function, or from its `step` prop:
 
 ```tsx
-<Stepper.List>{() => <Stepper.Item>…</Stepper.Item>}</Stepper.List>
+<Stepper.List>{(_step) => <Stepper.Item>…</Stepper.Item>}</Stepper.List>
 
 <Stepper.Item step="payment">…</Stepper.Item>
 ```
@@ -135,16 +152,20 @@ on itself or on its `stepper-item`.
 ## SZ102
 
 **Error.** A step id does not exist in the definition. It is thrown by `goTo`,
-`setData`, a `next` branch that returns an unknown id, and `Stepper.Item`.
+`setData`, a `next` branch that returns an unknown id, `Stepper.Item` and
+most content parts.
 
-`goTo`, `setData` and `Stepper.Item` throw it directly, and so does
-`bindStepper` for a `data-step` that is not in the flow. A `next` branch that
-returns an unknown id makes the `next()` promise reject with it.
+`goTo`, `setData` and `Stepper.Item` throw it directly. So do a content part
+for a step that is not in the definition (`Stepper.Content` in Vue, Svelte and
+Solid, Angular's `stepperContent`, Lit's `content()`) and `bindStepper` for a
+`data-step` that is not in the flow. A `next` branch that returns an unknown id
+makes the `next()` promise reject with it.
 
 Where ids are typed, TypeScript catches this at compile time; it usually means
 a value was cast, or came from outside, such as a URL. Ids written in an HTML
-attribute (`data-step`) or an Angular directive input are plain strings and
-are only checked when the page runs. For outside values use the
+attribute (`data-step`) or an Angular directive input without a
+[`StepperRegistry`](/docs/v9/angular/api/primitives#stepperregistry) are plain
+strings and are only checked when the page runs. For outside values use the
 [`step` option](/docs/v9/react/guides/url): it ignores unknown ids and calls
 `onInvalidStep` so you can correct the source.
 
@@ -158,8 +179,9 @@ are only checked when the page runs. For outside values use the
 **Error or warning.** A flow was created where nothing owns it, so nothing
 would ever destroy it.
 
-- Svelte, an error: `useStepper()` was called outside a component's
-  initialisation, for example in a `.svelte.ts` module. Use
+- Svelte, an error in the browser: `useStepper()` was called outside a
+  component's initialisation, for example in a `.svelte.ts` module. The server
+  does not check it, so never call it at module scope. Use
   `fromFlow(definition.create())` there.
 - Vue, a warning: `useStepper()` ran without a component instance or an effect
   scope, typically after an `await` in a hand-written async `setup()`. Call it

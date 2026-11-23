@@ -11,7 +11,7 @@ stepper, a provider and a set of accessible, unstyled components that all share
 the same step ids.
 
 ```svelte
-<script lang="ts">
+<script module lang="ts">
   import { defineStepper } from "@stepperize/svelte";
   import { z } from "zod";
 
@@ -20,7 +20,9 @@ the same step ids.
     { id: "payment", title: "Payment", schema: z.object({ card: z.string().length(16) }) },
     { id: "review", title: "Review" },
   ]);
+</script>
 
+<script lang="ts">
   const stepper = checkout.useStepper({ onFinish: (output) => placeOrder(output) });
 </script>
 
@@ -42,7 +44,7 @@ the same step ids.
 </section>
 ```
 
-Here it is running, built with the primitives:
+A flow built with the primitives, running:
 
 <FrameworkDemo framework="svelte" />
 
@@ -71,7 +73,7 @@ library, owns the fields. See [Forms](/docs/v9/svelte/guides/forms).
   announcements are handled for you. `bind:ref`, `{@attach}` and `child`
   snippets reach the element, as in any Svelte component library.
 - **Server rendering.** It renders in SvelteKit and hydrates in place.
-- **Small.** About 3.4 kB for the stepper and 7.8 kB with the primitives,
+- **Small.** About 3.5 KiB for the stepper and 8.3 KiB with the primitives,
   min + gzip. The only dependency besides the core is `esm-env`.
 
 ## The same flow as every other binding

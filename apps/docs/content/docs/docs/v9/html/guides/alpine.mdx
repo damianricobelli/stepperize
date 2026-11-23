@@ -56,7 +56,7 @@ after every change, with the actions on it.
   </div>
   <div data-component="stepper-content" data-step="plan">…</div>
 
-  <template x-for="issue in view.issues() ?? []" :key="issue.message">
+  <template x-for="(issue, index) in view.issues() ?? []" :key="index">
     <p role="alert" x-text="issue.message"></p>
   </template>
 

@@ -26,9 +26,9 @@ the options as a function so they are read again when the page changes.
 </script>
 ```
 
-- Following the URL is a `goTo`. With `linear`, a deep link cannot open a
-  step before the ones in front of it are complete. Without `linear`, any step
-  can be opened, as with `goTo`.
+- Following the URL is a `goTo`. With `linear`, a deep link can only open the
+  current step or one already completed. Without `linear`, any step can be
+  opened, as with `goTo`.
 - The `guard` runs when the URL changes after the page is mounted. It does not run for
   the step the page first loads on.
 - `onInvalidStep` is called for unknown ids, for steps `linear` does not allow

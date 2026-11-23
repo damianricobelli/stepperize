@@ -4,7 +4,14 @@ description: Props and slots of every Stepper component.
 ---
 
 All primitives pass `class`, `style` and every other attribute to the element
-they render. All except `Root` accept `as-child` to
+they render. On `Root`, `List`, `Item`, `Content` and `Indicator`, an attribute
+you pass replaces the one the primitive would set (`class` and `style` are
+merged, listeners chained). On `Trigger`, `Prev` and `Next`, the ids, roles,
+`tabindex`, `disabled`, ARIA and `data-*` attributes the primitive manages take
+precedence, so the buttons stay in step with the flow; only the default
+`type="button"` gives way to yours.
+
+All except `Root` accept `as-child` to
 [use your own element](/docs/v9/vue/guides/primitives#rendering-your-own-element):
 one child, which receives the props, and is filled with the primitive's
 default content when it is empty.
@@ -27,7 +34,7 @@ Renders a `div`. Creates the flow and provides it.
 
 | Slot | Props | Description |
 | --- | --- | --- |
-| `default` | The stepper | `v-slot="stepper"`. Reactive and read-only: it only re-renders for what it reads. |
+| `default` | The stepper | `v-slot="stepper"`. Reactive and read-only: only what the slot reads is tracked. |
 
 `@change` is the flow's callback, not the DOM event.
 
@@ -91,6 +98,9 @@ in a flow rendered as tabs, and otherwise a `group` named after the step's
 | `step` | Step id | Required. |
 | `force-mount` | `boolean` | Keep it mounted and `hidden` while its step is not current. |
 
+Do not pass `id`: the trigger's `aria-controls` points at the id `Content`
+is given.
+
 It works inside `<Transition>`, in every mode: see
 [Animating panels](/docs/v9/vue/guides/primitives#animating-panels).
 
@@ -134,5 +144,6 @@ In development the primitives warn about `as-child` that loses its props
 ([SZ001](/docs/v9/core/errors#sz001)): no element in the slot, more than one
 node, a component that does not pass its attributes on, or a `List` element
 that is not empty while the `item` slot should fill it. They also warn about a
-trigger without an accessible name ([SZ002](/docs/v9/core/errors#sz002)) and a
-trigger outside a `List` ([SZ003](/docs/v9/core/errors#sz003)).
+trigger without an accessible name ([SZ002](/docs/v9/core/errors#sz002)), a
+trigger outside a `List` ([SZ003](/docs/v9/core/errors#sz003)) and a trigger
+that is not a button ([SZ005](/docs/v9/core/errors#sz005)).

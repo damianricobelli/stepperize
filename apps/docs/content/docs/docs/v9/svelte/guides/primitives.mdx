@@ -114,8 +114,14 @@ Nothing is styled. Every element has a `data-component` and the state it shows:
 :global([data-component="stepper-trigger"][data-state="current"]) { font-weight: 600; }
 ```
 
-`class`, `style` and any other attribute you pass go to the element. Scoped
-styles do not reach inside components, so use `class` with your utility
+`class`, `style` and any other attribute you pass go to the element. On
+`Root`, `List`, `Item`, `Content` and `Indicator` yours win over the
+primitive's, but do not pass `id` to `Content`: the trigger's `aria-controls`
+points at the id the primitive gives it. On `Trigger`, `Prev` and `Next` the
+ids, roles, `tabindex`, `disabled`, ARIA and `data-*` attributes the primitive
+manages take precedence; only the default `type="button"` gives way to yours.
+
+Scoped styles do not reach inside components, so use `class` with your utility
 framework, or `:global(...)`.
 
 ## Rendering your own element
@@ -133,8 +139,8 @@ carry the ARIA attributes, ids and handlers:
 
 `props` is typed, so `props.onclick` can be called from your own handler. A
 component you spread it onto must pass its rest props to its element, as
-`MyButton` would with `let { variant, ...rest } = $props()` and
-`<button {...rest}>`. In development, a `child` snippet that drops the props is
+`MyButton` would with `let { variant, children, ...rest } = $props()` and
+`<button {...rest}>{@render children?.()}</button>`. In development, a `child` snippet that drops the props is
 reported ([SZ001](/docs/v9/core/errors#sz001)).
 
 ## Reaching the element

@@ -11,7 +11,7 @@ props: there is nothing to memoize.
 | --- | --- | --- |
 | [`linear`](#linear) | `boolean` | Only move forward through `next()`. Default `false`. |
 | [`next`](#next) | `object` | Where each step leads. |
-| [`guard`](#guard) | `function` | Runs before every move and can cancel it. |
+| [`guard`](#guard) | `function` | Runs before every move and can refuse it. |
 | [`snapshot`](#snapshot) | `Partial<Snapshot>` | Where the flow starts. Read once. |
 | [`step`](#step) | `string \| null` | An outside value the flow follows, such as the URL. |
 | [`onChange`](#onchange) | `(snapshot) => void` | Called after the step, the data or the completion changes. |
@@ -78,8 +78,8 @@ guard: async ({ from, to, direction, data, signal }) => {
 ```
 
 Runs after validation and before every `next`, `prev` and `goTo`. Return
-`false` to cancel the move; anything else, including nothing, allows it. It
-may be async.
+`false` to refuse the move (`reason: "guard"`); anything else, including
+nothing, allows it. It may be async.
 
 | Field | Description |
 | --- | --- |

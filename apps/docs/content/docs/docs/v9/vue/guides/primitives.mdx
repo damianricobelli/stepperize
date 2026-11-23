@@ -129,7 +129,12 @@ Nothing is styled. Every element has a `data-component` and the state it shows:
 [data-component="stepper-indicator"][data-state="complete"] { background: green; }
 ```
 
-`class`, `style` and any other attribute you pass go to the element.
+`class`, `style` and any other attribute you pass go to the element. On
+`Root`, `List`, `Item`, `Content` and `Indicator` yours win over the
+primitive's, but do not pass `id` to `Content`: the trigger's `aria-controls`
+points at the id the primitive gives it. On `Trigger`, `Prev` and `Next` the
+ids, roles, `tabindex`, `disabled`, ARIA and `data-*` attributes the primitive
+manages take precedence; only the default `type="button"` gives way to yours.
 
 ## Rendering your own element
 

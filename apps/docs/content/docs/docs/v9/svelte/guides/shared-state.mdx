@@ -60,7 +60,7 @@ in a dialog that any page can open, or a flow that survives navigating between
 routes. Create it in a `.svelte.ts` module with `create()`, and make it
 reactive with `fromFlow()`:
 
-```ts title="checkout.svelte.ts"
+```ts title="checkout-flow.svelte.ts"
 import { fromFlow } from "@stepperize/svelte";
 import { checkout } from "./checkout";
 
@@ -70,7 +70,7 @@ export const stepper = fromFlow(flow);
 
 ```svelte title="CartBadge.svelte"
 <script lang="ts">
-  import { stepper } from "./checkout.svelte";
+  import { stepper } from "./checkout-flow.svelte";
 </script>
 
 <span>Step {stepper.index + 1} of {stepper.steps.length}</span>
@@ -102,5 +102,6 @@ The flow is yours, not a component's:
 
 `useStepper()` is not the tool here: it owns its flow, so it needs a component
 (or `$effect.root`) to destroy it. Called at module scope or in an event
-handler, it throws [SZ100](/docs/v9/core/errors#sz100) and points you to
-`fromFlow()`.
+handler, it throws [SZ104](/docs/v9/core/errors#sz104) in the browser and
+points you to `fromFlow()`. On the server it does not throw, so never call it
+at module scope: the mistake would only show once the page runs.

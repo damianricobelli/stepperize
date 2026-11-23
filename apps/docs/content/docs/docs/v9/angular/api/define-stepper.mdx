@@ -33,7 +33,8 @@ readonly stepper = checkout.injectStepper(() => ({ step: this.step() }));
 ```
 
 Call it in an injection context: a field initialiser, a constructor or a
-factory. Outside one it throws `NG0203`, naming `injectStepper()`.
+factory. Outside one it throws `NG0203`; in development the message names
+`injectStepper()`.
 
 It returns a `StepperRef`: a signal of the
 [stepper](/docs/v9/react/api/stepper), which is a new immutable view after

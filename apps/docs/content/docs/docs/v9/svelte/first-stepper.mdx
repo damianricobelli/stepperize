@@ -79,7 +79,7 @@ derived for you, so there is no index arithmetic.
 ## 4. Finish
 
 `next()` on the last step finishes the flow and calls `onFinish`, once. From
-then on `stepper.isFinished` is `true`.
+then on `stepper.isFinished` is `true`, until the flow changes again.
 
 ```ts
 const stepper = checkout.useStepper({
@@ -94,7 +94,7 @@ const stepper = checkout.useStepper({
 ## The whole thing
 
 ```svelte title="Checkout.svelte"
-<script lang="ts">
+<script module lang="ts">
   import { defineStepper } from "@stepperize/svelte";
 
   const checkout = defineStepper([
@@ -102,7 +102,9 @@ const stepper = checkout.useStepper({
     { id: "payment", title: "Payment" },
     { id: "review", title: "Review" },
   ]);
+</script>
 
+<script lang="ts">
   const stepper = checkout.useStepper({
     onFinish: () => alert("Order placed"),
   });

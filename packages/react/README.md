@@ -40,7 +40,7 @@ function Checkout() {
         review: () => <Review data={stepper.data} />,
       })}
 
-      {stepper.issues()?.map((issue) => <p key={issue.message}>{issue.message}</p>)}
+      {stepper.issues()?.map((issue, index) => <p key={index}>{issue.message}</p>)}
 
       <button type="button" disabled={stepper.isFirst} onClick={() => stepper.prev()}>
         Back
@@ -90,7 +90,7 @@ checkout.useStepper({
   linear: true,
   // Branch on a step's validated data.
   next: { shipping: (data) => (data.address === "pickup" ? "review" : "payment") },
-  // Runs before every move. Return false to cancel it. May be async.
+  // Runs before every move. Return false to refuse it. May be async.
   guard: ({ direction }) => direction !== "prev" || confirm("Discard changes?"),
   // Resume a saved flow, and save it on every change.
   snapshot: JSON.parse(localStorage.getItem("checkout") ?? "{}"),

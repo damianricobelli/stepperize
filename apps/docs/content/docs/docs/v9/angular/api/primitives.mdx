@@ -125,7 +125,8 @@ A decorative mark: `aria-hidden`, `data-state`, `data-invalid`.
 | `stepperContent` | `StepId` | Required. A step id. |
 
 The panel of a step. While its step is not current it stays in the page with
-`hidden` and `display: none`, which no `display` rule of yours overrides. It
+`hidden` and an inline `display: none`, which a `display` rule of yours does
+not override unless it is marked `!important`. It
 is the `tabpanel` of its trigger in a flow rendered as tabs, and otherwise a
 `group` named after the step's `title`.
 
@@ -187,5 +188,6 @@ There are no title or description directives: write `{{ step.title }}`.
 ## Diagnostics
 
 In development the trigger warns when it has no accessible name
-([SZ002](/docs/v9/core/errors#sz002)) or is outside a list
-([SZ003](/docs/v9/core/errors#sz003)). Production builds leave the checks out.
+([SZ002](/docs/v9/core/errors#sz002)), is outside a list
+([SZ003](/docs/v9/core/errors#sz003)) or is not a button
+([SZ005](/docs/v9/core/errors#sz005)). Production builds leave the checks out.

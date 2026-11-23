@@ -82,7 +82,7 @@ derived for you, so there is no index arithmetic.
 ## 4. Finish
 
 `next()` on the last step finishes the flow and calls `onFinish`, once. From
-then on `stepper.isFinished` is `true`.
+then on `stepper.isFinished` is `true`, until the flow changes again.
 
 ```tsx
 const stepper = checkout.useStepper({

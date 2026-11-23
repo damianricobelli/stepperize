@@ -112,7 +112,7 @@ If you only want the controller, import from `@stepperize/lit/headless`.
 | `controller(host, flow)` | Follow a flow that lives elsewhere, to share it between elements. A function returning the flow follows one that arrives later or changes, such as one from `@lit/context`. |
 | `create(options?)` | The same state machine without Lit, for tests, servers and stores. |
 
-`stepper.destroy()` ends a controller: it leaves the host, and a flow the host
+`this.stepper.destroy()` ends a controller: it leaves the host, and a flow the host
 owns is destroyed with it.
 
 ## License

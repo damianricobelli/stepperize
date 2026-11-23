@@ -30,7 +30,7 @@ It returns:
 ```ts
 const stepper = checkout.useStepper();
 const stepper = checkout.useStepper({ linear: true, onFinish });
-const stepper = checkout.useStepper(() => ({ step: route.params.step }));
+const stepper = checkout.useStepper(() => ({ step: route.params.step as string }));
 ```
 
 Call it in `setup` (or `<script setup>`). It returns the
@@ -60,7 +60,8 @@ and is destroyed with it.
 - After a top-level `await` in `<script setup>`, Vue restores the component,
   so the flow is still owned. In a hand-written `async setup()` it is not:
   call `useStepper()` before the first `await`. In development, a flow with
-  no component and no effect scope warns, because nothing would destroy it.
+  no component and no effect scope warns
+  ([SZ104](/docs/v9/core/errors#sz104)), because nothing would destroy it.
 - Under `<KeepAlive>`, a component that is not on screen stops following
   `step`: the route it would follow belongs to another page. When it is
   activated again it follows the current value.

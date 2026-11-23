@@ -127,8 +127,8 @@ function Errors() {
   const stepper = checkout.useStepperContext();
   return (
     <ul>
-      {stepper.issues()?.map((issue) => (
-        <li key={issue.message}>{issue.message}</li>
+      {stepper.issues()?.map((issue, index) => (
+        <li key={index}>{issue.message}</li>
       ))}
     </ul>
   );
@@ -263,7 +263,7 @@ at all, use the schema you already have: `shippingSchema.safeParse(values)`.
 
 For anything a schema cannot express (a server-side rule, a confirmation), use
 a [guard](/docs/v9/react/guides/navigation#guard-a-move). It runs after
-validation and can cancel the move.
+validation and can refuse the move (`reason: "guard"`).
 
 ## What validation is, and is not
 

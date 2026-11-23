@@ -35,7 +35,7 @@ const checkout = defineStepper([
       @case ("review") { <app-review [data]="stepper().data" /> }
     }
 
-    @for (issue of stepper().issues(); track issue.message) {
+    @for (issue of stepper().issues(); track $index) {
       <p>{{ issue.message }}</p>
     }
 
@@ -103,7 +103,8 @@ export class CheckoutSteps {
 
 They handle roles, ids, keyboard navigation, focus and screen reader
 announcements, and expose their state through `data-*` attributes for styling.
-Static attributes you write win over theirs, and `[stepperRoot]` shares its
+Static attributes you write on the root, list, items, panels and indicators
+win over theirs; on buttons only `type` is yours. `[stepperRoot]` shares its
 stepper with the components inside through `injectStepperContext()`.
 
 Step ids are typed in TypeScript and in template expressions

@@ -44,8 +44,10 @@ state.
 - The flow is destroyed with the component: a running move is cancelled.
 - On the server it renders the current step and runs no callback.
 - Outside a component (module scope, an event handler) it throws
-  [SZ100](/docs/v9/core/errors#sz100): nothing would destroy the flow. Use
-  [`fromFlow`](#fromflow) there.
+  [SZ104](/docs/v9/core/errors#sz104) in the browser: nothing would destroy
+  the flow. On the server it does not throw, so a call at module scope can
+  pass server rendering and fail once the page runs; never call it there. Use
+  [`fromFlow`](#fromflow) instead.
 
 ## useStepperContext
 

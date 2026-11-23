@@ -15,6 +15,7 @@ it. Every change produces a new stepper; the one you hold does not change. See
 | `current` | `Step` | The step being shown, with all its fields. |
 | `index` | `number` | Position of `current` in `steps`. |
 | `isFirst` | `boolean` | `current` is the first step. |
+| `isLinear` | `boolean` | The flow is `linear`: only `next()` moves forward. The primitives render a list of steps instead of tabs. |
 | `isLast` | `boolean` | `next()` finishes the flow. See [Branching](/docs/v9/react/guides/branching#islast). |
 | `progress` | `number` | Position of `current` in `steps`, from `0` to `1`. |
 | `data` | `object` | The data of every step, by id, as it was typed: drafts included. Typed by each step's schema input. |

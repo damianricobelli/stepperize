@@ -7,7 +7,8 @@ description: One flow followed by several elements.
 step list, the current panel and the buttons are different elements, create the
 flow once and let each element follow it.
 
-A controller is given options, and owns a new flow, or a flow, and follows it.
+A controller is given either options, and owns a new flow, or a flow, which it
+follows.
 Either can be a function, read again before every render of the host:
 
 ```ts
@@ -85,7 +86,7 @@ from that render on.
 
 Until a flow arrives the function returns `undefined`, and the controller gives
 the host a flow of its own, at the first step, so `render()` never has to
-check. Once a flow arrives that one is destroyed. If the first render must not
+check. Once a flow arrives, that stand-in flow is destroyed. If the first render must not
 show anything before the flow arrives, check the property yourself:
 `if (!this.flow) return nothing;`.
 

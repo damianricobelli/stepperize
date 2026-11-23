@@ -117,9 +117,10 @@ message.
 | `linear` | An ordered list of buttons with `aria-current="step"`. Steps that cannot be reached yet are disabled. |
 | No triggers | Panels are `group`s named by the step's `title`. |
 
-On every step change the new step is announced to screen readers by its
-`title`, and if the focused element was hidden or removed, focus moves to the
-new panel instead of being lost.
+On every step change, if the focused element was hidden or removed, focus
+moves to the new panel instead of being lost, and the new step is announced to
+screen readers by its `title`. The announcement is skipped when focus is
+already on the new step's trigger or panel, which reads it out anyway.
 
 ## Styling
 
@@ -167,7 +168,7 @@ bind the step itself and `value().step` has its fields, typed:
 ```
 
 Each item follows only its own step. A change that does not touch a step, such
-as a draft saved for another one, does not re-render it.
+as a draft saved for another one, does not update it.
 
 ## Handling the move yourself
 
@@ -188,9 +189,10 @@ arrow keys.
 ## Panels in or out of the DOM
 
 `stepperContent` keeps its element in the page while its step is not current,
-with `hidden` and `display: none`, so the components inside keep their state,
-tabs always have the panel they point to, and no `display` rule of yours can
-show it by mistake.
+with `hidden` and an inline `display: none`, so the components inside keep
+their state, tabs always have the panel they point to, and a `display` rule of
+yours does not show it by mistake. Only a rule marked `!important` overrides
+it, so leave `display` without `!important` on panels.
 
 To leave the content out instead, export the panel and use control flow.
 `@defer` also loads the panel's code when its step is first shown:

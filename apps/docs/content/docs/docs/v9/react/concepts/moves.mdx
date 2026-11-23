@@ -105,10 +105,9 @@ guard or `onFinish` returns a promise:
   run the same check twice.
 - `canGoTo(id)` is `false`, and the primitives mark their buttons as disabled.
 - `reset()`, `restore()` or unmounting cancels it. The `signal` your guard
-  received is aborted, and the cancelled move resolves with
-  `reason: "cancelled"` once the schema, guard or `onFinish` it was waiting on
-  settles. A `fetch` aborted through `signal` rejects, and that counts as
-  settling: the move still resolves as cancelled.
+  received is aborted, and the move resolves with `reason: "cancelled"` at
+  once, even if the schema, guard or `onFinish` it was waiting on never
+  settles; their outcome is dropped.
 
 ```tsx
 checkout.useStepper({

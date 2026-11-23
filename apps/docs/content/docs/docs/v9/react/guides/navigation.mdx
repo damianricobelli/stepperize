@@ -133,7 +133,7 @@ list of steps. See [Accessibility](/docs/v9/react/guides/accessibility).
 ## Guard a move
 
 A guard runs before every `next`, `prev` and `goTo`, after validation. Return
-`false` to cancel the move; anything else allows it.
+`false` to refuse the move (`reason: "guard"`); anything else allows it.
 
 ```tsx
 checkout.useStepper({

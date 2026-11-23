@@ -38,7 +38,7 @@ names the framework primitives render, so one stylesheet fits both.
 | `stepper` | Any, usually `div` | | The root: `role="group"`, `aria-busy`, `data-pending`, `data-finished`. |
 | `stepper-list` | `ol` | | The list of steps. A `tablist` when the flow is not linear and has triggers. Handles arrow keys. |
 | `stepper-item` | `li` | Yes | One step: `data-state`, `data-invalid`, `data-disabled`. |
-| `stepper-trigger` | `button` | On it or on its item | Goes to its step. A `tab`, or a button with `aria-current="step"`. Any other element gets a development warning ([SZ002](/docs/v9/core/errors#sz002)): Enter and Space would not press it and it could not be disabled. |
+| `stepper-trigger` | `button` | On it or on its item | Goes to its step. A `tab`, or a button with `aria-current="step"`. Any other element, except a link with an `href`, gets a development warning ([SZ005](/docs/v9/core/errors#sz005)): Enter and Space would not press it and it could not be disabled. |
 | `stepper-indicator` | `span` | On it or on its item | A decorative mark: `aria-hidden`, `data-state`. |
 | `stepper-title`, `stepper-description` | `span` | On it or on its item | Left as written. When empty, filled with the step's `title` or `description`. |
 | `stepper-content` | `div` | Yes | The panel of a step: `hidden` unless its step is current. A `tabpanel`, or a `group` named by the step's `title`. |
@@ -50,8 +50,8 @@ names the framework primitives render, so one stylesheet fits both.
 
 ## What you control
 
-What you write on a part wins over what the binding would add, as props do in
-the framework primitives:
+What you write on a part wins over what the binding would add, except for the
+state it keeps in sync (below):
 
 - **Names, roles and tab stops.** On the root, lists, items, panels and
   indicators, your `role`, `aria-label`, `aria-labelledby` and `tabindex` are
@@ -68,14 +68,6 @@ the framework primitives:
   on Prev or Next keeps the button focusable but does nothing when pressed.
 - **Everything else.** Your classes, `aria-describedby`, `data-*` attributes
   and any attribute the binding does not set are never touched.
-
-The binding owns the state it keeps in sync: `hidden` on panels, `disabled` on
-triggers and Prev, `data-state` and the other `data-*` state, and the ARIA of
-triggers (`role`, `tabindex`, `aria-selected`, `aria-current`, `aria-controls`).
-Write them on the server to avoid a flash, as below; the binding takes them over
-from there. To keep a step out of reach, use the flow's
-[`guard`](/docs/v9/core/create-stepper) or `linear`, not `disabled` on its
-trigger.
 - **Your own handlers.** A listener you add to a button runs first. Call
   `event.preventDefault()` in it to handle the move yourself, for example to
   pass form values to `flow.next(values)`.
@@ -93,6 +85,14 @@ Handle the button, not the form's `submit` event. A `stepper-next` button is a
 `type="button"`, so it never submits the form; and if you make it
 `type="submit"`, the click moves the flow once and your submit handler moves
 it again.
+
+The binding owns the state it keeps in sync: `hidden` on panels, `disabled` on
+triggers and Prev, `data-state` and the other `data-*` state, and the ARIA of
+triggers (`role`, `tabindex`, `aria-selected`, `aria-current`, `aria-controls`).
+Write them on the server to avoid a flash, as below; the binding takes them over
+from there. To keep a step out of reach, use the flow's
+[`guard`](/docs/v9/core/create-stepper) or `linear`, not `disabled` on its
+trigger.
 
 ## Showing issues and other state
 

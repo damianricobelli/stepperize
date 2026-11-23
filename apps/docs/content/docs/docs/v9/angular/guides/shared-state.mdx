@@ -51,9 +51,9 @@ export class CheckoutHeader {
 }
 ```
 
-It returns the same signal as `injectStepper()`. The providing component can
-inject it too. Without a `provideStepper()` of the same definition above, it
-throws [SZ100](/docs/v9/core/errors#sz100).
+It returns a `StepperRef`, like `injectStepper()`. The providing component can
+inject it too. Without a `provideStepper()` or a `[stepperRoot]` of the same
+definition above, it throws [SZ100](/docs/v9/core/errors#sz100).
 
 ## Inside the primitives
 
@@ -95,9 +95,9 @@ Wrap what you need in `computed`. It only notifies when its result changes:
 readonly isLast = computed(() => this.stepper().isLast);
 ```
 
-Components that use the stepper in their template re-render when it changes.
-Mark them `ChangeDetectionStrategy.OnPush` and read what they need through
-`computed`, and they render only when that changes.
+Components are OnPush by default, so a component that reads the stepper in its
+template is checked when the stepper changes. Read what it needs through
+`computed`, and it is checked only when that value changes.
 
 ## In a service
 

@@ -27,8 +27,8 @@ export const signup = defineStepper([
 `next(data)` saves the data for the current step, validates it and only moves
 when it is valid. It resolves with what happened, and `stepper.issues()` holds
 the reasons until the step's data changes, through the next `next(data)` or a
-`setData`. Typing in a `v-model` field does not change it by itself: to clear
-the message as the user types, write the draft as shown in
+`setData`. Typing in a `v-model` field does not change the step's data by
+itself: to clear the message as the user types, write the draft as shown in
 [Keeping drafts](#keeping-drafts).
 
 ```vue title="Signup.vue"
@@ -62,7 +62,7 @@ function submit() {
     </label>
     <p v-else>Create the account for {{ stepper.output.profile?.name }}?</p>
 
-    <p v-for="issue in stepper.issues()" :key="issue.message" role="alert">
+    <p v-for="(issue, index) in stepper.issues()" :key="index" role="alert">
       {{ issue.message }}
     </p>
 
