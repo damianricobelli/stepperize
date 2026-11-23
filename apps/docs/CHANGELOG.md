@@ -1,5 +1,18 @@
 # docs
 
+## 4.2.2
+
+### Patch Changes
+
+- Updated dependencies [[`5c5f923`](https://github.com/damianricobelli/stepperize/commit/5c5f923d3b3177617a9cffa0c7c9f67ea3f8650d), [`796b429`](https://github.com/damianricobelli/stepperize/commit/796b429ccfd78e0485ee9736a5c20872f66c9b50), [`0b64c52`](https://github.com/damianricobelli/stepperize/commit/0b64c5239974db080dead149a1a72120943f6cda), [`7e8d7fe`](https://github.com/damianricobelli/stepperize/commit/7e8d7fe6434fe971264eb82571ecb3e7c6e54e7c), [`81e5774`](https://github.com/damianricobelli/stepperize/commit/81e57740c4a4b0e206c44bf75c230ba6b2a35a41), [`9dec3fe`](https://github.com/damianricobelli/stepperize/commit/9dec3fec2b24efd4d2b296a94ba644eb15c715fc), [`a36d840`](https://github.com/damianricobelli/stepperize/commit/a36d84035bac6d227c281e94ef2a7861fac4a22b), [`dbeae11`](https://github.com/damianricobelli/stepperize/commit/dbeae11938d731cdbdbd8f5b4d88cc6d961a6eaa)]:
+  - @stepperize/angular@9.1.0
+  - @stepperize/core@9.1.0
+  - @stepperize/lit@9.1.0
+  - @stepperize/react@9.1.0
+  - @stepperize/solid@9.1.0
+  - @stepperize/svelte@9.1.0
+  - @stepperize/vue@9.1.0
+
 ## 4.2.1
 
 ### Patch Changes

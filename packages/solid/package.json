@@ -1,6 +1,6 @@
 {
 	"name": "@stepperize/solid",
-	"version": "0.0.0",
+	"version": "9.1.0",
 	"private": false,
 	"publishConfig": {
 		"access": "public"
