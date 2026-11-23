@@ -1,9 +1,27 @@
 import assert from "node:assert/strict";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { gzipSync } from "node:zlib";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
+const STEPS = '[{ id: "start", title: "Start" }, { id: "finish" }]';
+
+/** Svelte ships its components as source: compile them the way an application's bundler would. */
+function sveltePlugin(require, generate) {
+	const { compile, compileModule } = require("svelte/compiler");
+	return {
+		name: "svelte",
+		setup(build) {
+			build.onLoad({ filter: /\.svelte$/ }, ({ path }) => ({
+				contents: compile(readFileSync(path, "utf8"), { generate, dev: false, filename: path }).js.code,
+			}));
+			build.onLoad({ filter: /\.svelte\.js$/ }, ({ path }) => ({
+				contents: compileModule(readFileSync(path, "utf8"), { generate, dev: false, filename: path }).js.code,
+			}));
+		},
+	};
+}
 
 /**
  * One entry per binding: what its bundler leaves external, and a server render
@@ -70,6 +88,48 @@ const bindings = [
 			);
 		},
 	},
+	{
+		name: "svelte",
+		external: ["svelte", "svelte/*"],
+		conditions: ["svelte", "browser", "production"],
+		plugins: (require) => [sveltePlugin(require, "client")],
+		// The built entries are Svelte source, which Node cannot import: render a server build of a page that uses them.
+		async verify({ require, esbuild, entry, full }) {
+			const dir = `${root}/packages/svelte/node_modules/.cache/check-bundle`;
+			mkdirSync(dir, { recursive: true });
+			const page = `${dir}/${full ? "full" : "headless"}.svelte`;
+			writeFileSync(
+				page,
+				full
+					? `<script>
+	import { defineStepper } from ${JSON.stringify(entry)};
+	const { Stepper } = defineStepper(${STEPS});
+</script>
+<Stepper.Root><Stepper.Item step="start"><Stepper.Trigger>Start</Stepper.Trigger></Stepper.Item></Stepper.Root>`
+					: `<script>
+	import { defineStepper } from ${JSON.stringify(entry)};
+	const definition = defineStepper(${STEPS});
+	const stepper = definition.useStepper();
+</script>
+<span>{stepper.current.id}{"Stepper" in definition}</span>`,
+			);
+			const outfile = page.replace(".svelte", ".mjs");
+			await esbuild.build({
+				entryPoints: [page],
+				bundle: true,
+				outfile,
+				format: "esm",
+				platform: "node",
+				external: ["svelte", "svelte/*"],
+				conditions: ["svelte", "production"],
+				plugins: [sveltePlugin(require, "server")],
+				logLevel: "silent",
+			});
+			const { render } = await import(pathToFileURL(require.resolve("svelte/server")));
+			const { body } = render((await import(`${pathToFileURL(outfile)}?${Date.now()}`)).default);
+			assert.match(body, full ? /stepper-trigger/ : /startfalse/);
+		},
+	},
 ];
 
 const rows = [];
@@ -91,6 +151,8 @@ for (const binding of bindings) {
 			target: "es2022",
 			jsx: "automatic",
 			external: binding.external,
+			conditions: binding.conditions,
+			plugins: binding.plugins?.(require),
 			legalComments: "none",
 			metafile: true,
 			define: { "process.env.NODE_ENV": '"production"' },
@@ -99,11 +161,16 @@ for (const binding of bindings) {
 		bundles.push({ entry: name, minified: code.length, gzip: gzipSync(code, { level: 9 }).length });
 		if (!full)
 			assert(!result.outputFiles[0].text.includes("stepper-trigger"), "Visual primitives leaked into headless");
-		const { defineStepper } = await import(pathToFileURL(entry));
-		const definition = defineStepper([{ id: "start", title: "Start" }, { id: "finish" }]);
-		assert.equal("Stepper" in definition, full, `${name}: only the full entry has primitives`);
+		let definition;
+		if (!binding.plugins) {
+			const { defineStepper } = await import(pathToFileURL(entry));
+			definition = defineStepper([{ id: "start", title: "Start" }, { id: "finish" }]);
+			assert.equal("Stepper" in definition, full, `${name}: only the full entry has primitives`);
+		}
 		await binding.verify({
 			require,
+			esbuild,
+			entry,
 			definition,
 			full,
 			output: Object.values(result.metafile.outputs)[0],
