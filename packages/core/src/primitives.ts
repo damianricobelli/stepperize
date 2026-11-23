@@ -249,14 +249,18 @@ export function onListKeydown<S extends readonly Step[]>(
 }
 
 /** Was focus in this stepper? Read it before the framework touches the DOM for a step change. */
-export const focusInside = (root: Element | null | undefined) => !!root?.contains(root.ownerDocument.activeElement);
+export const focusInside = (root: Element | null | undefined) => !!root?.contains(scopeOf(root).activeElement);
+
+/** Where an element's ids and focus live: its document, or the shadow root it is rendered in. */
+const scopeOf = (root: Element) => root.getRootNode() as Document | ShadowRoot;
 
 /**
  * What a step change needs beyond rendering, for people who cannot see it.
  * Call it once the DOM shows the new step.
  *
  * - Focus falls back to <body> when its element unmounts (a field in the old
- *   panel, a button that is replaced) or becomes disabled. Hand it to the new
+ *   panel, a button that is replaced) or becomes disabled, and stays on an
+ *   element nobody can see when its panel is only hidden. Hand it to the new
  *   panel instead of stranding keyboard users. Focus that was elsewhere
  *   (`inside` is false) is never moved.
  * - Pressing Next changes the page silently for screen readers. Announce the
@@ -269,10 +273,12 @@ export function stepChanged(
 	ui: Ui,
 	inside: boolean,
 ) {
-	const doc = root?.ownerDocument;
-	if (!doc) return;
+	if (!root) return;
+	const doc = scopeOf(root) as Document;
 	let active = doc.activeElement as HTMLButtonElement | null;
-	if (inside && (!active || active === doc.body || active.disabled)) {
+	// Hidden counts as gone: a panel kept in the page (`forceMount`, server-rendered markup) hides
+	// its fields without blurring them.
+	if (inside && (!active || active === doc.body || active.disabled || active.closest("[hidden]"))) {
 		active = doc.getElementById(panelId(ui, step.id)) as HTMLButtonElement | null;
 		active?.focus();
 	}
