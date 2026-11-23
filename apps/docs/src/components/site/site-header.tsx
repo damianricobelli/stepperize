@@ -40,13 +40,17 @@ export function SiteHeader({
 				<Link
 					to="/"
 					aria-label="Stepperize home"
-					className="pressable -ml-1 mr-1 rounded-lg p-1 outline-none pointer-coarse:py-1.5 focus-visible:ring-2 focus-visible:ring-ring sm:mr-4"
+					className="pressable -ml-1 mr-1 shrink-0 rounded-lg p-1 outline-none pointer-coarse:py-1.5 focus-visible:ring-2 focus-visible:ring-ring sm:mr-4"
 				>
-					{/* Below ~420px the word and the three links don't fit together; the mark stays. */}
-					<Wordmark wordClassName="max-[419px]:sr-only" />
+					{/* Below 480px the word and the three links don't fit together; the mark stays. */}
+					<Wordmark wordClassName="max-[479px]:sr-only" />
 				</Link>
 
-				<nav aria-label="Main" className="flex items-center">
+				{/* Fits from 360px; narrower than that the links scroll inside the bar, never the page. */}
+				<nav
+					aria-label="Main"
+					className="flex min-w-0 items-center overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+				>
 					<NavLink
 						active={active === "docs"}
 						href={{
@@ -78,7 +82,7 @@ export function SiteHeader({
 					</NavLink>
 				</nav>
 
-				<div className="ml-auto flex items-center gap-1">
+				<div className="ml-auto flex shrink-0 items-center gap-0.5 sm:gap-1">
 					<SearchButton />
 					<HeaderStars className="max-sm:hidden" />
 					<ThemeToggle />
@@ -107,7 +111,7 @@ function NavLink({
 			{...href}
 			aria-current={active ? "page" : undefined}
 			className={cn(
-				"pressable inline-flex h-9 items-center rounded-lg px-2.5 text-sm font-medium pointer-coarse:h-11 outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring sm:px-3",
+				"pressable inline-flex h-9 shrink-0 items-center rounded-lg px-1.5 text-sm font-medium pointer-coarse:h-11 outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset min-[400px]:px-2.5 sm:px-3",
 				active ? "text-foreground" : "text-muted-foreground",
 				className,
 			)}
@@ -136,11 +140,11 @@ function SearchButton() {
 			type="button"
 			onClick={() => setOpenSearch(true)}
 			aria-label="Search documentation"
-			className="pressable inline-flex h-9 items-center gap-2 rounded-lg text-sm text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring max-md:w-9 max-md:justify-center pointer-coarse:max-md:size-11 md:w-52 md:border md:bg-card/60 md:pr-1.5 md:pl-3 md:shadow-xs md:hover:border-foreground/15"
+			className="pressable inline-flex h-9 items-center gap-2 rounded-lg text-sm text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring max-lg:w-9 max-lg:justify-center pointer-coarse:max-lg:size-11 lg:w-52 lg:border lg:bg-card/60 lg:pr-1.5 lg:pl-3 lg:shadow-xs lg:hover:border-foreground/15"
 		>
 			<Search className="size-4 shrink-0" aria-hidden />
-			<span className="hidden flex-1 text-left md:inline">Search docs…</span>
-			<kbd className="hidden h-5.5 items-center gap-0.5 rounded-md border bg-muted px-1.5 font-sans text-[11px] font-medium text-muted-foreground md:inline-flex">
+			<span className="hidden flex-1 text-left lg:inline">Search docs…</span>
+			<kbd className="hidden h-5.5 items-center gap-0.5 rounded-md border bg-muted px-1.5 font-sans text-[11px] font-medium text-muted-foreground lg:inline-flex">
 				<span className="text-xs">⌘</span>K
 			</kbd>
 		</button>
