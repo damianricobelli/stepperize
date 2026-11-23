@@ -5,7 +5,7 @@ We're glad you're interested in contributing to our project! Here are some guide
 ## Getting Started
 
 1. Fork the repository
-2. Clone your fork: `git clone https://github.com/damianricobelli/stepperize.git`
+2. Clone your fork: `git clone https://github.com/<your-username>/stepperize.git`
 3. Create a new branch: `git checkout -b your-feature-name`
 4. Make your changes
 5. Commit your changes: `git commit -m "Add some feature"`
@@ -14,8 +14,13 @@ We're glad you're interested in contributing to our project! Here are some guide
 
 ## Development Setup
 
+Use the Node.js version in `.nvmrc` and the pnpm version in `package.json`.
+
 1. Install dependencies: `pnpm i`
-2. Run the development docs server: `pnpm dev --filter docs`
+2. Run the development docs server: `pnpm dev`
+3. Before opening a pull request, run `pnpm check` (types, tests and build).
+   The browser tests need Chromium: run `pnpm test:install` once.
+4. If your change affects a published package, add a changeset: `pnpm changeset`
 
 ## Code Style
 

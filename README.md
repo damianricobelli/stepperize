@@ -17,8 +17,8 @@ custom fields stay typed, and the UI is fully yours.
 npm install @stepperize/react
 ```
 
-Requires React 18 or 19. This branch is v9, which is not published yet; the
-documentation site still describes 8.0.
+Requires React 18 or 19. The documentation is at
+[stepperize.com](https://stepperize.com/docs).
 
 ## Quick start
 
