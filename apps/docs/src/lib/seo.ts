@@ -530,6 +530,57 @@ export const DOC_KEYWORDS: Record<string, readonly string[]> = {
 		"accessible multi-step form",
 		"SSR stepper",
 	],
+	"current/vue": [
+		"Vue stepper",
+		"Vue wizard",
+		"multi-step flow Vue",
+		"headless stepper Vue",
+	],
+	"current/vue/installation": [
+		"install Vue stepper",
+		"@stepperize/vue",
+		"Vue 3 wizard package",
+	],
+	"current/vue/first-stepper": [
+		"Vue stepper tutorial",
+		"Vue multi-step example",
+		"useStepper Vue",
+	],
+	"current/vue/guides/forms": [
+		"Vue multi-step form",
+		"v-model stepper",
+		"Vue form wizard validation",
+	],
+	"current/vue/guides/shared-state": [
+		"Vue stepper provide inject",
+		"useStepperContext Vue",
+		"shared stepper state",
+	],
+	"current/vue/guides/url": [
+		"Vue Router stepper",
+		"step in URL Vue",
+		"wizard route sync",
+	],
+	"current/vue/guides/ssr": [
+		"Nuxt stepper",
+		"Vue SSR wizard",
+		"stepper hydration",
+	],
+	"current/vue/guides/primitives": [
+		"Vue stepper components",
+		"accessible stepper Vue",
+		"unstyled stepper Vue",
+	],
+	"current/vue/api/define-stepper": [
+		"defineStepper Vue",
+		"useStepper composable",
+		"Stepperize Vue API",
+	],
+	"current/vue/api/primitives": [
+		"Vue stepper props",
+		"Stepper slots",
+		"as-child stepper",
+	],
 	"current/core": [
 		"@stepperize/core",
 		"framework-agnostic stepper",

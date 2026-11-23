@@ -1,0 +1,71 @@
+---
+title: Shared state
+description: One flow read by several components, with a Provider and useStepperContext.
+---
+
+`useStepper()` gives one component its own flow. When the step list, the
+current panel and the buttons live in different components, share one flow
+instead.
+
+## Provider
+
+```vue title="Checkout.vue"
+<script setup lang="ts">
+import { checkout } from "./checkout";
+import CheckoutHeader from "./CheckoutHeader.vue";
+import CheckoutBody from "./CheckoutBody.vue";
+
+const { Provider } = checkout;
+</script>
+
+<template>
+  <Provider linear @finish="placeOrder">
+    <CheckoutHeader />
+    <CheckoutBody />
+  </Provider>
+</template>
+```
+
+`Provider` takes every [option](/docs/v9/react/api/options) as a prop and
+renders no element. The callbacks can be written as listeners: `@change`,
+`@finish` and `@invalid-step` are `onChange`, `onFinish` and `onInvalidStep`.
+
+`Stepper.Root` is a `Provider` too: components inside it can call
+`useStepperContext()`.
+
+## useStepperContext
+
+```vue title="CheckoutHeader.vue"
+<script setup lang="ts">
+import { checkout } from "./checkout";
+
+const stepper = checkout.useStepperContext();
+</script>
+
+<template>
+  <p>Step {{ stepper.index + 1 }} of {{ stepper.steps.length }}</p>
+</template>
+```
+
+It returns the same reactive stepper as `useStepper()`. Outside the flow's own
+`Provider` it throws [SZ100](/docs/v9/core/errors#sz100).
+
+## Selectors
+
+Pass a function to get a `computed` with just what you need:
+
+```ts
+const isLast = checkout.useStepperContext((stepper) => stepper.isLast);
+// ComputedRef<boolean>
+```
+
+Vue already tracks what a template reads, so selectors are not needed for
+performance the way they are in React. They are convenient when you want a
+`ref` to pass along or to `watch`.
+
+## Outside a component
+
+A flow does not need a component. `checkout.create()` returns the same state
+machine with `get()` and `subscribe()`, for stores, tests and servers; and
+`useStepper()` works inside an `effectScope()`, which destroys the flow when it
+stops.

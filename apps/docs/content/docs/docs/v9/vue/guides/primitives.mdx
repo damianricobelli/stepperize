@@ -1,0 +1,144 @@
+---
+title: Primitives
+description: Unstyled components that handle roles, keyboard, focus and announcements.
+---
+
+Every definition comes with a `Stepper` object: components bound to your steps.
+They render plain elements with no styles, and take care of the parts that are
+easy to get wrong: roles, ids, keyboard navigation, focus and announcements.
+
+For a simple flow, your own buttons and a `v-if` are enough.
+
+## Basic structure
+
+```vue title="CheckoutSteps.vue"
+<script setup lang="ts">
+import { checkout } from "./checkout";
+
+const { Stepper } = checkout;
+</script>
+
+<template>
+  <Stepper.Root linear @finish="placeOrder">
+    <Stepper.List>
+      <template #item>
+        <Stepper.Item>
+          <Stepper.Trigger>
+            <Stepper.Indicator />
+            <Stepper.Title />
+            <Stepper.Description />
+          </Stepper.Trigger>
+        </Stepper.Item>
+      </template>
+    </Stepper.List>
+
+    <Stepper.Content step="shipping"><ShippingForm /></Stepper.Content>
+    <Stepper.Content step="payment"><PaymentForm /></Stepper.Content>
+    <Stepper.Content step="review"><Review /></Stepper.Content>
+
+    <Stepper.Prev>Back</Stepper.Prev>
+    <Stepper.Next>Continue</Stepper.Next>
+  </Stepper.Root>
+</template>
+```
+
+<FrameworkDemo framework="vue" />
+
+## How the pieces connect
+
+1. `Stepper.Root` creates the flow and provides it. It takes the options as
+   props and listeners.
+2. `Stepper.List` renders the list and handles arrow keys.
+3. Its `#item` slot is rendered once per step.
+4. `Stepper.Item` is one step. Everything inside it knows which one.
+5. `Stepper.Trigger` goes to that step when pressed.
+6. `Stepper.Content` renders while its `step` is current.
+7. `Stepper.Prev` and `Stepper.Next` call `prev()` and `next()`.
+
+`step` is typed: `<Stepper.Content step="shiping">` is an error in the editor
+and in `vue-tsc`.
+
+## Reading the flow in the template
+
+The default slot of `Root` receives the stepper, and the default slot of `Item`
+receives that item:
+
+```vue
+<Stepper.Root v-slot="stepper">
+  <p>Step {{ stepper.index + 1 }} of {{ stepper.steps.length }}</p>
+
+  <Stepper.List>
+    <template #item="{ step, index }">
+      <Stepper.Item v-slot="item">
+        <Stepper.Trigger>
+          {{ item.state === "complete" ? "✓" : index + 1 }} {{ step.title }}
+        </Stepper.Trigger>
+      </Stepper.Item>
+    </template>
+  </Stepper.List>
+</Stepper.Root>
+```
+
+In a child component, `checkout.useStepperContext()` and `Stepper.useItem()`
+return the same things.
+
+## Three patterns, chosen for you
+
+| The flow | What is rendered |
+| --- | --- |
+| Not `linear`, with triggers | A `tablist`: triggers are tabs with roving focus and arrow keys, panels are `tabpanel`s. |
+| `linear` | An ordered list of buttons with `aria-current="step"`. Steps that cannot be reached yet are disabled. |
+| No triggers | Panels are `group`s named by the step's `title`. |
+
+On every step change the new step is announced to screen readers by its
+`title`, and if the focused element disappeared, focus moves to the new panel
+instead of being lost.
+
+## Styling
+
+Nothing is styled. Every element has a `data-component` and the state it shows:
+
+| Attribute | On | Values |
+| --- | --- | --- |
+| `data-state` | `Item`, `Trigger`, `Indicator` | `pending`, `current`, `complete` |
+| `data-invalid` | `Item`, `Trigger`, `Indicator` | Present after a failed validation. |
+| `data-disabled` | `Item`, `Trigger`, `Prev`, `Next` | Present when it cannot be used. |
+| `data-pending` | `Root`, `Prev`, `Next` | Present while an async check or `onFinish` runs. |
+| `data-finished` | `Root` | Present once the flow has finished. |
+| `data-orientation` | `Root`, `List` | `horizontal`, `vertical` |
+
+```css
+[data-component="stepper-trigger"][data-state="current"] { font-weight: 600; }
+[data-component="stepper-indicator"][data-state="complete"] { background: green; }
+```
+
+`class`, `style` and any other attribute you pass go to the element.
+
+## Rendering your own element
+
+Add `as-child` and put one element or component in the slot. It receives the
+ARIA attributes, ids and handlers instead of the default tag:
+
+```vue
+<Stepper.Next as-child>
+  <MyButton variant="primary">Continue</MyButton>
+</Stepper.Next>
+```
+
+## Handling the move yourself
+
+Call `preventDefault()` in your own listener to take over, for example to pass
+form values:
+
+```vue
+<Stepper.Next @click="(event) => { event.preventDefault(); stepper.next(values); }">
+  Continue
+</Stepper.Next>
+```
+
+## Keeping panels mounted
+
+`<Stepper.Content step="payment" force-mount>` stays in the DOM, `hidden`,
+while its step is not current, so the state of the fields inside survives.
+
+See the [primitives reference](/docs/v9/vue/api/primitives) for every prop.

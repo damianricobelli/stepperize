@@ -24,6 +24,17 @@ are missing from the page.
 If you spread into your own component, it must forward the `ref` to its
 element.
 
+In Vue the same warning means a primitive has `as-child` but no element or
+component in its default slot to receive those attributes.
+
+```vue
+<!-- Wrong: only text in the slot. -->
+<Stepper.Next as-child>Continue</Stepper.Next>
+
+<!-- Right -->
+<Stepper.Next as-child><MyButton>Continue</MyButton></Stepper.Next>
+```
+
 ## SZ002
 
 **Warning.** A `Stepper.Trigger` has no accessible name. `Stepper.Indicator` is

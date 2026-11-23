@@ -1,0 +1,74 @@
+---
+title: defineStepper
+description: The definition and everything it returns.
+---
+
+```ts
+import { defineStepper } from "@stepperize/vue";
+
+const checkout = defineStepper(steps, options?);
+```
+
+| Argument | Description |
+| --- | --- |
+| `steps` | An array of steps. Each needs a unique `id`; `schema` types and validates its data; every other field is yours. |
+| `options` | Defaults for every flow created from this definition. See [Options](/docs/v9/react/api/options). |
+
+It returns:
+
+| | |
+| --- | --- |
+| `steps` | The array you passed. |
+| `useStepper(options?)` | A flow owned by the calling component. |
+| `useStepperContext(selector?)` | The flow of the nearest `Provider` or `Stepper.Root`. |
+| `Provider` | Shares one flow with the components below. |
+| `Stepper` | The [primitives](/docs/v9/vue/api/primitives). Not in `/headless`. |
+| `create(options?)` | A flow without Vue. See [Core](/docs/v9/core). |
+
+## useStepper
+
+```ts
+const stepper = checkout.useStepper();
+const stepper = checkout.useStepper({ linear: true, onFinish });
+const stepper = checkout.useStepper(() => ({ step: route.params.step }));
+```
+
+Call it in `setup`. It returns the [stepper](/docs/v9/react/api/stepper) as a
+reactive object: reads are tracked, so templates, `computed` and `watch`
+follow the flow. Do not destructure its state.
+
+- Options can be an object, a ref or a getter. A getter or a ref is read again
+  when what it depends on changes, and the flow gets the new options.
+- `snapshot` is read once, when the flow is created.
+- The flow is destroyed when the component unmounts. Called inside an
+  `effectScope()` outside a component, it is destroyed when the scope stops.
+- On the server it renders the current step and runs no callback.
+
+## useStepperContext
+
+```ts
+const stepper = checkout.useStepperContext();
+const index = checkout.useStepperContext((stepper) => stepper.index); // ComputedRef<number>
+```
+
+Without arguments it returns the shared reactive stepper. With a selector it
+returns a `computed` of its result; the selector receives an immutable view of
+the flow. Outside the flow's `Provider` or `Stepper.Root` it throws
+[SZ100](/docs/v9/core/errors#sz100).
+
+## Provider
+
+```vue
+<checkout.Provider linear :snapshot="saved" @change="save" @finish="submit">
+  <slot />
+</checkout.Provider>
+```
+
+Every [option](/docs/v9/react/api/options) is a prop. `@change`, `@finish` and
+`@invalid-step` are the `onChange`, `onFinish` and `onInvalidStep` options. It
+renders its default slot and no element.
+
+## Types
+
+Everything `@stepperize/core` exports as a type is re-exported:
+`Stepper<S>`, `Options<S>`, `Snapshot<S>`, `Result<S>`, `Id<S>` and the rest.

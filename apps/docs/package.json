@@ -25,6 +25,7 @@
 		"@stepperize/core": "workspace:*",
 		"@stepperize/react": "workspace:*",
 		"@stepperize/react-v8": "npm:@stepperize/react@8.0.1",
+		"@stepperize/vue": "workspace:*",
 		"@tailwindcss/vite": "^4.3.5",
 		"@tanstack/react-devtools": "0.10.14",
 		"@tanstack/react-router": "1.170.46",

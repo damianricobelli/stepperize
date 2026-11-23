@@ -24,6 +24,12 @@ export const FRAMEWORKS = [
 		description: "Hooks and accessible primitives",
 	},
 	{
+		id: "vue",
+		title: "Vue",
+		package: "@stepperize/vue",
+		description: "Composables and accessible primitives",
+	},
+	{
 		id: "core",
 		title: "Core",
 		package: "@stepperize/core",

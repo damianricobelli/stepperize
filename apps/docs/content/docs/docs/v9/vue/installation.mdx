@@ -1,0 +1,67 @@
+---
+title: Installation
+description: Add Stepperize to a Vue project.
+---
+
+<Tabs items={["pnpm", "npm", "yarn", "bun"]}>
+<Tab value="pnpm">
+
+```bash
+pnpm add @stepperize/vue
+```
+
+</Tab>
+<Tab value="npm">
+
+```bash
+npm install @stepperize/vue
+```
+
+</Tab>
+<Tab value="yarn">
+
+```bash
+yarn add @stepperize/vue
+```
+
+</Tab>
+<Tab value="bun">
+
+```bash
+bun add @stepperize/vue
+```
+
+</Tab>
+</Tabs>
+
+## Requirements
+
+- Vue 3.5 or newer. The primitives use `useId` for ids that match between the
+  server and the client.
+- TypeScript 5.0 or newer for the typed ids. Nothing needs to be configured;
+  `vue-tsc` and the Vue language tools check step ids in templates.
+
+`@stepperize/core` is installed with it. You only import from it directly to
+run a flow [without Vue](/docs/v9/core).
+
+## Validation libraries
+
+Step schemas use [Standard Schema](https://standardschema.dev), so Zod,
+Valibot, ArkType and any other compliant library work without an adapter.
+Stepperize does not depend on any of them.
+
+## Composables without the components
+
+The default entry includes the `Stepper` primitives. If you render your own
+markup, import from `/headless` to leave them out of your bundle:
+
+```ts
+import { defineStepper } from "@stepperize/vue/headless";
+```
+
+The definition is the same, without the `Stepper` property.
+
+## Nuxt
+
+Nothing to configure: import `defineStepper` where you use it. See
+[Server rendering](/docs/v9/vue/guides/ssr).

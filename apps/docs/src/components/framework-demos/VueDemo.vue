@@ -1,23 +1,57 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, shallowRef } from "vue";
-import { box, button, createFlow } from "./shared";
+import { defineStepper } from "@stepperize/vue";
+import { ref } from "vue";
 
-const flow = createFlow();
-const s = shallowRef(flow.get());
-let stop: (() => void) | undefined;
-onMounted(() => {
-	stop = flow.subscribe(() => {
-		s.value = flow.get();
-	});
-});
-onUnmounted(() => stop?.());
+const { Stepper } = defineStepper([
+	{ id: "account", title: "Account", description: "Who you are" },
+	{ id: "plan", title: "Plan", description: "What you need" },
+	{ id: "done", title: "Done", description: "All set" },
+]);
+const finished = ref(false);
 </script>
 
 <template>
-  <div :class="box" data-demo="vue">
-    <strong>Vue</strong>
-    <span data-step>{{ s.index + 1 }}/{{ s.steps.length }}: {{ s.current.title }}</span>
-    <button :class="button" :disabled="s.isFirst" @click="flow.prev()">Prev</button>
-    <button :class="button" :disabled="s.isLast" @click="flow.next()">Next</button>
-  </div>
+	<Stepper.Root
+		v-slot="stepper"
+		class="not-prose my-4 flex flex-col gap-4 rounded-lg border p-4 text-sm"
+		data-demo="vue"
+		@finish="finished = true"
+		@change="finished = false"
+	>
+		<Stepper.List class="flex gap-2">
+			<template #item="{ index }">
+				<Stepper.Item class="flex-1">
+					<Stepper.Trigger
+						class="flex w-full items-center gap-2 rounded-md border px-3 py-2 text-left data-[state=current]:border-fd-primary data-[state=current]:bg-fd-accent"
+					>
+						<Stepper.Indicator
+							class="flex size-6 shrink-0 items-center justify-center rounded-full border text-xs data-[state=complete]:bg-fd-primary data-[state=complete]:text-fd-primary-foreground"
+						>
+							{{ index + 1 }}
+						</Stepper.Indicator>
+						<span class="flex flex-col">
+							<Stepper.Title class="font-medium" />
+							<Stepper.Description class="text-xs text-fd-muted-foreground" />
+						</span>
+					</Stepper.Trigger>
+				</Stepper.Item>
+			</template>
+		</Stepper.List>
+
+		<Stepper.Content step="account" class="rounded-md bg-fd-muted p-3">Create your account.</Stepper.Content>
+		<Stepper.Content step="plan" class="rounded-md bg-fd-muted p-3">Pick the plan that fits.</Stepper.Content>
+		<Stepper.Content step="done" class="rounded-md bg-fd-muted p-3">
+			{{ finished ? "Finished. Thanks!" : "Press Finish to complete the flow." }}
+		</Stepper.Content>
+
+		<div class="flex items-center gap-2">
+			<Stepper.Prev class="rounded-md border px-3 py-1 disabled:opacity-40">Back</Stepper.Prev>
+			<Stepper.Next class="rounded-md border px-3 py-1 aria-disabled:opacity-40">
+				{{ stepper.isLast ? "Finish" : "Continue" }}
+			</Stepper.Next>
+			<span data-step class="ml-auto text-xs text-fd-muted-foreground">
+				Step {{ stepper.index + 1 }} of {{ stepper.steps.length }}
+			</span>
+		</div>
+	</Stepper.Root>
 </template>
