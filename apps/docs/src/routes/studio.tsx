@@ -2,7 +2,14 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { SiteHeader } from "@/components/site/site-header";
 import { StudioApp } from "@/components/studio/studio";
-import { breadcrumbLd, jsonLdScript, seo } from "@/lib/seo";
+import {
+	breadcrumbLd,
+	jsonLdScript,
+	STUDIO_KEYWORDS,
+	seo,
+	studioApplicationLd,
+	studioMeta,
+} from "@/lib/seo";
 import {
 	DEFAULT_CONFIG,
 	PRESET_IDS,
@@ -20,10 +27,15 @@ export const Route = createFileRoute("/studio")({
 		preset: PRESET_IDS.find((id) => id === search.preset),
 	}),
 	head: () => {
+		const meta = studioMeta();
+		// React only: the Studio generates @stepperize/react and shadcn/ui code.
 		const head = seo({
-			title: "Stepper Studio",
-			description:
-				"Configure a multi-step flow, pick your framework, form and validation libraries, and install the generated code with the shadcn CLI.",
+			fullTitle: meta.title,
+			description: meta.description,
+			socialTitle: meta.socialTitle,
+			socialDescription: meta.socialDescription,
+			socialSection: "React · shadcn/ui",
+			keywords: STUDIO_KEYWORDS,
 			canonical: "/studio",
 			type: "website",
 		});
@@ -35,6 +47,7 @@ export const Route = createFileRoute("/studio")({
 				{ rel: "alternate", type: "text/markdown", href: "/studio.md" },
 			],
 			scripts: [
+				jsonLdScript(studioApplicationLd()),
 				jsonLdScript(
 					breadcrumbLd([
 						{ name: "Stepperize", url: "/" },

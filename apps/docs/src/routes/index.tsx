@@ -6,6 +6,7 @@ import {
 	jsonLdScript,
 	seo,
 	softwareApplicationLd,
+	softwareSourceCodeLd,
 	webSiteLd,
 } from "@/lib/seo";
 
@@ -25,6 +26,7 @@ export const Route = createFileRoute("/")({
 			}),
 			scripts: [
 				jsonLdScript(softwareApplicationLd()),
+				jsonLdScript(softwareSourceCodeLd()),
 				jsonLdScript(webSiteLd()),
 			],
 		};

@@ -243,6 +243,9 @@ export function studioAgentGuide(origin = SITE_ORIGIN): string {
 		"",
 		`> Stepper Studio (${origin}/studio) designs a multi-step React flow and generates its source on \`@stepperize/react\` and shadcn/ui. A flow is one JSON config. Encode it to get a share link and a shadcn registry item that installs the generated files with the shadcn CLI.`,
 		"",
+		"**React only.** The generated code is React (`@stepperize/react` with shadcn/ui for React) for Next.js, TanStack Start, React Router or Vite. There is no Studio output for Vue, Svelte, Solid, Angular, Lit or plain HTML: for those, write the flow by hand from that framework's docs (" +
+			`${origin}/docs/v9/<framework>/llms.txt).`,
+		"",
 		"Use this guide to create flows for a user without the visual editor: write a config, encode it, and hand over the install command or the Studio link. The full Stepperize docs are at " +
 			`${origin}/llms.txt.`,
 		"",
@@ -392,7 +395,7 @@ export function studioAgentGuide(origin = SITE_ORIGIN): string {
 		"- Every file is plain source in the user's project; edit it freely.",
 		"- Send the collected data to an API from `onFinish` on `Stepper.Root` (in the flow file). It runs once when `next()` completes the last step and receives the validated output of every step; return the request so the flow stays pending until it settles and `stepper.isFinished` turns true. `stepper.data[stepId]` reads one step's values as typed, `stepper.output[stepId]` what its schema produced.",
 		"- To change the flow's shape later, regenerate from the Studio link and reinstall, or edit `steps.ts`, `schemas.ts` and the step components by hand.",
-		`- Stepperize docs for the APIs used: ${origin}/llms.mdx/docs/v9/react/api/define-stepper, ${origin}/llms.mdx/docs/v9/react/forms, ${origin}/llms.mdx/docs/v9/react/guides/navigation.`,
+		`- Stepperize React docs for the APIs used: ${origin}/docs/v9/react/api/define-stepper.md, ${origin}/docs/v9/react/forms.md, ${origin}/docs/v9/react/guides/navigation.md. Every React page: ${origin}/docs/v9/react/llms.txt.`,
 	];
 	return `${sections.join("\n")}\n`;
 }
@@ -411,7 +414,7 @@ export function agentPrompt(
 	const project = generateProject(config);
 	const { names } = project;
 	return [
-		`Add this Stepperize multi-step flow ("${config.name}") to my project. It was designed in Stepper Studio.`,
+		`Add this Stepperize multi-step flow ("${config.name}") to my React project. It was designed in Stepper Studio, which generates React code (@stepperize/react with shadcn/ui).`,
 		"",
 		"Install it with the shadcn CLI (the project needs shadcn/ui set up):",
 		"",
@@ -425,6 +428,6 @@ export function agentPrompt(
 		"",
 		`Edit the flow visually: ${shareUrl(config, origin)}`,
 		`Studio guide for agents: ${origin}/studio.md`,
-		`Stepperize docs for LLMs: ${origin}/llms.txt`,
+		`Stepperize React docs for LLMs: ${origin}/docs/v9/react/llms.txt`,
 	].join("\n");
 }

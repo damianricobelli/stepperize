@@ -9,7 +9,7 @@ import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
 import { RootProvider } from "fumadocs-ui/provider/tanstack";
 import { THEME_COLORS, ThemeColorSync } from "@/components/site/theme-color";
 import { VersionBanner } from "@/components/site/version-banner";
-import { getDocsVersion } from "@/lib/docs-tree";
+import { searchTagForPath, searchTagOptions } from "@/lib/search";
 import { seo } from "@/lib/seo";
 
 import appCss from "../styles.css?url";
@@ -54,7 +54,6 @@ export const Route = createRootRoute({
 
 function RootDocument({ children }: { children: React.ReactNode }) {
 	const pathname = useLocation({ select: (location) => location.pathname });
-	const version = getDocsVersion(pathname.split("/").filter(Boolean).slice(1));
 	return (
 		<html lang="en" suppressHydrationWarning>
 			<head>
@@ -76,7 +75,15 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 				/>
 			</head>
 			<body className="flex min-h-screen flex-col">
-				<RootProvider search={{ options: { defaultTag: version } }}>
+				<RootProvider
+					search={{
+						// The framework being read comes first; the tags switch it. See `lib/search.ts`.
+						options: {
+							defaultTag: searchTagForPath(pathname),
+							tags: searchTagOptions(pathname),
+						},
+					}}
+				>
 					<ThemeColorSync />
 					{(pathname === "/" || pathname.startsWith("/docs/")) && (
 						<VersionBanner />

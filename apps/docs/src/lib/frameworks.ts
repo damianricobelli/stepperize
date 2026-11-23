@@ -10,11 +10,13 @@
  *    and its pages.
  * 3. List the folder in `content/docs/docs/{version}/meta.json`.
  *
- * 4. Give its pages keywords in `DOC_KEYWORDS` (`seo.ts`); a test asks for them.
+ * 4. Give its pages keywords in `DOC_KEYWORDS` and its search copy in
+ *    `FRAMEWORK_SEO` (`seo.ts`); a test and the type checker ask for them.
  *
  * The framework and version switchers, the landing page's framework list,
- * canonical URLs, breadcrumbs, the sitemap and `llms.txt` follow. The blocks,
- * Studio and the search filter do not: they only know React.
+ * canonical URLs, titles, breadcrumbs, structured data, search ranking, the
+ * sitemap and the `llms.txt` files follow. The blocks and Stepper Studio do
+ * not: they are React only, built on shadcn/ui for React, and say so.
  */
 export const FRAMEWORKS = [
 	{

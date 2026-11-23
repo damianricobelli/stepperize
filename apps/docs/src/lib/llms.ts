@@ -1,38 +1,63 @@
 import type * as PageTree from "fumadocs-core/page-tree";
-import { BLOCKS, CATEGORIES } from "@/lib/blocks/catalog.mjs";
-import { CURRENT_DOCS_VERSION, getDocsTree } from "@/lib/docs-tree";
-import { SITE } from "@/lib/site";
+import {
+	CURRENT_DOCS_VERSION,
+	getDocsFramework,
+	getDocsTree,
+	getDocsVersion,
+} from "@/lib/docs-tree";
+import {
+	CORE_FRAMEWORK,
+	DEFAULT_FRAMEWORK,
+	type DocsFramework,
+	FRAMEWORKS,
+} from "@/lib/frameworks";
 import { docRouteForSlugs } from "@/lib/sitemap-urls";
 import { source } from "@/lib/source";
+import {
+	buildFrameworkLlmsFullTxt,
+	buildFrameworkLlmsTxt,
+	buildLlmsFullTxt,
+	buildLlmsTxt,
+	demoSourceFile,
+	type FrameworkDocs,
+	LLMS_FRAMEWORK_ORDER,
+	type LlmsPage,
+	type LlmsSection,
+	pageMarkdownHeader,
+} from "./llms-index";
 import { toPlainMarkdown } from "./llms-markdown";
 import SUMMARY from "./llms-summary.md?raw";
 
 /**
- * LLM-facing documentation, following https://llmstxt.org:
- *
- * - `/llms.txt`: the hand-written API digest (`llms-summary.md`), then an
- *   index of the current docs, Stepper Studio and the Blocks.
- * - `/llms-full.txt`: every current docs page as one markdown file.
- * - `/llms.mdx/<docs path>`: one page as markdown.
- *
- * Built from the same fumadocs source and page tree as the site, so the
- * order and sections match the docs sidebar.
+ * LLM-facing documentation (https://llmstxt.org), read from the same Fumadocs
+ * source and page tree as the site, so order and sections match the sidebar.
+ * The text itself is built in `llms-index.ts`.
  */
 
 type DocsPage = ReturnType<typeof source.getPages>[number];
 
-type Section = { title: string; pages: DocsPage[] };
-
-const OLDER_VERSIONS = ["v8", "v7", "v6", "v5", "v4", "v3", "v2"] as const;
-
 const nodeName = (node: { name?: unknown }) =>
 	typeof node.name === "string" ? node.name : "";
 
-/** The current version's pages, grouped by the sidebar's separators. */
-export function currentDocsSections(): Section[] {
-	const tree = getDocsTree(source.pageTree, CURRENT_DOCS_VERSION);
+/** The canonical path of a page: `/docs/v9/vue/guides/forms`. */
+const pagePath = (page: DocsPage) => docRouteForSlugs(page.slugs) ?? page.url;
+
+const toLlmsPage = (page: DocsPage): LlmsPage => ({
+	path: pagePath(page),
+	title: page.data.title,
+	description: page.data.description,
+});
+
+/** One framework's current pages, grouped by the sidebar's separators. */
+function frameworkSections(framework: DocsFramework): {
+	sections: LlmsSection[];
+	pages: DocsPage[];
+} {
+	const tree = getDocsTree(source.pageTree, CURRENT_DOCS_VERSION, framework);
 	const byUrl = new Map(source.getPages().map((page) => [page.url, page]));
-	const sections: Section[] = [{ title: "Overview", pages: [] }];
+	const sections: { title: string; pages: DocsPage[] }[] = [
+		{ title: "Docs", pages: [] },
+	];
 	const seen = new Set<DocsPage>();
 
 	const visit = (nodes: PageTree.Node[]) => {
@@ -52,93 +77,172 @@ export function currentDocsSections(): Section[] {
 		}
 	};
 	visit(tree.children);
-	return sections.filter((section) => section.pages.length > 0);
+	const filled = sections.filter((section) => section.pages.length > 0);
+	return {
+		sections: filled.map((section) => ({
+			title: section.title,
+			pages: section.pages.map(toLlmsPage),
+		})),
+		pages: filled.flatMap((section) => section.pages),
+	};
 }
 
-export const markdownUrl = (page: DocsPage) =>
-	`${SITE.url}/llms.mdx/${page.slugs.join("/")}`;
+const SHARED_LINK = new RegExp(
+	`/docs/${CURRENT_DOCS_VERSION}/(${DEFAULT_FRAMEWORK}|${CORE_FRAMEWORK})(/[a-z0-9/-]*)?`,
+	"g",
+);
 
-const htmlUrl = (page: DocsPage) =>
-	`${SITE.url}${docRouteForSlugs(page.slugs) ?? page.url}`;
+/** The React and core pages a framework's pages link to, in order of first link. */
+async function sharedPages(
+	framework: DocsFramework,
+	pages: DocsPage[],
+): Promise<DocsPage[]> {
+	const own = new Set(pages);
+	const found: DocsPage[] = [];
+	for (const page of pages) {
+		const text = await page.data.getText("processed");
+		for (const [path] of text.matchAll(SHARED_LINK)) {
+			if (path.startsWith(`/docs/${CURRENT_DOCS_VERSION}/${framework}`))
+				continue;
+			const target = source.getPage(
+				`docs/${path.slice("/docs/".length)}`.split("/").filter(Boolean),
+			);
+			if (target && !own.has(target) && !found.includes(target))
+				found.push(target);
+		}
+	}
+	return found;
+}
 
-function pageLine(page: DocsPage): string {
-	const description = page.data.description ? `: ${page.data.description}` : "";
-	return `- [${page.data.title}](${markdownUrl(page)})${description}`;
+const frameworkEntry = (id: DocsFramework) =>
+	FRAMEWORKS.find((entry) => entry.id === id) ?? FRAMEWORKS[0];
+
+/** Every framework's current docs, without the shared pages (`llms.txt` lists them all anyway). */
+function allFrameworkDocs(): FrameworkDocs[] {
+	return LLMS_FRAMEWORK_ORDER.map((id) => ({
+		framework: frameworkEntry(id),
+		sections: frameworkSections(id).sections,
+		shared: [],
+	}));
+}
+
+/** One framework's current docs, with the shared pages its pages link to. */
+async function frameworkDocs(
+	framework: DocsFramework,
+): Promise<{ docs: FrameworkDocs; pages: DocsPage[]; shared: DocsPage[] }> {
+	const { sections, pages } = frameworkSections(framework);
+	// The React docs hold the shared concepts themselves.
+	const shared =
+		framework === DEFAULT_FRAMEWORK ? [] : await sharedPages(framework, pages);
+	return {
+		docs: {
+			framework: frameworkEntry(framework),
+			sections,
+			// "Introduction" alone says nothing next to the framework's own pages.
+			shared: shared.map((page) => ({
+				...toLlmsPage(page),
+				title: `${frameworkEntry(getDocsFramework(page.slugs.slice(1)) ?? DEFAULT_FRAMEWORK).title}: ${page.data.title}`,
+			})),
+		},
+		pages,
+		shared,
+	};
+}
+
+/** Renders a set of pages as markdown, keyed by path for the text builders. */
+async function renderAll(pages: DocsPage[]) {
+	const rendered = new Map(
+		await Promise.all(
+			pages.map(
+				async (page) => [pagePath(page), await pageMarkdown(page)] as const,
+			),
+		),
+	);
+	return (page: LlmsPage) => rendered.get(page.path) ?? "";
 }
 
 /** `/llms.txt` */
 export function llmsTxt(): string {
-	const sections = currentDocsSections();
-	const categoryName = new Map(CATEGORIES.map((c) => [c.id, c.name]));
-	const lines = [
-		// The hand-written API digest stays first: it is the densest guide to writing correct code.
-		SUMMARY.trim(),
-		"",
-		"# Index",
-		"",
-		`Every ${CURRENT_DOCS_VERSION} docs page as markdown, in sidebar order, then Stepper Studio and the Blocks.`,
-		"",
-		...sections.flatMap((section) => [
-			`## Docs: ${section.title}`,
-			"",
-			...section.pages.map(pageLine),
-			"",
-		]),
-		"## Stepper Studio",
-		"",
-		`- [Stepper Studio guide for agents](${SITE.url}/studio.md): build a flow config, encode it, and install the generated code (on shadcn/ui, with your choice of form and validation library, framework and routing) with the shadcn CLI.`,
-		`- [Studio config JSON Schema](${SITE.url}/r/studio/schema.json): the exact shape the Studio registry endpoint accepts.`,
-		`- [Stepper Studio](${SITE.url}/studio): the visual editor, for humans.`,
-		"",
-		"## Blocks",
-		"",
-		`Copy-paste stepper UIs built on the primitives. Install one with \`npx shadcn@latest add ${SITE.url}/r/<id>.json\`; the full index is at ${SITE.url}/r/registry.json.`,
-		"",
-		...BLOCKS.map(
-			(block) =>
-				`- [${block.title}](${SITE.url}/r/${block.id}.json) (${categoryName.get(block.category) ?? block.category}): ${block.description}`,
-		),
-		"",
-		"## Optional",
-		"",
-		`- [Full ${CURRENT_DOCS_VERSION} documentation](${SITE.url}/llms-full.txt): every page above in one markdown file.`,
-		`- [Changelog](${SITE.url}/changelog)`,
-		...OLDER_VERSIONS.map(
-			(version) =>
-				`- [${version} documentation](${SITE.url}/docs/${version}): legacy API, only for projects still on ${version}.`,
-		),
-		"",
-	];
-	return lines.join("\n");
-}
-
-/** One page as markdown, with its title, description and canonical URL. */
-export async function pageMarkdown(page: DocsPage): Promise<string> {
-	const text = await page.data.getText("processed");
-	return [
-		`# ${page.data.title}`,
-		"",
-		page.data.description ? `> ${page.data.description}` : null,
-		page.data.description ? "" : null,
-		`Source: ${htmlUrl(page)}`,
-		"",
-		toPlainMarkdown(text),
-		"",
-	]
-		.filter((line): line is string => line !== null)
-		.join("\n");
+	return buildLlmsTxt(SUMMARY, allFrameworkDocs());
 }
 
 /** `/llms-full.txt` */
 export async function llmsFullTxt(): Promise<string> {
-	const pages = currentDocsSections().flatMap((section) => section.pages);
-	const bodies = await Promise.all(pages.map(pageMarkdown));
+	const pages = LLMS_FRAMEWORK_ORDER.flatMap(
+		(id) => frameworkSections(id).pages,
+	);
+	return buildLlmsFullTxt(allFrameworkDocs(), await renderAll(pages));
+}
+
+/** `/docs/{version}/{framework}/llms.txt` */
+export async function frameworkLlmsTxt(
+	framework: DocsFramework,
+): Promise<string> {
+	return buildFrameworkLlmsTxt((await frameworkDocs(framework)).docs);
+}
+
+/** `/docs/{version}/{framework}/llms-full.txt` */
+export async function frameworkLlmsFullTxt(
+	framework: DocsFramework,
+): Promise<string> {
+	const { docs, pages, shared } = await frameworkDocs(framework);
+	return buildFrameworkLlmsFullTxt(
+		docs,
+		await renderAll([...pages, ...shared]),
+	);
+}
+
+/*
+ * The source of each `<FrameworkDemo>`, so the markdown of a page shows what
+ * the browser runs. Globbed, so a renamed or new demo needs no change here.
+ */
+const DEMO_SOURCES = import.meta.glob<string>(
+	["../components/framework-demos/**/*.{vue,svelte,ts,tsx}", "!**/*.d.ts"],
+	{ query: "?raw", import: "default", eager: true },
+);
+
+const DEMO_REPO =
+	"https://github.com/damianricobelli/stepperize/blob/main/apps/docs/src/components/framework-demos";
+
+const FENCE: Record<string, string> = {
+	vue: "vue",
+	svelte: "svelte",
+	tsx: "tsx",
+	ts: "ts",
+};
+
+function frameworkDemo(framework: string): string | undefined {
+	const file = demoSourceFile(framework, Object.keys(DEMO_SOURCES));
+	if (!file) return undefined;
+	const name = file.replace(/^.*\/framework-demos\//, "");
+	const lang = FENCE[name.split(".").at(-1) ?? ""] ?? "";
+	const fence = DEMO_SOURCES[file].includes("```") ? "````" : "```";
 	return [
-		`# ${SITE.name} ${CURRENT_DOCS_VERSION} documentation`,
+		`The live demo runs in the browser. Its source ([${name}](${DEMO_REPO}/${name})):`,
 		"",
-		`> Every page of the current Stepperize docs, in sidebar order. Index: ${SITE.url}/llms.txt. Stepper Studio guide: ${SITE.url}/studio.md.`,
+		`${fence}${lang}`,
+		DEMO_SOURCES[file].trimEnd(),
+		fence,
+	].join("\n");
+}
+
+/** One page as markdown, with its title, description, framework and canonical URL. */
+export async function pageMarkdown(page: DocsPage): Promise<string> {
+	const text = await page.data.getText("processed");
+	const segments = page.slugs.slice(1);
+	const version = getDocsVersion(segments);
+	const framework = getDocsFramework(segments);
+	return [
+		...pageMarkdownHeader({
+			title: page.data.title,
+			description: page.data.description,
+			path: pagePath(page),
+			framework: framework ? frameworkEntry(framework) : undefined,
+			version,
+		}),
 		"",
-		...bodies.map((body) => `${body}\n---\n`),
+		toPlainMarkdown(text, { frameworkDemo }),
+		"",
 	].join("\n");
 }
 

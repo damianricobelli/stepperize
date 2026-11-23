@@ -10,13 +10,25 @@ const CALLOUT_LABEL: Record<string, string> = {
 	info: "Note",
 };
 
+export type PlainMarkdownOptions = {
+	/**
+	 * What replaces `<FrameworkDemo framework="vue" />`: markdown that shows the
+	 * demo's source. The demo itself only runs in the browser.
+	 */
+	frameworkDemo?: (framework: string) => string | undefined;
+};
+
 /**
  * Turns the site's MDX components into plain markdown, outside code fences
  * only: cards become links, callouts become quotes, tabs become labels,
- * check lists become lists, interactive demos are dropped (they only work in
- * the browser), and root-relative links become absolute.
+ * check lists become lists, framework demos become their source, other
+ * interactive demos are dropped (they only work in the browser), heading ids
+ * are removed and root-relative links become absolute.
  */
-export function toPlainMarkdown(text: string): string {
+export function toPlainMarkdown(
+	text: string,
+	options: PlainMarkdownOptions = {},
+): string {
 	const out: string[] = [];
 	let fenced = false;
 	let quote = false;
@@ -25,6 +37,13 @@ export function toPlainMarkdown(text: string): string {
 		if (/^\s*```/.test(line)) fenced = !fenced;
 		if (fenced || /^\s*```/.test(line)) {
 			out.push(quote ? `> ${line}` : line);
+			continue;
+		}
+		const demo = line.match(/^\s*<FrameworkDemo\b([^>]*?)\/>\s*$/);
+		if (demo) {
+			const framework = attribute(demo[1], "framework");
+			const replacement = framework && options.frameworkDemo?.(framework);
+			if (replacement) out.push(replacement);
 			continue;
 		}
 		const card = line.match(/^\s*<Card\b([^>]*?)\/>\s*$/);
@@ -68,7 +87,10 @@ export function toPlainMarkdown(text: string): string {
 			/^\s*<[A-Z][A-Za-z]*\b[^>]*\/>\s*$/.test(line)
 		)
 			continue;
-		let next = line.replace(/\]\(\//g, `](${SITE.url}/`);
+		let next = line
+			.replace(/\]\(\//g, `](${SITE.url}/`)
+			// The id Fumadocs appends to a processed heading: `## Forms [#forms]`.
+			.replace(/^(#{1,6} .*?)\s*\[#[^\]]*\]\s*$/, "$1");
 		if (bullet && next.trim()) {
 			next = `${bullet}${next.trim()}`;
 			bullet = null;

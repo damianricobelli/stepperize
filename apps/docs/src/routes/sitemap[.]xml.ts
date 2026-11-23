@@ -1,54 +1,57 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { BLOCKS } from "@/lib/blocks/catalog.mjs";
-import { CURRENT_DOCS_VERSION } from "@/lib/docs-tree";
 import { SITE } from "@/lib/seo";
-import { docRouteForSlugs } from "@/lib/sitemap-urls";
+import {
+	docRouteForSlugs,
+	docsSitemapPriority,
+	type SitemapEntry,
+	sitemapXml,
+} from "@/lib/sitemap-urls";
 import { source } from "@/lib/source";
 
 /**
- * XML sitemap covering the landing page and every documentation page. Linked
- * from robots.txt so crawlers discover the full route surface.
+ * XML sitemap of every indexable URL: the landing page, the Blocks, the
+ * Studio and every docs page of every framework and version, each at its
+ * canonical URL (never one that redirects, such as `/docs/v9`). Linked from
+ * robots.txt.
+ *
+ * `lastmod` is only given when it is known: the docs pages carry their git
+ * date, and the landing page takes the newest of them. A made-up date would
+ * teach crawlers to ignore it.
  */
 function buildSitemap(): string {
-	const now = new Date().toISOString();
-	const urls = new Map<string, { lastmod?: string; priority: string }>();
-
-	const add = (path: string, priority: string, lastmod?: string) => {
+	const entries = new Map<string, SitemapEntry>();
+	const add = (path: string, priority: number, lastmod?: string) => {
 		const loc = `${SITE.url}${path}`;
-		if (!urls.has(loc)) urls.set(loc, { lastmod, priority });
+		if (!entries.has(loc)) entries.set(loc, { loc, lastmod, priority });
 	};
 
-	add("/", "1.0", now);
-	add(`/docs/${CURRENT_DOCS_VERSION}`, "0.9", now);
+	const docs = source
+		.getPages()
+		.map((page) => ({
+			route: docRouteForSlugs(page.slugs),
+			priority: docsSitemapPriority(page.slugs),
+			lastmod:
+				page.data.lastModified instanceof Date
+					? page.data.lastModified.toISOString()
+					: undefined,
+		}))
+		.filter((page): page is typeof page & { route: string } => !!page.route)
+		.sort((a, b) => b.priority - a.priority);
+	const newest = docs
+		.map((page) => page.lastmod)
+		.filter(Boolean)
+		.sort()
+		.at(-1);
 
-	// Blocks gallery + every block detail page.
-	add("/blocks", "0.9", now);
-	add("/studio", "0.8", now);
-	for (const block of BLOCKS) {
-		add(`/blocks/${block.id}`, "0.7", now);
-	}
+	add("/", 1.0, newest);
+	// React only: built on @stepperize/react and shadcn/ui.
+	add("/blocks", 0.8);
+	add("/studio", 0.7);
+	for (const block of BLOCKS) add(`/blocks/${block.id}`, 0.5);
+	for (const page of docs) add(page.route, page.priority, page.lastmod);
 
-	for (const page of source.getPages()) {
-		const route = docRouteForSlugs(page.slugs);
-		if (!route) continue;
-		const lastmod =
-			page.data.lastModified instanceof Date
-				? page.data.lastModified.toISOString()
-				: undefined;
-		const priority = page.slugs[1] === CURRENT_DOCS_VERSION ? "0.8" : "0.4";
-		add(route, priority, lastmod);
-	}
-
-	const entries = Array.from(urls.entries())
-		.map(
-			([loc, { lastmod, priority }]) =>
-				`  <url>\n    <loc>${loc}</loc>\n${
-					lastmod ? `    <lastmod>${lastmod}</lastmod>\n` : ""
-				}    <priority>${priority}</priority>\n  </url>`,
-		)
-		.join("\n");
-
-	return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${entries}\n</urlset>\n`;
+	return sitemapXml(Array.from(entries.values()));
 }
 
 export const Route = createFileRoute("/sitemap.xml")({
