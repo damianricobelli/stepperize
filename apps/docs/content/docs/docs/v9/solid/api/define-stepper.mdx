@@ -1,0 +1,73 @@
+---
+title: defineStepper
+description: The definition and everything it returns.
+---
+
+```ts
+import { defineStepper } from "@stepperize/solid";
+
+const checkout = defineStepper(steps, options?);
+```
+
+| Argument | Description |
+| --- | --- |
+| `steps` | An array of steps. Each needs a unique `id`; `schema` types and validates its data; every other field is yours. |
+| `options` | Defaults for every flow created from this definition. See [Options](/docs/v9/react/api/options). |
+
+It returns:
+
+| | |
+| --- | --- |
+| `steps` | The array you passed. |
+| `useStepper(options?)` | A flow owned by the calling component. |
+| `useStepperContext(selector?)` | The flow of the nearest `Provider` or `Stepper.Root`. |
+| `Provider` | Shares one flow with the components below. |
+| `Stepper` | The [primitives](/docs/v9/solid/api/primitives). Not in `/headless`. |
+| `create(options?)` | A flow without Solid. See [Core](/docs/v9/core). |
+
+## useStepper
+
+```ts
+const stepper = checkout.useStepper();
+const stepper = checkout.useStepper({ linear: true, onFinish });
+const stepper = checkout.useStepper(() => ({ step: params.step }));
+```
+
+It returns the [stepper](/docs/v9/react/api/stepper) as a reactive object:
+reads are tracked, so JSX, memos and effects follow the flow. Do not
+destructure its state.
+
+- Options can be an object or a function. A function is read again when the
+  signals it uses change, and the flow gets the new options.
+- `snapshot` is read once, when the flow is created.
+- The flow is destroyed with its owner: the component, or the `createRoot` it
+  was called under.
+- On the server it renders the current step and runs no callback.
+
+## useStepperContext
+
+```ts
+const stepper = checkout.useStepperContext();
+const index = checkout.useStepperContext((stepper) => stepper.index); // Accessor<number>
+```
+
+Without arguments it returns the shared reactive stepper. With a selector it
+returns a memo of its result; the selector receives an immutable view of the
+flow. Outside the flow's `Provider` or `Stepper.Root` it throws
+[SZ100](/docs/v9/core/errors#sz100).
+
+## Provider
+
+```tsx
+<checkout.Provider linear snapshot={saved} onChange={save} onFinish={submit}>
+  {props.children}
+</checkout.Provider>
+```
+
+Every [option](/docs/v9/react/api/options) is a prop. It renders its children
+and no element.
+
+## Types
+
+Everything `@stepperize/core` exports as a type is re-exported:
+`Stepper<S>`, `Options<S>`, `Snapshot<S>`, `Result<S>`, `Id<S>` and the rest.

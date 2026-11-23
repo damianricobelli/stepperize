@@ -1,0 +1,54 @@
+---
+title: Server rendering
+description: SolidStart and any other Solid SSR setup, with no configuration.
+---
+
+The stepper and the primitives render on the server and hydrate in place.
+
+- The flow is created when the component runs, so the server renders the right
+  step: the first one, the one in `snapshot`, or the one in `step`.
+- Ids come from `createUniqueId`, so `aria-controls` and `aria-labelledby`
+  match between the server and the client.
+- No callback runs on the server. `onChange`, `onFinish`, `onInvalidStep` and
+  the `guard` only run in the browser.
+- The package contains no JSX: there is nothing for your bundler to compile
+  differently for the server.
+
+## Resuming from a cookie or the database
+
+Load the snapshot on the server and pass it in; the first HTML is already on
+the right step.
+
+```tsx title="src/routes/onboarding.tsx"
+import { createAsync, query } from "@solidjs/router";
+import { Show } from "solid-js";
+import { onboarding } from "~/onboarding";
+
+const getSnapshot = query(async () => {
+  "use server";
+  return readOnboardingSnapshot();
+}, "onboarding");
+
+export default function Onboarding() {
+  const saved = createAsync(() => getSnapshot());
+
+  return (
+    <Show when={saved() !== undefined}>
+      <onboarding.Provider snapshot={saved() ?? undefined} onChange={saveOnboardingSnapshot}>
+        <OnboardingSteps />
+      </onboarding.Provider>
+    </Show>
+  );
+}
+```
+
+`snapshot` is read once, when the flow is created. To replace the state later,
+call `stepper.restore(snapshot)`.
+
+## Tabs without triggers
+
+A `Stepper.Root` assumes it will have triggers and renders its panels as tab
+panels. When it mounts with none, it switches to groups named by each step's
+`title`. If your flow never has triggers and you want the server HTML to say so
+from the start, pass `linear` or render your own markup with the headless
+entry.

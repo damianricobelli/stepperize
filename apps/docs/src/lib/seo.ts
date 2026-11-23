@@ -632,6 +632,57 @@ export const DOC_KEYWORDS: Record<string, readonly string[]> = {
 		"Stepper snippets",
 		"child snippet stepper",
 	],
+	"current/solid": [
+		"Solid stepper",
+		"SolidJS wizard",
+		"multi-step flow Solid",
+		"headless stepper Solid",
+	],
+	"current/solid/installation": [
+		"install Solid stepper",
+		"@stepperize/solid",
+		"SolidJS wizard package",
+	],
+	"current/solid/first-stepper": [
+		"Solid stepper tutorial",
+		"SolidJS multi-step example",
+		"useStepper Solid",
+	],
+	"current/solid/guides/forms": [
+		"Solid multi-step form",
+		"createStore stepper",
+		"SolidJS form wizard validation",
+	],
+	"current/solid/guides/shared-state": [
+		"Solid stepper context",
+		"useStepperContext Solid",
+		"shared stepper state",
+	],
+	"current/solid/guides/url": [
+		"Solid Router stepper",
+		"step in URL SolidStart",
+		"wizard route sync",
+	],
+	"current/solid/guides/ssr": [
+		"SolidStart stepper",
+		"Solid SSR wizard",
+		"stepper hydration",
+	],
+	"current/solid/guides/primitives": [
+		"Solid stepper components",
+		"accessible stepper Solid",
+		"unstyled stepper Solid",
+	],
+	"current/solid/api/define-stepper": [
+		"defineStepper Solid",
+		"useStepper Solid",
+		"Stepperize Solid API",
+	],
+	"current/solid/api/primitives": [
+		"Solid stepper props",
+		"Stepper as prop",
+		"polymorphic stepper Solid",
+	],
 	"current/core": [
 		"@stepperize/core",
 		"framework-agnostic stepper",

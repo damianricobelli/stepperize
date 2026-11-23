@@ -1,0 +1,158 @@
+---
+title: Your first stepper
+description: Define the steps, render the current one, move between them, and finish.
+---
+
+This page builds a three-step checkout from nothing. It takes about five
+minutes, and every later page builds on it.
+
+## 1. Define the steps
+
+A step needs an `id`. Every other field is yours and stays typed.
+
+```ts title="checkout.ts"
+import { defineStepper } from "@stepperize/solid";
+
+export const checkout = defineStepper([
+  { id: "shipping", title: "Shipping" },
+  { id: "payment", title: "Payment" },
+  { id: "review", title: "Review" },
+]);
+```
+
+Create the definition once, outside your components. It is not state: it is the
+typed description of the flow, with functions and components bound to it.
+
+## 2. Render the current step
+
+`useStepper()` creates a flow owned by the component. What it returns is
+reactive: read it in JSX and the DOM follows the flow.
+
+```tsx title="Checkout.tsx"
+import { Match, Switch } from "solid-js";
+import { checkout } from "./checkout";
+
+export function Checkout() {
+  const stepper = checkout.useStepper();
+
+  return (
+    <section>
+      <h2>{stepper.current.title}</h2>
+
+      <Switch>
+        <Match when={stepper.current.id === "shipping"}>
+          <p>Where should we send it?</p>
+        </Match>
+        <Match when={stepper.current.id === "payment"}>
+          <p>How would you like to pay?</p>
+        </Match>
+        <Match when={stepper.current.id === "review"}>
+          <p>Check everything before placing the order.</p>
+        </Match>
+      </Switch>
+    </section>
+  );
+}
+```
+
+`stepper.current` is the step object you defined, so `title` is typed, and
+`stepper.current.id` is the union of your ids: a typo in a `when` does not
+compile.
+
+<Callout title="Do not destructure the state">
+	`stepper` works like props: `stepper.current` is always the latest, but
+	`const { current } = stepper` is a copy that never changes. The actions
+	(`next`, `prev`, `goTo`...) are safe to destructure.
+</Callout>
+
+## 3. Move
+
+```tsx
+<button type="button" disabled={stepper.isFirst} onClick={() => stepper.prev()}>
+  Back
+</button>
+<button type="button" onClick={() => stepper.next()}>
+  {stepper.isLast ? "Place order" : "Continue"}
+</button>
+```
+
+`next()` moves forward and `prev()` goes back. `isFirst` and `isLast` are
+derived for you, so there is no index arithmetic.
+
+## 4. Finish
+
+`next()` on the last step finishes the flow and calls `onFinish`, once. From
+then on `stepper.isFinished` is `true`.
+
+```tsx
+const stepper = checkout.useStepper({
+  onFinish: () => alert("Order placed"),
+});
+
+<Show when={stepper.isFinished}>
+  <p>Thanks for your order.</p>
+</Show>
+```
+
+## The whole thing
+
+```tsx title="Checkout.tsx"
+import { defineStepper } from "@stepperize/solid";
+import { Match, Show, Switch } from "solid-js";
+
+const checkout = defineStepper([
+  { id: "shipping", title: "Shipping" },
+  { id: "payment", title: "Payment" },
+  { id: "review", title: "Review" },
+]);
+
+export function Checkout() {
+  const stepper = checkout.useStepper({
+    onFinish: () => alert("Order placed"),
+  });
+
+  return (
+    <Show when={!stepper.isFinished} fallback={<p>Thanks for your order.</p>}>
+      <section>
+        <p>
+          Step {stepper.index + 1} of {stepper.steps.length}
+        </p>
+        <h2>{stepper.current.title}</h2>
+
+        <Switch>
+          <Match when={stepper.current.id === "shipping"}>
+            <p>Where should we send it?</p>
+          </Match>
+          <Match when={stepper.current.id === "payment"}>
+            <p>How would you like to pay?</p>
+          </Match>
+          <Match when={stepper.current.id === "review"}>
+            <p>Check everything before placing the order.</p>
+          </Match>
+        </Switch>
+
+        <button type="button" disabled={stepper.isFirst} onClick={() => stepper.prev()}>
+          Back
+        </button>
+        <button type="button" onClick={() => stepper.next()}>
+          {stepper.isLast ? "Place order" : "Continue"}
+        </button>
+      </section>
+    </Show>
+  );
+}
+```
+
+## What you did not write
+
+- No index signal, and no clamping at the edges.
+- No comparing against untyped strings: a typo in a step id does not compile.
+- No "is this the last step?" logic.
+
+## Where to go next
+
+- Collect data and validate it: [Forms](/docs/v9/solid/guides/forms).
+- Read the flow from several components: [Shared state](/docs/v9/solid/guides/shared-state).
+- Use ready-made accessible components: [Primitives](/docs/v9/solid/guides/primitives).
+- Skip steps depending on the answers: [Branching](/docs/v9/react/guides/branching)
+  (the options are the same in every binding).
