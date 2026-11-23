@@ -1,0 +1,295 @@
+---
+title: Styling
+description: Style your own elements through the data attributes the directives set, in component styles, global CSS or Tailwind.
+---
+
+The directives ship no styles, and they render no elements: they go on yours.
+Each one sets its state as `data-*` attributes on the element it is on, and you
+style against them in your component's styles, a global stylesheet or Tailwind.
+
+## Attributes
+
+| Attribute | Set on | Values |
+| --- | --- | --- |
+| `data-component` | Every directive's element | `stepper`, `stepper-list`, `stepper-item`, `stepper-trigger`, `stepper-indicator`, `stepper-content`, `stepper-prev`, `stepper-next` |
+| `data-state` | item, trigger, indicator | `pending`, `current`, `complete` |
+| `data-invalid` | item, trigger, indicator | Present after a rejected `next()` or `validate()`, until the step's data changes |
+| `data-disabled` | item, trigger, prev, next | Present when the action is not available |
+| `data-pending` | root, prev, next | Present while an async schema, guard or `onFinish` runs |
+| `data-finished` | root | Present once the flow has finished, until it changes |
+| `data-orientation` | root, list | `horizontal`, `vertical` |
+| `data-step` | item, trigger, content | The step id |
+
+There are no title or description directives: the text of a step is yours, in
+whatever element you choose.
+
+## data-state: the workhorse
+
+`data-state` is the state of the step:
+
+- **`current`**: the step being shown.
+- **`complete`**: `next()` validated it and moved on, and its data has not changed since.
+- **`pending`**: everything else.
+
+## Component styles
+
+The elements are in your template, so your component's styles apply to them
+as they do to any other element, with Angular's emulated encapsulation and no
+`::ng-deep`:
+
+```ts title="checkout-steps.ts"
+@Component({
+  selector: "app-checkout-steps",
+  imports: [STEPPER_PRIMITIVES],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <div [stepperRoot]="stepper" class="stepper">
+      <ol stepperList class="steps">
+        @for (step of stepper.steps; track step.id) {
+          <li [stepperItem]="step" class="step">
+            <button stepperTrigger class="trigger">
+              <span stepperIndicator class="dot"></span>
+              {{ step.title }}
+            </button>
+          </li>
+        }
+      </ol>
+      <div stepperContent="shipping" class="panel"><app-shipping-form /></div>
+      <div stepperContent="payment" class="panel"><app-payment-form /></div>
+      <button stepperPrev>Back</button>
+      <button stepperNext>Continue</button>
+    </div>
+  `,
+  styles: `
+    :host {
+      display: block;
+    }
+    .steps {
+      display: flex;
+      gap: 1rem;
+    }
+    .steps[data-orientation="vertical"] {
+      flex-direction: column;
+    }
+    .trigger[data-state="current"] {
+      font-weight: 600;
+    }
+    .dot[data-state="complete"] {
+      background: var(--primary);
+    }
+    [data-component="stepper-next"][data-pending] {
+      cursor: progress;
+    }
+  `,
+})
+export class CheckoutSteps {
+  readonly stepper = checkout.injectStepper();
+}
+```
+
+`:host` is the component's own element. A parent that wants a different
+layout should pass an input or a class to the component, rather than reach in
+with `::ng-deep`.
+
+A part in a child component's template belongs to that component: style it in
+the child's own styles. With `ViewEncapsulation.ShadowDom`, keep the root, the
+triggers and the panels in one component: ids do not cross shadow roots, and
+the tabs name their panels by id.
+
+## With Tailwind
+
+Target the attributes with the `data-[…]` variant, on your own elements:
+
+```html
+<button
+  stepperTrigger
+  class="flex items-center gap-2 text-muted-foreground data-[state=current]:text-foreground data-disabled:opacity-50"
+>
+  <span
+    stepperIndicator
+    class="size-6 rounded-full border data-[state=complete]:bg-primary data-invalid:border-destructive"
+  ></span>
+  {{ step.title }}
+</button>
+```
+
+### Styling children with group-data
+
+Put `group` on the element that has the attribute, then read it from a child
+with `group-data-[state=…]`. This swaps the number for a check mark once a step
+is complete, with no code:
+
+```html
+@for (step of stepper.steps; track step.id; let index = $index) {
+  <li [stepperItem]="step">
+    <button stepperTrigger class="flex items-center gap-2">
+      <span stepperIndicator class="group grid size-7 place-items-center rounded-full border">
+        <span class="group-data-[state=complete]:hidden">{{ index + 1 }}</span>
+        <app-check-icon class="hidden size-4 group-data-[state=complete]:block" />
+      </span>
+      {{ step.title }}
+    </button>
+  </li>
+}
+```
+
+When several elements each have their own `data-state`, name the group
+(`group/item` and `group-data-[state=current]/item:`) so a child reads the
+right one.
+
+## Global CSS
+
+Attribute selectors work in `styles.css` too, for every stepper in the
+application:
+
+```css title="src/styles.css"
+[data-component="stepper-indicator"][data-state="complete"] {
+  background: var(--primary);
+}
+[data-component="stepper-item"][data-invalid] {
+  color: var(--destructive);
+}
+```
+
+## Classes from the item's state
+
+When a rule needs more than an attribute selector, read the item.
+`stepperItem` exports itself, and `value()` is what it knows about its step:
+
+```html
+<li [stepperItem]="step" #item="stepperItem">
+  <button
+    stepperTrigger
+    [class.done]="item.value().state === 'complete'"
+    [class.locked]="item.value().disabled"
+  >
+    {{ step.title }}
+  </button>
+</li>
+```
+
+Read `item.value()` inside the item, as above, and not in a binding on the
+`<li>` itself: on the first render that binding runs before the item has its
+step, and Angular throws `NG0950`. Each item follows only its own step, so
+these bindings only update when that step changes. The `data-*` attributes stay
+the simpler choice: they need no binding.
+
+## Your attributes stay
+
+A static attribute you write on the root, the list, an item, a panel or an
+indicator wins over the one the directive would set, and that includes the
+`data-*` attributes above: a `data-state` written by hand never changes. Leave
+those to the directive, and add classes and attributes of your own next to
+them. On triggers and on the prev and next buttons the flow decides every
+attribute but `type`.
+
+## data-invalid
+
+Present on the item, trigger and indicator of a step whose last `next()` was
+rejected by its schema, until that step's data changes.
+
+```html
+<span stepperIndicator class="border data-invalid:border-destructive data-invalid:text-destructive"></span>
+```
+
+## data-orientation
+
+`orientation` on the root is reflected on the root and the list, and decides
+which arrow keys move between tabs. Bind it once and style both layouts:
+
+```html
+<div [stepperRoot]="stepper" orientation="vertical" class="data-[orientation=vertical]:flex data-[orientation=vertical]:gap-8">
+  <ol stepperList class="flex gap-2 data-[orientation=vertical]:flex-col">…</ol>
+</div>
+```
+
+## Disabled and pending
+
+A button that cannot be used right now gets `data-disabled`. Style that
+attribute rather than `:disabled`: while an async check runs, the buttons are
+`aria-disabled` instead of `disabled`, so the one that was pressed keeps
+keyboard focus.
+
+## Panels
+
+A panel whose step is not current stays in the page with `hidden` and an inline
+`display: none`, so a `display: grid` of yours applies only to the current
+panel, with nothing to restore. Do not mark a panel's `display` as
+`!important`: that would show every panel.
+
+## Animating panels
+
+A panel that becomes current goes from `display: none` to shown, which
+`@starting-style` animates in CSS alone:
+
+```css
+[data-component="stepper-content"] {
+  transition: opacity 150ms ease;
+  @starting-style {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-component="stepper-content"] {
+    transition: none;
+  }
+}
+```
+
+When you leave the content out with `@if (panel.active())`, Angular's
+`animate.enter` and `animate.leave` animate the element that enters or leaves:
+
+```html
+<div stepperContent="review" #review="stepperContent">
+  @if (review.active()) {
+    <app-review animate.enter="fade-in" />
+  }
+</div>
+```
+
+```css
+.fade-in {
+  animation: fade-in 150ms ease;
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+```
+
+## Lines between steps
+
+There is no separator directive. Draw the line with CSS on the items, which
+keeps the list a clean list of steps for screen readers.
+
+```css
+[data-component="stepper-item"]:not(:last-child)::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+[data-component="stepper-item"][data-state="complete"]::after {
+  background: var(--primary);
+}
+```
+
+## State is not position
+
+`data-state="complete"` means the step was validated, not that it is before
+the current one. A step that was skipped is `pending` even if it is earlier in
+the list. To style by position, compare indexes:
+
+```html
+@for (step of stepper.steps; track step.id; let index = $index) {
+  <li [stepperItem]="step" [class.passed]="index < stepper().index">…</li>
+}
+```
+
+## Where to go next
+
+- [Primitives API](/docs/v9/angular/api/primitives): the directives that set
+  these attributes.
+- [Accessibility](/docs/v9/angular/guides/accessibility): what the attributes
+  do not say to assistive technology, and how to add it.

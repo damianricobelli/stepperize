@@ -1,0 +1,151 @@
+---
+title: Accessibility
+description: What the Svelte primitives handle for you, and the few things only you can provide.
+---
+
+The primitives are accessible without configuration. This page lists what they
+do, so you know what is covered and what is left to you.
+
+## The pattern follows the flow
+
+There is no single correct markup for a stepper, so the primitives pick it from
+how the flow behaves.
+
+| Flow | Markup |
+| --- | --- |
+| `linear` | An ordered list of steps. The triggers are plain buttons; the current one has `aria-current="step"`, and steps that are not reachable yet are disabled. Each panel is a `group` named after the step's `title`. |
+| Free navigation, with triggers | Tabs: `tablist`, `tab` and `tabpanel`, linked with `aria-controls` and `aria-labelledby`. Each tab has `aria-posinset` and `aria-setsize`; the `li` around it is `presentation`. |
+| No triggers | No tabs either: each panel is a `group` named after the step's `title`. |
+
+A linear flow is not a set of tabs: its steps cannot be opened in any order,
+and announcing them as tabs would promise that they can.
+
+`Stepper.Root` decides from `linear` and from how many `Stepper.Trigger`s are
+mounted. Until it mounts it assumes triggers, so server HTML and the first
+render agree; a root that mounts with none switches its panels to groups. A
+trigger shown later inside an `{#if}` turns them back into tabs.
+
+## What is handled
+
+| Behavior | Detail |
+| --- | --- |
+| Keyboard | In tabs, arrow keys, `Home` and `End` move between steps, and the selected tab is the list's single tab stop. Left and right swap in right-to-left layouts, up and down apply with `orientation="vertical"`. With `Alt`, `Ctrl` or `Meta` held, the keys are left to the browser. A tab you disabled is skipped. In a linear flow the triggers are ordinary buttons in the tab order. |
+| Focus | If focus would be lost after a step change (a field in a panel that unmounted, a button that became disabled, a panel hidden by `forceMount`, a panel still fading out), it moves to the new panel. Focus outside the stepper is never moved. |
+| Announcements | When the step changes while focus stays put, for example on `Next`, a polite live region inside the root announces the new step's `title`. When focus is already on the new step's tab or panel, which reads it anyway, nothing is announced. |
+| Async checks | While a schema, guard or `onFinish` runs, the buttons keep focus: they are `aria-disabled` rather than `disabled`, and the root has `aria-busy`. |
+| Valid markup | `Title` and `Description` are `span`s, so they are valid inside the trigger's `button`. `Indicator` has `aria-hidden`. |
+| Ids | Built from `$props.id()`, so `aria-controls` and `aria-labelledby` match between the server and the client, and two steppers on a page never share one. |
+
+## What only you can provide
+
+- **A name for every trigger.** `Stepper.Indicator` is hidden from screen
+  readers. If a trigger only shows a number or an icon, name it from the
+  `item` snippet:
+
+  ```svelte
+  {#snippet item(step, index)}
+    <Stepper.Item>
+      <Stepper.Trigger aria-label={step.title}>
+        <Stepper.Indicator>{index + 1}</Stepper.Indicator>
+      </Stepper.Trigger>
+    </Stepper.Item>
+  {/snippet}
+  ```
+
+- **A name for the stepper.** The root is a `group` labelled "Stepper". Pass
+  `aria-label` or `aria-labelledby` to describe the flow, and to translate it:
+  on `Root` your attribute wins.
+
+  ```svelte
+  <h2 id="checkout-title">Checkout</h2>
+  <Stepper.Root aria-labelledby="checkout-title">…</Stepper.Root>
+  ```
+
+- **Completion beyond color.** `data-state` is for styling. Add text for screen
+  readers, in your language, from the item's `children` snippet:
+
+  ```svelte
+  <Stepper.Item>
+    {#snippet children(item)}
+      <Stepper.Trigger>
+        <Stepper.Indicator />
+        <Stepper.Title />
+        {#if item.state === "complete"}<span class="sr-only">(completed)</span>{/if}
+      </Stepper.Trigger>
+    {/snippet}
+  </Stepper.Item>
+  ```
+
+- **A string `title` on every step.** Announcements and the names of panels
+  without triggers come from it. A step without one is not announced.
+
+- **Error messages next to their fields.** `stepper.issues()` gives you the
+  messages; connect them to the inputs with `aria-describedby` and
+  `aria-invalid`. `$props.id()` gives you an id that is stable on the server
+  too:
+
+  ```svelte title="AccountStep.svelte"
+  <script lang="ts">
+    import { signup } from "./signup";
+
+    const stepper = signup.useStepperContext();
+    const errorId = $props.id();
+    const issues = $derived(stepper.issues("account"));
+  </script>
+
+  <label>
+    Email
+    <input
+      type="email"
+      aria-invalid={issues ? true : undefined}
+      aria-describedby={issues ? errorId : undefined}
+    />
+  </label>
+  {#if issues}
+    <p id={errorId} role="alert">{issues[0]?.message}</p>
+  {/if}
+  ```
+
+  The stepper's own live region only announces step changes. A message that
+  appears on a rejected Continue needs `role="alert"` (or a live region of
+  yours) to be heard, because focus stays on the button.
+
+- **What a finished flow says.** `data-finished` on the root is styling only.
+  When `onFinish` settles, show a confirmation and move focus to it, or put it
+  in a live region. `bind:ref` on a primitive gives you its element when you
+  need to move focus yourself.
+
+## Your own elements
+
+A `child` snippet hands roles, ids, ARIA and handlers to the element you spread
+`props` onto. Keep these in mind:
+
+- **Triggers, Prev and Next stay buttons.** Spread their `props` onto a
+  `<button>` or a component that renders one. A trigger that is not a button
+  cannot be pressed with `Enter` or `Space` and cannot be disabled; it is
+  reported in development.
+- **Spread everything.** Leaving `props` out, or a component that does not pass
+  its rest props to its element, loses the ARIA attributes. This is reported as
+  [SZ001](/docs/v9/core/errors#sz001).
+- **On `Trigger`, `Prev` and `Next`, the primitive's ARIA wins.** Ids, roles,
+  `tabindex`, `disabled` and ARIA attributes follow the flow; only `type` gives
+  way to yours. On `Root`, `List`, `Item`, `Content` and `Indicator`, your
+  attributes win, so a `role` or `aria-label` you pass there replaces the
+  primitive's. Do not pass `id` to `Content`: the tab's `aria-controls` points
+  at the one the primitive gives it.
+- **Transitions.** A panel that fades out with `transition:fade|global` stays
+  in the page for a moment. Focus that was in it still moves to the new panel
+  right away, and the focused panel reads the new step. See
+  [Animating panels](/docs/v9/svelte/guides/styling#animating-panels).
+
+## Development checks
+
+In development, mistakes that can be detected are reported with a code: a
+`child` snippet whose element did not receive the props, a trigger without an
+accessible name, a trigger outside its list, a trigger that is not a button.
+See [Errors and warnings](/docs/v9/core/errors).
+
+Run an automated checker such as [axe-core](https://github.com/dequelabs/axe-core)
+in your component tests to catch the rest; the
+[testing guide](/docs/v9/svelte/guides/testing) shows how to query the roles
+above.

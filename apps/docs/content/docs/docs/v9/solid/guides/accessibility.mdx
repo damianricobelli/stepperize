@@ -1,0 +1,163 @@
+---
+title: Accessibility
+description: What the Solid primitives handle for you, and the few things only you can provide.
+---
+
+The primitives are accessible without configuration. This page lists what they
+do, so you know what is covered and what is left to you.
+
+## The pattern follows the flow
+
+There is no single correct markup for a stepper, so the primitives pick it from
+how the flow behaves.
+
+| Flow | Markup |
+| --- | --- |
+| `linear` | An ordered list of steps. The triggers are plain buttons; the current one has `aria-current="step"`, and steps that are not reachable yet are disabled. Each panel is a `group` named after the step's `title`. |
+| Free navigation, with triggers | Tabs: `tablist`, `tab` and `tabpanel`, linked with `aria-controls` and `aria-labelledby`. Each tab has `aria-posinset` and `aria-setsize`; the `li` around it is `presentation`. |
+| No triggers | No tabs either: each panel is a `group` named after the step's `title`. |
+
+A linear flow is not a set of tabs: its steps cannot be opened in any order,
+and announcing them as tabs would promise that they can.
+
+`Stepper.Root` decides from the flow's `isLinear` and from how many
+`Stepper.Trigger`s are mounted. Until it mounts it assumes triggers, so server
+HTML and the first render agree; a root that mounts with none switches its
+panels to groups. A trigger shown later inside a `<Show>` turns them back into
+tabs.
+
+## What is handled
+
+| Behavior | Detail |
+| --- | --- |
+| Keyboard | In tabs, arrow keys, `Home` and `End` move between steps, and the selected tab is the list's single tab stop. Left and right swap in right-to-left layouts, up and down apply with `orientation="vertical"`. With `Alt`, `Ctrl` or `Meta` held, the keys are left to the browser. A tab you disabled is skipped. In a linear flow the triggers are ordinary buttons in the tab order. |
+| Focus | If focus would be lost after a step change (a field in a panel that unmounted, a button that became disabled, a panel hidden by `forceMount`), it moves to the new panel. Focus outside the stepper is never moved. |
+| Announcements | When the step changes while focus stays put, for example on `Next`, a polite live region inside the root announces the new step's `title`. When focus is already on the new step's tab or panel, which reads it anyway, nothing is announced. |
+| Async checks | While a schema, guard or `onFinish` runs, the buttons keep focus: they are `aria-disabled` rather than `disabled`, and the root has `aria-busy`. |
+| Valid markup | `Title` and `Description` are `span`s, so they are valid inside the trigger's `button`. `Indicator` has `aria-hidden`. |
+| Ids | Built from `createUniqueId`, so `aria-controls` and `aria-labelledby` match between the server and the client, and two steppers on a page never share one. |
+
+## What only you can provide
+
+- **A name for every trigger.** `Stepper.Indicator` is hidden from screen
+  readers. If a trigger only shows a number or an icon, name it from the
+  list's function child:
+
+  ```tsx
+  <Stepper.List>
+    {(step, index) => (
+      <Stepper.Item>
+        <Stepper.Trigger aria-label={step.title}>
+          <Stepper.Indicator>{index + 1}</Stepper.Indicator>
+        </Stepper.Trigger>
+      </Stepper.Item>
+    )}
+  </Stepper.List>
+  ```
+
+- **A name for the stepper.** The root is a `group` labelled "Stepper". Pass
+  `aria-label` or `aria-labelledby` to describe the flow, and to translate it:
+  on `Root` your attribute wins.
+
+  ```tsx
+  <h2 id="checkout-title">Checkout</h2>
+  <Stepper.Root aria-labelledby="checkout-title">…</Stepper.Root>
+  ```
+
+- **Completion beyond color.** `data-state` is for styling. Add text for screen
+  readers, in your language, from the item's function child:
+
+  ```tsx
+  <Stepper.Item>
+    {(item) => (
+      <Stepper.Trigger>
+        <Stepper.Indicator />
+        <Stepper.Title />
+        <Show when={item.state === "complete"}>
+          <span class="sr-only">(completed)</span>
+        </Show>
+      </Stepper.Trigger>
+    )}
+  </Stepper.Item>
+  ```
+
+- **A string `title` on every step.** Announcements and the names of panels
+  without triggers come from it. A step without one is not announced.
+
+- **Error messages next to their fields.** `stepper.issues()` gives you the
+  messages; connect them to the inputs with `aria-describedby` and
+  `aria-invalid`. `createUniqueId` gives you an id that is stable on the server
+  too:
+
+  ```tsx title="AccountStep.tsx"
+  import { createUniqueId, Show } from "solid-js";
+  import { signup } from "./signup";
+
+  export function AccountStep() {
+    const stepper = signup.useStepperContext();
+    const errorId = createUniqueId();
+    const issues = () => stepper.issues("account");
+
+    return (
+      <>
+        <label>
+          Email
+          <input
+            type="email"
+            aria-invalid={issues() ? true : undefined}
+            aria-describedby={issues() ? errorId : undefined}
+          />
+        </label>
+        <Show when={issues()}>
+          {(list) => (
+            <p id={errorId} role="alert">
+              {list()[0]?.message}
+            </p>
+          )}
+        </Show>
+      </>
+    );
+  }
+  ```
+
+  The stepper's own live region only announces step changes. A message that
+  appears on a rejected Continue needs `role="alert"` (or a live region of
+  yours) to be heard, because focus stays on the button.
+
+- **What a finished flow says.** `data-finished` on the root is styling only.
+  When `onFinish` settles, show a confirmation and move focus to it, or put it
+  in a live region. `ref` on a primitive gives you its element when you need to
+  move focus yourself.
+
+## Your own elements
+
+`as` hands roles, ids, ARIA and handlers to the tag or component you name. Keep
+these in mind:
+
+- **Triggers, Prev and Next stay buttons.** A trigger rendered `as="a"` needs
+  an `href` to be pressable with the keyboard, and cannot be disabled. A
+  trigger that is neither a button nor a link is reported in development.
+- **Components spread everything.** A component passed as `as` must spread its
+  props, `ref` included, onto its element. One whose props cannot take a `ref`
+  does not compile; one that drops them at runtime is reported as
+  [SZ001](/docs/v9/core/errors#sz001).
+- **On `Trigger`, `Prev` and `Next`, the primitive's ARIA wins.** Ids, roles,
+  `tabindex`, `disabled` and ARIA attributes follow the flow; only `type` gives
+  way to yours. On `Root`, `List`, `Item`, `Content` and `Indicator`, your
+  attributes win, so a `role` or `aria-label` you pass there replaces the
+  primitive's. Do not pass `id` to `Content`: the tab's `aria-controls` points
+  at the one the primitive gives it.
+- **`Prev` and `Next` are `type="button"`** unless `as` names another tag, so
+  a design-system button inside a `<form>` does not submit it by accident.
+
+## Development checks
+
+In development, mistakes that can be detected are reported with a code: an `as`
+component that did not spread its props, a trigger without an accessible name,
+a trigger outside its list, a trigger that is not a button. See
+[Errors and warnings](/docs/v9/core/errors).
+
+Run an automated checker such as [axe-core](https://github.com/dequelabs/axe-core)
+in your component tests to catch the rest; the
+[testing guide](/docs/v9/solid/guides/testing) shows how to query the roles
+above.

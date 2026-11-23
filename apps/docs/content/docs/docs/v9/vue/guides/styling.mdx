@@ -1,0 +1,295 @@
+---
+title: Styling
+description: Style the primitives through data attributes, with plain CSS, Tailwind or scoped styles.
+---
+
+The primitives ship no styles. Each one exposes its state as `data-*`
+attributes, and you style against them with Tailwind variants, plain CSS,
+`<style scoped>` or anything that can target an attribute selector. Your markup
+stays yours; the library tells you what state each element is in.
+
+## Attributes
+
+| Attribute | Set on | Values |
+| --- | --- | --- |
+| `data-component` | Every primitive | `stepper`, `stepper-list`, `stepper-item`, `stepper-trigger`, `stepper-title`, `stepper-description`, `stepper-indicator`, `stepper-content`, `stepper-prev`, `stepper-next` |
+| `data-state` | `Item`, `Trigger`, `Indicator` | `pending`, `current`, `complete` |
+| `data-invalid` | `Item`, `Trigger`, `Indicator` | Present after a rejected `next()` or `validate()`, until the step's data changes |
+| `data-disabled` | `Item`, `Trigger`, `Prev`, `Next` | Present when the action is not available |
+| `data-pending` | `Root`, `Prev`, `Next` | Present while an async schema, guard or `onFinish` runs |
+| `data-finished` | `Root` | Present once the flow has finished, until it changes |
+| `data-orientation` | `Root`, `List` | `horizontal`, `vertical` |
+| `data-step` | `Item`, `Trigger`, `Content` | The step id |
+
+`class` and `style` are merged with what the primitive sets, so a `class` on
+any primitive reaches its element.
+
+## data-state: the workhorse
+
+`data-state` is the state of the step:
+
+- **`current`**: the step being shown.
+- **`complete`**: `next()` validated it and moved on, and its data has not changed since.
+- **`pending`**: everything else.
+
+### With Tailwind
+
+Target it with the `data-[…]` variant. A typical trigger and indicator:
+
+```vue
+<Stepper.Trigger
+  class="flex items-center gap-2 text-muted-foreground data-[state=current]:text-foreground data-disabled:opacity-50"
+>
+  <Stepper.Indicator
+    class="size-6 rounded-full border data-[state=complete]:bg-primary data-invalid:border-destructive"
+  />
+  <Stepper.Title />
+</Stepper.Trigger>
+```
+
+### Styling children with group-data
+
+Put `group` on the element that has the attribute, then read it from a child
+with `group-data-[state=…]`. This swaps the number for a check mark once a step
+is complete, with no script:
+
+```vue
+<Stepper.List class="flex gap-4">
+  <template #item="{ index }">
+    <Stepper.Item>
+      <Stepper.Trigger class="flex items-center gap-2">
+        <Stepper.Indicator class="group grid size-7 place-items-center rounded-full border">
+          <span class="group-data-[state=complete]:hidden">{{ index + 1 }}</span>
+          <CheckIcon class="hidden size-4 group-data-[state=complete]:block" />
+        </Stepper.Indicator>
+        <Stepper.Title />
+      </Stepper.Trigger>
+    </Stepper.Item>
+  </template>
+</Stepper.List>
+```
+
+When several elements each have their own `data-state`, name the group
+(`group/item` and `group-data-[state=current]/item:`) so a child reads the
+right one.
+
+### With plain CSS
+
+Attribute selectors work in a global stylesheet:
+
+```css title="stepper.css"
+[data-component="stepper-list"] {
+  display: flex;
+  gap: 1rem;
+}
+[data-component="stepper-list"][data-orientation="vertical"] {
+  flex-direction: column;
+}
+[data-component="stepper-indicator"][data-state="complete"] {
+  background: var(--primary);
+}
+[data-component="stepper-next"][data-pending] {
+  cursor: progress;
+}
+```
+
+## Scoped styles
+
+`<style scoped>` reaches every primitive you write in the template, including
+the ones inside slots such as `#item`: Vue gives their elements your
+component's scope attribute, as it does for any child component's root
+element.
+
+```vue title="CheckoutSteps.vue"
+<script setup lang="ts">
+import { checkout } from "./checkout";
+import StepNav from "./StepNav.vue";
+
+const { Stepper } = checkout;
+</script>
+
+<template>
+  <Stepper.Root class="stepper">
+    <Stepper.List class="steps">
+      <template #item>
+        <Stepper.Item class="step">
+          <Stepper.Trigger class="trigger">
+            <Stepper.Indicator class="dot" />
+            <Stepper.Title />
+          </Stepper.Trigger>
+        </Stepper.Item>
+      </template>
+    </Stepper.List>
+    <Stepper.Content step="shipping" class="panel"><ShippingForm /></Stepper.Content>
+    <Stepper.Content step="payment" class="panel"><PaymentForm /></Stepper.Content>
+    <StepNav class="footer" />
+  </Stepper.Root>
+</template>
+
+<style scoped>
+.trigger[data-state="current"] {
+  font-weight: 600;
+}
+.dot[data-state="complete"] {
+  background: var(--primary);
+}
+/* Prev and Next are rendered by StepNav, a child component. */
+.footer :deep([data-component="stepper-next"][data-pending]) {
+  cursor: progress;
+}
+</style>
+```
+
+The one place scoped styles stop is a child component's inner elements. Above,
+`StepNav` renders `Stepper.Prev` and `Stepper.Next` in its own template, so
+`.footer [data-component="stepper-next"]` matches nothing; `:deep()` reaches
+them. Or style them in `StepNav`'s own `<style scoped>`.
+
+`<style module>` works the same way: bind `:class="$style.trigger"` on the
+primitive and write `.trigger[data-state="current"]` in the module.
+
+## Classes from the item's state
+
+When a rule needs more than an attribute selector, read the item in the
+template. The default slot of `Stepper.Item` receives it:
+
+```vue
+<Stepper.Item v-slot="item">
+  <Stepper.Trigger :class="['trigger', { 'is-done': item.state === 'complete', 'is-locked': item.disabled }]">
+    <Stepper.Title />
+  </Stepper.Trigger>
+</Stepper.Item>
+```
+
+In a child component, `Stepper.useItem()` returns the same item as a
+`ComputedRef`. The `data-*` attributes stay the simpler choice: they need no
+script and no re-render of your own.
+
+## Your own element
+
+`as-child` hands the primitive's attributes, `data-*` included, to the element
+or component in its slot, so a heading or your design-system button is styled
+like any other:
+
+```vue
+<Stepper.Title as-child>
+  <h3 class="step-heading" />
+</Stepper.Title>
+
+<Stepper.Next as-child>
+  <MyButton variant="primary">Continue</MyButton>
+</Stepper.Next>
+```
+
+The element keeps your component's scoped styles. A component in the slot must
+pass its attributes to its root element: Vue does that for a single-root
+component; one with `inheritAttrs: false` has to bind `v-bind="$attrs"`. See
+[Rendering your own element](/docs/v9/vue/guides/primitives#rendering-your-own-element).
+
+## data-invalid
+
+Present on the item, trigger and indicator of a step whose last `next()` was
+rejected by its schema, until that step's data changes.
+
+```vue
+<Stepper.Indicator class="border data-invalid:border-destructive data-invalid:text-destructive" />
+```
+
+## data-orientation
+
+`orientation` on `Stepper.Root` is reflected on the root and the list, and
+decides which arrow keys move between tabs. Style both layouts from one
+definition:
+
+```vue
+<Stepper.Root orientation="vertical" class="data-[orientation=vertical]:flex data-[orientation=vertical]:gap-8">
+  <Stepper.List class="flex gap-2 data-[orientation=vertical]:flex-col">
+    <!-- items -->
+  </Stepper.List>
+</Stepper.Root>
+```
+
+## Disabled and pending
+
+A button that cannot be used right now gets `data-disabled`. Style that
+attribute rather than `:disabled`: while an async check runs, the buttons are
+`aria-disabled` instead of `disabled`, so the one that was pressed keeps
+keyboard focus.
+
+## Hidden panels
+
+A `Content` whose step is not current renders nothing. With `force-mount` it
+stays in the page with the `hidden` attribute, and a `display` rule of yours
+beats the browser's `[hidden] { display: none }`. Restore it next to your rule:
+
+```css
+.panel {
+  display: grid;
+}
+.panel[hidden] {
+  display: none;
+}
+```
+
+## Animating panels
+
+Wrap `Stepper.Content` in Vue's `<Transition>` and style its classes as usual;
+focus and announcements wait for the new panel. See
+[Animating panels](/docs/v9/vue/guides/primitives#animating-panels).
+
+```css
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 150ms ease;
+}
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .fade-enter-active,
+  .fade-leave-active {
+    transition: none;
+  }
+}
+```
+
+## Lines between steps
+
+There is no separator component. Draw the line with CSS on the items, which
+keeps the list a clean list of steps for screen readers.
+
+```css
+[data-component="stepper-item"]:not(:last-child)::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+[data-component="stepper-item"][data-state="complete"]::after {
+  background: var(--primary);
+}
+```
+
+## State is not position
+
+`data-state="complete"` means the step was validated, not that it is before
+the current one. A step that was skipped is `pending` even if it is earlier in
+the list. To style by position, compare indexes in the `#item` slot:
+
+```vue
+<Stepper.Root v-slot="stepper">
+  <Stepper.List>
+    <template #item="{ index }">
+      <Stepper.Item :data-passed="index < stepper.index || undefined">…</Stepper.Item>
+    </template>
+  </Stepper.List>
+</Stepper.Root>
+```
+
+## Where to go next
+
+- [Primitives API](/docs/v9/vue/api/primitives): the components that set
+  these attributes.
+- [Accessibility](/docs/v9/vue/guides/accessibility): what the attributes do
+  not say to assistive technology, and how to add it.

@@ -1,0 +1,359 @@
+---
+title: Testing
+description: Test the flow without TestBed, and the components with TestBed and the Angular CLI's Vitest runner.
+---
+
+A flow has two parts worth testing separately: its logic, which needs no
+component, and the components that show it.
+
+New Angular CLI projects run unit tests with [Vitest](https://vitest.dev)
+through `ng test` (the `@angular/build:unit-test` builder), in jsdom, with no
+Zone.js. The examples below run as they are in such a project.
+
+## The flow, without Angular
+
+`definition.create()` returns the same state machine `injectStepper()` and
+`provideStepper()` use, with no injector, no TestBed and no DOM. Validation,
+branching and guards can be asserted directly.
+
+```ts title="checkout.ts"
+import { defineStepper } from "@stepperize/angular";
+import { z } from "zod";
+
+export const checkout = defineStepper([
+  {
+    id: "shipping",
+    title: "Shipping",
+    schema: z.object({ address: z.string().min(1, "Enter an address") }),
+  },
+  { id: "payment", title: "Payment" },
+  { id: "review", title: "Review" },
+]);
+
+declare module "@stepperize/angular" {
+  interface StepperRegistry {
+    checkout: typeof checkout;
+  }
+}
+```
+
+```ts title="checkout.spec.ts"
+import { checkout } from "./checkout";
+
+describe("checkout flow", () => {
+  it("rejects an empty address and keeps what was typed", async () => {
+    const flow = checkout.create();
+
+    const result = await flow.next({ address: "" });
+
+    expect(result).toMatchObject({ accepted: false, reason: "invalid" });
+    expect(flow.current.id).toBe("shipping");
+    expect(flow.data.shipping).toEqual({ address: "" });
+    expect(flow.issues()?.[0]?.message).toBe("Enter an address");
+  });
+
+  it("finishes once, with the output of every step", async () => {
+    const onFinish = vi.fn();
+    const flow = checkout.create({ onFinish });
+
+    await flow.next({ address: "1 Main St" });
+    await flow.next();
+    const result = await flow.next();
+
+    expect(result).toMatchObject({ accepted: true, to: null });
+    expect(onFinish).toHaveBeenCalledOnce();
+    expect(onFinish.mock.calls[0][0]).toEqual({ shipping: { address: "1 Main St" } });
+    expect(flow.isFinished).toBe(true);
+  });
+
+  it("does not let a linear flow jump ahead", async () => {
+    const flow = checkout.create({ linear: true });
+
+    expect(flow.canGoTo("review")).toBe(false);
+    expect(await flow.goTo("review")).toEqual({ accepted: false, reason: "policy" });
+  });
+
+  it("is pending while an async guard runs, and refuses a second move", async () => {
+    let allow!: (value: boolean) => void;
+    const flow = checkout.create({
+      snapshot: { step: "payment", complete: ["shipping"], data: { shipping: { address: "1 Main St" } } },
+      guard: () => new Promise<boolean>((resolve) => (allow = resolve)),
+    });
+
+    const moving = flow.next();
+    expect(flow.isPending).toBe(true);
+    expect(await flow.next()).toEqual({ accepted: false, reason: "pending" });
+
+    allow(true);
+    expect(await moving).toMatchObject({ accepted: true, to: "review" });
+    expect(flow.isPending).toBe(false);
+  });
+});
+```
+
+`describe`, `it`, `expect` and `vi` are globals in a CLI project
+(`vitest/globals` in `tsconfig.spec.json`). Reads on a flow (`flow.current`,
+`flow.data`, `flow.isPending`) always return the latest state, so there is
+nothing to re-query between steps. Start from any point with a `snapshot`
+instead of walking there, as the last test does.
+
+A service or component that owns a stepper exposes the same flow as
+`stepper.flow`, so a test that has the instance can drive it directly.
+
+## Components
+
+Create the component with TestBed and drive it the way a person would. These
+examples query by role with
+[DOM Testing Library](https://testing-library.com/docs/dom-testing-library/intro)
+and click with [user-event](https://testing-library.com/docs/user-event/intro);
+TestBed puts the component in the page, so `screen` finds it.
+
+```bash
+npm install -D @testing-library/dom @testing-library/user-event
+```
+
+The component under test: the directives, a field whose draft is kept in the
+flow with `setData`, and its error.
+
+```ts title="checkout-steps.ts"
+import { ChangeDetectionStrategy, Component, computed, input } from "@angular/core";
+import { type Options, STEPPER_PRIMITIVES } from "@stepperize/angular";
+import { checkout } from "./checkout";
+
+@Component({
+  selector: "app-checkout-steps",
+  imports: [STEPPER_PRIMITIVES],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <div [stepperRoot]="stepper" aria-label="Checkout">
+      <ol stepperList>
+        @for (step of stepper.steps; track step.id) {
+          <li [stepperItem]="step">
+            <button stepperTrigger>
+              <span stepperIndicator></span>
+              {{ step.title }}
+            </button>
+          </li>
+        }
+      </ol>
+
+      <div stepperContent="shipping">
+        <label>
+          Address
+          <input
+            #address
+            [value]="stepper().data.shipping?.address ?? ''"
+            [attr.aria-invalid]="issues() ? 'true' : null"
+            [attr.aria-describedby]="issues() ? 'address-error' : null"
+            (input)="stepper().setData('shipping', { address: address.value })"
+          />
+        </label>
+        @if (issues(); as issues) {
+          <p id="address-error" role="alert">{{ issues[0]?.message }}</p>
+        }
+      </div>
+      <div stepperContent="payment">Payment details</div>
+      <div stepperContent="review">Review your order</div>
+
+      <button stepperPrev>Back</button>
+      <button stepperNext>Continue</button>
+    </div>
+  `,
+})
+export class CheckoutSteps {
+  readonly linear = input(false);
+  readonly guard = input<Options<typeof checkout.steps>["guard"]>();
+
+  readonly stepper = checkout.injectStepper(() => ({ linear: this.linear(), guard: this.guard() }));
+  protected readonly issues = computed(() => this.stepper().issues("shipping"));
+}
+```
+
+```ts title="checkout-steps.spec.ts"
+import { TestBed } from "@angular/core/testing";
+import { screen } from "@testing-library/dom";
+import userEvent from "@testing-library/user-event";
+import { CheckoutSteps } from "./checkout-steps";
+
+async function render(inputs: Record<string, unknown> = {}) {
+  const fixture = TestBed.createComponent(CheckoutSteps);
+  for (const [name, value] of Object.entries(inputs)) fixture.componentRef.setInput(name, value);
+  await fixture.whenStable();
+  return fixture;
+}
+
+describe("CheckoutSteps", () => {
+  it("shows the error and stays on the step", async () => {
+    const user = userEvent.setup();
+    const fixture = await render();
+
+    await user.click(screen.getByRole("button", { name: "Continue" }));
+    await fixture.whenStable();
+
+    const address = screen.getByRole("textbox", { name: "Address" });
+    expect(screen.getByRole("alert")).toBeTruthy();
+    expect(address.getAttribute("aria-invalid")).toBe("true");
+    expect(address.getAttribute("aria-describedby")).toBe("address-error");
+
+    // `setData` changes the step's data, which clears its issues.
+    await user.type(address, "1 Main St");
+    await fixture.whenStable();
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.getByRole("tab", { name: "Shipping" }).getAttribute("aria-selected")).toBe("true");
+  });
+
+  it("moves with Continue and Back", async () => {
+    const user = userEvent.setup();
+    const fixture = await render();
+
+    await user.type(screen.getByRole("textbox", { name: "Address" }), "1 Main St");
+    await user.click(screen.getByRole("button", { name: "Continue" }));
+    await fixture.whenStable();
+
+    const shipping = screen.getByRole("tab", { name: "Shipping" });
+    expect(screen.getByRole("tab", { name: "Payment" }).getAttribute("aria-selected")).toBe("true");
+    expect(shipping.dataset["state"]).toBe("complete");
+    expect(screen.getByRole("tabpanel").textContent).toContain("Payment details");
+
+    await user.click(screen.getByRole("button", { name: "Back" }));
+    await fixture.whenStable();
+    expect(shipping.getAttribute("aria-selected")).toBe("true");
+    expect((screen.getByRole("textbox", { name: "Address" }) as HTMLInputElement).value).toBe("1 Main St");
+  });
+
+  it("renders a linear flow as a list of steps", async () => {
+    await render({ linear: true });
+
+    expect(screen.queryByRole("tablist")).toBeNull();
+    expect(screen.getByRole("button", { name: "Shipping" }).getAttribute("aria-current")).toBe("step");
+    expect((screen.getByRole("button", { name: "Review" }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByRole("group", { name: "Shipping" })).toBeTruthy();
+  });
+});
+```
+
+`await fixture.whenStable()` after each action. The directives act once every
+`(click)` on the element has run, in a microtask, and change detection runs
+after the flow has moved; `whenStable()` waits for both. Panels of other steps
+stay in the page, hidden, so role queries (which skip hidden elements) find
+only the current one.
+
+### Assert roles and state
+
+Query by role and name, not by class. Which role the current step has depends
+on the flow:
+
+| Flow | The current step is |
+| --- | --- |
+| `linear` | A `button` with `aria-current="step"` |
+| Free navigation | A `tab` with `aria-selected="true"` (or `getByRole("tab", { selected: true })`) |
+| No triggers | The only visible `group` panel, named by the step's `title` |
+
+`data-state`, `data-invalid`, `data-disabled` and `data-pending` are part of
+the public API, so asserting them is fine when the role does not say it:
+`data-state="complete"` has no ARIA equivalent. With strict TypeScript, read
+`dataset["state"]` rather than `dataset.state`.
+
+### Async checks
+
+While an async schema, guard or `onFinish` runs, the stepper is busy and the
+buttons stay focusable. Hold the promise open and check both, then let it
+settle and wait for the result with `findBy*`, which retries until the DOM
+shows it:
+
+```ts
+it("waits for an async guard: busy, and a second click does nothing", async () => {
+  const user = userEvent.setup();
+  let allow!: (value: boolean) => void;
+  const guard = vi.fn(() => new Promise<boolean>((resolve) => (allow = resolve)));
+  const fixture = await render({ guard });
+
+  await user.click(screen.getByRole("tab", { name: "Review" }));
+  await fixture.whenStable();
+
+  const root = screen.getByRole("group", { name: "Checkout" });
+  const next = screen.getByRole("button", { name: "Continue" }) as HTMLButtonElement;
+  expect(root.getAttribute("aria-busy")).toBe("true");
+  expect(next.getAttribute("aria-disabled")).toBe("true");
+  expect(next.hasAttribute("data-pending")).toBe(true);
+  expect(next.disabled).toBe(false); // it keeps keyboard focus
+
+  await user.click(next);
+  expect(guard).toHaveBeenCalledOnce();
+
+  allow(true);
+  expect(await screen.findByRole("tab", { name: "Review", selected: true })).toBeTruthy();
+  expect(root.hasAttribute("aria-busy")).toBe(false);
+});
+```
+
+### Announcements
+
+The live region is a `span` with `aria-live="polite"` that the root adds in the
+browser, after the first render. When the step changes and focus stays on
+Continue, it holds the new step's title:
+
+```ts
+it("announces the new step while focus stays on Continue", async () => {
+  const user = userEvent.setup();
+  const fixture = await render();
+
+  await user.type(screen.getByRole("textbox", { name: "Address" }), "1 Main St");
+  await user.click(screen.getByRole("button", { name: "Continue" }));
+  await fixture.whenStable();
+
+  expect(document.activeElement).toBe(screen.getByRole("button", { name: "Continue" }));
+  expect(document.querySelector('[aria-live="polite"]')?.textContent).toBe("Payment");
+});
+```
+
+### Other runners and helpers
+
+- **Angular Testing Library.** `render` from `@testing-library/angular` wraps
+  the same TestBed calls and takes inputs as an option; the queries are the
+  same.
+- **A real browser.** `ng test --browsers=chromiumHeadless` runs the same
+  specs in Chromium through Vitest Browser Mode, once
+  `@vitest/browser-playwright` and `playwright` are installed. Use it for
+  right-to-left arrow keys, CSS and animations, which jsdom does not lay out.
+- **Zone.js projects.** In an application that still uses Zone.js, the
+  same specs work: `whenStable()` waits for the zone as well.
+
+## Server rendering
+
+`renderApplication` from `@angular/platform-server` renders the component as
+Angular SSR does, so the HTML can be asserted in a spec. The directives are
+host bindings, so roles, ids and `hidden` are in the server HTML; the live
+region is added in the browser only.
+
+```ts title="checkout-steps.server.spec.ts"
+import { type BootstrapContext, bootstrapApplication } from "@angular/platform-browser";
+import { provideServerRendering, renderApplication } from "@angular/platform-server";
+import { CheckoutSteps } from "./checkout-steps";
+
+describe("CheckoutSteps on the server", () => {
+  it("renders the tabs and hides the other panels", async () => {
+    const html = await renderApplication(
+      (context: BootstrapContext) =>
+        bootstrapApplication(CheckoutSteps, { providers: [provideServerRendering()] }, context),
+      { document: "<!doctype html><html><body><app-checkout-steps></app-checkout-steps></body></html>" },
+    );
+
+    expect(html).toContain('role="tablist"');
+    expect(html).toMatch(/<button[^>]*aria-selected="true"[^>]*>.*Shipping/s);
+    expect(html).toMatch(/<div[^>]*data-step="payment"[^>]*hidden[^>]*>Payment details/);
+    expect(html).not.toContain("aria-live");
+  });
+});
+```
+
+`@angular/platform-server` is installed by `ng add @angular/ssr`, or on its
+own.
+
+## What to cover
+
+- A move that is refused: the step does not change and the reason is shown.
+- Each branch of the `next` map, and that Back returns along it.
+- The finishing move, including the failure path if `onFinish` makes a request.
+- Resuming from a saved snapshot.
+- An async check: the stepper is busy, and a second click does nothing.

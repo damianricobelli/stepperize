@@ -1,0 +1,287 @@
+---
+title: Styling
+description: Style the primitives through data attributes, with plain CSS, Tailwind, :global or a child snippet.
+---
+
+The primitives ship no styles. Each one exposes its state as `data-*`
+attributes, and you style against them with Tailwind variants, plain CSS, or
+anything that can target an attribute selector. Your markup stays yours; the
+library tells you what state each element is in.
+
+## Attributes
+
+| Attribute | Set on | Values |
+| --- | --- | --- |
+| `data-component` | Every primitive | `stepper`, `stepper-list`, `stepper-item`, `stepper-trigger`, `stepper-title`, `stepper-description`, `stepper-indicator`, `stepper-content`, `stepper-prev`, `stepper-next` |
+| `data-state` | `Item`, `Trigger`, `Indicator` | `pending`, `current`, `complete` |
+| `data-invalid` | `Item`, `Trigger`, `Indicator` | Present after a rejected `next()` or `validate()`, until the step's data changes |
+| `data-disabled` | `Item`, `Trigger`, `Prev`, `Next` | Present when the action is not available |
+| `data-pending` | `Root`, `Prev`, `Next` | Present while an async schema, guard or `onFinish` runs |
+| `data-finished` | `Root` | Present once the flow has finished, until it changes |
+| `data-orientation` | `Root`, `List` | `horizontal`, `vertical` |
+| `data-step` | `Item`, `Trigger`, `Content` | The step id |
+
+`class` and `style` go to the element each primitive renders. `class` accepts
+what it accepts on an element: a string, an object or an array, combined as
+Svelte does with `clsx`.
+
+## data-state: the workhorse
+
+`data-state` is the state of the step:
+
+- **`current`**: the step being shown.
+- **`complete`**: `next()` validated it and moved on, and its data has not changed since.
+- **`pending`**: everything else.
+
+### With Tailwind
+
+Target it with the `data-[…]` variant. A typical trigger and indicator:
+
+```svelte
+<Stepper.Trigger
+  class="flex items-center gap-2 text-muted-foreground data-[state=current]:text-foreground data-disabled:opacity-50"
+>
+  <Stepper.Indicator
+    class="size-6 rounded-full border data-[state=complete]:bg-primary data-invalid:border-destructive"
+  />
+  <Stepper.Title />
+</Stepper.Trigger>
+```
+
+### Styling children with group-data
+
+Put `group` on the element that has the attribute, then read it from a child
+with `group-data-[state=…]`. This swaps the number for a check mark once a step
+is complete, with no script:
+
+```svelte
+<Stepper.List class="flex gap-4">
+  {#snippet item(step, index)}
+    <Stepper.Item>
+      <Stepper.Trigger class="flex items-center gap-2">
+        <Stepper.Indicator class="group grid size-7 place-items-center rounded-full border">
+          <span class="group-data-[state=complete]:hidden">{index + 1}</span>
+          <CheckIcon class="hidden size-4 group-data-[state=complete]:block" />
+        </Stepper.Indicator>
+        <Stepper.Title />
+      </Stepper.Trigger>
+    </Stepper.Item>
+  {/snippet}
+</Stepper.List>
+```
+
+When several elements each have their own `data-state`, name the group
+(`group/item` and `group-data-[state=current]/item:`) so a child reads the
+right one.
+
+### With plain CSS
+
+Attribute selectors work in a global stylesheet, such as the one your root
+layout imports:
+
+```css title="src/app.css"
+[data-component="stepper-list"] {
+  display: flex;
+  gap: 1rem;
+}
+[data-component="stepper-list"][data-orientation="vertical"] {
+  flex-direction: column;
+}
+[data-component="stepper-indicator"][data-state="complete"] {
+  background: var(--primary);
+}
+[data-component="stepper-next"][data-pending] {
+  cursor: progress;
+}
+```
+
+## Component styles
+
+A `<style>` block in a component only applies to elements in that component's
+own markup. The primitives render their elements inside their own components,
+so a class you pass them is not scoped, and `.trigger { … }` in your `<style>`
+matches nothing. Two ways to style them from a component:
+
+### `:global`, under an element of yours
+
+Keep the rules scoped to your component by starting them from an element in
+your markup, and make the rest `:global`:
+
+```svelte title="CheckoutSteps.svelte"
+<div class="checkout">
+  <Stepper.Root>…</Stepper.Root>
+</div>
+
+<style>
+  .checkout :global {
+    [data-component="stepper-trigger"][data-state="current"] {
+      font-weight: 600;
+    }
+    [data-component="stepper-indicator"][data-state="complete"] {
+      background: var(--primary);
+    }
+  }
+</style>
+```
+
+`.checkout :global([data-component="stepper-trigger"])` is the same rule for
+a single selector.
+
+### A `child` snippet
+
+With a `child` snippet the element is yours, written in your markup, so your
+component's scoped styles apply to it. Spread `props` onto it; they carry the
+`data-*` attributes with the ARIA attributes, ids and handlers:
+
+```svelte
+<Stepper.Next>
+  {#snippet child({ props })}
+    <button {...props} class="next">Continue</button>
+  {/snippet}
+</Stepper.Next>
+
+<style>
+  .next[data-pending] {
+    cursor: progress;
+  }
+</style>
+```
+
+The same works for a component of yours: spread `props` onto it, and have it
+spread its rest props onto its element. See
+[Rendering your own element](/docs/v9/svelte/guides/primitives#rendering-your-own-element).
+
+## Classes from the item's state
+
+When a rule needs more than an attribute selector, read the item. The
+`children` snippet of `Stepper.Item` receives it:
+
+```svelte
+<Stepper.Item>
+  {#snippet children(item)}
+    <Stepper.Trigger class={["trigger", { done: item.state === "complete", locked: item.disabled }]}>
+      <Stepper.Title />
+    </Stepper.Trigger>
+  {/snippet}
+</Stepper.Item>
+```
+
+In a child component, `Stepper.useItem()` returns the same item. The `data-*`
+attributes stay the simpler choice: they need no script.
+
+## data-invalid
+
+Present on the item, trigger and indicator of a step whose last `next()` was
+rejected by its schema, until that step's data changes.
+
+```svelte
+<Stepper.Indicator class="border data-invalid:border-destructive data-invalid:text-destructive" />
+```
+
+## data-orientation
+
+`orientation` on `Stepper.Root` is reflected on the root and the list, and
+decides which arrow keys move between tabs. Style both layouts from one
+definition:
+
+```svelte
+<Stepper.Root orientation="vertical" class="data-[orientation=vertical]:flex data-[orientation=vertical]:gap-8">
+  <Stepper.List class="flex gap-2 data-[orientation=vertical]:flex-col">
+    <!-- items -->
+  </Stepper.List>
+</Stepper.Root>
+```
+
+## Disabled and pending
+
+A button that cannot be used right now gets `data-disabled`. Style that
+attribute rather than `:disabled`: while an async check runs, the buttons are
+`aria-disabled` instead of `disabled`, so the one that was pressed keeps
+keyboard focus.
+
+## Hidden panels
+
+A `Content` whose step is not current renders nothing. With `forceMount` it
+stays in the page with the `hidden` attribute, and a `display` rule of yours
+beats the browser's `[hidden] { display: none }`. Restore it next to your rule:
+
+```css
+[data-component="stepper-content"] {
+  display: grid;
+}
+[data-component="stepper-content"][hidden] {
+  display: none;
+}
+```
+
+## Animating panels
+
+Transitions go on elements, not components, so put the panel's element in a
+`child` snippet and give it the transition. Make it `|global`: the block that
+adds and removes the panel is inside `Stepper.Content`, and a local transition
+only plays when its own block changes.
+
+```svelte
+<script lang="ts">
+  import { prefersReducedMotion } from "svelte/motion";
+  import { fade } from "svelte/transition";
+  import { checkout } from "./checkout";
+
+  const { Stepper } = checkout;
+  const duration = $derived(prefersReducedMotion.current ? 0 : 150);
+</script>
+
+<Stepper.Content step="payment">
+  {#snippet child({ props })}
+    <section {...props} transition:fade|global={{ duration }}>
+      <PaymentForm />
+    </section>
+  {/snippet}
+</Stepper.Content>
+```
+
+Both panels are on the page while one fades out and the other in; focus that
+was in the leaving panel moves to the new one. Svelte's transitions do not
+check reduced motion by themselves, hence `prefersReducedMotion`.
+
+## Lines between steps
+
+There is no separator component. Draw the line with CSS on the items, which
+keeps the list a clean list of steps for screen readers.
+
+```css
+[data-component="stepper-item"]:not(:last-child)::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+[data-component="stepper-item"][data-state="complete"]::after {
+  background: var(--primary);
+}
+```
+
+## State is not position
+
+`data-state="complete"` means the step was validated, not that it is before
+the current one. A step that was skipped is `pending` even if it is earlier in
+the list. To style by position, compare indexes in the `item` snippet:
+
+```svelte
+<Stepper.Root>
+  {#snippet children(stepper)}
+    <Stepper.List>
+      {#snippet item(step, index)}
+        <Stepper.Item data-passed={index < stepper.index || undefined}>…</Stepper.Item>
+      {/snippet}
+    </Stepper.List>
+  {/snippet}
+</Stepper.Root>
+```
+
+## Where to go next
+
+- [Primitives API](/docs/v9/svelte/api/primitives): the components that set
+  these attributes.
+- [Accessibility](/docs/v9/svelte/guides/accessibility): what the attributes
+  do not say to assistive technology, and how to add it.

@@ -1,0 +1,257 @@
+---
+title: Styling
+description: Style the primitives through data attributes, with plain CSS, Tailwind or CSS Modules.
+---
+
+The primitives ship no styles. Each one exposes its state as `data-*`
+attributes, and you style against them with Tailwind variants, plain CSS, CSS
+Modules or anything that can target an attribute selector. Your markup stays
+yours; the library tells you what state each element is in.
+
+## Attributes
+
+| Attribute | Set on | Values |
+| --- | --- | --- |
+| `data-component` | Every primitive | `stepper`, `stepper-list`, `stepper-item`, `stepper-trigger`, `stepper-title`, `stepper-description`, `stepper-indicator`, `stepper-content`, `stepper-prev`, `stepper-next` |
+| `data-state` | `Item`, `Trigger`, `Indicator` | `pending`, `current`, `complete` |
+| `data-invalid` | `Item`, `Trigger`, `Indicator` | Present after a rejected `next()` or `validate()`, until the step's data changes |
+| `data-disabled` | `Item`, `Trigger`, `Prev`, `Next` | Present when the action is not available |
+| `data-pending` | `Root`, `Prev`, `Next` | Present while an async schema, guard or `onFinish` runs |
+| `data-finished` | `Root` | Present once the flow has finished, until it changes |
+| `data-orientation` | `Root`, `List` | `horizontal`, `vertical` |
+| `data-step` | `Item`, `Trigger`, `Content` | The step id |
+
+`class`, `classList` and `style` go to the element each primitive renders, as
+they would on the element itself.
+
+## data-state: the workhorse
+
+`data-state` is the state of the step:
+
+- **`current`**: the step being shown.
+- **`complete`**: `next()` validated it and moved on, and its data has not changed since.
+- **`pending`**: everything else.
+
+### With Tailwind
+
+Target it with the `data-[…]` variant. A typical trigger and indicator:
+
+```tsx
+<Stepper.Trigger class="flex items-center gap-2 text-muted-foreground data-[state=current]:text-foreground data-disabled:opacity-50">
+  <Stepper.Indicator class="size-6 rounded-full border data-[state=complete]:bg-primary data-invalid:border-destructive" />
+  <Stepper.Title />
+</Stepper.Trigger>
+```
+
+### Styling children with group-data
+
+Put `group` on the element that has the attribute, then read it from a child
+with `group-data-[state=…]`. This swaps the number for a check mark once a step
+is complete, with no code:
+
+```tsx
+<Stepper.List class="flex gap-4">
+  {(_step, index) => (
+    <Stepper.Item>
+      <Stepper.Trigger class="flex items-center gap-2">
+        <Stepper.Indicator class="group grid size-7 place-items-center rounded-full border">
+          <span class="group-data-[state=complete]:hidden">{index + 1}</span>
+          <CheckIcon class="hidden size-4 group-data-[state=complete]:block" />
+        </Stepper.Indicator>
+        <Stepper.Title />
+      </Stepper.Trigger>
+    </Stepper.Item>
+  )}
+</Stepper.List>
+```
+
+When several elements each have their own `data-state`, name the group
+(`group/item` and `group-data-[state=current]/item:`) so a child reads the
+right one.
+
+### With plain CSS
+
+Attribute selectors work in any stylesheet you import:
+
+```css title="stepper.css"
+[data-component="stepper-list"] {
+  display: flex;
+  gap: 1rem;
+}
+[data-component="stepper-list"][data-orientation="vertical"] {
+  flex-direction: column;
+}
+[data-component="stepper-indicator"][data-state="complete"] {
+  background: var(--primary);
+}
+[data-component="stepper-next"][data-pending] {
+  cursor: progress;
+}
+```
+
+### With CSS Modules
+
+Solid has no scoped `<style>`; CSS Modules give you local class names. Put the
+class on the primitive and combine it with the attribute in the module:
+
+```css title="steps.module.css"
+.trigger[data-state="current"] {
+  font-weight: 600;
+}
+.indicator[data-state="complete"] {
+  background: var(--primary);
+}
+.next[data-pending] {
+  cursor: progress;
+}
+```
+
+```tsx title="CheckoutSteps.tsx"
+import styles from "./steps.module.css";
+
+<Stepper.Trigger class={styles.trigger}>
+  <Stepper.Indicator class={styles.indicator} />
+  <Stepper.Title />
+</Stepper.Trigger>;
+```
+
+## Classes from the item's state
+
+When a rule needs more than an attribute selector, read the item. A function
+child of `Stepper.Item` receives it, and `classList` follows it:
+
+```tsx
+<Stepper.Item>
+  {(item) => (
+    <Stepper.Trigger classList={{ done: item.state === "complete", locked: item.disabled }}>
+      <Stepper.Title />
+    </Stepper.Trigger>
+  )}
+</Stepper.Item>
+```
+
+Read `item.state` where you use it; destructuring the item would copy it once.
+In a child component, `Stepper.useItem()` returns the same item. The `data-*`
+attributes stay the simpler choice: they need no code.
+
+## Your own element
+
+`as` renders another tag or your own component, and the `data-*` attributes go
+to it with everything else:
+
+```tsx
+<Stepper.Title as="h3" class="step-heading" />
+<Stepper.Next as={MyButton} tone="primary">Continue</Stepper.Next>
+```
+
+A component passed as `as` receives the attributes as props and must spread
+them, `ref` included, onto its element: take your own props out with
+`splitProps`, not destructuring. See
+[Rendering your own element](/docs/v9/solid/guides/primitives#rendering-your-own-element).
+
+## data-invalid
+
+Present on the item, trigger and indicator of a step whose last `next()` was
+rejected by its schema, until that step's data changes.
+
+```tsx
+<Stepper.Indicator class="border data-invalid:border-destructive data-invalid:text-destructive" />
+```
+
+## data-orientation
+
+`orientation` on `Stepper.Root` is reflected on the root and the list, and
+decides which arrow keys move between tabs. Style both layouts from one
+definition:
+
+```tsx
+<Stepper.Root orientation="vertical" class="data-[orientation=vertical]:flex data-[orientation=vertical]:gap-8">
+  <Stepper.List class="flex gap-2 data-[orientation=vertical]:flex-col">
+    {/* items */}
+  </Stepper.List>
+</Stepper.Root>
+```
+
+## Disabled and pending
+
+A button that cannot be used right now gets `data-disabled`. Style that
+attribute rather than `:disabled`: while an async check runs, the buttons are
+`aria-disabled` instead of `disabled`, so the one that was pressed keeps
+keyboard focus.
+
+## Hidden panels
+
+A `Content` whose step is not current renders nothing. With `forceMount` it
+stays in the page with the `hidden` attribute, and a `display` rule of yours
+beats the browser's `[hidden] { display: none }`. Restore it next to your rule:
+
+```css
+[data-component="stepper-content"] {
+  display: grid;
+}
+[data-component="stepper-content"][hidden] {
+  display: none;
+}
+```
+
+## Animating panels
+
+A panel that becomes current is inserted, or shown again with `forceMount`.
+`@starting-style` animates that entry in CSS alone:
+
+```css
+[data-component="stepper-content"] {
+  transition: opacity 150ms ease;
+  @starting-style {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-component="stepper-content"] {
+    transition: none;
+  }
+}
+```
+
+An exit animation needs the panel to stay in the page while it leaves, as
+`solid-transition-group` does.
+
+## Lines between steps
+
+There is no separator component. Draw the line with CSS on the items, which
+keeps the list a clean list of steps for screen readers.
+
+```css
+[data-component="stepper-item"]:not(:last-child)::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+[data-component="stepper-item"][data-state="complete"]::after {
+  background: var(--primary);
+}
+```
+
+## State is not position
+
+`data-state="complete"` means the step was validated, not that it is before
+the current one. A step that was skipped is `pending` even if it is earlier in
+the list. To style by position, compare indexes in the list's function child:
+
+```tsx
+<Stepper.Root>
+  {(stepper) => (
+    <Stepper.List>
+      {(_step, index) => <Stepper.Item data-passed={index < stepper.index || undefined}>…</Stepper.Item>}
+    </Stepper.List>
+  )}
+</Stepper.Root>
+```
+
+## Where to go next
+
+- [Primitives API](/docs/v9/solid/api/primitives): the components that set
+  these attributes.
+- [Accessibility](/docs/v9/solid/guides/accessibility): what the attributes do
+  not say to assistive technology, and how to add it.

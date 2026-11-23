@@ -1,0 +1,399 @@
+---
+title: Testing
+description: Test the flow without an element, and your elements in a real browser with Vitest Browser Mode or @open-wc/testing.
+---
+
+A flow has two parts worth testing separately: its logic, which needs no
+element, and the elements that show it.
+
+## The flow, without Lit
+
+`definition.create()` returns the same state machine a controller drives, with
+no element and no DOM. Validation, branching and guards can be asserted
+directly, in a plain Node test.
+
+```ts title="checkout.ts"
+import { defineStepper } from "@stepperize/lit";
+import { z } from "zod";
+
+export const checkout = defineStepper([
+  {
+    id: "shipping",
+    title: "Shipping",
+    schema: z.object({ address: z.string().min(1, "Enter an address") }),
+  },
+  { id: "payment", title: "Payment" },
+  { id: "review", title: "Review" },
+]);
+```
+
+```ts title="checkout.test.ts"
+import { expect, it, vi } from "vitest";
+import { checkout } from "./checkout";
+
+it("rejects an empty address and keeps what was typed", async () => {
+  const flow = checkout.create();
+
+  const result = await flow.next({ address: "" });
+
+  expect(result).toMatchObject({ accepted: false, reason: "invalid" });
+  expect(flow.current.id).toBe("shipping");
+  expect(flow.data.shipping).toEqual({ address: "" });
+  expect(flow.issues()?.[0]?.message).toBe("Enter an address");
+});
+
+it("finishes once, with the output of every step", async () => {
+  const onFinish = vi.fn();
+  const flow = checkout.create({ onFinish });
+
+  await flow.next({ address: "1 Main St" });
+  await flow.next();
+  const result = await flow.next();
+
+  expect(result).toMatchObject({ accepted: true, to: null });
+  expect(onFinish).toHaveBeenCalledOnce();
+  expect(onFinish.mock.calls[0][0]).toEqual({ shipping: { address: "1 Main St" } });
+  expect(flow.isFinished).toBe(true);
+});
+
+it("does not let a linear flow jump ahead", async () => {
+  const flow = checkout.create({ linear: true });
+
+  expect(flow.canGoTo("review")).toBe(false);
+  expect(await flow.goTo("review")).toEqual({ accepted: false, reason: "policy" });
+});
+
+it("is pending while an async guard runs, and refuses a second move", async () => {
+  let allow!: (value: boolean) => void;
+  const flow = checkout.create({
+    snapshot: { step: "payment", complete: ["shipping"], data: { shipping: { address: "1 Main St" } } },
+    guard: () => new Promise<boolean>((resolve) => (allow = resolve)),
+  });
+
+  const moving = flow.next();
+  expect(flow.isPending).toBe(true);
+  expect(await flow.next()).toEqual({ accepted: false, reason: "pending" });
+
+  allow(true);
+  expect(await moving).toMatchObject({ accepted: true, to: "review" });
+  expect(flow.isPending).toBe(false);
+});
+```
+
+Reads on a flow (`flow.current`, `flow.data`, `flow.isPending`) always return
+the latest state, so there is nothing to re-query between steps. Start from any
+point with a `snapshot` instead of walking there, as the last test does.
+
+An element's controller exposes its flow as `element.stepper.flow`, and
+`controller(this, flow)` follows a flow made elsewhere: a test can create one
+with `create()`, hand it to the element and drive it from outside.
+
+## Elements
+
+Custom elements, shadow roots and element directives need a real browser, not
+jsdom. These examples use
+[Vitest Browser Mode](https://vitest.dev/guide/browser/) with Playwright, whose
+locators find elements inside open shadow roots:
+
+```bash
+pnpm add -D vitest @vitest/browser-playwright playwright
+```
+
+```ts title="vitest.config.ts"
+import { playwright } from "@vitest/browser-playwright";
+import { defineConfig } from "vitest/config";
+
+export default defineConfig({
+  test: {
+    browser: {
+      enabled: true,
+      headless: true,
+      provider: playwright(),
+      instances: [{ browser: "chromium" }],
+    },
+  },
+});
+```
+
+The element under test: the parts, a field whose draft is kept in the flow
+with `setData`, and its error.
+
+```ts title="checkout-steps.ts"
+import { html, LitElement, nothing } from "lit";
+import type { Options } from "@stepperize/lit";
+import { checkout } from "./checkout";
+
+export class CheckoutSteps extends LitElement {
+  static properties = { linear: { type: Boolean }, guard: { attribute: false } };
+  declare linear: boolean;
+  declare guard: Options<typeof checkout.steps>["guard"];
+
+  stepper = checkout.controller(this, () => ({ linear: this.linear, guard: this.guard }));
+
+  render() {
+    const s = this.stepper;
+    const issues = s.value.issues("shipping");
+
+    return html`
+      <div ${s.root()} aria-label="Checkout">
+        <ol ${s.list()}>
+          ${s.steps.map(
+            (step) => html`
+              <li ${s.item(step.id)}>
+                <button ${s.trigger(step.id)}>
+                  <span ${s.indicator(step.id)}></span>
+                  ${step.title}
+                </button>
+              </li>
+            `,
+          )}
+        </ol>
+
+        <div ${s.content("shipping")}>
+          <label>
+            Address
+            <input
+              .value=${s.value.data.shipping?.address ?? ""}
+              aria-invalid=${issues ? "true" : nothing}
+              aria-describedby=${issues ? "address-error" : nothing}
+              @input=${(event: InputEvent) =>
+                s.value.setData("shipping", { address: (event.target as HTMLInputElement).value })}
+            />
+          </label>
+          ${issues ? html`<p id="address-error" role="alert">${issues[0]?.message}</p>` : nothing}
+        </div>
+        <div ${s.content("payment")}>Payment details</div>
+        <div ${s.content("review")}>Review your order</div>
+
+        <button ${s.prev()}>Back</button>
+        <button ${s.next()}>Continue</button>
+      </div>
+    `;
+  }
+}
+customElements.define("checkout-steps", CheckoutSteps);
+```
+
+```ts title="checkout-steps.test.ts"
+import { afterEach, expect, test } from "vitest";
+import { page, userEvent } from "vitest/browser";
+import { CheckoutSteps } from "./checkout-steps";
+
+async function mount(props: Partial<CheckoutSteps> = {}) {
+  const element = Object.assign(new CheckoutSteps(), props);
+  document.body.append(element);
+  await element.updateComplete;
+  return element;
+}
+
+afterEach(() => document.body.replaceChildren());
+
+test("shows the error and stays on the step", async () => {
+  await mount();
+
+  await userEvent.click(page.getByRole("button", { name: "Continue" }));
+
+  const address = page.getByRole("textbox", { name: "Address" });
+  await expect.element(page.getByRole("alert")).toBeVisible();
+  await expect.element(address).toHaveAttribute("aria-invalid", "true");
+  await expect.element(address).toHaveAccessibleDescription();
+
+  // `setData` changes the step's data, which clears its issues.
+  await userEvent.fill(address, "1 Main St");
+  await expect.element(page.getByRole("alert")).not.toBeInTheDocument();
+  await expect.element(page.getByRole("tab", { name: "Shipping" })).toHaveAttribute("aria-selected", "true");
+});
+
+test("moves with Continue and Back", async () => {
+  await mount();
+
+  await userEvent.fill(page.getByRole("textbox", { name: "Address" }), "1 Main St");
+  await userEvent.click(page.getByRole("button", { name: "Continue" }));
+
+  const shipping = page.getByRole("tab", { name: "Shipping" });
+  await expect.element(page.getByRole("tab", { name: "Payment" })).toHaveAttribute("aria-selected", "true");
+  await expect.element(shipping).toHaveAttribute("data-state", "complete");
+  await expect.element(page.getByRole("tabpanel")).toHaveTextContent("Payment details");
+
+  await userEvent.click(page.getByRole("button", { name: "Back" }));
+  await expect.element(shipping).toHaveAttribute("aria-selected", "true");
+  await expect.element(page.getByRole("textbox", { name: "Address" })).toHaveValue("1 Main St");
+});
+
+test("renders a linear flow as a list of steps", async () => {
+  await mount({ linear: true });
+
+  await expect.element(page.getByRole("tablist")).not.toBeInTheDocument();
+  await expect.element(page.getByRole("button", { name: "Shipping" })).toHaveAttribute("aria-current", "step");
+  await expect.element(page.getByRole("button", { name: "Review" })).toBeDisabled();
+  await expect.element(page.getByRole("group", { name: "Shipping" })).toBeVisible();
+});
+```
+
+`expect.element` retries until the assertion passes, so there is no need to
+await `updateComplete` after every click: a move resolves, the controller
+requests an update, and the parts are painted in it. When you read the DOM
+directly instead, wait for both: let the move settle
+(`await new Promise((resolve) => setTimeout(resolve))`), then
+`await element.updateComplete`.
+
+### Assert roles and state
+
+Query by role and name, not by class. Which role the current step has depends
+on the flow:
+
+| Flow | The current step is |
+| --- | --- |
+| `linear` | A `button` with `aria-current="step"` |
+| Free navigation | A `tab` with `aria-selected="true"` (or `getByRole("tab", { selected: true })`) |
+| No triggers | The only visible `group` panel, named by the step's `title` |
+
+`data-state`, `data-invalid`, `data-disabled` and `data-pending` are part of
+the public API, so asserting them is fine when the role does not say it:
+`data-state="complete"` has no ARIA equivalent.
+
+To reach an element directly, go through the shadow root:
+`element.shadowRoot!.querySelector('[data-step="payment"]')`. DOM Testing
+Library's queries do not look inside shadow roots; Playwright's locators, used
+above, do.
+
+### Async checks
+
+While an async schema, guard or `onFinish` runs, the stepper is busy and the
+buttons stay focusable. Hold the promise open and check both:
+
+```ts
+test("waits for an async guard: busy, and a second click does nothing", async () => {
+  let allow!: (value: boolean) => void;
+  const guard = vi.fn(() => new Promise<boolean>((resolve) => (allow = resolve)));
+  await mount({ guard });
+
+  await userEvent.click(page.getByRole("tab", { name: "Review" }));
+
+  const next = page.getByRole("button", { name: "Continue" });
+  await expect.element(page.getByRole("group", { name: "Checkout" })).toHaveAttribute("aria-busy", "true");
+  await expect.element(next).toHaveAttribute("aria-disabled", "true");
+  await expect.element(next).toHaveAttribute("data-pending");
+  // `aria-disabled`, not `disabled`: it keeps keyboard focus.
+  await expect.element(next).not.toHaveAttribute("disabled");
+
+  (next.element() as HTMLButtonElement).click();
+  expect(guard).toHaveBeenCalledOnce();
+
+  allow(true);
+  await expect.element(page.getByRole("tab", { name: "Review" })).toHaveAttribute("aria-selected", "true");
+  await expect.element(page.getByRole("group", { name: "Checkout" })).not.toHaveAttribute("aria-busy");
+});
+```
+
+Import `vi` from `vitest` next to `expect` and `test`. Playwright counts
+`aria-disabled` as disabled: `toBeEnabled()` fails on a busy button and
+`userEvent.click()` waits for it to be enabled. So the test checks the
+`disabled` attribute itself, and presses the busy button with the element's
+own `click()`.
+
+### Announcements
+
+The live region is a `span` with `aria-live="polite"` that `root()` appends to
+its element. When the step changes and focus stays on Continue, it holds the
+new step's title:
+
+```ts
+test("announces the new step while focus stays on Continue", async () => {
+  const element = await mount();
+
+  const next = page.getByRole("button", { name: "Continue" });
+  await userEvent.fill(page.getByRole("textbox", { name: "Address" }), "1 Main St");
+  await userEvent.click(next);
+
+  const region = () => element.shadowRoot!.querySelector('[aria-live="polite"]');
+  await expect.poll(() => region()?.textContent).toBe("Payment");
+  expect(element.shadowRoot!.activeElement).toBe(next.element());
+});
+```
+
+Inside a shadow root, `document.activeElement` is the host element, so
+`toHaveFocus()` fails there: compare with the shadow root's `activeElement`.
+
+### With @open-wc/testing
+
+[`@open-wc/testing`](https://open-wc.org/docs/testing/testing-package/) on
+[Web Test Runner](https://modern-web.dev/docs/test-runner/overview/) is the
+other common setup. `fixture` renders a template and waits for the element's
+first update; `chai-a11y-axe` checks the shadow root with axe:
+
+```bash
+pnpm add -D @open-wc/testing @web/test-runner @web/test-runner-playwright @web/dev-server-esbuild
+```
+
+```js title="web-test-runner.config.mjs"
+import { esbuildPlugin } from "@web/dev-server-esbuild";
+import { playwrightLauncher } from "@web/test-runner-playwright";
+
+export default {
+  files: "src/**/*.wtr.test.ts",
+  nodeResolve: true,
+  plugins: [esbuildPlugin({ ts: true, tsconfig: "tsconfig.json" })],
+  browsers: [playwrightLauncher({ product: "chromium" })],
+};
+```
+
+```ts title="checkout-steps.wtr.test.ts"
+import { expect, fixture, html, waitUntil } from "@open-wc/testing";
+import type { CheckoutSteps } from "./checkout-steps";
+import "./checkout-steps";
+
+it("moves to the next step and stays accessible", async () => {
+  const element = await fixture<CheckoutSteps>(html`<checkout-steps></checkout-steps>`);
+  const root = element.shadowRoot!;
+  const input = root.querySelector("input")!;
+  const payment = root.querySelector('[data-component="stepper-trigger"][data-step="payment"]')!;
+
+  input.value = "1 Main St";
+  input.dispatchEvent(new InputEvent("input"));
+  root.querySelector<HTMLButtonElement>('[data-component="stepper-next"]')!.click();
+
+  await waitUntil(() => payment.getAttribute("aria-selected") === "true", "Payment was not selected");
+  expect(payment.getAttribute("data-state")).to.equal("current");
+  await expect(element).to.be.accessible();
+});
+```
+
+`waitUntil` polls, like `expect.element` above: the move settles, then the
+element updates.
+
+## Server rendering
+
+Lit's server renderer does not run element directives, so the roles, ids and
+`data-*` attributes are added when the element hydrates. A server test checks
+what is there before that: your template, rendered for the right step.
+
+```ts title="checkout-steps.server.test.ts"
+// @vitest-environment node
+import { render } from "@lit-labs/ssr";
+import { collectResultSync } from "@lit-labs/ssr/lib/render-result.js";
+import { html } from "lit";
+import { expect, it } from "vitest";
+import "./checkout-steps";
+
+it("renders the template on the server, without the directives' attributes", () => {
+  const page = collectResultSync(render(html`<checkout-steps></checkout-steps>`));
+
+  expect(page).toContain('<template shadowroot="open"');
+  expect(page).toContain("Address");
+  expect(page).not.toContain('role="tablist"');
+});
+```
+
+Run it in a Vitest project with `environment: "node"`, separate from the
+browser project. To make the first paint right before hydration (hidden panels,
+`data-state` for your CSS, `type="button"`), write those as bindings and assert
+them here; see [Server rendering](/docs/v9/lit/guides/ssr#make-the-first-paint-right).
+
+## What to cover
+
+- A move that is refused: the step does not change and the reason is shown.
+- Each branch of the `next` map, and that Back returns along it.
+- The finishing move, including the failure path if `onFinish` makes a request.
+- Resuming from a saved snapshot.
+- An async check: the stepper is busy, and a second click does nothing.

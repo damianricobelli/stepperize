@@ -1,0 +1,358 @@
+---
+title: Testing
+description: Test the flow without mounting anything, and the components by role with Testing Library and Vitest.
+---
+
+A flow has two parts worth testing separately: its logic, which needs no
+component, and the components that show it.
+
+## The flow, without Vue
+
+`definition.create()` returns the same state machine `useStepper()` and
+`Stepper.Root` use, with no component, no `setup` and no DOM. Validation,
+branching and guards can be asserted directly, in a plain Node test.
+
+```ts title="checkout.ts"
+import { defineStepper } from "@stepperize/vue";
+import { z } from "zod";
+
+export const checkout = defineStepper([
+  {
+    id: "shipping",
+    title: "Shipping",
+    schema: z.object({ address: z.string().min(1, "Enter an address") }),
+  },
+  { id: "payment", title: "Payment" },
+  { id: "review", title: "Review" },
+]);
+```
+
+```ts title="checkout.test.ts"
+import { expect, it, vi } from "vitest";
+import { checkout } from "./checkout";
+
+it("rejects an empty address and keeps what was typed", async () => {
+  const flow = checkout.create();
+
+  const result = await flow.next({ address: "" });
+
+  expect(result).toMatchObject({ accepted: false, reason: "invalid" });
+  expect(flow.current.id).toBe("shipping");
+  expect(flow.data.shipping).toEqual({ address: "" });
+  expect(flow.issues()?.[0]?.message).toBe("Enter an address");
+});
+
+it("finishes once, with the output of every step", async () => {
+  const onFinish = vi.fn();
+  const flow = checkout.create({ onFinish });
+
+  await flow.next({ address: "1 Main St" });
+  await flow.next();
+  const result = await flow.next();
+
+  expect(result).toMatchObject({ accepted: true, to: null });
+  expect(onFinish).toHaveBeenCalledOnce();
+  expect(onFinish.mock.calls[0][0]).toEqual({ shipping: { address: "1 Main St" } });
+  expect(flow.isFinished).toBe(true);
+});
+
+it("does not let a linear flow jump ahead", async () => {
+  const flow = checkout.create({ linear: true });
+
+  expect(flow.canGoTo("review")).toBe(false);
+  expect(await flow.goTo("review")).toEqual({ accepted: false, reason: "policy" });
+});
+
+it("is pending while an async guard runs, and refuses a second move", async () => {
+  let allow!: (value: boolean) => void;
+  const flow = checkout.create({
+    snapshot: { step: "payment", complete: ["shipping"], data: { shipping: { address: "1 Main St" } } },
+    guard: () => new Promise<boolean>((resolve) => (allow = resolve)),
+  });
+
+  const moving = flow.next();
+  expect(flow.isPending).toBe(true);
+  expect(await flow.next()).toEqual({ accepted: false, reason: "pending" });
+
+  allow(true);
+  expect(await moving).toMatchObject({ accepted: true, to: "review" });
+  expect(flow.isPending).toBe(false);
+});
+```
+
+Reads on a flow (`flow.current`, `flow.data`, `flow.isPending`) always return
+the latest state, so there is nothing to re-query between steps. Start from any
+point with a `snapshot` instead of walking there, as the last test does.
+
+`create()` takes the definition's defaults, so a flow defined with
+`{ linear: true }` is linear here too. Pass an option to override it for one
+test.
+
+## Components
+
+Mount the component and drive it the way a person would. These examples use
+[Vue Testing Library](https://testing-library.github.io/vue-testing-library/)
+and [user-event](https://testing-library.com/docs/user-event/intro) on
+[Vitest](https://vitest.dev) with jsdom:
+
+```bash
+pnpm add -D vitest jsdom @vitejs/plugin-vue @testing-library/vue @testing-library/user-event @testing-library/jest-dom
+```
+
+```ts title="vitest.config.ts"
+import vue from "@vitejs/plugin-vue";
+import { defineConfig } from "vitest/config";
+
+export default defineConfig({
+  plugins: [vue()],
+  test: {
+    environment: "jsdom",
+    setupFiles: ["./vitest.setup.ts"],
+  },
+});
+```
+
+```ts title="vitest.setup.ts"
+import "@testing-library/jest-dom/vitest";
+import { cleanup } from "@testing-library/vue";
+import { afterEach } from "vitest";
+
+// Without Vitest's `globals`, Testing Library cannot register this itself.
+afterEach(cleanup);
+```
+
+The component under test: the primitives, a field whose draft is kept in the
+flow with `setData`, and its error.
+
+```vue title="CheckoutSteps.vue"
+<script setup lang="ts">
+import type { Options } from "@stepperize/vue";
+import { checkout } from "./checkout";
+
+defineProps<{
+  linear?: boolean;
+  guard?: Options<typeof checkout.steps>["guard"];
+}>();
+
+const { Stepper } = checkout;
+</script>
+
+<template>
+  <Stepper.Root v-slot="stepper" :linear :guard aria-label="Checkout">
+    <Stepper.List>
+      <template #item>
+        <Stepper.Item>
+          <Stepper.Trigger>
+            <Stepper.Indicator />
+            <Stepper.Title />
+          </Stepper.Trigger>
+        </Stepper.Item>
+      </template>
+    </Stepper.List>
+
+    <Stepper.Content step="shipping">
+      <label>
+        Address
+        <input
+          :value="stepper.data.shipping?.address ?? ''"
+          :aria-invalid="stepper.issues('shipping') ? true : undefined"
+          :aria-describedby="stepper.issues('shipping') ? 'address-error' : undefined"
+          @input="stepper.setData('shipping', { address: ($event.target as HTMLInputElement).value })"
+        />
+      </label>
+      <p v-if="stepper.issues('shipping')" id="address-error" role="alert">
+        {{ stepper.issues("shipping")?.[0]?.message }}
+      </p>
+    </Stepper.Content>
+    <Stepper.Content step="payment">Payment details</Stepper.Content>
+    <Stepper.Content step="review">Review your order</Stepper.Content>
+
+    <Stepper.Prev>Back</Stepper.Prev>
+    <Stepper.Next>Continue</Stepper.Next>
+  </Stepper.Root>
+</template>
+```
+
+```ts title="CheckoutSteps.test.ts"
+import { render, screen } from "@testing-library/vue";
+import userEvent from "@testing-library/user-event";
+import { expect, it, vi } from "vitest";
+import CheckoutSteps from "./CheckoutSteps.vue";
+
+it("shows the error and stays on the step", async () => {
+  const user = userEvent.setup();
+  render(CheckoutSteps);
+
+  await user.click(screen.getByRole("button", { name: "Continue" }));
+
+  const address = screen.getByRole("textbox", { name: "Address" });
+  expect(await screen.findByRole("alert")).toBeVisible();
+  expect(address).toBeInvalid();
+  expect(address).toHaveAccessibleDescription();
+
+  // `setData` changes the step's data, which clears its issues.
+  await user.type(address, "1 Main St");
+  expect(screen.queryByRole("alert")).toBeNull();
+  expect(screen.getByRole("tab", { name: "Shipping" })).toHaveAttribute("aria-selected", "true");
+});
+
+it("moves with Continue and Back", async () => {
+  const user = userEvent.setup();
+  render(CheckoutSteps);
+
+  await user.type(screen.getByRole("textbox", { name: "Address" }), "1 Main St");
+  await user.click(screen.getByRole("button", { name: "Continue" }));
+
+  const shipping = screen.getByRole("tab", { name: "Shipping" });
+  expect(screen.getByRole("tab", { name: "Payment" })).toHaveAttribute("aria-selected", "true");
+  expect(shipping).toHaveAttribute("data-state", "complete");
+  expect(screen.getByRole("tabpanel")).toHaveTextContent("Payment details");
+
+  await user.click(screen.getByRole("button", { name: "Back" }));
+  expect(shipping).toHaveAttribute("aria-selected", "true");
+  expect(screen.getByRole("textbox", { name: "Address" })).toHaveValue("1 Main St");
+});
+
+it("renders a linear flow as a list of steps", () => {
+  render(CheckoutSteps, { props: { linear: true } });
+
+  expect(screen.queryByRole("tablist")).toBeNull();
+  expect(screen.getByRole("button", { name: "Shipping" })).toHaveAttribute("aria-current", "step");
+  expect(screen.getByRole("button", { name: "Review" })).toBeDisabled();
+  expect(screen.getByRole("group", { name: "Shipping" })).toBeVisible();
+});
+```
+
+user-event yields to the event loop after each action, so Vue has updated the
+DOM by the time an awaited `user` call returns. Use `findBy*` for what appears
+after a promise of your own, such as an async schema or guard.
+
+### Assert roles and state
+
+Query by role and name, not by class. Which role the current step has depends
+on the flow:
+
+| Flow | The current step is |
+| --- | --- |
+| `linear` | A `button` with `aria-current="step"` |
+| Free navigation | A `tab` with `aria-selected="true"` (or `getByRole("tab", { selected: true })`) |
+| No triggers | The only `group` panel on the page with the step's `title` as its name |
+
+`data-state`, `data-invalid`, `data-disabled` and `data-pending` are part of
+the public API, so asserting them is fine when the role does not say it:
+`data-state="complete"` has no ARIA equivalent.
+
+### Async checks
+
+While an async schema, guard or `onFinish` runs, the stepper is busy and the
+buttons stay focusable. Hold the promise open and check both:
+
+```ts
+it("waits for an async guard: busy, and a second click does nothing", async () => {
+  const user = userEvent.setup();
+  let allow!: (value: boolean) => void;
+  const guard = vi.fn(() => new Promise<boolean>((resolve) => (allow = resolve)));
+  render(CheckoutSteps, { props: { guard } });
+
+  await user.click(screen.getByRole("tab", { name: "Review" }));
+
+  const next = screen.getByRole("button", { name: "Continue" });
+  expect(screen.getByRole("group", { name: "Checkout" })).toHaveAttribute("aria-busy", "true");
+  expect(next).toHaveAttribute("aria-disabled", "true");
+  expect(next).toHaveAttribute("data-pending");
+  expect(next).toBeEnabled(); // not `disabled`: it keeps keyboard focus
+
+  await user.click(next);
+  expect(guard).toHaveBeenCalledOnce();
+
+  allow(true);
+  expect(await screen.findByRole("tab", { name: "Review", selected: true })).toBeInTheDocument();
+  expect(screen.getByRole("group", { name: "Checkout" })).not.toHaveAttribute("aria-busy");
+});
+```
+
+### Announcements
+
+The live region is a `span` with `aria-live="polite"` inside the root. When
+the step changes and focus stays on Continue, it holds the new step's title:
+
+```ts
+it("announces the new step while focus stays on Continue", async () => {
+  const user = userEvent.setup();
+  render(CheckoutSteps);
+
+  await user.type(screen.getByRole("textbox", { name: "Address" }), "1 Main St");
+  await user.click(screen.getByRole("button", { name: "Continue" }));
+
+  expect(screen.getByRole("button", { name: "Continue" })).toHaveFocus();
+  expect(document.querySelector('[aria-live="polite"]')).toHaveTextContent("Payment");
+});
+```
+
+### Vue Test Utils
+
+`mount` from `@vue/test-utils` works the same way: find by attribute,
+`await trigger("click")`, then `flushPromises()` when a schema or guard is
+async. Testing Library is built on it and adds the role queries used above.
+
+### In a real browser
+
+jsdom does not lay out the page: arrow keys in right-to-left layouts, CSS
+and `<Transition>` timing need a browser. With
+[Vitest Browser Mode](https://vitest.dev/guide/browser/) and
+`vitest-browser-vue`, the same component runs in Chromium:
+
+```ts title="CheckoutSteps.browser.test.ts"
+import { expect, test } from "vitest";
+import { page, userEvent } from "vitest/browser";
+import { render } from "vitest-browser-vue";
+import CheckoutSteps from "./CheckoutSteps.vue";
+
+test("arrow keys move between the tabs", async () => {
+  await render(CheckoutSteps);
+
+  await userEvent.click(page.getByRole("tab", { name: "Shipping" }));
+  await userEvent.keyboard("{ArrowRight}");
+
+  await expect.element(page.getByRole("tab", { name: "Payment" })).toHaveAttribute("aria-selected", "true");
+  await expect.element(page.getByRole("tab", { name: "Payment" })).toHaveFocus();
+});
+```
+
+Browser tests need a Vitest project of their own with `browser.enabled` and a
+provider such as `@vitest/browser-playwright`; give their files a suffix like
+`.browser.test.ts` and exclude it from the jsdom project.
+
+## Server rendering
+
+`renderToString` runs `setup` on the server, so the HTML can be asserted in a
+Node test. No callback runs on the server.
+
+```ts title="server.test.ts"
+// @vitest-environment node
+import { expect, it } from "vitest";
+import { createSSRApp } from "vue";
+import { renderToString } from "vue/server-renderer";
+import CheckoutSteps from "./CheckoutSteps.vue";
+
+it("renders the tabs and the current panel on the server", async () => {
+  const html = await renderToString(createSSRApp(CheckoutSteps));
+
+  expect(html).toContain('role="tablist"');
+  expect(html).toMatch(/<button[^>]*aria-selected="true"[^>]*>.*Shipping/s);
+  expect(html).toMatch(/role="tabpanel"[^>]*>.*Address/s);
+  expect(html).not.toContain("Payment details");
+});
+```
+
+A `Stepper.Root` assumes it has triggers until it mounts, so server HTML of a
+flow without triggers still says `tabpanel`; see
+[Server rendering](/docs/v9/vue/guides/ssr#tabs-without-triggers).
+
+## What to cover
+
+- A move that is refused: the step does not change and the reason is shown.
+- Each branch of the `next` map, and that Back returns along it.
+- The finishing move, including the failure path if `onFinish` makes a request.
+- Resuming from a saved snapshot.
+- An async check: the stepper is busy, and a second click does nothing.
